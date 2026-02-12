@@ -20,6 +20,9 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.71.1(react@19.2.3))
+      '@lark-base-open/js-sdk':
+        specifier: ^1.0.2
+        version: 1.0.2
       '@radix-ui/react-accordion':
         specifier: ^1.2.12
         version: 1.2.12(@types/react-dom@19.2.3(@types/react@19.2.10))(@types/react@19.2.10)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -1070,6 +1073,9 @@ packages:
     engines: {node: '>=20'}
     peerDependencies:
       '@langchain/core': ^1.0.0
+
+  '@lark-base-open/js-sdk@1.0.2':
+    resolution: {integrity: sha512-z2v+xeURfk3MDobgN66C4YYwp0sCoqreN5LDfJQBSXXLrzynyDewi7kWxpoFaggsryPfZOmPimpvGp+UZH6SHg==}
 
   '@modelcontextprotocol/sdk@1.25.3':
     resolution: {integrity: sha512-vsAMBMERybvYgKbg/l4L1rhS7VXV1c0CtyJg72vwxONVX0l4ZfKVAnZEWTQixJGTzKnELjQ59e4NbdFDALRiAQ==}
@@ -6759,6 +6765,8 @@ snapshots:
       zod: 4.3.6
     transitivePeerDependencies:
       - ws
+
+  '@lark-base-open/js-sdk@1.0.2': {}
 
   '@modelcontextprotocol/sdk@1.25.3(@cfworker/json-schema@4.1.1)(hono@4.11.7)(zod@3.25.76)':
     dependencies:

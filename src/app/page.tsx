@@ -1,26 +1,26 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { mockBitableData, viewTypes } from '@/data/mockData';
+import { useFeishuSDK } from '@/hooks/useFeishuSDK';
+import { mockBitableData } from '@/data/mockData';
 import { BitableView } from '@/types/bitable';
 import { GridView } from '@/components/views/GridView';
 import { KanbanView } from '@/components/views/KanbanView';
 import { GalleryView } from '@/components/views/GalleryView';
 import { TimelineView } from '@/components/views/TimelineView';
-import { Search, LayoutGrid, KanbanSquare, Image as ImageIcon, Calendar, Printer } from 'lucide-react';
+import { Search, LayoutGrid, KanbanSquare, Image as ImageIcon, Calendar, Printer, AlertCircle } from 'lucide-react';
 
 export default function BitableViewer() {
-  const router = useRouter();
+  const { isLoading, error, isFeishuEnvironment, records } = useFeishuSDK();
   const [selectedViewType, setSelectedViewType] = useState('kanban');
   const [searchQuery, setSearchQuery] = useState('');
 
   // 根据搜索过滤记录
-  const filteredRecords = mockBitableData.records.filter(record => {
+  const filteredRecords = records.filter(record => {
     const title = record.fields.field_1?.toLowerCase() || '';
     const description = record.fields.field_9?.toLowerCase() || '';
     const query = searchQuery.toLowerCase();
@@ -64,7 +64,7 @@ export default function BitableViewer() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => router.push('/print')}>
+            <Button variant="outline" size="sm" onClick={() => window.location.hash = '/print'}>
               <Printer className="w-4 h-4 mr-2" />
               排版打印
             </Button>
@@ -112,6 +112,44 @@ export default function BitableViewer() {
 
       {/* 视图内容区域 */}
       <main className="flex-1 overflow-hidden">
+        {/* 加载状态 */}
+        {isLoading && (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <p className="mt-2 text-sm text-muted-foreground">加载中...</p>
+            </div>
+          </div>
+        )}
+
+        {/* 错误提示 */}
+        {error && !isLoading && (
+          <div className="flex items-center justify-center h-full">
+            <Card className="max-w-md p-6 border-destructive">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-destructive mt-0.5" />
+                <div>
+                  <h3 className="font-medium text-destructive">加载失败</h3>
+                  <p className="text-sm text-muted-foreground mt-1">{error}</p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* 非飞书环境提示 */}
+        {!isFeishuEnvironment && !isLoading && !error && (
+          <div className="px-6 py-2 bg-blue-50 dark:bg-blue-950 border-b border-blue-200 dark:border-blue-800">
+            <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
+              <AlertCircle className="w-4 h-4" />
+              <span>当前使用模拟数据，在飞书环境中将显示真实数据</span>
+            </div>
+          </div>
+        )}
+
+        {/* 视图内容 */}
+        {!isLoading && !error && (
+          <>
         {selectedViewType === 'grid' && (
           <div className="h-full p-6">
             <Card className="h-full p-4">
@@ -153,6 +191,8 @@ export default function BitableViewer() {
             />
           </div>
         )}
+          </>
+        )}
       </main>
 
       {/* 底部状态栏 */}
@@ -161,6 +201,9 @@ export default function BitableViewer() {
           <div className="flex items-center gap-4">
             <span>共 {filteredRecords.length} 条记录</span>
             <span>最后更新: {new Date().toLocaleString('zh-CN')}</span>
+            {!isFeishuEnvironment && (
+              <span className="text-blue-600 dark:text-blue-400">模拟数据模式</span>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <span>视图类型: {currentView.name}</span>

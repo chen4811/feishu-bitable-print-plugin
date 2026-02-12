@@ -1,9 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // 飞书插件需要静态导出
+  // 静态导出，适合部署到任何静态服务器
   output: 'export',
 
-  // 禁用图片优化（飞书插件不支持）
+  // 禁用图片优化
   images: {
     unoptimized: true,
   },
@@ -25,9 +25,9 @@ const nextConfig = {
     optimizePackageImports: ['lucide-react'],
   },
 
-  // 飞书插件相关配置
+  // Trailing slash
   trailingSlash: true,
-  
+
   // Turbopack 配置（Next.js 16 默认使用）
   turbopack: {},
 };
