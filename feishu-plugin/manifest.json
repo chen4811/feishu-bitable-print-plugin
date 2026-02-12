@@ -1,0 +1,52 @@
+{
+  "manifestVersion": 0.1,
+  "apiVersion": "0.1.0",
+  "id": "bitable_print_sidebar_plugin_2025",
+  "name": {
+    "zh-CN": "飞书多维表格排版打印插件",
+    "en-US": "Bitable Print Sidebar Plugin"
+  },
+  "description": {
+    "zh-CN": "支持多维度排版、批量打印、二维码/条形码生成、PDF导出等功能的多维表格边栏插件",
+    "en-US": "A sidebar plugin for Bitable with features including multi-dimensional layout, batch printing, QR/barcode generation, and PDF export"
+  },
+  "version": "2.0.0",
+  "author": "Your Team",
+  "icon": {
+    "key": "icon.png"
+  },
+  "api": {
+    "bitable": {
+      "permissions": [
+        "bitable:app:read",
+        "bitable:app:write"
+      ]
+    }
+  },
+  "openModes": {
+    "sidebar": {
+      "height": 720,
+      "width": 480
+    }
+  },
+  "widgets": {
+    "sidebar": {
+      "url": "index.html",
+      "size": {
+        "height": 720,
+        "width": 480
+      }
+    }
+  },
+  "desktop": {
+    "main": "index.html"
+  },
+  "mobile": {
+    "main": "index.html"
+  },
+  "display": {
+    "displayMode": "custom",
+    "hiddenOnDesktop": false,
+    "hiddenOnMobile": false
+  }
+}
