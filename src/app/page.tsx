@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -11,9 +12,10 @@ import { GridView } from '@/components/views/GridView';
 import { KanbanView } from '@/components/views/KanbanView';
 import { GalleryView } from '@/components/views/GalleryView';
 import { TimelineView } from '@/components/views/TimelineView';
-import { Search, LayoutGrid, KanbanSquare, Image as ImageIcon, Calendar } from 'lucide-react';
+import { Search, LayoutGrid, KanbanSquare, Image as ImageIcon, Calendar, Printer } from 'lucide-react';
 
 export default function BitableViewer() {
+  const router = useRouter();
   const [selectedViewType, setSelectedViewType] = useState('kanban');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -62,6 +64,10 @@ export default function BitableViewer() {
           </div>
 
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => router.push('/print')}>
+              <Printer className="w-4 h-4 mr-2" />
+              排版打印
+            </Button>
             <Button variant="outline" size="sm">
               导出数据
             </Button>
