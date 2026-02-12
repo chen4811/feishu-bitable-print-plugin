@@ -77,7 +77,10 @@ src/
 
 ## 📖 使用说明
 
-### 启动项目
+### 🚀 快速开始
+
+#### 本地开发
+
 ```bash
 # 安装依赖
 pnpm install
@@ -87,6 +90,47 @@ pnpm dev
 ```
 
 项目将在 http://localhost:5000 上运行
+
+#### 生产部署
+
+本项目提供多种部署方式，根据需求选择：
+
+| 部署方式 | 难度 | 推荐度 | 文档 |
+|---------|------|--------|------|
+| **Vercel** | ⭐ 简单 | ⭐⭐⭐⭐⭐ | [详细教程](docs/DEPLOY_VERCEL.md) |
+| **Docker** | ⭐⭐⭐ 中等 | ⭐⭐⭐⭐ | [详细教程](docs/DEPLOY_DOCKER.md) |
+| **传统服务器** | ⭐⭐⭐⭐ 复杂 | ⭐⭐⭐ | [主部署指南](docs/DEPLOYMENT.md) |
+
+**推荐新手使用 Vercel 部署，零配置、自动 HTTPS、全球 CDN 加速！**
+
+#### 快速部署到 Vercel
+
+```bash
+# 安装 Vercel CLI
+pnpm add -g vercel
+
+# 登录并部署
+vercel login
+vercel
+
+# 生产环境部署
+vercel --prod
+```
+
+### 📦 Docker 部署（快速）
+
+```bash
+# 构建镜像
+docker build -t bitable-plugin .
+
+# 运行容器
+docker run -d -p 5000:5000 --name bitable-plugin bitable-plugin
+
+# 访问应用
+http://localhost:5000
+```
+
+更多部署详情请查看 [部署指南](docs/DEPLOYMENT.md)
 
 ### 视图切换
 点击顶部工具栏的视图标签即可切换不同的视图模式：
