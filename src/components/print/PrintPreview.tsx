@@ -14,6 +14,7 @@ interface PrintPreviewProps {
   title?: string;
   filename?: string;
   recordId?: string;
+  children?: React.ReactNode;
 }
 
 export function PrintPreview({ open, onClose, content, title = '打印预览', filename = 'document.pdf', recordId }: PrintPreviewProps) {

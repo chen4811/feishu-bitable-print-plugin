@@ -144,6 +144,8 @@ export function BarcodeGenerator({
 
       const img = new Image();
       img.onload = () => {
+        if (!svgRef.current) return;
+
         const canvas = document.createElement('canvas');
         canvas.width = svgRef.current.getBoundingClientRect().width;
         canvas.height = svgRef.current.getBoundingClientRect().height;

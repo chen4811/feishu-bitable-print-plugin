@@ -193,7 +193,6 @@ export function BatchPrint({ records, onPrint, onExport }: BatchPrintProps) {
           <div className="flex items-center gap-2">
             <Checkbox
               checked={isAllSelected}
-              indeterminate={isSomeSelected}
               onCheckedChange={handleSelectAll}
             />
             <span className="text-sm font-medium">

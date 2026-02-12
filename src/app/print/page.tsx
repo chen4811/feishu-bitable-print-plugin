@@ -238,11 +238,10 @@ export default function PrintPage() {
       <PrintPreview
         open={printPreviewOpen}
         onClose={() => setPrintPreviewOpen(false)}
+        content={previewRecord && <TaskPrintCard data={previewRecord} />}
         title="任务打印预览"
         filename={`task-${previewRecord?.id}.pdf`}
-      >
-        {previewRecord && <TaskPrintCard data={previewRecord} />}
-      </PrintPreview>
+      />
     </div>
   );
 }
