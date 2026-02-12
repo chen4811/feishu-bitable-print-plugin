@@ -102,6 +102,26 @@ src/
 
 ## 📖 使用说明
 
+### 🚨 飞书插件部署
+
+⚠️ **如果你想在飞书多维表格中使用此插件，请务必阅读以下文档：**
+
+- [正确使用指南 - 解决 BlockTypeID 错误](CORRECT_USAGE_GUIDE.md) ⚠️ **先看这个！**
+- [飞书插件快速开始](docs/QUICK_START_FEISHU.md)
+- [飞书插件部署指南](docs/FEISHU_DEPLOYMENT.md)
+- [飞书插件开发文档](docs/FEISHU_PLUGIN.md)
+
+**当前插件包状态**：✅ 已打包完成
+- 文件名：`feishu-bitable-plugin-v2.0.0.zip`
+- 大小：636 KB
+- 版本：v2.0.0
+- 准备状态：✅ 可以上传
+
+**重要提示**：
+- ❌ 不要使用飞书开发者工具的 BlockTypeID 开发方式
+- ✅ 必须通过飞书开放平台的插件管理功能
+- ⚠️ 当前缺少 icon.png，需要添加 256×256 的图标
+
 ### 🚀 快速开始
 
 #### 本地开发

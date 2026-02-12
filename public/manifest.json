@@ -37,16 +37,5 @@
         "width": 480
       }
     }
-  },
-  "desktop": {
-    "main": "index.html"
-  },
-  "mobile": {
-    "main": "index.html"
-  },
-  "display": {
-    "displayMode": "custom",
-    "hiddenOnDesktop": false,
-    "hiddenOnMobile": false
   }
 }
