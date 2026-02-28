@@ -1,16 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { TableQuickActions } from '../table/TableQuickActions';
-import {
-  Pencil,
-  Copy,
-  Trash2,
-  GripVertical,
-  GripHorizontal
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useEditorStore } from '@/store/editorStore';
 
 // 自适应高度的文本域组件
 const AutoResizingTextarea = ({ 
@@ -29,12 +19,22 @@ const AutoResizingTextarea = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // 自动调整高度
-  useEffect(() => {
+  const adjustHeight = useCallback(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.max(textareaRef.current.scrollHeight, 40)}px`;
+      textareaRef.current.style.height = `${Math.max(textareaRef.current.scrollHeight, 20)}px`;
     }
-  }, [value]);
+  }, []);
+
+  // 内容变化时调整高度
+  useEffect(() => {
+    adjustHeight();
+  }, [value, adjustHeight]);
+
+  // 组件挂载时调整高度
+  useEffect(() => {
+    adjustHeight();
+  }, [adjustHeight]);
 
   return (
     <textarea
@@ -43,57 +43,99 @@ const AutoResizingTextarea = ({
       onChange={(e) => onChange(e.target.value)}
       onClick={onClick}
       onKeyDown={onKeyDown}
-      style={style}
-      className="w-full resize-none outline-none bg-transparent text-inherit"
+      className="w-full border-0 outline-none p-1 resize-none overflow-hidden"
+      style={{ 
+        height: 'auto',
+        backgroundColor: 'transparent',
+        ...style,
+      }}
     />
   );
 };
+import { CanvasComponentNode } from '@/types/editor';
+import { useEditorStore } from '@/store/editorStore';
+import { Button } from '@/components/ui/button';
+import { Copy, Pencil, Trash2 } from 'lucide-react';
+import QRCode from 'qrcode';
+import JsBarcode from 'jsbarcode';
+import { HoverToolbar } from '../table/HoverToolbar';
 
 interface CanvasComponentProps {
-  component: any;
-  onComponentMouseDown: (e: React.MouseEvent, component: any) => void;
-  setSelectedNode?: (nodeId: string | null) => void;
+  component: CanvasComponentNode;
+  isSelected: boolean;
+  onSelect: () => void;
 }
 
-export const CanvasComponent: React.FC<CanvasComponentProps> = ({
-  component,
-  onComponentMouseDown,
-  setSelectedNode
-}) => {
-  const store = useEditorStore() as any;
-  const selectedNodeId = store.selectedNode?.id || null;
-  const { updateNode, tableEditing, setTableEditing } = store;
-
+export function CanvasComponent({ component, isSelected, onSelect }: CanvasComponentProps) {
+  const { 
+    updateComponent, 
+    styleConfig, 
+    duplicateComponent, 
+    deleteComponent,
+    tableEditing,
+    setTableEditing,
+    setTableCellEditing,
+  } = useEditorStore();
+  
+  // 通用状态
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  const isSelected = selectedNodeId === component.id;
-  const isCurrentTableEditing = tableEditing.isEditing && tableEditing.tableId === component.id;
-
-  // 单元格选择状态
-  const [cellSelection, setCellSelection] = useState({
-    startRow: 0,
-    startCol: 0,
-    endRow: 0,
-    endCol: 0,
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  // 表格编辑状态（本地数据，UI 状态在 store）
+  const [tableEditData, setTableEditData] = useState<any[][]>([]);
+  
+  // 表格单元格选择状态（用于拖动选择）
+  const [cellSelection, setCellSelection] = useState<{
+    startRow: number | null;
+    startCol: number | null;
+    endRow: number | null;
+    endCol: number | null;
+    isSelecting: boolean;
+  }>({
+    startRow: null,
+    startCol: null,
+    endRow: null,
+    endCol: null,
     isSelecting: false,
   });
+  
+  // 判断当前是否在编辑这个表格
+  const isCurrentTableEditing = tableEditing.isEditing && tableEditing.tableId === component.id;
 
-  // 获取选中的单元格ID
-  const getSelectedCellIds = (node: any) => {
-    if (!node.table) return [];
+  // 检查单元格是否在选中范围内
+  const isCellInSelection = (rowIndex: number, colIndex: number): boolean => {
+    if (cellSelection.startRow === null || cellSelection.startCol === null) {
+      return false;
+    }
+    
+    const minRow = Math.min(cellSelection.startRow, cellSelection.endRow ?? cellSelection.startRow);
+    const maxRow = Math.max(cellSelection.startRow, cellSelection.endRow ?? cellSelection.startRow);
+    const minCol = Math.min(cellSelection.startCol, cellSelection.endCol ?? cellSelection.startCol);
+    const maxCol = Math.max(cellSelection.startCol, cellSelection.endCol ?? cellSelection.startCol);
+    
+    return rowIndex >= minRow && rowIndex <= maxRow && 
+           colIndex >= minCol && colIndex <= maxCol;
+  };
+
+  // 获取选中的所有单元格ID
+  const getSelectedCellIds = (tableComp: any): string[] => {
+    if (!tableComp.tableConfig?.cells) return [];
     
     const selectedIds: string[] = [];
-    const minRow = Math.min(cellSelection.startRow, cellSelection.endRow);
-    const maxRow = Math.max(cellSelection.startRow, cellSelection.endRow);
-    const minCol = Math.min(cellSelection.startCol, cellSelection.endCol);
-    const maxCol = Math.max(cellSelection.startCol, cellSelection.endCol);
+    if (cellSelection.startRow === null || cellSelection.startCol === null) {
+      return [];
+    }
     
-    for (let r = minRow; r <= maxRow; r++) {
-      for (let c = minCol; c <= maxCol; c++) {
-        const cellId = `cell-${r}-${c}`;
+    const minRow = Math.min(cellSelection.startRow, cellSelection.endRow ?? cellSelection.startRow);
+    const maxRow = Math.max(cellSelection.startRow, cellSelection.endRow ?? cellSelection.startRow);
+    const minCol = Math.min(cellSelection.startCol, cellSelection.endCol ?? cellSelection.startCol);
+    const maxCol = Math.max(cellSelection.startCol, cellSelection.endCol ?? cellSelection.startCol);
+    
+    for (let row = minRow; row <= maxRow; row++) {
+      for (let col = minCol; col <= maxCol; col++) {
+        const cellId = tableComp.tableConfig.cells[row]?.[col]?.id || `cell-${row}-${col}`;
         selectedIds.push(cellId);
       }
     }
@@ -139,7 +181,8 @@ export const CanvasComponent: React.FC<CanvasComponentProps> = ({
       }));
       
       // 更新 store 中的选中单元格
-      const selectedIds = getSelectedCellIds(component);
+      const tableComp = component as any;
+      const selectedIds = getSelectedCellIds(tableComp);
       if (selectedIds.length > 0) {
         setTableEditing({
           selectedCells: selectedIds,
@@ -160,7 +203,8 @@ export const CanvasComponent: React.FC<CanvasComponentProps> = ({
       }));
       
       // 更新 store 中的选中单元格
-      const selectedIds = getSelectedCellIds(component);
+      const tableComp = component as any;
+      const selectedIds = getSelectedCellIds(tableComp);
       if (selectedIds.length > 0) {
         setTableEditing({
           selectedCells: selectedIds,
@@ -174,14 +218,14 @@ export const CanvasComponent: React.FC<CanvasComponentProps> = ({
     e.stopPropagation();
     if (component.type === 'text') {
       setIsEditing(true);
-      setEditContent(component.content && component.content !== '显示' ? component.content : '');
+      setEditContent((component as any).content && (component as any).content !== '显示' ? (component as any).content : '');
     }
   };
 
   const handleTextBlur = () => {
     setIsEditing(false);
     if (component.type === 'text') {
-      updateNode(component.id, { content: editContent });
+      updateComponent(component.id, { content: editContent });
     }
   };
 
@@ -216,253 +260,48 @@ export const CanvasComponent: React.FC<CanvasComponentProps> = ({
     }
   };
 
-  // 获取表格
-  const getTable = () => {
-    if (component.type !== 'table') return null;
-    return component.table;
+  // 复制组件
+  const handleCopyComponent = (e?: React.MouseEvent) => {
+    if (e && e.stopPropagation) {
+      e.stopPropagation();
+    }
+    duplicateComponent(component.id);
   };
 
-  // 表格快捷操作处理函数
-  const handleAddRowBefore = (rowIndex: number) => {
-    const table = getTable();
-    if (!table) return;
-    
-    const newRows = [...table.rows];
-    const newCols = [...table.columns];
-    
-    // 在指定行前插入新行
-    const newRow = {
-      id: `row-${Date.now()}`,
-      height: 40,
-      isHeader: false,
-      isFooter: false,
-      isHidden: false
-    };
-    newRows.splice(rowIndex, 0, newRow);
-    
-    // 更新所有单元格的行索引
-    const updatedCells = table.cells.map((cell: any) => {
-      if (cell.row >= rowIndex) {
-        return { ...cell, row: cell.row + 1 };
-      }
-      return cell;
-    });
-    
-    // 添加新行的单元格
-    newCols.forEach((_: any, colIndex: number) => {
-      updatedCells.push({
-        id: `cell-${Date.now()}-${colIndex}`,
-        row: rowIndex,
-        col: colIndex,
-        content: '',
-        styles: {},
-        rowSpan: 1,
-        colSpan: 1,
-        isMerged: false
-      });
-    });
-    
-    updateNode(component.id, {
-      table: {
-        ...table,
-        rows: newRows,
-        cells: updatedCells
-      }
-    });
-  };
-
-  const handleAddRowAfter = (rowIndex: number) => {
-    handleAddRowBefore(rowIndex + 1);
-  };
-
-  const handleDeleteRow = (rowIndex: number) => {
-    const table = getTable();
-    if (!table) return;
-    if (table.rows.length <= 1) return;
-    
-    const newRows = table.rows.filter((_: any, index: number) => index !== rowIndex);
-    const updatedCells = table.cells
-      .filter((cell: any) => cell.row !== rowIndex)
-      .map((cell: any) => {
-        if (cell.row > rowIndex) {
-          return { ...cell, row: cell.row - 1 };
-        }
-        return cell;
-      });
-    
-    updateNode(component.id, {
-      table: {
-        ...table,
-        rows: newRows,
-        cells: updatedCells
-      }
-    });
-  };
-
-  const handleToggleRowHeader = (rowIndex: number) => {
-    const table = getTable();
-    if (!table) return;
-    
-    const newRows = [...table.rows];
-    newRows[rowIndex] = {
-      ...newRows[rowIndex],
-      isHeader: !newRows[rowIndex].isHeader
-    };
-    
-    updateNode(component.id, {
-      table: {
-        ...table,
-        rows: newRows
-      }
-    });
-  };
-
-  const handleToggleRowFooter = (rowIndex: number) => {
-    const table = getTable();
-    if (!table) return;
-    
-    const newRows = [...table.rows];
-    newRows[rowIndex] = {
-      ...newRows[rowIndex],
-      isFooter: !newRows[rowIndex].isFooter
-    };
-    
-    updateNode(component.id, {
-      table: {
-        ...table,
-        rows: newRows
-      }
-    });
-  };
-
-  const handleToggleRowHidden = (rowIndex: number) => {
-    const table = getTable();
-    if (!table) return;
-    
-    const newRows = [...table.rows];
-    newRows[rowIndex] = {
-      ...newRows[rowIndex],
-      isHidden: !newRows[rowIndex].isHidden
-    };
-    
-    updateNode(component.id, {
-      table: {
-        ...table,
-        rows: newRows
-      }
-    });
-  };
-
-  const handleAddColumnBefore = (colIndex: number) => {
-    const table = getTable();
-    if (!table) return;
-    
-    const newRows = [...table.rows];
-    const newCols = [...table.columns];
-    
-    // 在指定列前插入新列
-    const newCol = {
-      id: `col-${Date.now()}`,
-      width: 100,
-      isHidden: false
-    };
-    newCols.splice(colIndex, 0, newCol);
-    
-    // 更新所有单元格的列索引
-    const updatedCells = table.cells.map((cell: any) => {
-      if (cell.col >= colIndex) {
-        return { ...cell, col: cell.col + 1 };
-      }
-      return cell;
-    });
-    
-    // 添加新列的单元格
-    newRows.forEach((_: any, rowIndex: number) => {
-      updatedCells.push({
-        id: `cell-${Date.now()}-${rowIndex}`,
-        row: rowIndex,
-        col: colIndex,
-        content: '',
-        styles: {},
-        rowSpan: 1,
-        colSpan: 1,
-        isMerged: false
-      });
-    });
-    
-    updateNode(component.id, {
-      table: {
-        ...table,
-        columns: newCols,
-        cells: updatedCells
-      }
-    });
-  };
-
-  const handleAddColumnAfter = (colIndex: number) => {
-    handleAddColumnBefore(colIndex + 1);
-  };
-
-  const handleDeleteColumn = (colIndex: number) => {
-    const table = getTable();
-    if (!table) return;
-    if (table.columns.length <= 1) return;
-    
-    const newCols = table.columns.filter((_: any, index: number) => index !== colIndex);
-    const updatedCells = table.cells
-      .filter((cell: any) => cell.col !== colIndex)
-      .map((cell: any) => {
-        if (cell.col > colIndex) {
-          return { ...cell, col: cell.col - 1 };
-        }
-        return cell;
-      });
-    
-    updateNode(component.id, {
-      table: {
-        ...table,
-        columns: newCols,
-        cells: updatedCells
-      }
-    });
-  };
-
-  const handleToggleColumnHidden = (colIndex: number) => {
-    const table = getTable();
-    if (!table) return;
-    
-    const newCols = [...table.columns];
-    newCols[colIndex] = {
-      ...newCols[colIndex],
-      isHidden: !newCols[colIndex].isHidden
-    };
-    
-    updateNode(component.id, {
-      table: {
-        ...table,
-        columns: newCols
-      }
-    });
+  // 删除组件
+  const handleDeleteComponent = (e?: React.MouseEvent) => {
+    if (e && e.stopPropagation) {
+      e.stopPropagation();
+    }
+    deleteComponent(component.id);
   };
 
   // 表格单元格编辑
   const handleTableCellChange = (row: number, col: number, value: string) => {
-    const table = getTable();
-    if (!table) return;
+    const newData = [...tableEditData];
+    newData[row] = [...newData[row]];
+    newData[row][col] = value;
+    setTableEditData(newData);
     
-    const updatedCells = table.cells.map((cell: any) => {
-      if (cell.row === row && cell.col === col) {
-        return { ...cell, content: value };
-      }
-      return cell;
-    });
-    
-    updateNode(component.id, {
-      table: {
-        ...table,
-        cells: updatedCells
-      }
-    });
+    const tableComp = component as any;
+    if (tableComp.tableConfig?.cells) {
+      const newCells = newData.map((rowData, rowIndex) =>
+        rowData.map((cellContent, colIndex) => ({
+          id: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.id || `cell-${rowIndex}-${colIndex}`,
+          content: cellContent,
+          backgroundColor: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.backgroundColor,
+          verticalAlign: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.verticalAlign,
+          border: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.border,
+          style: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.style,
+        }))
+      );
+      updateComponent(component.id, {
+        tableConfig: {
+          ...tableComp.tableConfig,
+          cells: newCells,
+        },
+      });
+    }
   };
 
   // 自动聚焦到编辑框
@@ -472,68 +311,55 @@ export const CanvasComponent: React.FC<CanvasComponentProps> = ({
     }
   }, [isEditing]);
 
-  // 获取表格数据
-  const getTableData = () => {
-    const table = getTable();
-    if (!table) {
-      return { rows: [], columns: [], cells: [] };
+  // 初始化表格编辑数据
+  useEffect(() => {
+    if (component.type === 'table') {
+      const tableComp = component as any;
+      if (tableComp.tableConfig?.cells) {
+        setTableEditData(tableComp.tableConfig.cells.map((row: any[]) => 
+          row.map((cell: any) => cell?.content || '')
+        ));
+      } else {
+        setTableEditData([
+          ['', '', ''],
+          ['', '', ''],
+        ]);
+      }
     }
-    
-    return {
-      rows: table.rows,
-      columns: table.columns,
-      cells: table.cells
-    };
-  };
+  }, [component.id, component.type]);
 
-  // 获取单元格内容
-  const getCellContent = (row: number, col: number) => {
-    const table = getTable();
-    if (!table) return '';
-    
-    const cell = table.cells.find((c: any) => c.row === row && c.col === col);
-    return cell?.content || '';
-  };
-
-  // 检查单元格是否选中
-  const isCellSelected = (rowIndex: number, colIndex: number) => {
-    if (!isCurrentTableEditing) return false;
-    
-    const minRow = Math.min(cellSelection.startRow, cellSelection.endRow);
-    const maxRow = Math.max(cellSelection.startRow, cellSelection.endRow);
-    const minCol = Math.min(cellSelection.startCol, cellSelection.endCol);
-    const maxCol = Math.max(cellSelection.startCol, cellSelection.endCol);
-    
-    return rowIndex >= minRow && rowIndex <= maxRow && 
-           colIndex >= minCol && colIndex <= maxCol;
-  };
-
-  // 类型安全的样式访问
-  const getComponentStyles = () => {
-    if (component.type === 'text') {
-      return component.styles || { width: 200, height: 100 };
-    } else if (component.type === 'table') {
-      return component.styles || { width: 400, height: 200 };
-    } else {
-      return { width: 200, height: 100 };
+  // 生成二维码
+  useEffect(() => {
+    if (component.type === 'qrcode' && canvasRef.current) {
+      const qrcodeComponent = component as any;
+      QRCode.toCanvas(canvasRef.current, qrcodeComponent.content, {
+        width: Math.min(qrcodeComponent.size || 150, 200),
+        margin: 1,
+      }).catch(console.error);
     }
-  };
+  }, [component]);
 
-  // 渲染表格
-  const renderTable = () => {
-    if (component.type !== 'table') return null;
-    
-    const { rows, columns, cells } = getTableData();
-    
-    // 检查是否显示行或列
-    const isRowVisible = (rowIndex: number) => !rows[rowIndex]?.isHidden;
-    const isColumnVisible = (colIndex: number) => !columns[colIndex]?.isHidden;
-    
-    // 获取可见的行和列
-    const visibleRows = rows.filter((_: any, index: number) => isRowVisible(index));
-    const visibleColumns = columns.filter((_: any, index: number) => isColumnVisible(index));
-    
-    if (visibleRows.length === 0 || visibleColumns.length === 0) {
+  // 生成条形码
+  useEffect(() => {
+    if (component.type === 'barcode' && canvasRef.current) {
+      const barcodeComponent = component as any;
+      try {
+        canvasRef.current.innerHTML = '';
+        JsBarcode(canvasRef.current, barcodeComponent.content, {
+          format: barcodeComponent.format || 'CODE128',
+          width: 2,
+          height: 50,
+          displayValue: true,
+        });
+      } catch (e) {
+        console.error('Barcode generation error:', e);
+      }
+    }
+  }, [component]);
+
+  // 渲染表格内容
+  const renderTableContent = (tableComp: any) => {
+    if (!tableComp.tableConfig?.cells) {
       return (
         <div className="p-4 text-center text-muted-foreground">
           <div className="flex items-center justify-center gap-2 mb-2">
@@ -544,162 +370,488 @@ export const CanvasComponent: React.FC<CanvasComponentProps> = ({
             <Button variant="default" size="sm" onClick={handleEditTable}>
               编辑表格
             </Button>
+            <Button variant="ghost" size="icon" onClick={handleCopyComponent}>
+              <Copy className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="text-destructive" onClick={handleDeleteComponent}>
+              <Trash2 className="w-4 h-4" />
+            </Button>
           </div>
         </div>
       );
     }
-    
+
     return (
-      <div className="relative">
-        {isCurrentTableEditing && (
-          <TableQuickActions
-            rows={visibleRows}
-            columns={visibleColumns}
-            onAddRowBefore={handleAddRowBefore}
-            onAddRowAfter={handleAddRowAfter}
-            onDeleteRow={handleDeleteRow}
-            onToggleRowHeader={handleToggleRowHeader}
-            onToggleRowFooter={handleToggleRowFooter}
-            onToggleRowHidden={handleToggleRowHidden}
-            onAddColumnBefore={handleAddColumnBefore}
-            onAddColumnAfter={handleAddColumnAfter}
-            onDeleteColumn={handleDeleteColumn}
-            onToggleColumnHidden={handleToggleColumnHidden}
-          />
-        )}
-        
-        <div 
-          className="relative"
-          onMouseUp={handleCellMouseUp}
-          onMouseLeave={handleTableMouseLeave}
-        >
-          <table className="w-full border-collapse">
-            <tbody>
-              {visibleRows.map((row: any, rowIndex: number) => {
-                const actualRowIndex = rows.findIndex((r: any) => r.id === row.id);
-                
-                return (
-                  <tr 
-                    key={row.id}
-                    className={`
-                      ${row.isHeader ? 'bg-gray-100 font-semibold' : ''}
-                      ${row.isFooter ? 'bg-gray-50' : ''}
-                    `}
-                    style={{ height: `${row.height}px` }}
-                  >
-                    {visibleColumns.map((col: any, colIndex: number) => {
-                      const actualColIndex = columns.findIndex((c: any) => c.id === col.id);
-                      const cellContent = getCellContent(actualRowIndex, actualColIndex);
-                      const selected = isCellSelected(actualRowIndex, actualColIndex);
+      <div 
+        onMouseUp={handleCellMouseUp}
+        onMouseLeave={handleTableMouseLeave}
+      >
+        <table className="w-full border-collapse">
+          <tbody>
+            {tableEditData.map((row: any[], rowIndex: number) => {
+              const isHeader = rowIndex < (tableComp.tableConfig?.headerRows || 0);
+              const isFooter = rowIndex >= tableEditData.length - (tableComp.tableConfig?.footerRows || 0);
+              
+              return (
+                <tr 
+                  key={rowIndex}
+                  className={isHeader ? 'bg-gray-100 font-semibold' : isFooter ? 'bg-gray-50' : ''}
+                >
+                {row.map((cellContent: any, colIndex: number) => {
+                  const cell = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex];
+                  const cellId = cell?.id || `cell-${rowIndex}-${colIndex}`;
+                  
+                  // 检查是否是被合并的单元格（rowSpan 或 colSpan 为 0）
+                  const rowSpan = cell?.rowSpan;
+                  const colSpan = cell?.colSpan;
+                  
+                  // 如果是被合并的单元格，不渲染
+                  if (rowSpan === 0 || colSpan === 0) {
+                    return null;
+                  }
+                  
+                  const isCellInRange = isCellInSelection(rowIndex, colIndex);
+                  const isCellSelected = tableEditing.selectedCells.includes(cellId) || isCellInRange;
+                  const cellBorder = cell?.border;
+                  const borderWidth = cellBorder?.width || tableComp.tableConfig?.borderWidth || 1;
+                  const borderColor = cellBorder?.color || tableComp.tableConfig?.borderColor || '#000000';
+                  
+                  // 构建边框样式
+                  const borderStyles: any = {};
+                  if (cellBorder?.top) {
+                    borderStyles.borderTop = `${borderWidth}px solid ${borderColor}`;
+                  }
+                  if (cellBorder?.right) {
+                    borderStyles.borderRight = `${borderWidth}px solid ${borderColor}`;
+                  }
+                  if (cellBorder?.bottom) {
+                    borderStyles.borderBottom = `${borderWidth}px solid ${borderColor}`;
+                  }
+                  if (cellBorder?.left) {
+                    borderStyles.borderLeft = `${borderWidth}px solid ${borderColor}`;
+                  }
+                  
+                  // 如果没有设置单元格边框，使用默认边框
+                  const hasCellBorder = cellBorder?.top || cellBorder?.right || cellBorder?.bottom || cellBorder?.left;
+                  
+                  return (
+                    <td
+                      key={`${rowIndex}-${colIndex}`}
+                      rowSpan={rowSpan && rowSpan > 1 ? rowSpan : undefined}
+                      colSpan={colSpan && colSpan > 1 ? colSpan : undefined}
+                      className={`p-1 text-sm cursor-pointer transition-colors select-none ${!hasCellBorder ? 'border' : ''}`}
+                      style={{
+                        backgroundColor: (() => {
+                          const cellBgColor = cell?.backgroundColor;
+                          const cellTextBgColor = cell?.style?.backgroundColor;
+                          
+                          if (isCellSelected) {
+                            // 如果有单元格背景色，使用半透明蓝色叠加
+                            if (cellBgColor || cellTextBgColor) {
+                              return 'rgba(59, 130, 246, 0.2)';
+                            }
+                            return '#dbeafe';
+                          }
+                          
+                          // 优先使用单元格背景色，其次是文本背景色
+                          return cellBgColor || cellTextBgColor || 'transparent';
+                        })(),
+                        userSelect: 'none',
+                        verticalAlign: cell?.verticalAlign || 'middle',
+                        ...borderStyles,
+                      }}
+                      onMouseDown={(e) => handleCellMouseDown(rowIndex, colIndex, e)}
+                      onMouseEnter={(e) => handleCellMouseMove(rowIndex, colIndex, e)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isCurrentTableEditing && !cellSelection.isSelecting) {
+                          // 只有在没有拖动选择时才处理单击
+                          setTableEditing({
+                            selectedCells: [cellId],
+                          });
+                          // 同时设置单元格编辑状态
+                          setTableCellEditing({
+                            isEditing: true,
+                            tableId: component.id,
+                            cellId,
+                            rowIndex,
+                            colIndex,
+                          });
+                        }
+                      }}
+                    >
+                    {(() => {
+                      const cellStyle = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.style || {};
                       
-                      return (
-                        <td 
-                          key={col.id}
-                          className={`
-                            border border-gray-300 p-2
-                            ${selected ? 'bg-blue-100' : ''}
-                          `}
-                          style={{ width: `${col.width}px` }}
-                          onMouseDown={(e) => handleCellMouseDown(actualRowIndex, actualColIndex, e)}
-                          onMouseMove={(e) => handleCellMouseMove(actualRowIndex, actualColIndex, e)}
-                        >
-                          {isCurrentTableEditing ? (
+                      // 构建单元格文本样式
+                      const textStyles: React.CSSProperties = {
+                        fontSize: `${cellStyle.fontSize || styleConfig.fontSize}px`,
+                        fontWeight: cellStyle.bold ? 'bold' : 'normal',
+                        fontStyle: cellStyle.italic ? 'italic' : 'normal',
+                        color: cellStyle.color || '#000000',
+                        backgroundColor: cellStyle.backgroundColor || 'transparent',
+                        textAlign: cellStyle.align || 'left',
+                        lineHeight: cellStyle.lineHeight || styleConfig.lineHeight,
+                        textDecoration: cellStyle.underline ? 'underline' : cellStyle.textDecoration || 'none',
+                        textTransform: cellStyle.textTransform || 'none',
+                        paddingBottom: cellStyle.paragraphSpacing ? `${cellStyle.paragraphSpacing}px` : 0,
+                        width: '100%',
+                        minHeight: '20px',
+                      };
+
+                      // 编辑模式 - 应用样式到 textarea
+                      if (isCurrentTableEditing) {
+                        // 为 textarea 构建样式（只应用影响文本显示的样式）
+                        const textareaStyles: React.CSSProperties = {
+                          fontSize: textStyles.fontSize,
+                          fontWeight: textStyles.fontWeight,
+                          fontStyle: textStyles.fontStyle,
+                          color: textStyles.color,
+                          textAlign: textStyles.textAlign,
+                          lineHeight: textStyles.lineHeight,
+                          textDecoration: textStyles.textDecoration,
+                          textTransform: textStyles.textTransform,
+                        };
+                        
+                        return (
+                          <div className="w-full h-full flex items-stretch" style={{ ...textStyles, padding: 0 }}>
                             <AutoResizingTextarea
-                              value={cellContent}
-                              onChange={(value) => handleTableCellChange(actualRowIndex, actualColIndex, value)}
+                              value={cellContent || ''}
+                              onChange={(value) => handleTableCellChange(rowIndex, colIndex, value)}
                               onClick={(e) => e.stopPropagation()}
-                              onKeyDown={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.stopPropagation();
+                                }
+                              }}
+                              style={textareaStyles}
                             />
-                          ) : (
-                            <div>{cellContent || '\u00A0'}</div>
-                          )}
-                        </td>
+                          </div>
+                        );
+                      }
+
+                      // 预览模式 - 渲染带样式的内容
+                      // 处理标题、列表等特殊样式
+                      const renderContentWithStyle = () => {
+                        // 基础文本样式
+                        const baseTextStyle: React.CSSProperties = {
+                          fontSize: `${cellStyle.fontSize || styleConfig.fontSize}px`,
+                          fontWeight: cellStyle.bold ? 'bold' : 'normal',
+                          fontStyle: cellStyle.italic ? 'italic' : 'normal',
+                          color: cellStyle.color || '#000000',
+                          textAlign: cellStyle.align || 'left',
+                          lineHeight: cellStyle.lineHeight || styleConfig.lineHeight,
+                          textDecoration: cellStyle.underline ? 'underline' : cellStyle.textDecoration || 'none',
+                          textTransform: cellStyle.textTransform || 'none',
+                          margin: 0,
+                          padding: 0,
+                          display: 'block',
+                          width: '100%',
+                        };
+
+                        // 标题样式
+                        if (cellStyle.headingLevel === 1) {
+                          return (
+                            <h1 style={{ 
+                              ...baseTextStyle,
+                              fontSize: cellStyle.fontSize ? `${cellStyle.fontSize}px` : '24px',
+                              fontWeight: 'bold',
+                            }}>
+                              {cellContent || ''}
+                            </h1>
+                          );
+                        }
+                        if (cellStyle.headingLevel === 2) {
+                          return (
+                            <h2 style={{ 
+                              ...baseTextStyle,
+                              fontSize: cellStyle.fontSize ? `${cellStyle.fontSize}px` : '18px',
+                              fontWeight: 'bold',
+                            }}>
+                              {cellContent || ''}
+                            </h2>
+                          );
+                        }
+                        // 列表样式
+                        if (cellStyle.listType === 'unordered' && !cellStyle.headingLevel) {
+                          return (
+                            <ul style={{ 
+                              marginLeft: '1.5rem', 
+                              paddingLeft: 0,
+                              textAlign: baseTextStyle.textAlign,
+                              lineHeight: baseTextStyle.lineHeight,
+                            }}>
+                              <li style={{
+                                fontSize: baseTextStyle.fontSize,
+                                fontWeight: baseTextStyle.fontWeight,
+                                fontStyle: baseTextStyle.fontStyle,
+                                color: baseTextStyle.color,
+                                textDecoration: baseTextStyle.textDecoration,
+                              }}>
+                                {cellContent || ''}
+                              </li>
+                            </ul>
+                          );
+                        }
+                        if (cellStyle.listType === 'ordered' && !cellStyle.headingLevel) {
+                          return (
+                            <ol style={{ 
+                              marginLeft: '1.5rem', 
+                              paddingLeft: 0,
+                              textAlign: baseTextStyle.textAlign,
+                              lineHeight: baseTextStyle.lineHeight,
+                            }}>
+                              <li style={{
+                                fontSize: baseTextStyle.fontSize,
+                                fontWeight: baseTextStyle.fontWeight,
+                                fontStyle: baseTextStyle.fontStyle,
+                                color: baseTextStyle.color,
+                                textDecoration: baseTextStyle.textDecoration,
+                              }}>
+                                {cellContent || ''}
+                              </li>
+                            </ol>
+                          );
+                        }
+                        // 链接样式
+                        if (cellStyle.linkUrl) {
+                          return (
+                            <a 
+                              href={cellStyle.linkUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              style={{ 
+                                ...baseTextStyle,
+                                color: '#3b82f6', 
+                                textDecoration: 'underline',
+                                display: 'inline',
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {cellContent || ''}
+                            </a>
+                          );
+                        }
+                        // 默认文本样式
+                        return (
+                          <span style={baseTextStyle}>
+                            {cellContent || ''}
+                          </span>
+                        );
+                      };
+
+                      return (
+                        <div 
+                          className="p-1 whitespace-pre-wrap" 
+                          style={textStyles}
+                        >
+                          {renderContentWithStyle()}
+                        </div>
                       );
-                    })}
-                  </tr>
+                    })()}
+                  </td>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
       </div>
     );
   };
 
-  // 渲染文本组件
-  const renderText = () => {
-    if (component.type !== 'text') return null;
-    
-    return (
-      <div onDoubleClick={handleDoubleClickText}>
-        {isEditing ? (
-          <AutoResizingTextarea
-            value={editContent}
-            onChange={setEditContent}
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleTextBlur();
-              }
+  // 渲染不同类型的组件
+  const renderContent = () => {
+    switch (component.type) {
+      case 'text':
+        const textComp = component as any;
+        
+        if (isEditing) {
+          return (
+            <div className="w-full p-2">
+              <textarea
+                ref={textareaRef}
+                className="w-full min-h-[60px] p-2 border border-primary rounded focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                onBlur={handleTextBlur}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleTextBlur();
+                  }
+                  if (e.key === 'Escape') {
+                    setIsEditing(false);
+                  }
+                }}
+                placeholder="输入文本..."
+              />
+            </div>
+          );
+        }
+
+        return (
+          <div
+            className="w-full cursor-text"
+            style={{
+              padding: '0.5rem',
+              fontSize: `${textComp.textStyle?.fontSize || styleConfig.fontSize}px`,
+              fontWeight: textComp.textStyle?.bold ? 'bold' : 'normal',
+              fontStyle: textComp.textStyle?.italic ? 'italic' : 'normal',
+              color: textComp.textStyle?.color || '#000000',
+              backgroundColor: textComp.textStyle?.backgroundColor || 'transparent',
+              textAlign: textComp.textStyle?.align || 'left',
+              lineHeight: textComp.textStyle?.lineHeight || styleConfig.lineHeight,
+              marginBottom: textComp.textStyle?.paragraphSpacing ? `${textComp.textStyle.paragraphSpacing}px` : 0,
+              textDecoration: textComp.textStyle?.underline ? 'underline' : textComp.textStyle?.textDecoration || 'none',
+              textTransform: textComp.textStyle?.textTransform || 'none',
             }}
-          />
-        ) : (
-          <div>{component.content || '显示'}</div>
-        )}
-      </div>
-    );
-  };
+            onDoubleClick={handleDoubleClickText}
+          >
+            {textComp.textStyle?.headingLevel === 1 && (
+              <h1 style={{ 
+                fontSize: '24px', 
+                fontWeight: 'bold', 
+                marginBottom: '0.5rem' 
+              }}>
+                {textComp.content || '显示'}
+              </h1>
+            )}
+            {textComp.textStyle?.headingLevel === 2 && (
+              <h2 style={{ 
+                fontSize: '18px', 
+                fontWeight: 'bold', 
+                marginBottom: '0.5rem' 
+              }}>
+                {textComp.content || '显示'}
+              </h2>
+            )}
+            {textComp.textStyle?.listType === 'unordered' && !textComp.textStyle?.headingLevel && (
+              <ul style={{ marginLeft: '1.5rem', paddingLeft: 0 }}>
+                <li>{textComp.content || '显示'}</li>
+              </ul>
+            )}
+            {textComp.textStyle?.listType === 'ordered' && !textComp.textStyle?.headingLevel && (
+              <ol style={{ marginLeft: '1.5rem', paddingLeft: 0 }}>
+                <li>{textComp.content || '显示'}</li>
+              </ol>
+            )}
+            {!textComp.textStyle?.headingLevel && !textComp.textStyle?.listType && (
+              <span>
+                {textComp.textStyle?.linkUrl ? (
+                  <a 
+                    href={textComp.textStyle.linkUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ color: '#3b82f6', textDecoration: 'underline' }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {textComp.content || '显示'}
+                  </a>
+                ) : (
+                  textComp.content || '显示'
+                )}
+              </span>
+            )}
+          </div>
+        );
 
-  // 渲染其他组件
-  const renderOther = () => {
-    if (component.type === 'text' || component.type === 'table') return null;
-    
-    return (
-      <div className="text-muted-foreground">
-        {component.type} 组件
-      </div>
-    );
+      case 'table':
+        const tableComp = component as any;
+        
+        // 编辑状态：表格内容，工具栏在 EditorPage 层面
+        if (isCurrentTableEditing) {
+          return (
+            <div onDoubleClick={handleDoubleClickTable}>
+              {renderTableContent(tableComp)}
+            </div>
+          );
+        }
+        
+        // 非编辑状态：工具栏在右上角悬浮
+        return (
+          <div className="relative group" onDoubleClick={handleDoubleClickTable}>
+            <div className="absolute -top-9 right-0 z-10">
+              <HoverToolbar
+                onEdit={handleEditTable}
+                onDelete={handleDeleteComponent}
+                onCopy={handleCopyComponent}
+                isSelected={isSelected}
+              />
+            </div>
+            {renderTableContent(tableComp)}
+          </div>
+        );
+
+      case 'image':
+        const imageComp = component as any;
+        return (
+          <div className="w-full flex items-center justify-center p-2">
+            {imageComp.src ? (
+              <img
+                src={imageComp.src}
+                alt={imageComp.alt || '图片'}
+                className="max-w-full max-h-[300px] object-contain"
+                style={{ objectFit: imageComp.fit || 'contain' }}
+              />
+            ) : (
+              <div className="w-full h-32 flex items-center justify-center bg-muted/30 border-2 border-dashed border-muted-foreground/30 rounded">
+                <span className="text-sm text-muted-foreground">点击选择图片</span>
+              </div>
+            )}
+          </div>
+        );
+
+      case 'qrcode':
+        return (
+          <div className="w-full flex flex-col items-center justify-center p-4">
+            <canvas ref={canvasRef} />
+            <p className="text-xs text-muted-foreground mt-2">
+              {(component as any).content || '二维码内容'}
+            </p>
+          </div>
+        );
+
+      case 'barcode':
+        return (
+          <div className="w-full flex flex-col items-center justify-center p-4">
+            <canvas ref={canvasRef} />
+            <p className="text-xs text-muted-foreground mt-2">
+              {(component as any).content || '条形码内容'}
+            </p>
+          </div>
+        );
+
+      case 'line':
+        const lineComp = component as any;
+        return (
+          <div className="w-full p-2">
+            <hr
+              style={{
+                border: 'none',
+                height: `${lineComp.thickness || 1}px`,
+                backgroundColor: lineComp.color || '#000000',
+                borderTop: lineComp.style === 'dashed' ? '1px dashed #000' : 
+                          lineComp.style === 'dotted' ? '1px dotted #000' : 'none',
+              }}
+            />
+          </div>
+        );
+
+      default:
+        const unknownComp = component as any;
+        return (
+          <div className="w-full p-4 text-center text-muted-foreground">
+            未知组件类型: {unknownComp.type || 'unknown'}
+          </div>
+        );
+    }
   };
 
   return (
-    <div
-      className={`
-        relative p-2 rounded
-        ${isSelected ? 'ring-2 ring-blue-500' : ''}
-        ${isCurrentTableEditing ? 'ring-2 ring-green-500' : ''}
-      `}
-      style={{
-        width: `${getComponentStyles().width}px`,
-        height: `${getComponentStyles().height}px`,
-        ...getComponentStyles()
-      }}
-      onMouseDown={(e) => onComponentMouseDown(e, component)}
-      onDoubleClick={component.type === 'table' ? handleDoubleClickTable : undefined}
-    >
-      {/* 选中时的边框控制 */}
-      {isSelected && (
-        <>
-          <div className="absolute -left-1 -top-1 w-3 h-3 bg-white border-2 border-blue-500 rounded cursor-nw-resize" />
-          <div className="absolute -right-1 -top-1 w-3 h-3 bg-white border-2 border-blue-500 rounded cursor-ne-resize" />
-          <div className="absolute -left-1 -bottom-1 w-3 h-3 bg-white border-2 border-blue-500 rounded cursor-sw-resize" />
-          <div className="absolute -right-1 -bottom-1 w-3 h-3 bg-white border-2 border-blue-500 rounded cursor-se-resize" />
-        </>
-      )}
-      
-      {/* 组件内容 */}
-      {component.type === 'text' && renderText()}
-      {component.type === 'table' && renderTable()}
-      {renderOther()}
-      
-      {/* 编辑按钮 - 表格组件 */}
-      {isSelected && component.type === 'table' && (
-        <div className="absolute -top-10 left-0 flex gap-2 bg-white shadow-lg rounded p-1 z-10">
-          <Button variant="default" size="sm" onClick={handleEditTable}>
-            {isCurrentTableEditing ? '退出编辑' : '编辑表格'}
-          </Button>
-        </div>
-      )}
+    <div className="w-full">
+      {renderContent()}
     </div>
   );
-};
+}

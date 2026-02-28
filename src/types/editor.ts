@@ -76,8 +76,6 @@ export interface TableConfig {
   showOuterBorder: boolean;
   showInnerBorder: boolean;
   cells: TableCellData[][];
-  hiddenRows?: number[]; // 隐藏的行索引
-  hiddenCols?: number[]; // 隐藏的列索引
 }
 
 // 网格布局配置
