@@ -70,14 +70,14 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
   }, [onMergeCells]);
 
   return (
-    <div className="w-full bg-white border-b rounded-t-lg p-2 shadow-sm">
-      <div className="flex items-center gap-1 flex-wrap">
+    <div className="w-full bg-white border-b rounded-t-lg px-2 py-1 shadow-sm">
+      <div className="flex items-center gap-0.5 flex-wrap">
         {/* 表头/表尾 */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 gap-1">
-              <Table className="w-4 h-4" />
-              <span className="text-sm">表头/表尾</span>
+            <Button variant="ghost" size="sm" className="h-7 gap-1 px-2">
+              <Table className="w-3.5 h-3.5" />
+              <span className="text-xs">表头/表尾</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
@@ -102,51 +102,51 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 gap-1"
+          className="h-7 gap-1 px-2"
           onClick={() => onBorderChange?.(true)}
         >
-          <Square className="w-4 h-4" />
-          <span className="text-sm">边框</span>
+          <Square className="w-3.5 h-3.5" />
+          <span className="text-xs">边框</span>
         </Button>
 
-        <Separator orientation="vertical" className="h-6" />
+        <Separator orientation="vertical" className="h-5" />
 
         {/* 对齐 */}
         <div className="flex items-center gap-0.5">
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-7 w-7"
             onClick={() => onAlignmentChange?.('left')}
           >
-            <AlignLeft className="w-4 h-4" />
+            <AlignLeft className="w-3.5 h-3.5" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-7 w-7"
             onClick={() => onAlignmentChange?.('center')}
           >
-            <AlignCenter className="w-4 h-4" />
+            <AlignCenter className="w-3.5 h-3.5" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-7 w-7"
             onClick={() => onAlignmentChange?.('right')}
           >
-            <AlignRight className="w-4 h-4" />
+            <AlignRight className="w-3.5 h-3.5" />
           </Button>
         </div>
 
-        <Separator orientation="vertical" className="h-6" />
+        <Separator orientation="vertical" className="h-5" />
 
         {/* 颜色 */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 gap-1">
-              <Palette className="w-4 h-4" />
-              <span className="text-sm">颜色</span>
+            <Button variant="ghost" size="sm" className="h-7 gap-1 px-2">
+              <Palette className="w-3.5 h-3.5" />
+              <span className="text-xs">颜色</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
@@ -173,101 +173,101 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-7 w-7"
             onClick={onInsertLink}
             title="插入链接"
           >
-            <Link className="w-4 h-4" />
+            <Link className="w-3.5 h-3.5" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-7 w-7"
             onClick={onInsertQRCode}
             title="插入二维码"
           >
-            <QrCode className="w-4 h-4" />
+            <QrCode className="w-3.5 h-3.5" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-7 w-7"
             onClick={onInsertBarcode}
             title="插入条形码"
           >
-            <Barcode className="w-4 h-4" />
+            <Barcode className="w-3.5 h-3.5" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-7 w-7"
             onClick={onInsertAttachment}
             title="插入附件列表"
           >
-            <FileText className="w-4 h-4" />
+            <FileText className="w-3.5 h-3.5" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-7 w-7"
             onClick={onInsertArticle}
             title="插入文章"
           >
-            <FileText className="w-4 h-4" />
+            <FileText className="w-3.5 h-3.5" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-7 w-7"
             onClick={onInsertImage}
             title="插入图片"
           >
-            <ImageIcon className="w-4 h-4" />
+            <ImageIcon className="w-3.5 h-3.5" />
           </Button>
         </div>
 
-        <Separator orientation="vertical" className="h-6" />
+        <Separator orientation="vertical" className="h-5" />
 
         {/* 循环字段高级配置 */}
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 gap-1"
+          className="h-7 gap-1 px-2"
           onClick={onAdvancedConfig}
         >
-          <Settings className="w-4 h-4" />
-          <span className="text-sm">循环字段高级配置</span>
+          <Settings className="w-3.5 h-3.5" />
+          <span className="text-xs">循环字段高级配置</span>
         </Button>
 
         {/* 合并单元格 - 条件显示 */}
         {selectedCellCount > 1 && (
           <>
-            <Separator orientation="vertical" className="h-6" />
+            <Separator orientation="vertical" className="h-5" />
             <Button
               variant="default"
               size="sm"
-              className="h-8 gap-1 bg-blue-500 hover:bg-blue-600"
+              className="h-7 gap-1 px-2 bg-blue-500 hover:bg-blue-600"
               onClick={handleMergeClick}
             >
-              <Merge className="w-4 h-4" />
-              <span className="text-sm">合并单元格</span>
+              <Merge className="w-3.5 h-3.5" />
+              <span className="text-xs">合并单元格</span>
             </Button>
           </>
         )}
 
-        <Separator orientation="vertical" className="h-6" />
+        <Separator orientation="vertical" className="h-5" />
 
         {/* 完成编辑按钮 */}
         <Button
           variant="default"
           size="sm"
-          className="h-8 gap-1 bg-green-500 hover:bg-green-600"
+          className="h-7 gap-1 px-2 bg-green-500 hover:bg-green-600"
           onClick={(e) => {
             e.stopPropagation();
             onFinishEdit?.();
           }}
         >
-          <span className="text-sm">完成编辑</span>
+          <span className="text-xs">完成编辑</span>
         </Button>
       </div>
     </div>

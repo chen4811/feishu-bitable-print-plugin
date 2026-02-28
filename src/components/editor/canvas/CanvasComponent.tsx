@@ -509,7 +509,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
           <div className={`w-full relative ${!isTableEditing ? 'group' : ''}`} onDoubleClick={handleDoubleClickTable}>
             {/* 编辑状态下，高级工具栏悬浮在表格上方 */}
             {isTableEditing && (
-              <div className="absolute -top-14 left-0 right-0 z-20">
+              <div className="absolute -top-12 left-0 right-0 z-20">
                 <AdvancedToolbar
                   onMergeCells={handleMergeCells}
                   selectedCellCount={selectedCells.length}
@@ -531,7 +531,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
             
             {/* 非编辑状态下，显示悬浮工具栏 */}
             {!isTableEditing && (
-              <div className="absolute -top-12 left-0 right-0 z-10">
+              <div className="absolute -top-10 left-0 right-0 z-10">
                 <HoverToolbar
                   onEdit={handleEditTable}
                   onDelete={handleDeleteComponent}
