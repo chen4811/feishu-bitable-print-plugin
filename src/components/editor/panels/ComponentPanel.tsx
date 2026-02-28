@@ -61,9 +61,12 @@ function DraggableComponentItem({
   description: string;
   onAdd: () => void;
 }) {
+  // 生成唯一的拖拽 ID
+  const uniqueId = `panel-${type}-${Date.now()}`;
+  
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: type,
-    data: { type },
+    id: uniqueId,
+    data: { type, isFromPanel: true },
   });
 
   return (

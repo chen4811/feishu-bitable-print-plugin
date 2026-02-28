@@ -49,7 +49,7 @@ interface EditorState {
   
   // 操作方法
   setTemplateName: (name: string) => void;
-  addComponent: (type: ComponentType) => void;
+  addComponent: (type: ComponentType) => string;
   updateComponent: (id: string, updates: Partial<CanvasComponentNode>) => void;
   deleteComponent: (id: string) => void;
   selectComponent: (id: string | null) => void;
@@ -216,6 +216,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     });
     
     get().saveToHistory();
+    return id; // 返回新组件的 ID
   },
   
   // 更新组件

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -22,6 +22,9 @@ import { Plus } from 'lucide-react';
 import { InsertionIndicator } from './InsertionIndicator';
 import { SortableItem } from './SortableItem';
 import { FloatingAddButton } from './FloatingAddButton';
+
+// 插入位置类型
+type InsertPosition = 'top' | 'bottom' | null;
 
 // 获取组件宽度类名
 function getComponentWidthClass(width: string) {
@@ -58,7 +61,9 @@ export function CanvasArea() {
   
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
+  const [insertPosition, setInsertPosition] = useState<InsertPosition>(null);
   const [isFromPanel, setIsFromPanel] = useState(false);
+  const [dragType, setDragType] = useState<ComponentType | null>(null);
 
   // 传感器设置
   const sensors = useSensors(
@@ -91,17 +96,33 @@ export function CanvasArea() {
     setActiveId(active.id as string);
     
     // 判断是否从侧边栏拖拽过来
-    const isNewComponent = !components.some(c => c.id === active.id);
+    const isNewComponent = active.data.current?.isFromPanel === true;
     setIsFromPanel(isNewComponent);
+    
+    if (isNewComponent && active.data.current?.type) {
+      setDragType(active.data.current.type as ComponentType);
+    } else {
+      setDragType(null);
+    }
+    
     setOverId(null);
+    setInsertPosition(null);
   };
 
   // 拖拽过程
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
     
-    if (!over || over.id === 'canvas' || over.id === 'canvas-grid') {
+    if (!over) {
       setOverId(null);
+      setInsertPosition(null);
+      return;
+    }
+
+    // 如果拖拽到画布本身
+    if (over.id === 'canvas' || over.id === 'canvas-grid') {
+      setOverId(null);
+      setInsertPosition(null);
       return;
     }
 
@@ -110,61 +131,59 @@ export function CanvasArea() {
 
     if (activeIdStr === overIdStr) {
       setOverId(null);
+      setInsertPosition(null);
       return;
     }
 
     setOverId(overIdStr);
+    setInsertPosition('bottom'); // 默认插入到下方
   };
 
   // 拖拽结束
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    const activeIdStr = active.id as string;
     
-    if (isFromPanel && active.data.current?.type) {
-      // 从侧边栏新增组件
-      const componentType = active.data.current.type as ComponentType;
-      
+    if (isFromPanel && dragType) {
+      // ========== 从侧边栏新增组件 ==========
       if (over && over.id !== 'canvas' && over.id !== 'canvas-grid') {
         const targetId = over.id as string;
         const targetIndex = components.findIndex(c => c.id === targetId);
         const targetComponent = components.find(c => c.id === targetId);
         
-        if (targetIndex !== -1) {
-          // 先添加到末尾
-          addComponent(componentType);
+        if (targetIndex !== -1 && targetComponent) {
+          // 1. 先添加新组件到末尾
+          const tempId = addComponent(dragType);
           
-          // 延迟处理位置和宽度
+          // 2. 延迟处理位置和宽度
           setTimeout(() => {
-            const newComponents = useEditorStore.getState().components;
-            const newComponent = newComponents[newComponents.length - 1];
+            const state = useEditorStore.getState();
+            const newComponents = state.components;
+            const newComponent = newComponents.find(c => c.id === tempId);
             
-            if (newComponent && targetComponent) {
-              // 关键逻辑：如果目标组件是100%宽度，则并排；否则插入到下方
+            if (newComponent) {
+              const newComponentIndex = newComponents.findIndex(c => c.id === tempId);
+              
+              // 关键逻辑：判断目标组件宽度
               const isTargetFullWidth = targetComponent.layout?.width === '100%' || !targetComponent.layout;
               
               if (isTargetFullWidth) {
-                // 并排模式：设置两个组件为50%
-                useEditorStore.getState().updateComponent(newComponent.id, { layout: { width: '50%' } });
-                useEditorStore.getState().updateComponent(targetId, { layout: { width: '50%' } });
-                
-                // 移动到目标后面
-                const newComponentIndex = newComponents.length - 1;
-                useEditorStore.getState().reorderComponents(newComponentIndex, targetIndex + 1);
+                // 并排模式：两个都变为50%
+                state.updateComponent(tempId, { layout: { width: '50%' } });
+                state.updateComponent(targetId, { layout: { width: '50%' } });
+                state.reorderComponents(newComponentIndex, targetIndex + 1);
               } else {
                 // 插入到下方
-                const newComponentIndex = newComponents.length - 1;
-                useEditorStore.getState().reorderComponents(newComponentIndex, targetIndex + 1);
+                state.reorderComponents(newComponentIndex, targetIndex + 1);
               }
             }
           }, 50);
         }
       } else {
         // 直接添加到末尾
-        addComponent(componentType);
+        addComponent(dragType);
       }
     } else if (over && active.id !== over.id) {
-      // 重新排序现有组件 - 不改变宽度
+      // ========== 重新排序现有组件 ==========
       const oldIndex = components.findIndex((c) => c.id === active.id);
       const newIndex = components.findIndex((c) => c.id === over.id);
       
@@ -175,7 +194,9 @@ export function CanvasArea() {
 
     setActiveId(null);
     setOverId(null);
+    setInsertPosition(null);
     setIsFromPanel(false);
+    setDragType(null);
   };
 
   const handleCanvasClick = (e: React.MouseEvent) => {
@@ -216,7 +237,7 @@ export function CanvasArea() {
           }}
           onClick={handleCanvasClick}
         >
-          {/* 关键：使用 flex-wrap 实现并排 */}
+          {/* 使用 flex-wrap 实现并排 */}
           <div
             id="canvas-grid"
             className="flex flex-wrap content-start gap-3"
@@ -235,7 +256,7 @@ export function CanvasArea() {
                   return (
                     <React.Fragment key={component.id}>
                       {/* 插入指示器 */}
-                      {isTarget && !isActive && (
+                      {isTarget && !isActive && insertPosition && (
                         <div className="w-full flex-shrink-0">
                           <InsertionIndicator type="horizontal" />
                         </div>
@@ -314,10 +335,15 @@ export function CanvasArea() {
                 </div>
               </div>
             </div>
-          ) : isFromPanel ? (
+          ) : isFromPanel && dragType ? (
             <div className="opacity-80 bg-white shadow-2xl rounded-lg p-4 border-2 border-dashed border-primary">
               <p className="text-sm text-primary font-medium">新组件</p>
-              <p className="text-xs text-muted-foreground mt-1">拖到100%宽度组件旁会自动并排为50%</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                组件类型: {dragType}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                拖到100%宽度组件旁会自动并排为50%
+              </p>
             </div>
           ) : null}
         </DragOverlay>
