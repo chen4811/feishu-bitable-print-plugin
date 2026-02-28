@@ -24,6 +24,10 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   const [editContent, setEditContent] = useState('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  // 表格编辑状态
+  const [isTableEditing, setIsTableEditing] = useState(false);
+  const [tableEditData, setTableEditData] = useState<any[][]>([]);
 
   // 文本组件编辑
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
@@ -41,13 +45,13 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
   }, [component.id, component.type, editContent, updateComponent]);
 
-  // 表格编辑
+  // 表格编辑 - 切换编辑状态
   const handleEditTable = useCallback((e?: React.MouseEvent) => {
     if (e && typeof e.stopPropagation === 'function') {
       e.stopPropagation();
     }
-    alert('表格编辑功能开发中...');
-  }, []);
+    setIsTableEditing(!isTableEditing);
+  }, [isTableEditing]);
 
   // 复制组件
   const handleCopyComponent = useCallback((e?: React.MouseEvent) => {
@@ -103,12 +107,62 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
   }, [component]);
 
+  // 初始化表格编辑数据
+  useEffect(() => {
+    if (component.type === 'table') {
+      const tableComp = component as any;
+      if (tableComp.tableConfig?.cells) {
+        setTableEditData(tableComp.tableConfig.cells.map((row: any[]) => 
+          row.map((cell: any) => cell?.content || '')
+        ));
+      } else {
+        // 默认空表格
+        setTableEditData([
+          ['', '', ''],
+          ['', '', ''],
+        ]);
+      }
+    }
+  }, [component.id, component.type]);
+
   // 自动聚焦到编辑框
   useEffect(() => {
     if (isEditing && textareaRef.current) {
       textareaRef.current.focus();
     }
   }, [isEditing]);
+
+  // 表格单元格编辑
+  const handleTableCellChange = useCallback((row: number, col: number, value: string) => {
+    const newData = [...tableEditData];
+    newData[row] = [...newData[row]];
+    newData[row][col] = value;
+    setTableEditData(newData);
+    
+    // 更新到 store
+    const tableComp = component as any;
+    if (tableComp.tableConfig?.cells) {
+      const newCells = newData.map((rowData, rowIndex) =>
+        rowData.map((cellContent, colIndex) => ({
+          id: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.id || `cell-${rowIndex}-${colIndex}`,
+          content: cellContent,
+          backgroundColor: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.backgroundColor,
+        }))
+      );
+      updateComponent(component.id, {
+        tableConfig: {
+          ...tableComp.tableConfig,
+          cells: newCells,
+        },
+      });
+    }
+  }, [tableEditData, component.id, component, updateComponent]);
+
+  // 双击表格进入编辑
+  const handleDoubleClickTable = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsTableEditing(true);
+  }, []);
 
   // 渲染不同类型的组件
   const renderContent = () => {
@@ -213,9 +267,9 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         const tableComp = component as any;
         
         return (
-          <div className="w-full relative">
+          <div className="w-full relative" onDoubleClick={handleDoubleClickTable}>
             {/* 悬停工具栏 - 只在 hover 且未选中或未编辑时显示 */}
-            {(isHovered || isSelected) && !isEditing && (
+            {(isHovered || isSelected) && !isTableEditing && (
               <HoverToolbar
                 onEdit={handleEditTable}
                 onDelete={handleDeleteComponent}
@@ -227,17 +281,29 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               <div className="border overflow-hidden">
                 <table className="w-full border-collapse">
                   <tbody>
-                    {tableComp.tableConfig.cells.map((row: any[], rowIndex: number) => (
+                    {tableEditData.map((row: any[], rowIndex: number) => (
                       <tr key={rowIndex}>
-                        {row.map((cell: any, colIndex: number) => (
+                        {row.map((cellContent: any, colIndex: number) => (
                           <td
-                            key={cell?.id || colIndex}
-                            className="border p-2 text-sm"
+                            key={`${rowIndex}-${colIndex}`}
+                            className="border p-1 text-sm"
                             style={{
-                              backgroundColor: cell?.backgroundColor || 'transparent',
+                              backgroundColor: tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.backgroundColor || 'transparent',
                             }}
                           >
-                            {cell?.content || ''}
+                            {isTableEditing ? (
+                              <input
+                                type="text"
+                                value={cellContent || ''}
+                                onChange={(e) => handleTableCellChange(rowIndex, colIndex, e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-full border-0 bg-transparent outline-none p-1"
+                              />
+                            ) : (
+                              <span className="p-1 block min-h-[20px]">
+                                {cellContent || ''}
+                              </span>
+                            )}
                           </td>
                         ))}
                       </tr>
@@ -253,7 +319,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 </div>
                 <div className="flex items-center justify-center gap-2">
                   <Button variant="default" size="sm" onClick={handleEditTable}>
-                    编辑表格
+                    {isTableEditing ? '完成编辑' : '编辑表格'}
                   </Button>
                   <Button variant="ghost" size="icon" onClick={handleCopyComponent}>
                     <Copy className="w-4 h-4" />
@@ -262,6 +328,13 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
+              </div>
+            )}
+            
+            {/* 编辑状态提示 */}
+            {isTableEditing && (
+              <div className="text-xs text-center text-muted-foreground mt-1">
+                点击单元格编辑内容，再次点击"编辑表格"完成
               </div>
             )}
           </div>
