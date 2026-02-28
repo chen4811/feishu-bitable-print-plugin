@@ -52,8 +52,8 @@ export function SortableItem({
       className={`
         relative group
         transition-all duration-200
-        ${isSelected ? 'ring-1 ring-primary' : ''}
-        ${!isSelected && !isDragging ? 'hover:ring-1 hover:ring-gray-300' : ''}
+        ${isSelected && component.type !== 'table' ? 'ring-1 ring-primary' : ''}
+        ${!isSelected && !isDragging && component.type !== 'table' ? 'hover:ring-1 hover:ring-gray-300' : ''}
       `}
       onClick={(e) => {
         e.stopPropagation();
