@@ -514,7 +514,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                         };
                         
                         return (
-                          <div className="w-full h-full flex items-stretch" style={{ ...textStyles, padding: 0 }}>
+                          <div className="w-full h-full flex items-stretch" style={textStyles}>
                             <AutoResizingTextarea
                               value={cellContent || ''}
                               onChange={(value) => handleTableCellChange(rowIndex, colIndex, value)}
@@ -642,7 +642,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
 
                       return (
                         <div 
-                          className="p-1 whitespace-pre-wrap" 
+                          className="whitespace-pre-wrap" 
                           style={textStyles}
                         >
                           {renderContentWithStyle()}
