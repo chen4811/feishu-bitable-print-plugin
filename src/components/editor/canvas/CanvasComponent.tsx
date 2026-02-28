@@ -310,6 +310,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
           id: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.id || `cell-${rowIndex}-${colIndex}`,
           content: cellContent,
           backgroundColor: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.backgroundColor,
+          verticalAlign: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.verticalAlign,
+          border: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.border,
         }))
       );
       updateComponent(component.id, {
@@ -471,18 +473,20 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       }}
                     >
                     {isCurrentTableEditing ? (
-                      <AutoResizingTextarea
-                        value={cellContent || ''}
-                        onChange={(value) => handleTableCellChange(rowIndex, colIndex, value)}
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.stopPropagation();
-                          }
-                        }}
-                      />
+                      <div className="w-full h-full flex items-stretch">
+                        <AutoResizingTextarea
+                          value={cellContent || ''}
+                          onChange={(value) => handleTableCellChange(rowIndex, colIndex, value)}
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.stopPropagation();
+                            }
+                          }}
+                        />
+                      </div>
                     ) : (
-                      <div className="p-1 whitespace-pre-wrap">
+                      <div className="p-1 whitespace-pre-wrap min-h-[20px]">
                         {cellContent}
                       </div>
                     )}

@@ -642,7 +642,21 @@ export function EditorPage({ onExit }: EditorPageProps) {
                   onBorderWidthChange={handleBorderWidthChange}
                   borderWidth={currentEditingTable?.tableConfig?.borderWidth || 1}
                   onAlignmentChange={handleAlignmentChange}
-                  verticalAlign="middle"
+                  verticalAlign={(() => {
+                    if (!currentEditingTable?.tableConfig?.cells) return 'middle';
+                    const cells = currentEditingTable.tableConfig.cells;
+                    
+                    // 获取第一个选中的单元格的对齐状态
+                    for (let row = 0; row < cells.length; row++) {
+                      for (let col = 0; col < cells[row].length; col++) {
+                        const cellId = cells[row][col]?.id || `cell-${row}-${col}`;
+                        if (tableEditing.selectedCells.includes(cellId)) {
+                          return cells[row][col]?.verticalAlign || 'middle';
+                        }
+                      }
+                    }
+                    return 'middle';
+                  })()}
                   onColorChange={tableEditing.onColorChange}
                   onFinishEdit={() => {
                     tableEditing.onFinishEdit();
