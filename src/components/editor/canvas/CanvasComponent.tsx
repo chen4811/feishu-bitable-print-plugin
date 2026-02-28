@@ -7,12 +7,14 @@ const AutoResizingTextarea = ({
   value, 
   onChange, 
   onClick, 
-  onKeyDown 
+  onKeyDown,
+  style
 }: { 
   value: string;
   onChange: (value: string) => void;
   onClick: (e: React.MouseEvent) => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
+  style?: React.CSSProperties;
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -41,8 +43,12 @@ const AutoResizingTextarea = ({
       onChange={(e) => onChange(e.target.value)}
       onClick={onClick}
       onKeyDown={onKeyDown}
-      className="w-full border-0 bg-transparent outline-none p-1 resize-none overflow-hidden"
-      style={{ height: 'auto' }}
+      className="w-full border-0 outline-none p-1 resize-none overflow-hidden"
+      style={{ 
+        height: 'auto',
+        backgroundColor: 'transparent',
+        ...style,
+      }}
     />
   );
 };
@@ -501,12 +507,27 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                         lineHeight: cellStyle.lineHeight || styleConfig.lineHeight,
                         textDecoration: cellStyle.underline ? 'underline' : cellStyle.textDecoration || 'none',
                         textTransform: cellStyle.textTransform || 'none',
-                        marginBottom: cellStyle.paragraphSpacing ? `${cellStyle.paragraphSpacing}px` : 0,
+                        paddingBottom: cellStyle.paragraphSpacing ? `${cellStyle.paragraphSpacing}px` : 0,
+                        width: '100%',
+                        minHeight: '20px',
                       };
 
+                      // 编辑模式 - 应用样式到 textarea
                       if (isCurrentTableEditing) {
+                        // 为 textarea 构建样式（只应用影响文本显示的样式）
+                        const textareaStyles: React.CSSProperties = {
+                          fontSize: textStyles.fontSize,
+                          fontWeight: textStyles.fontWeight,
+                          fontStyle: textStyles.fontStyle,
+                          color: textStyles.color,
+                          textAlign: textStyles.textAlign,
+                          lineHeight: textStyles.lineHeight,
+                          textDecoration: textStyles.textDecoration,
+                          textTransform: textStyles.textTransform,
+                        };
+                        
                         return (
-                          <div className="w-full h-full flex items-stretch">
+                          <div className="w-full h-full flex items-stretch" style={{ ...textStyles, padding: 0 }}>
                             <AutoResizingTextarea
                               value={cellContent || ''}
                               onChange={(value) => handleTableCellChange(rowIndex, colIndex, value)}
@@ -516,19 +537,28 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                   e.stopPropagation();
                                 }
                               }}
+                              style={textareaStyles}
                             />
                           </div>
                         );
                       }
 
+                      // 预览模式 - 渲染带样式的内容
                       // 处理标题、列表等特殊样式
                       const renderContentWithStyle = () => {
+                        // 标题样式
                         if (cellStyle.headingLevel === 1) {
                           return (
                             <h1 style={{ 
                               fontSize: cellStyle.fontSize ? `${cellStyle.fontSize}px` : '24px', 
-                              fontWeight: 'bold', 
-                              marginBottom: '0.5rem' 
+                              fontWeight: cellStyle.bold ? 'bold' : 'normal',
+                              fontStyle: cellStyle.italic ? 'italic' : 'normal',
+                              color: cellStyle.color || '#000000',
+                              textAlign: cellStyle.align || 'left',
+                              lineHeight: cellStyle.lineHeight || styleConfig.lineHeight,
+                              textDecoration: cellStyle.underline ? 'underline' : 'none',
+                              margin: 0,
+                              padding: 0,
                             }}>
                               {cellContent || ''}
                             </h1>
@@ -538,46 +568,94 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                           return (
                             <h2 style={{ 
                               fontSize: cellStyle.fontSize ? `${cellStyle.fontSize}px` : '18px', 
-                              fontWeight: 'bold', 
-                              marginBottom: '0.5rem' 
+                              fontWeight: cellStyle.bold ? 'bold' : 'normal',
+                              fontStyle: cellStyle.italic ? 'italic' : 'normal',
+                              color: cellStyle.color || '#000000',
+                              textAlign: cellStyle.align || 'left',
+                              lineHeight: cellStyle.lineHeight || styleConfig.lineHeight,
+                              textDecoration: cellStyle.underline ? 'underline' : 'none',
+                              margin: 0,
+                              padding: 0,
                             }}>
                               {cellContent || ''}
                             </h2>
                           );
                         }
+                        // 列表样式
                         if (cellStyle.listType === 'unordered' && !cellStyle.headingLevel) {
                           return (
-                            <ul style={{ marginLeft: '1.5rem', paddingLeft: 0 }}>
-                              <li>{cellContent || ''}</li>
+                            <ul style={{ 
+                              marginLeft: '1.5rem', 
+                              paddingLeft: 0,
+                              textAlign: cellStyle.align || 'left',
+                              lineHeight: cellStyle.lineHeight || styleConfig.lineHeight,
+                            }}>
+                              <li style={{
+                                fontSize: `${cellStyle.fontSize || styleConfig.fontSize}px`,
+                                fontWeight: cellStyle.bold ? 'bold' : 'normal',
+                                fontStyle: cellStyle.italic ? 'italic' : 'normal',
+                                color: cellStyle.color || '#000000',
+                                textDecoration: cellStyle.underline ? 'underline' : 'none',
+                              }}>
+                                {cellContent || ''}
+                              </li>
                             </ul>
                           );
                         }
                         if (cellStyle.listType === 'ordered' && !cellStyle.headingLevel) {
                           return (
-                            <ol style={{ marginLeft: '1.5rem', paddingLeft: 0 }}>
-                              <li>{cellContent || ''}</li>
+                            <ol style={{ 
+                              marginLeft: '1.5rem', 
+                              paddingLeft: 0,
+                              textAlign: cellStyle.align || 'left',
+                              lineHeight: cellStyle.lineHeight || styleConfig.lineHeight,
+                            }}>
+                              <li style={{
+                                fontSize: `${cellStyle.fontSize || styleConfig.fontSize}px`,
+                                fontWeight: cellStyle.bold ? 'bold' : 'normal',
+                                fontStyle: cellStyle.italic ? 'italic' : 'normal',
+                                color: cellStyle.color || '#000000',
+                                textDecoration: cellStyle.underline ? 'underline' : 'none',
+                              }}>
+                                {cellContent || ''}
+                              </li>
                             </ol>
                           );
                         }
+                        // 链接样式
                         if (cellStyle.linkUrl) {
                           return (
                             <a 
                               href={cellStyle.linkUrl} 
                               target="_blank" 
                               rel="noopener noreferrer"
-                              style={{ color: '#3b82f6', textDecoration: 'underline' }}
+                              style={{ 
+                                color: '#3b82f6', 
+                                textDecoration: 'underline',
+                                fontSize: `${cellStyle.fontSize || styleConfig.fontSize}px`,
+                                fontWeight: cellStyle.bold ? 'bold' : 'normal',
+                                fontStyle: cellStyle.italic ? 'italic' : 'normal',
+                              }}
                               onClick={(e) => e.stopPropagation()}
                             >
                               {cellContent || ''}
                             </a>
                           );
                         }
-                        return <span>{cellContent || ''}</span>;
+                        // 默认文本样式
+                        return (
+                          <span style={{
+                            display: 'block',
+                            width: '100%',
+                          }}>
+                            {cellContent || ''}
+                          </span>
+                        );
                       };
 
                       return (
                         <div 
-                          className="p-1 whitespace-pre-wrap min-h-[20px]" 
+                          className="p-1 whitespace-pre-wrap" 
                           style={textStyles}
                         >
                           {renderContentWithStyle()}
