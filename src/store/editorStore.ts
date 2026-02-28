@@ -53,6 +53,7 @@ interface EditorState {
   selectComponent: (id: string | null) => void;
   moveComponent: (id: string, x: number, y: number) => void;
   resizeComponent: (id: string, width: number, height: number) => void;
+  duplicateComponent: (id: string) => void;
   
   // 层级管理
   moveComponentUp: (id: string) => void;
@@ -260,6 +261,29 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       c.id === id ? { ...c, width, height } as EditorComponent : c
     );
     set({ components: newComponents });
+  },
+  
+  // 复制组件
+  duplicateComponent: (id) => {
+    const state = get();
+    const componentToCopy = state.components.find(c => c.id === id);
+    if (!componentToCopy) return;
+    
+    const newId = uuidv4();
+    const maxZ = Math.max(...state.components.map(c => c.zIndex));
+    const duplicatedComponent = {
+      ...componentToCopy,
+      id: newId,
+      x: componentToCopy.x + 20,
+      y: componentToCopy.y + 20,
+      zIndex: maxZ + 1,
+    } as EditorComponent;
+    
+    set({
+      components: [...state.components, duplicatedComponent],
+      selectedComponentId: newId,
+    });
+    get().saveToHistory();
   },
   
   // 层级管理

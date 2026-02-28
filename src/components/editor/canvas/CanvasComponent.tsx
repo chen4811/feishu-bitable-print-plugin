@@ -5,7 +5,7 @@ import { EditorComponent, TextComponent, QRCodeComponent, BarcodeComponent, Line
 import { useEditorStore } from '@/store/editorStore';
 import { ResizableWrapper } from './ResizableWrapper';
 import { Button } from '@/components/ui/button';
-import { Trash2, Move, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Type, FileText } from 'lucide-react';
+import { Trash2, ChevronUp, ChevronDown, ArrowUp, ArrowDown, Copy } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { isElement, preventDefaultSafe } from '@/utils/domUtils';
@@ -14,13 +14,6 @@ import {
   replaceVariablesWithChips, 
   extractVariableNames 
 } from '@/utils/variableUtils';
-import { RichTextEditor } from '@/components/editor/RichTextEditor';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import '@/styles/variable-chip.css';
 
 interface CanvasComponentProps {
@@ -30,10 +23,9 @@ interface CanvasComponentProps {
 }
 
 export function CanvasComponent({ component, isSelected, onSelect }: CanvasComponentProps) {
-  const { updateComponent, removeComponent, styleConfig, components, moveComponentUp, moveComponentDown, bringToFront, sendToBack, feishuContext } = useEditorStore();
+  const { updateComponent, removeComponent, styleConfig, components, moveComponentUp, moveComponentDown, bringToFront, sendToBack, feishuContext, duplicateComponent } = useEditorStore();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
-  const [useRichTextEditor, setUseRichTextEditor] = useState(false);
   const [showStyleSettings, setShowStyleSettings] = useState(false);
   const [componentStyle, setComponentStyle] = useState({
     showBorder: false,
@@ -46,7 +38,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
 
   // 文本组件编辑
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
-    // 安全检查
     if (!isElement(e.target)) return;
     
     if (component.type === 'text') {
@@ -62,53 +53,23 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
   }, [component.id, component.type, editContent, updateComponent]);
 
-  // 富文本编辑器内容变更处理
-  const handleRichTextChange = useCallback((content: string) => {
-    if (component.type === 'text') {
-      updateComponent(component.id, { content });
-    }
-  }, [component.id, component.type, updateComponent]);
-
   // 粘贴事件处理
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     if (component.type !== 'text') return;
     
     const pastedText = e.clipboardData.getData('text');
     
-    // 检查是否包含变量
     if (containsVariables(pastedText)) {
       preventDefaultSafe(e);
       
-      console.log('[CanvasComponent] 检测到变量粘贴:', pastedText);
-      console.log('[CanvasComponent] 当前飞书上下文:', feishuContext);
+      const newContent = 
+        editContent.substring(0, textareaRef.current?.selectionStart || 0) + 
+        pastedText + 
+        editContent.substring(textareaRef.current?.selectionEnd || 0);
       
-      // 替换变量为芯片 HTML
-      const processedHtml = replaceVariablesWithChips(pastedText, feishuContext);
-      
-      console.log('[CanvasComponent] 处理后的 HTML:', processedHtml);
-      
-      // 获取当前光标位置
-      const textarea = textareaRef.current;
-      if (textarea) {
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        
-        // 由于 textarea 不支持 HTML，我们直接插入处理后的文本
-        // 如果有芯片，我们会在保存到 store 时保留原始格式
-        const newContent = 
-          editContent.substring(0, start) + 
-          pastedText + 
-          editContent.substring(end);
-        
-        setEditContent(newContent);
-        
-        console.log('[CanvasComponent] 更新编辑内容:', newContent);
-      } else {
-        // 如果无法获取光标位置，直接追加
-        setEditContent(editContent + pastedText);
-      }
+      setEditContent(newContent);
     }
-  }, [component.type, editContent, feishuContext, preventDefaultSafe]);
+  }, [component.type, editContent, preventDefaultSafe]);
 
   // 生成二维码
   useEffect(() => {
@@ -144,37 +105,17 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       case 'text':
         const textComp = component as TextComponent;
         
-        // 如果选中，显示编辑模式切换和样式设置
         if (isSelected && !isEditing) {
           return (
             <div className="w-full h-full relative">
-              {/* 统一的工具栏 - 左侧层级控制，右侧编辑设置 */}
+              {/* 统一工具栏 */}
               <div className="absolute -top-10 left-0 right-0 flex justify-between items-start z-10">
                 {/* 左侧：层级控制 */}
                 {renderLayerControlsInline()}
                 
-                {/* 右侧：编辑器设置 */}
+                {/* 右侧：组件操作 */}
                 <div className="flex items-center gap-1 bg-background border rounded px-1 py-0.5 shadow-sm">
-                  {/* 编辑器模式切换 */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-6 w-6">
-                        {useRichTextEditor ? <FileText className="w-3.5 h-3.5" /> : <Type className="w-3.5 h-3.5" />}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setUseRichTextEditor(false)}>
-                        <Type className="w-4 h-4 mr-2" />
-                        简单文本
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setUseRichTextEditor(true)}>
-                        <FileText className="w-4 h-4 mr-2" />
-                        富文本编辑
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  
-                  {/* 样式设置按钮 */}
+                  {/* 边框设置 */}
                   <Button
                     variant="ghost"
                     size="icon"
@@ -182,7 +123,21 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     onClick={() => setShowStyleSettings(!showStyleSettings)}
                     data-state={showStyleSettings ? 'active' : 'inactive'}
                   >
-                    <span className="text-sm">🎨</span>
+                    <span className="text-sm">📦</span>
+                  </Button>
+                  
+                  {/* 复制按钮 */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    title="复制"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      duplicateComponent(component.id);
+                    }}
+                  >
+                    <Copy className="w-3.5 h-3.5" />
                   </Button>
                   
                   <div className="w-px h-4 bg-border mx-0.5" />
@@ -205,8 +160,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               
               {/* 样式设置面板 */}
               {showStyleSettings && (
-                <div className="absolute -top-40 right-0 bg-background border rounded-lg p-3 shadow-lg z-20 w-64">
-                  <h4 className="text-sm font-medium mb-2">组件样式</h4>
+                <div className="absolute -top-32 right-0 bg-background border rounded-lg p-3 shadow-lg z-20 w-64">
+                  <h4 className="text-sm font-medium mb-2">组件边框</h4>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <input
@@ -264,36 +219,27 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 </div>
               )}
               
-              {/* 编辑器内容区域 */}
-              {useRichTextEditor ? (
-                <RichTextEditor
-                  content={textComp.content}
-                  onChange={handleRichTextChange}
-                  placeholder="在这里输入文字..."
-                  className="w-full h-full"
-                />
-              ) : (
-                <div
-                  className="whitespace-pre-wrap w-full h-full cursor-pointer"
-                  style={{
-                    fontSize: `${textComp.fontSize || styleConfig.fontSize}pt`,
-                    fontWeight: textComp.fontWeight,
-                    textAlign: textComp.textAlign,
-                    lineHeight: textComp.lineHeight || styleConfig.lineHeight,
-                    fontFamily: styleConfig.fontFamily,
-                    border: componentStyle.showBorder ? `${componentStyle.borderWidth}px solid ${componentStyle.borderColor}` : 'none',
-                    backgroundColor: componentStyle.backgroundColor,
-                    borderRadius: '4px',
-                    padding: componentStyle.showBorder ? '8px' : '0',
-                  }}
-                  onDoubleClick={handleDoubleClick}
-                  dangerouslySetInnerHTML={{ 
-                    __html: containsVariables(textComp.content) && feishuContext 
-                      ? replaceVariablesWithChips(textComp.content, feishuContext)
-                      : textComp.content 
-                  }}
-                />
-              )}
+              {/* 简单文本编辑区域 */}
+              <div
+                className="whitespace-pre-wrap w-full h-full cursor-pointer"
+                style={{
+                  fontSize: `${textComp.fontSize || styleConfig.fontSize}pt`,
+                  fontWeight: textComp.fontWeight,
+                  textAlign: textComp.textAlign,
+                  lineHeight: textComp.lineHeight || styleConfig.lineHeight,
+                  fontFamily: styleConfig.fontFamily,
+                  border: componentStyle.showBorder ? `${componentStyle.borderWidth}px solid ${componentStyle.borderColor}` : 'none',
+                  backgroundColor: componentStyle.backgroundColor,
+                  borderRadius: '4px',
+                  padding: componentStyle.showBorder ? '8px' : '0',
+                }}
+                onDoubleClick={handleDoubleClick}
+                dangerouslySetInnerHTML={{ 
+                  __html: containsVariables(textComp.content) && feishuContext 
+                    ? replaceVariablesWithChips(textComp.content, feishuContext)
+                    : textComp.content 
+                }}
+              />
             </div>
           );
         }
@@ -322,7 +268,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
           );
         }
         
-        // 渲染非编辑状态，尝试解析变量
+        // 渲染非编辑状态
         const displayContent = containsVariables(textComp.content) && feishuContext 
           ? replaceVariablesWithChips(textComp.content, feishuContext)
           : textComp.content;
@@ -443,7 +389,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
   };
 
-  // 内联层级控制 - 用于文本组件的统一工具栏
+  // 内联层级控制
   const renderLayerControlsInline = () => {
     if (!isSelected) return null;
     
@@ -514,8 +460,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   // 独立层级控制面板 - 用于其他类型组件
   const renderLayerControls = () => {
     if (!isSelected) return null;
-    
-    // 文本组件使用统一工具栏，不显示独立的层级控制
     if (component.type === 'text') return null;
     
     const maxZIndex = Math.max(...components.map(c => c.zIndex));

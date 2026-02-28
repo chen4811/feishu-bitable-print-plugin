@@ -16,7 +16,7 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { useEditorStore } from '@/store/editorStore';
-import { ComponentType, PAGE_SIZES } from '@/types/editor';
+import { ComponentType, PAGE_SIZES, TextComponent } from '@/types/editor';
 import {
   Database,
   LayoutGrid,
@@ -32,7 +32,25 @@ import {
   Eye,
   CheckCircle2,
   Loader2,
+  Bold,
+  Italic,
+  Underline,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Heading1,
+  Heading2,
+  List,
+  ListOrdered,
+  Type,
+  Link as LinkIcon,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { DataSourcePanel } from './panels/DataSourcePanel';
 import { ComponentPanel } from './panels/ComponentPanel';
 import { SettingsPanel } from './panels/SettingsPanel';
@@ -61,13 +79,36 @@ export function EditorPage({ onExit }: EditorPageProps) {
     pageConfig,
     styleConfig,
     components,
+    selectedComponentId,
     addComponent,
+    updateComponent,
     undo,
     redo,
     clearCanvas,
     history,
     historyIndex,
   } = useEditorStore();
+
+  // 获取当前选中的文本组件
+  const selectedTextComponent = components.find(
+    (c) => c.id === selectedComponentId && c.type === 'text'
+  ) as TextComponent | undefined;
+
+  // 文字编辑操作
+  const updateTextStyle = (updates: Partial<TextComponent>) => {
+    if (selectedTextComponent) {
+      updateComponent(selectedTextComponent.id, updates);
+    }
+  };
+
+  // 字体大小选项
+  const fontSizes = [8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 48, 72];
+
+  // 行高选项
+  const lineHeights = [1, 1.15, 1.5, 2, 2.5, 3];
+
+  // 颜色选项
+  const textColors = ['#000000', '#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6'];
 
   const { isLoading, isFeishuEnvironment, tableName, fields, records } = usePrintSDK();
 
@@ -221,6 +262,198 @@ export function EditorPage({ onExit }: EditorPageProps) {
             </div>
           </div>
         </header>
+
+        {/* 文字编辑工具栏 - 仅在选中文本组件时显示 */}
+        {selectedTextComponent && (
+          <div className="border-b bg-background/95 backdrop-blur px-4 py-2">
+            <div className="flex flex-wrap items-center gap-1">
+              {/* 字体大小 */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2 min-w-[60px]">
+                    {selectedTextComponent.fontSize || styleConfig.fontSize}pt
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {fontSizes.map((size) => (
+                    <DropdownMenuItem
+                      key={size}
+                      onClick={() => updateTextStyle({ fontSize: size })}
+                    >
+                      {size}pt
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <div className="w-px h-6 bg-border mx-1" />
+
+              {/* 粗体 */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                data-state={selectedTextComponent.fontWeight === 'bold' ? 'active' : 'inactive'}
+                onClick={() => updateTextStyle({ 
+                  fontWeight: selectedTextComponent.fontWeight === 'bold' ? 'normal' : 'bold' 
+                })}
+              >
+                <Bold className="w-4 h-4" />
+              </Button>
+
+              {/* 斜体 */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                data-state={selectedTextComponent.fontStyle === 'italic' ? 'active' : 'inactive'}
+                onClick={() => updateTextStyle({ 
+                  fontStyle: selectedTextComponent.fontStyle === 'italic' ? 'normal' : 'italic' 
+                })}
+              >
+                <Italic className="w-4 h-4" />
+              </Button>
+
+              {/* 下划线 */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => {}}
+              >
+                <Underline className="w-4 h-4" />
+              </Button>
+
+              <div className="w-px h-6 bg-border mx-1" />
+
+              {/* 文字颜色 */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <div className="w-4 h-4 rounded" style={{ backgroundColor: '#000000' }} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <div className="grid grid-cols-4 gap-1 p-2">
+                    {textColors.map((color) => (
+                      <button
+                        key={color}
+                        className="w-6 h-6 rounded border"
+                        style={{ backgroundColor: color }}
+                        onClick={() => {}}
+                      />
+                    ))}
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <div className="w-px h-6 bg-border mx-1" />
+
+              {/* 标题 */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => updateTextStyle({ fontSize: 24, fontWeight: 'bold' })}
+              >
+                <Heading1 className="w-4 h-4" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => updateTextStyle({ fontSize: 18, fontWeight: 'bold' })}
+              >
+                <Heading2 className="w-4 h-4" />
+              </Button>
+
+              <div className="w-px h-6 bg-border mx-1" />
+
+              {/* 对齐 */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                data-state={selectedTextComponent.textAlign === 'left' ? 'active' : 'inactive'}
+                onClick={() => updateTextStyle({ textAlign: 'left' })}
+              >
+                <AlignLeft className="w-4 h-4" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                data-state={selectedTextComponent.textAlign === 'center' ? 'active' : 'inactive'}
+                onClick={() => updateTextStyle({ textAlign: 'center' })}
+              >
+                <AlignCenter className="w-4 h-4" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                data-state={selectedTextComponent.textAlign === 'right' ? 'active' : 'inactive'}
+                onClick={() => updateTextStyle({ textAlign: 'right' })}
+              >
+                <AlignRight className="w-4 h-4" />
+              </Button>
+
+              <div className="w-px h-6 bg-border mx-1" />
+
+              {/* 列表 */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+              >
+                <List className="w-4 h-4" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+              >
+                <ListOrdered className="w-4 h-4" />
+              </Button>
+
+              <div className="w-px h-6 bg-border mx-1" />
+
+              {/* 行高 */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                    行高
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {lineHeights.map((lh) => (
+                    <DropdownMenuItem
+                      key={lh}
+                      onClick={() => updateTextStyle({ lineHeight: lh })}
+                    >
+                      {lh}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <div className="w-px h-6 bg-border mx-1" />
+
+              {/* 插入链接 */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+              >
+                <LinkIcon className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* 主内容区 */}
         <div className="flex-1 flex overflow-hidden">
