@@ -90,7 +90,32 @@ export function EditorPage({ onExit }: EditorPageProps) {
     ? components.find(comp => comp.id === tableEditing.tableId) as any 
     : null;
 
-  // 获取当前选中单元格的文本样式
+  // 获取所有选中单元格的位置
+  const getSelectedCellPositions = (): { row: number; col: number }[] => {
+    if (!currentEditingTable) return [];
+    
+    const tableConfig = currentEditingTable.tableConfig;
+    const cells = tableConfig?.cells || [];
+    const positions: { row: number; col: number }[] = [];
+    
+    cells.forEach((row: any[], rowIndex: number) => {
+      row.forEach((cell: any, colIndex: number) => {
+        const cellId = cell?.id || `cell-${rowIndex}-${colIndex}`;
+        if (tableEditing.selectedCells.includes(cellId)) {
+          positions.push({ row: rowIndex, col: colIndex });
+        }
+      });
+    });
+    
+    // 如果没有选中的单元格，使用当前正在编辑的单元格
+    if (positions.length === 0 && tableCellEditing.rowIndex !== null && tableCellEditing.colIndex !== null) {
+      positions.push({ row: tableCellEditing.rowIndex, col: tableCellEditing.colIndex });
+    }
+    
+    return positions;
+  };
+
+  // 获取当前选中单元格的文本样式（取第一个选中单元格的样式）
   const getCurrentTableCellTextStyle = (): ComponentTextStyle => {
     // 默认样式
     const defaultStyle: ComponentTextStyle = {
@@ -103,13 +128,18 @@ export function EditorPage({ onExit }: EditorPageProps) {
       lineHeight: styleConfig.lineHeight,
     };
 
-    if (!currentEditingTable || !tableCellEditing.rowIndex || !tableCellEditing.colIndex) {
+    if (!currentEditingTable) {
+      return defaultStyle;
+    }
+
+    const positions = getSelectedCellPositions();
+    if (positions.length === 0) {
       return defaultStyle;
     }
 
     const tableConfig = currentEditingTable.tableConfig;
     const cells = tableConfig?.cells || [];
-    const cell = cells[tableCellEditing.rowIndex]?.[tableCellEditing.colIndex];
+    const cell = cells[positions[0].row]?.[positions[0].col];
 
     if (cell?.style) {
       return {
@@ -123,7 +153,12 @@ export function EditorPage({ onExit }: EditorPageProps) {
 
   // 更新表格单元格文本样式
   const updateTableCellTextStyle = (updates: Partial<ComponentTextStyle>) => {
-    if (!currentEditingTable || !tableCellEditing.rowIndex || !tableCellEditing.colIndex) {
+    if (!currentEditingTable) {
+      return;
+    }
+
+    const positions = getSelectedCellPositions();
+    if (positions.length === 0) {
       return;
     }
 
@@ -135,36 +170,17 @@ export function EditorPage({ onExit }: EditorPageProps) {
       row.map((cell: any) => ({ ...cell }))
     );
 
-    // 更新当前单元格的样式
-    const rowIndex = tableCellEditing.rowIndex;
-    const colIndex = tableCellEditing.colIndex;
-    
-    if (!newCells[rowIndex][colIndex].style) {
-      newCells[rowIndex][colIndex].style = {};
-    }
+    // 更新所有选中单元格的样式
+    positions.forEach(({ row, col }) => {
+      if (!newCells[row][col].style) {
+        newCells[row][col].style = {};
+      }
 
-    newCells[rowIndex][colIndex].style = {
-      ...newCells[rowIndex][colIndex].style,
-      ...updates,
-    };
-
-    // 如果有选中多个单元格，也更新它们
-    if (tableEditing.selectedCells.length > 0) {
-      cells.forEach((row: any[], rIndex: number) => {
-        row.forEach((cell: any, cIndex: number) => {
-          const cellId = cell?.id || `cell-${rIndex}-${cIndex}`;
-          if (tableEditing.selectedCells.includes(cellId) && !(rIndex === rowIndex && cIndex === colIndex)) {
-            if (!newCells[rIndex][cIndex].style) {
-              newCells[rIndex][cIndex].style = {};
-            }
-            newCells[rIndex][cIndex].style = {
-              ...newCells[rIndex][cIndex].style,
-              ...updates,
-            };
-          }
-        });
-      });
-    }
+      newCells[row][col].style = {
+        ...newCells[row][col].style,
+        ...updates,
+      };
+    });
 
     updateComponent(currentEditingTable.id, {
       tableConfig: {

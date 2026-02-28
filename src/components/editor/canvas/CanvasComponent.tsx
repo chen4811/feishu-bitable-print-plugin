@@ -446,9 +446,23 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   return (
                     <td
                       key={`${rowIndex}-${colIndex}`}
-                      className={`p-1 text-sm cursor-pointer transition-colors select-none ${isCellSelected ? 'bg-blue-100' : ''} ${!hasCellBorder ? 'border' : ''}`}
+                      className={`p-1 text-sm cursor-pointer transition-colors select-none ${!hasCellBorder ? 'border' : ''}`}
                       style={{
-                        backgroundColor: isCellSelected ? '#dbeafe' : (tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.backgroundColor || 'transparent'),
+                        backgroundColor: (() => {
+                          const cellBgColor = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.backgroundColor;
+                          const cellTextBgColor = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.style?.backgroundColor;
+                          
+                          if (isCellSelected) {
+                            // 如果有单元格背景色，使用半透明蓝色叠加
+                            if (cellBgColor || cellTextBgColor) {
+                              return 'rgba(59, 130, 246, 0.2)';
+                            }
+                            return '#dbeafe';
+                          }
+                          
+                          // 优先使用单元格背景色，其次是文本背景色
+                          return cellBgColor || cellTextBgColor || 'transparent';
+                        })(),
                         userSelect: 'none',
                         verticalAlign: tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.verticalAlign || 'middle',
                         ...borderStyles,
@@ -477,7 +491,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       const cellStyle = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.style || {};
                       
                       // 构建单元格文本样式
-                      const textStyles: any = {
+                      const textStyles: React.CSSProperties = {
                         fontSize: `${cellStyle.fontSize || styleConfig.fontSize}px`,
                         fontWeight: cellStyle.bold ? 'bold' : 'normal',
                         fontStyle: cellStyle.italic ? 'italic' : 'normal',
@@ -487,11 +501,12 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                         lineHeight: cellStyle.lineHeight || styleConfig.lineHeight,
                         textDecoration: cellStyle.underline ? 'underline' : cellStyle.textDecoration || 'none',
                         textTransform: cellStyle.textTransform || 'none',
+                        marginBottom: cellStyle.paragraphSpacing ? `${cellStyle.paragraphSpacing}px` : 0,
                       };
 
                       if (isCurrentTableEditing) {
                         return (
-                          <div className="w-full h-full flex items-stretch" style={textStyles}>
+                          <div className="w-full h-full flex items-stretch">
                             <AutoResizingTextarea
                               value={cellContent || ''}
                               onChange={(value) => handleTableCellChange(rowIndex, colIndex, value)}
@@ -511,7 +526,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                         if (cellStyle.headingLevel === 1) {
                           return (
                             <h1 style={{ 
-                              fontSize: '24px', 
+                              fontSize: cellStyle.fontSize ? `${cellStyle.fontSize}px` : '24px', 
                               fontWeight: 'bold', 
                               marginBottom: '0.5rem' 
                             }}>
@@ -522,7 +537,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                         if (cellStyle.headingLevel === 2) {
                           return (
                             <h2 style={{ 
-                              fontSize: '18px', 
+                              fontSize: cellStyle.fontSize ? `${cellStyle.fontSize}px` : '18px', 
                               fontWeight: 'bold', 
                               marginBottom: '0.5rem' 
                             }}>
