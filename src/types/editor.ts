@@ -32,11 +32,17 @@ export interface ComponentTextStyle {
   bold: boolean;
   italic?: boolean;
   underline?: boolean;
-  align: 'left' | 'center' | 'right';
+  align: 'left' | 'center' | 'right' | 'justify';
   backgroundColor?: string;
   border?: ComponentBorderStyle;
   lineHeight?: number;
   paragraphSpacing?: number;
+  // 新增富文本属性
+  linkUrl?: string;
+  headingLevel?: 1 | 2 | null; // 标题级别
+  listType?: 'ordered' | 'unordered' | null; // 列表类型
+  textDecoration?: 'none' | 'underline' | 'line-through'; // 文本装饰
+  textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize'; // 文本转换
 }
 
 // 表格单元格数据

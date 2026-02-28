@@ -106,18 +106,70 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
 
         return (
           <div
-            className="w-full p-2 cursor-text"
+            className="w-full cursor-text"
             style={{
+              padding: '0.5rem',
               fontSize: `${textComp.textStyle?.fontSize || styleConfig.fontSize}px`,
               fontWeight: textComp.textStyle?.bold ? 'bold' : 'normal',
               fontStyle: textComp.textStyle?.italic ? 'italic' : 'normal',
               color: textComp.textStyle?.color || '#000000',
+              backgroundColor: textComp.textStyle?.backgroundColor || 'transparent',
               textAlign: textComp.textStyle?.align || 'left',
               lineHeight: textComp.textStyle?.lineHeight || styleConfig.lineHeight,
+              marginBottom: textComp.textStyle?.paragraphSpacing ? `${textComp.textStyle.paragraphSpacing}px` : 0,
+              textDecoration: textComp.textStyle?.underline ? 'underline' : textComp.textStyle?.textDecoration || 'none',
+              textTransform: textComp.textStyle?.textTransform || 'none',
             }}
             onDoubleClick={handleDoubleClick}
           >
-            {textComp.content || '双击编辑文本'}
+            {/* 标题样式渲染 */}
+            {textComp.textStyle?.headingLevel === 1 && (
+              <h1 style={{ 
+                fontSize: '24px', 
+                fontWeight: 'bold', 
+                marginBottom: '0.5rem' 
+              }}>
+                {textComp.content || '双击编辑文本'}
+              </h1>
+            )}
+            {textComp.textStyle?.headingLevel === 2 && (
+              <h2 style={{ 
+                fontSize: '18px', 
+                fontWeight: 'bold', 
+                marginBottom: '0.5rem' 
+              }}>
+                {textComp.content || '双击编辑文本'}
+              </h2>
+            )}
+            {/* 列表样式渲染 */}
+            {textComp.textStyle?.listType === 'unordered' && !textComp.textStyle?.headingLevel && (
+              <ul style={{ marginLeft: '1.5rem', paddingLeft: 0 }}>
+                <li>{textComp.content || '双击编辑文本'}</li>
+              </ul>
+            )}
+            {textComp.textStyle?.listType === 'ordered' && !textComp.textStyle?.headingLevel && (
+              <ol style={{ marginLeft: '1.5rem', paddingLeft: 0 }}>
+                <li>{textComp.content || '双击编辑文本'}</li>
+              </ol>
+            )}
+            {/* 普通文本 */}
+            {!textComp.textStyle?.headingLevel && !textComp.textStyle?.listType && (
+              <span>
+                {textComp.textStyle?.linkUrl ? (
+                  <a 
+                    href={textComp.textStyle.linkUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ color: '#3b82f6', textDecoration: 'underline' }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {textComp.content || '双击编辑文本'}
+                  </a>
+                ) : (
+                  textComp.content || '双击编辑文本'
+                )}
+              </span>
+            )}
           </div>
         );
 
