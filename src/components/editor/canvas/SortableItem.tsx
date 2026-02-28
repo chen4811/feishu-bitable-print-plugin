@@ -98,8 +98,10 @@ export function SortableItem({
       <div className="w-full">
         <CanvasComponent
           component={component}
-          isSelected={isSelected}
-          onSelect={onSelect}
+          onComponentMouseDown={(e, comp) => {
+            e.stopPropagation();
+            onSelect();
+          }}
         />
       </div>
     </div>
