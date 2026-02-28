@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { EditorComponent, TextComponent, QRCodeComponent, BarcodeComponent, LineComponent, AutoTableComponent } from '@/types/editor';
+import { EditorComponent, TextComponent, QRCodeComponent, BarcodeComponent, LineComponent, AutoTableComponent, TableComponent } from '@/types/editor';
 import { useEditorStore } from '@/store/editorStore';
 import { ResizableWrapper } from './ResizableWrapper';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import {
   replaceVariablesWithChips, 
   extractVariableNames 
 } from '@/utils/variableUtils';
+
 import '@/styles/variable-chip.css';
 
 interface CanvasComponentProps {

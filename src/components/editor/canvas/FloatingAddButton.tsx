@@ -7,7 +7,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Plus, Type, Table, Image, QrCode, Barcode3, Minus } from 'lucide-react';
+import { Plus, Type, Table, Image, QrCode, Barcode, Minus } from 'lucide-react';
 import { ComponentType } from '@/types/editor';
 
 interface FloatingAddButtonProps {
@@ -20,7 +20,7 @@ const COMPONENT_TYPES: { type: ComponentType; label: string; icon: React.ReactNo
   { type: 'table', label: '表格', icon: <Table className="w-4 h-4" /> },
   { type: 'image', label: '图片', icon: <Image className="w-4 h-4" /> },
   { type: 'qrcode', label: '二维码', icon: <QrCode className="w-4 h-4" /> },
-  { type: 'barcode', label: '条形码', icon: <Barcode3 className="w-4 h-4" /> },
+  { type: 'barcode', label: '条形码', icon: <Barcode className="w-4 h-4" /> },
   { type: 'line', label: '分割线', icon: <Minus className="w-4 h-4" /> },
 ];
 
