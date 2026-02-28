@@ -596,7 +596,10 @@ export function EditorPage({ onExit }: EditorPageProps) {
                   onBorderWidthChange={handleBorderWidthChange}
                   borderWidth={currentEditingTable?.tableConfig?.borderWidth || 1}
                   onColorChange={tableEditing.onColorChange}
-                  onFinishEdit={tableEditing.onFinishEdit}
+                  onFinishEdit={() => {
+                    tableEditing.onFinishEdit();
+                    handleHeaderFooterDialogClose();
+                  }}
                 />
               </div>
             )}

@@ -1,9 +1,8 @@
 'use client';
 
-import React from 'react';
-import { X, HelpCircle } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { X, HelpCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface HeaderFooterSettingsDialogProps {
   open: boolean;
@@ -24,87 +23,211 @@ export const HeaderFooterSettingsDialog: React.FC<HeaderFooterSettingsDialogProp
   onFooterRowsChange,
   maxRows,
 }) => {
-  const rowOptions = [0, 1, 2];
+  const [position, setPosition] = useState({ x: 100, y: 100 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // 处理鼠标按下，开始拖动
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.target instanceof HTMLElement && e.target.closest('.no-drag')) {
+      return;
+    }
+    
+    setIsDragging(true);
+    setDragOffset({
+      x: e.clientX - position.x,
+      y: e.clientY - position.y,
+    });
+  };
+
+  // 处理鼠标移动，更新位置
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDragging) {
+        setPosition({
+          x: e.clientX - dragOffset.x,
+          y: e.clientY - dragOffset.y,
+        });
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragOffset]);
+
+  // 如果不打开，不渲染
+  if (!open) return null;
+
+  // 表头行增减
+  const incrementHeader = () => {
+    if (headerRows < Math.min(2, maxRows)) {
+      onHeaderRowsChange(headerRows + 1);
+    }
+  };
+
+  const decrementHeader = () => {
+    if (headerRows > 0) {
+      onHeaderRowsChange(headerRows - 1);
+    }
+  };
+
+  // 表尾行增减
+  const incrementFooter = () => {
+    if (footerRows < Math.min(2, maxRows)) {
+      onFooterRowsChange(footerRows + 1);
+    }
+  };
+
+  const decrementFooter = () => {
+    if (footerRows > 0) {
+      onFooterRowsChange(footerRows - 1);
+    }
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader className="flex flex-row items-center justify-between">
-          <DialogTitle className="text-lg font-bold">表头和表尾</DialogTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
+    <div 
+      className="fixed z-50"
+      style={{ 
+        left: position.x, 
+        top: position.y,
+        cursor: isDragging ? 'grabbing' : 'default'
+      }}
+    >
+      <div 
+        ref={dialogRef}
+        className="bg-white border border-gray-300 rounded-lg shadow-xl"
+        style={{ width: '360px' }}
+      >
+        {/* 标题栏 - 可拖动区域 */}
+        <div 
+          className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50"
+          onMouseDown={handleMouseDown}
+          style={{ cursor: 'move' }}
+        >
+          <h3 className="text-lg font-bold text-gray-800">表头和表尾</h3>
+          <button
             onClick={() => onOpenChange(false)}
+            className="no-drag w-6 h-6 flex items-center justify-center rounded-full bg-blue-500 text-white hover:bg-blue-600 transition-colors"
           >
-            <X className="h-4 w-4" />
-          </Button>
-        </DialogHeader>
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
-        <div className="space-y-4">
+        {/* 内容区域 */}
+        <div className="p-4 space-y-4">
           {/* 说明文字 */}
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-600">
             如果打印时表格被分页，表头表尾会出现在每一页的表格上
           </p>
 
-          {/* 表格示意图 */}
+          {/* 预览表格 - 5行 */}
           <div className="border rounded p-2 bg-gray-50">
-            <div className="text-center">
-              <div className="border-b border-gray-300 py-2 text-sm text-gray-500">
-                表头
-              </div>
-              <div className="py-4 text-sm text-gray-400">
-                表格内容
-              </div>
-              <div className="border-t border-gray-300 py-2 text-sm text-gray-500">
-                表尾
-              </div>
-            </div>
+            <table className="w-full border-collapse">
+              <tbody>
+                {[0, 1, 2, 3, 4].map((rowIndex) => {
+                  const isHeader = rowIndex < headerRows;
+                  const isFooter = rowIndex >= 5 - footerRows;
+                  
+                  return (
+                    <tr key={rowIndex}>
+                      {[0, 1, 2].map((colIndex) => (
+                        <td
+                          key={colIndex}
+                          className={`border border-gray-300 p-1 h-6 ${
+                            isHeader ? 'bg-gray-100' : isFooter ? 'bg-gray-100' : 'bg-white'
+                          }`}
+                        />
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
 
-          {/* 表头行和表尾行选择 */}
-          <div className="grid grid-cols-2 gap-8">
+          {/* 表头行和表尾行设置 */}
+          <div className="grid grid-cols-2 gap-6">
             {/* 表头行 */}
             <div>
-              <label className="block text-sm font-medium mb-3">表头行</label>
-              <div className="flex gap-2">
-                {rowOptions.map((rows) => (
-                  <Button
-                    key={rows}
-                    variant={headerRows === rows ? 'default' : 'ghost'}
-                    size="icon"
-                    className={`w-12 h-10 ${headerRows === rows ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
-                    onClick={() => onHeaderRowsChange(rows)}
-                  >
-                    {rows}
-                  </Button>
-                ))}
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                表头行
+              </label>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 border border-gray-300"
+                  onClick={decrementHeader}
+                  disabled={headerRows <= 0}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <div className={`h-8 w-12 flex items-center justify-center rounded text-sm font-medium ${
+                  headerRows > 0 ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-500'
+                }`}>
+                  {headerRows}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 border border-gray-300"
+                  onClick={incrementHeader}
+                  disabled={headerRows >= Math.min(2, maxRows)}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
               </div>
             </div>
 
             {/* 表尾行 */}
             <div>
-              <label className="block text-sm font-medium mb-3">表尾行</label>
-              <div className="flex gap-2">
-                {rowOptions.map((rows) => (
-                  <Button
-                    key={rows}
-                    variant={footerRows === rows ? 'default' : 'ghost'}
-                    size="icon"
-                    className={`w-12 h-10 ${footerRows === rows ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
-                    onClick={() => onFooterRowsChange(rows)}
-                  >
-                    {rows}
-                  </Button>
-                ))}
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                表尾行
+              </label>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 border border-gray-300"
+                  onClick={decrementFooter}
+                  disabled={footerRows <= 0}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <div className={`h-8 w-12 flex items-center justify-center rounded text-sm font-medium ${
+                  footerRows > 0 ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-500'
+                }`}>
+                  {footerRows}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 border border-gray-300"
+                  onClick={incrementFooter}
+                  disabled={footerRows >= Math.min(2, maxRows)}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
               </div>
             </div>
           </div>
 
           {/* 限制说明 */}
           <div className="text-sm text-gray-600">
-            <p className="mb-2">无法设置表头表尾的场景：</p>
-            <ul className="list-disc list-inside space-y-1">
+            <p className="mb-1 font-medium">以下情况，无法设置表头表尾</p>
+            <ul className="list-disc list-inside space-y-1 text-gray-500">
               <li>表头表尾设置的总行数大于表格总行数</li>
               <li>行内包含循环字段区域</li>
               <li>行内包含与其他行的合并单元格</li>
@@ -119,7 +242,7 @@ export const HeaderFooterSettingsDialog: React.FC<HeaderFooterSettingsDialogProp
             </Button>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 };
