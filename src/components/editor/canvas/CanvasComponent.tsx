@@ -84,6 +84,9 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         onBorderChange: (borderType: string) => {
           console.log('边框变化:', borderType);
         },
+        onBorderWidthChange: (width: number) => {
+          console.log('边框粗细变化:', width);
+        },
         onColorChange: (colorType: 'text' | 'fill', color: string) => {
           console.log('颜色变化:', colorType, color);
         },

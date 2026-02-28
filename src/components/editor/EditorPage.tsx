@@ -129,6 +129,57 @@ export function EditorPage({ onExit }: EditorPageProps) {
     });
   };
 
+  // 处理边框变化
+  const handleBorderChange = (borderType: string) => {
+    if (currentEditingTable && currentEditingTable.type === 'table') {
+      const tableConfig = currentEditingTable.tableConfig;
+      let showOuterBorder = tableConfig?.showOuterBorder ?? true;
+      let showInnerBorder = tableConfig?.showInnerBorder ?? true;
+      
+      switch (borderType) {
+        case 'left':
+        case 'right':
+        case 'top':
+        case 'bottom':
+          // 单边边框 - 暂时标记，后续可扩展
+          console.log('设置单边边框:', borderType);
+          break;
+        case 'all':
+          showOuterBorder = true;
+          showInnerBorder = true;
+          break;
+        case 'outer':
+          showOuterBorder = true;
+          showInnerBorder = false;
+          break;
+        case 'none':
+          showOuterBorder = false;
+          showInnerBorder = false;
+          break;
+      }
+      
+      updateComponent(currentEditingTable.id, {
+        tableConfig: {
+          ...tableConfig,
+          showOuterBorder,
+          showInnerBorder,
+        },
+      });
+    }
+  };
+
+  // 处理边框粗细变化
+  const handleBorderWidthChange = (width: number) => {
+    if (currentEditingTable && currentEditingTable.type === 'table') {
+      updateComponent(currentEditingTable.id, {
+        tableConfig: {
+          ...currentEditingTable.tableConfig,
+          borderWidth: width,
+        },
+      });
+    }
+  };
+
   // 智能聚焦：选中组件时自动切换到数据源面板
   useEffect(() => {
     if (selectedComponentId) {
@@ -448,7 +499,9 @@ export function EditorPage({ onExit }: EditorPageProps) {
                   onMergeCells={tableEditing.onMergeCells}
                   selectedCellCount={tableEditing.selectedCells.length}
                   onOpenHeaderFooterDialog={handleOpenHeaderFooterDialog}
-                  onBorderChange={tableEditing.onBorderChange}
+                  onBorderChange={handleBorderChange}
+                  onBorderWidthChange={handleBorderWidthChange}
+                  borderWidth={currentEditingTable?.tableConfig?.borderWidth || 1}
                   onColorChange={tableEditing.onColorChange}
                   onFinishEdit={tableEditing.onFinishEdit}
                 />
