@@ -513,10 +513,10 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         const tableComp = component as any;
         
         return (
-          <div className="w-full">
-            {/* 编辑状态下，显示独立的高级工具栏 */}
+          <div className={`w-full relative ${!isTableEditing ? 'group' : ''}`} onDoubleClick={handleDoubleClickTable}>
+            {/* 编辑状态下，高级工具栏悬浮在表格上方 */}
             {isTableEditing && (
-              <div className="mb-4">
+              <div className="absolute -top-16 left-0 right-0 z-20">
                 <AdvancedToolbar
                   onMergeCells={handleMergeCells}
                   selectedCellCount={selectedCells.length}
@@ -536,20 +536,20 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               </div>
             )}
             
-            {/* 表格容器 */}
-            <div className={`w-full relative ${!isTableEditing ? 'group' : ''}`} onDoubleClick={handleDoubleClickTable}>
-              {/* 非编辑状态下，显示悬浮工具栏 */}
-              {!isTableEditing && (
-                <div className="absolute -top-12 left-0 right-0 z-10">
-                  <HoverToolbar
-                    onEdit={handleEditTable}
-                    onDelete={handleDeleteComponent}
-                    onCopy={handleCopyComponent}
-                    isSelected={isSelected}
-                  />
-                </div>
-              )}
-              
+            {/* 非编辑状态下，显示悬浮工具栏 */}
+            {!isTableEditing && (
+              <div className="absolute -top-12 left-0 right-0 z-10">
+                <HoverToolbar
+                  onEdit={handleEditTable}
+                  onDelete={handleDeleteComponent}
+                  onCopy={handleCopyComponent}
+                  isSelected={isSelected}
+                />
+              </div>
+            )}
+            
+            {/* 给表格顶部留出空间，避免被悬浮工具栏遮挡 */}
+            <div className={isTableEditing ? 'pt-16' : ''}>
               {/* 表格内容 */}
               {renderTableContent(tableComp)}
             </div>
