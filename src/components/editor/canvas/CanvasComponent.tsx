@@ -496,6 +496,25 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     return label;
   };
 
+  // 辅助函数：判断行是否可见（只要这一行有任何可见的单元格就显示行号）
+  const isRowVisible = (tableComp: any, rowIndex: number): boolean => {
+    if (!tableComp.tableConfig?.cells) return true;
+    const row = tableComp.tableConfig.cells[rowIndex];
+    if (!row) return false;
+    // 只要这一行有任何一个单元格的 rowSpan 不是 0，就显示行号
+    return row.some((cell: any) => cell?.rowSpan !== 0);
+  };
+
+  // 辅助函数：判断列是否可见（只要这一列有任何可见的单元格就显示列标）
+  const isColumnVisible = (tableComp: any, colIndex: number): boolean => {
+    if (!tableComp.tableConfig?.cells) return true;
+    // 只要这一列有任何一个单元格的 colSpan 不是 0，就显示列标
+    return tableComp.tableConfig.cells.some((row: any[]) => {
+      const cell = row[colIndex];
+      return cell?.colSpan !== 0;
+    });
+  };
+
   // 渲染表格内容
   const renderTableContent = (tableComp: any) => {
     if (!tableComp.tableConfig?.cells) {
@@ -542,38 +561,43 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     border: '1px solid #e5e7eb',
                   }}
                 />
-                {/* 列标单元格 */}
-                {Array(colCount).fill(null).map((_, colIndex) => (
-                  <td
-                    key={`col-header-${colIndex}`}
-                    className="relative group cursor-pointer select-none"
-                    style={{
-                      backgroundColor: hoveredColIndex === colIndex ? '#e5e7eb' : '#f9fafb',
-                      border: '1px solid #e5e7eb',
-                      textAlign: 'center',
-                      verticalAlign: 'middle',
-                      padding: '4px 8px',
-                      fontWeight: 500,
-                      fontSize: '12px',
-                      color: '#374151',
-                    }}
-                    onMouseEnter={() => setHoveredColIndex(colIndex)}
-                    onMouseLeave={() => setHoveredColIndex(null)}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {getColumnLabel(colIndex)}
-                    {/* 列操作菜单 */}
-                    {hoveredColIndex === colIndex && (
-                      <ColumnActionMenu
-                        onAddLeft={() => addColumnLeft(colIndex)}
-                        onAddRight={() => addColumnRight(colIndex)}
-                        onDelete={() => deleteColumn(colIndex)}
-                        position="bottom"
-                      />
-                    )}
-                  </td>
-                ))}
+                {/* 列标单元格 - 只显示可见的列 */}
+                {Array(colCount).fill(null).map((_, colIndex) => {
+                  if (!isColumnVisible(tableComp, colIndex)) {
+                    return null;
+                  }
+                  return (
+                    <td
+                      key={`col-header-${colIndex}`}
+                      className="relative group cursor-pointer select-none"
+                      style={{
+                        backgroundColor: hoveredColIndex === colIndex ? '#e5e7eb' : '#f9fafb',
+                        border: '1px solid #e5e7eb',
+                        textAlign: 'center',
+                        verticalAlign: 'middle',
+                        padding: '4px 8px',
+                        fontWeight: 500,
+                        fontSize: '12px',
+                        color: '#374151',
+                      }}
+                      onMouseEnter={() => setHoveredColIndex(colIndex)}
+                      onMouseLeave={() => setHoveredColIndex(null)}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {getColumnLabel(colIndex)}
+                      {/* 列操作菜单 */}
+                      {hoveredColIndex === colIndex && (
+                        <ColumnActionMenu
+                          onAddLeft={() => addColumnLeft(colIndex)}
+                          onAddRight={() => addColumnRight(colIndex)}
+                          onDelete={() => deleteColumn(colIndex)}
+                          position="bottom"
+                        />
+                      )}
+                    </td>
+                  );
+                })}
               </tr>
             )}
             
@@ -581,14 +605,15 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
             {tableEditData.map((row: any[], rowIndex: number) => {
               const isHeader = rowIndex < (tableComp.tableConfig?.headerRows || 0);
               const isFooter = rowIndex >= tableEditData.length - (tableComp.tableConfig?.footerRows || 0);
+              const isVisible = isRowVisible(tableComp, rowIndex);
               
               return (
                 <tr 
                   key={rowIndex}
                   className={isHeader ? 'bg-gray-100 font-semibold' : isFooter ? 'bg-gray-50' : ''}
                 >
-                {/* 行号单元格 */}
-                {isCurrentTableEditing && (
+                {/* 行号单元格 - 只显示可见的行 */}
+                {isCurrentTableEditing && isVisible && (
                   <td
                     key={`row-header-${rowIndex}`}
                     className="relative group cursor-pointer select-none"
@@ -747,10 +772,12 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                               onChange={(value) => handleTableCellChange(rowIndex, colIndex, value)}
                               onClick={(e) => e.stopPropagation()}
                               onKeyDown={(e) => {
+                                // 只有单独的 Enter（不带 Shift）才阻止默认行为
                                 if (e.key === 'Enter' && !e.shiftKey) {
                                   e.preventDefault();
                                   e.stopPropagation();
                                 }
+                                // Shift+Enter 允许正常换行，不阻止默认行为
                               }}
                               style={textareaStyles}
                             />
