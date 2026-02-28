@@ -176,6 +176,7 @@ export interface TextComponent extends BaseComponentProps {
 // 表格组件
 export interface TableComponent extends BaseComponentProps {
   type: 'table';
+  content?: any; // TipTap JSON 格式内容
   columns: {
     fieldId: string;
     fieldName: string;

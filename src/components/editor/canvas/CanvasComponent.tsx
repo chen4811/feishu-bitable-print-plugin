@@ -14,6 +14,7 @@ import {
   replaceVariablesWithChips, 
   extractVariableNames 
 } from '@/utils/variableUtils';
+import { SimpleTableEditor } from '../table/SimpleTableEditor';
 
 import '@/styles/variable-chip.css';
 
@@ -359,23 +360,17 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         );
 
       case 'table':
+        const tableComp = component as TableComponent;
+        
         return (
-          <table className="w-full border-collapse border border-gray-300">
-            <thead>
-              <tr className="bg-muted">
-                <th className="border border-gray-300 p-2 text-xs">列1</th>
-                <th className="border border-gray-300 p-2 text-xs">列2</th>
-                <th className="border border-gray-300 p-2 text-xs">列3</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="border border-gray-300 p-2 text-xs">数据</td>
-                <td className="border border-gray-300 p-2 text-xs">数据</td>
-                <td className="border border-gray-300 p-2 text-xs">数据</td>
-              </tr>
-            </tbody>
-          </table>
+          <div className="w-full h-full">
+            <SimpleTableEditor 
+              content={tableComp.content} 
+              onChange={(newContent) => {
+                updateComponent(component.id, { content: newContent });
+              }}
+            />
+          </div>
         );
 
       case 'autoTable':

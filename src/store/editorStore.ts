@@ -181,6 +181,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       case 'table':
         newComponent = {
           ...newComponent,
+          content: null, // 初始化为 null，SimpleTableEditor 会自动创建默认表格
           columns: [],
           showHeader: true,
           headerStyle: { backgroundColor: '#f5f5f5', fontWeight: 'bold' },
