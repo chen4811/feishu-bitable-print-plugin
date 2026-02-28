@@ -5,6 +5,7 @@
  * 1. 使用 bitable.bridge.onReady() 异步回调判断环境
  * 2. 不再依赖同步的 window.lark 检测
  * 3. 提供统一的状态管理和错误处理
+ * 4. 添加回调移除机制，防止内存泄漏和重复调用
  */
 
 import { bitable, base } from '@lark-base-open/js-sdk';
@@ -15,9 +16,10 @@ export type FeishuEnvStatus = 'checking' | 'ready' | 'not_feishu' | 'error';
 // 环境状态
 let envStatus: FeishuEnvStatus = 'checking';
 let envError: string | null = null;
-let onReadyCallbacks: Array<() => void> = [];
-let onNotFeishuCallbacks: Array<() => void> = [];
+let onReadyCallbacks: Set<() => void> = new Set();
+let onNotFeishuCallbacks: Set<() => void> = new Set();
 let initPromise: Promise<boolean> | null = null;
+let isInitialized = false;
 
 // 字段类型映射
 const FIELD_TYPE_MAP: Record<number, string> = {
@@ -52,33 +54,63 @@ export function isFeishuEnvironment(): boolean {
 
 /**
  * 注册就绪回调
+ * @returns 移除回调的函数
  */
-export function onFeishuReady(callback: () => void): void {
+export function onFeishuReady(callback: () => void): () => void {
   if (envStatus === 'ready') {
+    // 已经就绪，立即执行
     callback();
-  } else {
-    onReadyCallbacks.push(callback);
+    return () => {};
   }
+  onReadyCallbacks.add(callback);
+  // 返回移除函数
+  return () => {
+    onReadyCallbacks.delete(callback);
+  };
+}
+
+/**
+ * 移除就绪回调
+ */
+export function offFeishuReady(callback: () => void): void {
+  onReadyCallbacks.delete(callback);
 }
 
 /**
  * 注册非飞书环境回调
+ * @returns 移除回调的函数
  */
-export function onNotFeishu(callback: () => void): void {
+export function onNotFeishu(callback: () => void): () => void {
   if (envStatus === 'not_feishu') {
+    // 已经确定非飞书，立即执行
     callback();
-  } else {
-    onNotFeishuCallbacks.push(callback);
+    return () => {};
   }
+  onNotFeishuCallbacks.add(callback);
+  // 返回移除函数
+  return () => {
+    onNotFeishuCallbacks.delete(callback);
+  };
+}
+
+/**
+ * 移除非飞书环境回调
+ */
+export function offNotFeishu(callback: () => void): void {
+  onNotFeishuCallbacks.delete(callback);
 }
 
 /**
  * 初始化飞书环境
+ * 使用单例模式，确保只初始化一次
  */
 export async function initFeishuEnv(): Promise<boolean> {
-  if (initPromise) {
+  // 已经初始化过，直接返回之前的结果
+  if (isInitialized && initPromise) {
     return initPromise;
   }
+  
+  isInitialized = true;
 
   initPromise = (async () => {
     console.log('[FeishuEnv] 开始环境检测...');
@@ -278,12 +310,8 @@ export function getDebugInfo(): Record<string, unknown> {
   };
 }
 
-// 自动初始化
-if (typeof window !== 'undefined') {
-  setTimeout(() => {
-    initFeishuEnv().catch(console.error);
-  }, 100);
-}
+// 注意：移除了自动初始化代码
+// 初始化现在由 usePrintSDK hook 显式调用，避免模块加载时自动触发
 
 // 导出统一的 SDK 对象
 export const feishuEnv = {
@@ -291,7 +319,9 @@ export const feishuEnv = {
   getEnvError,
   isFeishuEnvironment,
   onFeishuReady,
+  offFeishuReady,
   onNotFeishu,
+  offNotFeishu,
   init: initFeishuEnv,
   fetchFields,
   fetchRecords,
