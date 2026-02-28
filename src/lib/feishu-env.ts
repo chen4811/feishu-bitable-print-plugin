@@ -10,6 +10,13 @@
 
 import { bitable, base } from '@lark-base-open/js-sdk';
 
+// 字段信息接口
+interface FieldInfo {
+  id: string;
+  name: string;
+  type: string;
+}
+
 // 环境状态类型
 export type FeishuEnvStatus = 'checking' | 'ready' | 'not_feishu' | 'error';
 
@@ -204,97 +211,50 @@ export async function fetchFields(): Promise<Array<{
     const table = await base.getTable(selection.tableId);
     console.log('[FeishuEnv] table:', table);
     
-    const fields = await table.getFieldList();
-    console.log('[FeishuEnv] 获取到原始字段数据 (完整 JSON):', JSON.stringify(fields, null, 2));
-    console.log('[FeishuEnv] 获取到字段数量:', fields?.length || 0);
-
-    if (!Array.isArray(fields)) {
-      console.warn('[FeishuEnv] fields 不是数组:', fields);
-      return [];
-    }
-
-    const result = fields.map((field: any, index: number) => {
-      console.log(`[FeishuEnv] 字段 ${index} 原始数据:`, field);
+    console.log(`[FeishuEnv] 开始获取字段数据...`);
+    const rawFields = await table.getFieldList();
+    console.log(`[FeishuEnv] 原始字段列表:`, rawFields);
+    console.log(`[FeishuEnv] 原始字段数量:`, rawFields.length);
+    
+    // 使用异步方法获取字段信息
+    const fields: FieldInfo[] = [];
+    for (let index = 0; index < rawFields.length; index++) {
+      const field = rawFields[index];
+      console.log(`[FeishuEnv] 处理字段 ${index}...`);
       
-      // 安全检查
-      if (!field || typeof field !== 'object') {
-        console.log(`[FeishuEnv] 字段 ${index} 无效，使用默认值`);
-        return {
+      try {
+        // 使用异步方法获取字段信息
+        const name = await field.getName();
+        const type = await field.getType();
+        const meta = await field.getMeta();
+        
+        console.log(`[FeishuEnv] 字段 ${index} getName():`, name);
+        console.log(`[FeishuEnv] 字段 ${index} getType():`, type);
+        console.log(`[FeishuEnv] 字段 ${index} getMeta():`, meta);
+        
+        // 映射字段类型
+        const mappedType = FIELD_TYPE_MAP[type] || 'text';
+        
+        fields.push({
+          id: meta.id || `field_${index}`,
+          name: name || `字段${index + 1}`,
+          type: mappedType,
+        });
+        
+        console.log(`[FeishuEnv] 字段 ${index} 解析结果:`, fields[index]);
+      } catch (error) {
+        console.error(`[FeishuEnv] 获取字段 ${index} 信息失败:`, error);
+        // 即使失败也添加一个占位符
+        fields.push({
           id: `field_${index}`,
           name: `字段${index + 1}`,
           type: 'text',
-        };
+        });
       }
-      
-      // 深度探索对象属性 - 使用各种反射方法
-      console.log(`[FeishuEnv] 字段 ${index} Object.keys():`, Object.keys(field));
-      console.log(`[FeishuEnv] 字段 ${index} Object.getOwnPropertyNames():`, Object.getOwnPropertyNames(field));
-      console.log(`[FeishuEnv] 字段 ${index} Object.getOwnPropertySymbols():`, Object.getOwnPropertySymbols(field));
-      console.log(`[FeishuEnv] 字段 ${index} 原型:`, Object.getPrototypeOf(field));
-      
-      // 尝试直接访问已知可能的属性（即使不可枚举）
-      let fieldName = `字段${index + 1}`;
-      let fieldId = `field_${index}`;
-      let fieldType = 'text';
-      
-      // 尝试访问各种可能的属性名
-      try {
-        // 尝试直接访问（即使不可枚举）
-        const possibleProps = [
-          'name', 'fieldName', 'field_name', 'title', 'label',
-          'id', 'fieldId', 'field_id',
-          'type', 'fieldType', 'field_type'
-        ];
-        
-        for (const prop of possibleProps) {
-          try {
-            const value = (field as any)[prop];
-            if (value !== undefined && value !== null) {
-              console.log(`[FeishuEnv] 字段 ${index} 发现属性 ${prop}=`, value);
-            }
-          } catch (e) {
-            // 忽略访问错误
-          }
-        }
-        
-        // 尝试使用 field 对象可能的方法
-        if (typeof field.getName === 'function') {
-          fieldName = field.getName();
-          console.log(`[FeishuEnv] 字段 ${index} 通过 getName() 获得:`, fieldName);
-        }
-        if (typeof field.getFieldName === 'function') {
-          fieldName = field.getFieldName();
-          console.log(`[FeishuEnv] 字段 ${index} 通过 getFieldName() 获得:`, fieldName);
-        }
-        if (typeof field.getId === 'function') {
-          fieldId = field.getId();
-          console.log(`[FeishuEnv] 字段 ${index} 通过 getId() 获得:`, fieldId);
-        }
-        if (typeof field.getType === 'function') {
-          const rawType = field.getType();
-          fieldType = FIELD_TYPE_MAP[rawType] || 'text';
-          console.log(`[FeishuEnv] 字段 ${index} 通过 getType() 获得:`, rawType, '->', fieldType);
-        }
-        
-        // 如果还没有找到，尝试直接访问（我们已经看到id和type是可用的）
-        if (fieldId === `field_${index}` && field.id) fieldId = field.id;
-        if (fieldType === 'text' && field.type) fieldType = FIELD_TYPE_MAP[field.type] || 'text';
-        
-      } catch (e) {
-        console.log(`[FeishuEnv] 字段 ${index} 探索属性时出错:`, e);
-      }
-      
-      console.log(`[FeishuEnv] 字段 ${index} 解析结果: id=${fieldId}, name=${fieldName}, type=${fieldType}`);
-      
-      return {
-        id: fieldId,
-        name: fieldName,
-        type: fieldType,
-      };
-    });
+    }
     
-    console.log('[FeishuEnv] 最终返回的字段列表:', result);
-    return result;
+    console.log('[FeishuEnv] 最终返回的字段列表:', fields);
+    return fields;
   } catch (error) {
     console.error('[FeishuEnv] 获取字段失败:', error);
     return [];
