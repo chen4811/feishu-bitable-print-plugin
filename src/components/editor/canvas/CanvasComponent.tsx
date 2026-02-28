@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { EditorComponent, TextComponent, QRCodeComponent, BarcodeComponent, LineComponent, AutoTableComponent, TableComponent } from '@/types/editor';
+import { EditorComponent, TextComponent, QRCodeComponent, BarcodeComponent, LineComponent, AutoTableComponent, TableComponent as TableComponentType } from '@/types/editor';
 import { useEditorStore } from '@/store/editorStore';
 import { ResizableWrapper } from './ResizableWrapper';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import {
   replaceVariablesWithChips, 
   extractVariableNames 
 } from '@/utils/variableUtils';
-import { SimpleTableEditor } from '../table/SimpleTableEditor';
+import { TableComponent } from '../table/TableComponent';
 
 import '@/styles/variable-chip.css';
 
@@ -360,15 +360,17 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         );
 
       case 'table':
-        const tableComp = component as TableComponent;
+        const tableComp = component as TableComponentType;
         
         return (
           <div className="w-full h-full">
-            <SimpleTableEditor 
-              content={tableComp.content} 
-              onChange={(newContent) => {
-                updateComponent(component.id, { content: newContent });
-              }}
+            <TableComponent 
+              component={tableComp}
+              isSelected={isSelected}
+              onSelect={onSelect}
+              onUpdate={(updates) => updateComponent(component.id, updates)}
+              onDelete={() => removeComponent(component.id)}
+              onCopy={() => duplicateComponent(component.id)}
             />
           </div>
         );

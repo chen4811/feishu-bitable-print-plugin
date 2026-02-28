@@ -173,10 +173,28 @@ export interface TextComponent extends BaseComponentProps {
   lineHeight: number;
 }
 
+// 表格组件 UI 状态
+export interface TableUIState {
+  isHovered: boolean;
+  isSelected: boolean;
+  isEditing: boolean;
+  selectedCells: string[];
+}
+
+// 表格组件配置
+export interface TableConfig {
+  headerRows: number;
+  footerRows: number;
+  borderColor: string;
+  borderWidth: number;
+  showOuterBorder: boolean;
+  showInnerBorder: boolean;
+}
+
 // 表格组件
 export interface TableComponent extends BaseComponentProps {
   type: 'table';
-  content?: any; // TipTap JSON 格式内容
+  content?: any; // TipTap JSON 格式内容或简单表格数据
   columns: {
     fieldId: string;
     fieldName: string;
@@ -187,6 +205,10 @@ export interface TableComponent extends BaseComponentProps {
     backgroundColor: string;
     fontWeight: 'normal' | 'bold';
   };
+  // 新增：表格配置
+  config?: Partial<TableConfig>;
+  // 新增：UI 状态
+  uiState?: Partial<TableUIState>;
 }
 
 // 图片组件
