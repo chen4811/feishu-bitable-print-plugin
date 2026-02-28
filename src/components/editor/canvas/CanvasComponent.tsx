@@ -16,7 +16,7 @@ interface CanvasComponentProps {
 }
 
 export function CanvasComponent({ component, isSelected, onSelect }: CanvasComponentProps) {
-  const { updateComponent, styleConfig, duplicateComponent } = useEditorStore();
+  const { updateComponent, styleConfig, duplicateComponent, deleteComponent } = useEditorStore();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -37,6 +37,19 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       updateComponent(component.id, { content: editContent });
     }
   }, [component.id, component.type, editContent, updateComponent]);
+
+  // 表格组件操作
+  const handleUpdateTable = useCallback((updates: any) => {
+    updateComponent(component.id, updates);
+  }, [component.id, updateComponent]);
+
+  const handleDeleteTable = useCallback(() => {
+    deleteComponent(component.id);
+  }, [component.id, deleteComponent]);
+
+  const handleCopyTable = useCallback(() => {
+    duplicateComponent(component.id);
+  }, [component.id, duplicateComponent]);
 
   // 生成二维码
   useEffect(() => {
@@ -174,37 +187,36 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         );
 
       case 'table':
+        // 使用完整功能的 TableComponent
         const tableComp = component as any;
+        
+        // 适配数据格式给 TableComponent
+        const adaptedTableComponent: any = {
+          id: component.id,
+          type: 'table',
+          content: {
+            type: 'simple-table',
+            data: tableComp.tableConfig?.cells 
+              ? tableComp.tableConfig.cells.map((row: any[]) => row.map((cell: any) => cell.content || ''))
+              : [['', '', ''], ['', '', '']],
+          },
+          fontSize: styleConfig.fontSize,
+          fontWeight: 'normal',
+          fontStyle: 'normal',
+          textAlign: 'left',
+          lineHeight: styleConfig.lineHeight,
+        };
+
         return (
           <div className="w-full">
-            {tableComp.tableConfig?.cells ? (
-              <div className="border overflow-hidden">
-                <table className="w-full border-collapse">
-                  <tbody>
-                    {/* 直接显示所有行，不再移除表头（因为默认数据已更新） */}
-                    {tableComp.tableConfig.cells.map((row: any[], rowIndex: number) => (
-                      <tr key={rowIndex}>
-                        {row.map((cell: any, colIndex: number) => (
-                          <td
-                            key={cell.id || colIndex}
-                            className="border p-2 text-sm"
-                            style={{
-                              backgroundColor: cell.backgroundColor || 'transparent',
-                            }}
-                          >
-                            {cell.content || ''}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="p-2 text-center text-muted-foreground border">
-                表格组件
-              </div>
-            )}
+            <TableComponent
+              component={adaptedTableComponent}
+              isSelected={isSelected}
+              onSelect={onSelect}
+              onUpdate={handleUpdateTable}
+              onDelete={handleDeleteTable}
+              onCopy={handleCopyTable}
+            />
           </div>
         );
 
@@ -250,11 +262,11 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       case 'line':
         const lineComp = component as any;
         return (
-          <div className="w-full py-2">
+          <div className="w-full py-4">
             <hr
               style={{
                 borderColor: lineComp.color || '#000000',
-                borderWidth: `${lineComp.thickness || 1}px`,
+                borderWidth: lineComp.thickness || 1,
                 borderStyle: lineComp.style || 'solid',
               }}
             />
@@ -263,52 +275,26 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
 
       default:
         return (
-          <div className="w-full h-20 flex items-center justify-center bg-muted rounded">
-            <span className="text-xs text-muted-foreground">{(component as any).type}</span>
+          <div className="p-4 text-center text-muted-foreground border rounded">
+            未知组件类型: {component.type}
           </div>
         );
     }
   };
 
-  const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    duplicateComponent(component.id);
-  };
-
   return (
     <div
-      className={`
-        w-full relative
-        ${component.width === 100 ? 'w-full' : `w-[${component.width}%]`}
-        transition-all duration-200
-        bg-white
-        ${isSelected ? 'shadow-md' : 'hover:shadow-sm'}
-      `}
-      style={{
-        width: component.width === 100 ? '100%' : `${component.width}%`,
-      }}
-      onClick={(e) => {
-        e.stopPropagation();
-        onSelect();
-      }}
+      className={`w-full transition-all duration-200 ${
+        isSelected ? 'ring-2 ring-primary rounded' : ''
+      }`}
+      onClick={onSelect}
+      onDoubleClick={handleDoubleClick}
     >
-      {/* 右侧操作按钮 - 仅在选中时显示 */}
-      {isSelected && (
-        <div className="absolute -right-12 top-0 flex flex-col gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 bg-gray-50 hover:bg-gray-100"
-            title="复制"
-            onClick={handleCopy}
-          >
-            <Copy className="w-4 h-4" />
-          </Button>
-        </div>
-      )}
-
-      {/* 组件内容 */}
+      {/* 渲染不同类型的组件 */}
       {renderContent()}
     </div>
   );
 }
+
+// 重新导出
+export { CanvasComponent };
