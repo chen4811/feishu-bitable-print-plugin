@@ -8,6 +8,63 @@ import { FeishuContext } from '@/types/editor';
 const VARIABLE_REGEX = /\{\{([^}]+)\}\}/g;
 
 /**
+ * 判断是否是时间戳
+ * @param value 要检查的值
+ * @returns 是否是时间戳
+ */
+function isTimestamp(value: unknown): boolean {
+  if (typeof value !== 'number') return false;
+  
+  // 检查是否在合理的时间戳范围内（2000年到2030年）
+  // 支持毫秒级和秒级时间戳
+  const year2000 = 946684800000;
+  const year2030 = 1893456000000;
+  
+  // 如果是秒级时间戳，乘以1000后检查
+  if (value < year2000 && value * 1000 >= year2000 && value * 1000 <= year2030) {
+    return true;
+  }
+  
+  // 毫秒级时间戳
+  return value >= year2000 && value <= year2030;
+}
+
+/**
+ * 格式化时间戳为可读日期时间
+ * @param timestamp 时间戳（毫秒或秒）
+ * @returns 格式化后的日期时间字符串
+ */
+function formatTimestamp(timestamp: number): string {
+  try {
+    // 如果是秒级时间戳，转换为毫秒
+    let msTimestamp = timestamp;
+    if (timestamp < 10000000000) {
+      msTimestamp = timestamp * 1000;
+    }
+    
+    const date = new Date(msTimestamp);
+    
+    // 检查日期是否有效
+    if (isNaN(date.getTime())) {
+      return String(timestamp);
+    }
+    
+    // 格式化为: YYYY-MM-DD HH:mm:ss
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  } catch (error) {
+    console.warn('[VariableUtils] 时间格式化失败:', error);
+    return String(timestamp);
+  }
+}
+
+/**
  * 解析变量值
  * @param fieldName 字段名
  * @param context 飞书上下文
@@ -39,12 +96,26 @@ export function resolveVariableValue(
     return `[空]`;
   }
 
+  // 检查是否是时间戳
+  if (isTimestamp(rawValue)) {
+    console.log('[VariableUtils] 检测到时间戳字段:', fieldName, rawValue);
+    return formatTimestamp(rawValue as number);
+  }
+
   // 格式化复杂类型
   if (Array.isArray(rawValue)) {
     return rawValue
       .map((item: any) => {
         if (typeof item === 'object' && item !== null) {
+          // 检查数组项是否包含时间戳
+          if (item.time && isTimestamp(item.time)) {
+            return formatTimestamp(item.time as number);
+          }
           return item.name || item.text || String(item);
+        }
+        // 检查数组项是否是时间戳
+        if (isTimestamp(item)) {
+          return formatTimestamp(item as number);
         }
         return String(item);
       })
@@ -54,6 +125,10 @@ export function resolveVariableValue(
   if (typeof rawValue === 'object') {
     // 处理对象类型
     const obj = rawValue as any;
+    // 检查对象是否包含时间戳
+    if (obj.time && isTimestamp(obj.time)) {
+      return formatTimestamp(obj.time as number);
+    }
     return obj.name || obj.text || obj.value || JSON.stringify(rawValue);
   }
 
