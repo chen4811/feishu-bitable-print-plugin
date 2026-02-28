@@ -15,7 +15,6 @@ import {
 import {
   SortableContext,
   verticalListSortingStrategy,
-  arrayMove,
 } from '@dnd-kit/sortable';
 import { useEditorStore } from '@/store/editorStore';
 import { PAGE_SIZES, ComponentType, CanvasComponentNode } from '@/types/editor';
@@ -60,7 +59,6 @@ export function CanvasArea() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [isFromPanel, setIsFromPanel] = useState(false);
-  const [insertMode, setInsertMode] = useState<'horizontal' | 'vertical'>('horizontal');
 
   // 传感器设置
   const sensors = useSensors(
@@ -95,20 +93,14 @@ export function CanvasArea() {
     // 判断是否从侧边栏拖拽过来
     const isNewComponent = !components.some(c => c.id === active.id);
     setIsFromPanel(isNewComponent);
-    setInsertMode('horizontal');
+    setOverId(null);
   };
 
   // 拖拽过程
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
     
-    if (!over) {
-      setOverId(null);
-      return;
-    }
-
-    // 如果拖拽到空白处或画布本身
-    if (over.id === 'canvas' || over.id === 'canvas-grid') {
+    if (!over || over.id === 'canvas' || over.id === 'canvas-grid') {
       setOverId(null);
       return;
     }
@@ -116,23 +108,12 @@ export function CanvasArea() {
     const activeIdStr = active.id as string;
     const overIdStr = over.id as string;
 
-    // 如果是同一个组件，不做处理
     if (activeIdStr === overIdStr) {
+      setOverId(null);
       return;
     }
 
     setOverId(overIdStr);
-    
-    // 简单策略：根据目标组件的当前宽度决定插入模式
-    const targetComponent = components.find(c => c.id === overIdStr);
-    if (targetComponent && targetComponent.layout?.width === '50%') {
-      // 如果目标已经是50%宽度，插入到上下（水平模式）
-      setInsertMode('horizontal');
-    } else {
-      // 否则，可以插入到左右或上下
-      // 这里简化为：新组件插入到左右会变成并排，已有组件重排只改变位置
-      setInsertMode('horizontal');
-    }
   };
 
   // 拖拽结束
@@ -159,11 +140,10 @@ export function CanvasArea() {
             const newComponent = newComponents[newComponents.length - 1];
             
             if (newComponent && targetComponent) {
-              // 判断是否应该并排
-              // 简化逻辑：如果目标组件是100%宽度，则并排；否则插入到上下
-              const shouldSideBySide = targetComponent.layout?.width === '100%' || !targetComponent.layout;
+              // 关键逻辑：如果目标组件是100%宽度，则并排；否则插入到下方
+              const isTargetFullWidth = targetComponent.layout?.width === '100%' || !targetComponent.layout;
               
-              if (shouldSideBySide) {
+              if (isTargetFullWidth) {
                 // 并排模式：设置两个组件为50%
                 useEditorStore.getState().updateComponent(newComponent.id, { layout: { width: '50%' } });
                 useEditorStore.getState().updateComponent(targetId, { layout: { width: '50%' } });
@@ -172,7 +152,7 @@ export function CanvasArea() {
                 const newComponentIndex = newComponents.length - 1;
                 useEditorStore.getState().reorderComponents(newComponentIndex, targetIndex + 1);
               } else {
-                // 插入到上下
+                // 插入到下方
                 const newComponentIndex = newComponents.length - 1;
                 useEditorStore.getState().reorderComponents(newComponentIndex, targetIndex + 1);
               }
@@ -184,12 +164,11 @@ export function CanvasArea() {
         addComponent(componentType);
       }
     } else if (over && active.id !== over.id) {
-      // 重新排序现有组件
+      // 重新排序现有组件 - 不改变宽度
       const oldIndex = components.findIndex((c) => c.id === active.id);
       const newIndex = components.findIndex((c) => c.id === over.id);
       
       if (oldIndex !== -1 && newIndex !== -1) {
-        // 现有组件重排，不改变宽度
         reorderComponents(oldIndex, newIndex);
       }
     }
@@ -197,7 +176,6 @@ export function CanvasArea() {
     setActiveId(null);
     setOverId(null);
     setIsFromPanel(false);
-    setInsertMode('horizontal');
   };
 
   const handleCanvasClick = (e: React.MouseEvent) => {
@@ -256,8 +234,8 @@ export function CanvasArea() {
 
                   return (
                     <React.Fragment key={component.id}>
-                      {/* 插入指示器：在目标组件前显示 */}
-                      {isTarget && !isActive && insertMode === 'horizontal' && (
+                      {/* 插入指示器 */}
+                      {isTarget && !isActive && (
                         <div className="w-full flex-shrink-0">
                           <InsertionIndicator type="horizontal" />
                         </div>
@@ -298,7 +276,7 @@ export function CanvasArea() {
                   </div>
                   <p className="text-sm">从左侧拖拽组件开始排版</p>
                   <p className="text-xs mt-1">或点击上方 + 添加文本</p>
-                  <p className="text-xs mt-1 text-primary">💡 拖拽新组件到100%宽度组件会自动并排显示</p>
+                  <p className="text-xs mt-2 text-primary">💡 拖新组件到100%宽度组件旁会自动并排为50%</p>
                 </div>
               )}
             </SortableContext>
@@ -339,7 +317,7 @@ export function CanvasArea() {
           ) : isFromPanel ? (
             <div className="opacity-80 bg-white shadow-2xl rounded-lg p-4 border-2 border-dashed border-primary">
               <p className="text-sm text-primary font-medium">新组件</p>
-              <p className="text-xs text-muted-foreground mt-1">拖到现有组件旁会自动并排</p>
+              <p className="text-xs text-muted-foreground mt-1">拖到100%宽度组件旁会自动并排为50%</p>
             </div>
           ) : null}
         </DragOverlay>
