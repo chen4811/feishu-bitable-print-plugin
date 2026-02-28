@@ -520,7 +520,8 @@ export function EditorPage({ onExit }: EditorPageProps) {
 
   // 当进入表格编辑模式时，设置回调函数
   useEffect(() => {
-    if (tableEditing.isEditing && tableEditing.tableId) {
+    if (tableEditing.isEditing && tableEditing.tableId && !tableEditing.onMergeCells) {
+      // 只在第一次进入编辑模式且回调函数未设置时才设置
       setTableEditing({
         onMergeCells: handleMergeCells,
         onOpenHeaderFooterDialog: handleOpenHeaderFooterDialog,
@@ -539,7 +540,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
         },
       });
     }
-  }, [tableEditing.isEditing, tableEditing.tableId, setTableEditing, handleMergeCells, handleOpenHeaderFooterDialog, handleBorderChange, handleBorderWidthChange]);
+  }, [tableEditing.isEditing, tableEditing.tableId, tableEditing.onMergeCells, setTableEditing]);
 
   // 智能聚焦：选中组件时自动切换到数据源面板
   useEffect(() => {
