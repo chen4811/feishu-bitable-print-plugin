@@ -553,14 +553,14 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                         <div className="flex items-center justify-center gap-0.5 p-1 min-h-full">
                           {hoveredRowDot === rowIndex ? (
                             <>
-                              <button onClick={(e) => { e.stopPropagation(); handleAddRow(tableComp, rowIndex); }} className="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600" title="在上方插入行">
+                              <button onClick={(e) => { e.stopPropagation(); handleAddRow(tableComp, rowIndex); }} className="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600" title="在上方插入行" onMouseDown={(e) => e.stopPropagation()}>
                                 <span className="text-xs font-bold">↑</span>
                               </button>
-                              <button onClick={(e) => { e.stopPropagation(); handleAddRow(tableComp, rowIndex + 1); }} className="w-5 h-5 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600" title="在下方插入行">
+                              <button onClick={(e) => { e.stopPropagation(); handleAddRow(tableComp, rowIndex + 1); }} className="w-5 h-5 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600" title="在下方插入行" onMouseDown={(e) => e.stopPropagation()}>
                                 <span className="text-xs font-bold">↓</span>
                               </button>
                               {tableEditData.length > 1 && (
-                                <button onClick={(e) => { e.stopPropagation(); handleDeleteRow(tableComp, rowIndex); }} className="w-5 h-5 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600" title="删除此行">
+                                <button onClick={(e) => { e.stopPropagation(); handleDeleteRow(tableComp, rowIndex); }} className="w-5 h-5 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600" title="删除此行" onMouseDown={(e) => e.stopPropagation()}>
                                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                   </svg>
@@ -570,7 +570,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                           ) : (
                             <div 
                               className="w-2 h-2 rounded-full bg-gray-300 hover:bg-gray-400 transition-colors"
-                              onMouseEnter={() => setHoveredRowDot(rowIndex)}
+                              onMouseEnter={() => { setHoveredRowDot(rowIndex); setHoveredColDot(null); }}
                               onMouseLeave={() => setHoveredRowDot(null)}
                             />
                           )}
@@ -646,7 +646,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                 ) : (
                                   <div 
                                     className="w-2 h-2 rounded-full bg-gray-300 hover:bg-gray-400 transition-colors"
-                                    onMouseEnter={() => setHoveredColDot(colIndex)}
+                                    onMouseEnter={() => { setHoveredColDot(colIndex); setHoveredRowDot(null); }}
                                     onMouseLeave={() => setHoveredColDot(null)}
                                   />
                                 )}
