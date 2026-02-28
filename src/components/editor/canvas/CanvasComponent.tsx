@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { CanvasComponentNode } from '@/types/editor';
 import { useEditorStore } from '@/store/editorStore';
 import { Button } from '@/components/ui/button';
@@ -30,53 +30,108 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   const [tableEditData, setTableEditData] = useState<any[][]>([]);
 
   // 文本组件编辑
-  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+  const handleDoubleClickText = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (component.type === 'text') {
       setIsEditing(true);
       setEditContent((component as any).content);
     }
-  }, [component]);
+  };
 
-  const handleTextBlur = useCallback(() => {
+  const handleTextBlur = () => {
     setIsEditing(false);
     if (component.type === 'text') {
       updateComponent(component.id, { content: editContent });
     }
-  }, [component.id, component.type, editContent, updateComponent]);
+  };
 
   // 表格编辑 - 切换编辑状态
-  const handleEditTable = useCallback((e?: React.MouseEvent) => {
-    if (e && typeof e.stopPropagation === 'function') {
+  const handleEditTable = (e?: React.MouseEvent) => {
+    if (e && e.stopPropagation) {
       e.stopPropagation();
     }
-    setIsTableEditing(!isTableEditing);
-  }, [isTableEditing]);
+    setIsTableEditing(prev => !prev);
+  };
+
+  // 双击表格进入编辑
+  const handleDoubleClickTable = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsTableEditing(true);
+  };
 
   // 复制组件
-  const handleCopyComponent = useCallback((e?: React.MouseEvent) => {
-    if (e && typeof e.stopPropagation === 'function') {
+  const handleCopyComponent = (e?: React.MouseEvent) => {
+    if (e && e.stopPropagation) {
       e.stopPropagation();
     }
     duplicateComponent(component.id);
-  }, [component.id, duplicateComponent]);
+  };
 
   // 删除组件
-  const handleDeleteComponent = useCallback((e?: React.MouseEvent) => {
-    if (e && typeof e.stopPropagation === 'function') {
+  const handleDeleteComponent = (e?: React.MouseEvent) => {
+    if (e && e.stopPropagation) {
       e.stopPropagation();
     }
     deleteComponent(component.id);
-  }, [component.id, deleteComponent]);
+  };
 
   // 鼠标事件
-  const handleMouseEnter = useCallback(() => {
+  const handleMouseEnter = () => {
     setIsHovered(true);
-  }, []);
+  };
 
-  const handleMouseLeave = useCallback(() => {
+  const handleMouseLeave = () => {
     setIsHovered(false);
-  }, []);
+  };
+
+  // 初始化表格编辑数据
+  useEffect(() => {
+    if (component.type === 'table') {
+      const tableComp = component as any;
+      if (tableComp.tableConfig?.cells) {
+        setTableEditData(tableComp.tableConfig.cells.map((row: any[]) => 
+          row.map((cell: any) => cell?.content || '')
+        ));
+      } else {
+        setTableEditData([
+          ['', '', ''],
+          ['', '', ''],
+        ]);
+      }
+    }
+  }, [component.id, component.type]);
+
+  // 表格单元格编辑
+  const handleTableCellChange = (row: number, col: number, value: string) => {
+    const newData = [...tableEditData];
+    newData[row] = [...newData[row]];
+    newData[row][col] = value;
+    setTableEditData(newData);
+    
+    const tableComp = component as any;
+    if (tableComp.tableConfig?.cells) {
+      const newCells = newData.map((rowData, rowIndex) =>
+        rowData.map((cellContent, colIndex) => ({
+          id: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.id || `cell-${rowIndex}-${colIndex}`,
+          content: cellContent,
+          backgroundColor: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.backgroundColor,
+        }))
+      );
+      updateComponent(component.id, {
+        tableConfig: {
+          ...tableComp.tableConfig,
+          cells: newCells,
+        },
+      });
+    }
+  };
+
+  // 自动聚焦到编辑框
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [isEditing]);
 
   // 生成二维码
   useEffect(() => {
@@ -106,63 +161,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       }
     }
   }, [component]);
-
-  // 初始化表格编辑数据
-  useEffect(() => {
-    if (component.type === 'table') {
-      const tableComp = component as any;
-      if (tableComp.tableConfig?.cells) {
-        setTableEditData(tableComp.tableConfig.cells.map((row: any[]) => 
-          row.map((cell: any) => cell?.content || '')
-        ));
-      } else {
-        // 默认空表格
-        setTableEditData([
-          ['', '', ''],
-          ['', '', ''],
-        ]);
-      }
-    }
-  }, [component.id, component.type]);
-
-  // 自动聚焦到编辑框
-  useEffect(() => {
-    if (isEditing && textareaRef.current) {
-      textareaRef.current.focus();
-    }
-  }, [isEditing]);
-
-  // 表格单元格编辑
-  const handleTableCellChange = useCallback((row: number, col: number, value: string) => {
-    const newData = [...tableEditData];
-    newData[row] = [...newData[row]];
-    newData[row][col] = value;
-    setTableEditData(newData);
-    
-    // 更新到 store
-    const tableComp = component as any;
-    if (tableComp.tableConfig?.cells) {
-      const newCells = newData.map((rowData, rowIndex) =>
-        rowData.map((cellContent, colIndex) => ({
-          id: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.id || `cell-${rowIndex}-${colIndex}`,
-          content: cellContent,
-          backgroundColor: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.backgroundColor,
-        }))
-      );
-      updateComponent(component.id, {
-        tableConfig: {
-          ...tableComp.tableConfig,
-          cells: newCells,
-        },
-      });
-    }
-  }, [tableEditData, component.id, component, updateComponent]);
-
-  // 双击表格进入编辑
-  const handleDoubleClickTable = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsTableEditing(true);
-  }, []);
 
   // 渲染不同类型的组件
   const renderContent = () => {
@@ -210,7 +208,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               textDecoration: textComp.textStyle?.underline ? 'underline' : textComp.textStyle?.textDecoration || 'none',
               textTransform: textComp.textStyle?.textTransform || 'none',
             }}
-            onDoubleClick={handleDoubleClick}
+            onDoubleClick={handleDoubleClickText}
           >
             {/* 标题样式渲染 */}
             {textComp.textStyle?.headingLevel === 1 && (
@@ -268,8 +266,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         
         return (
           <div className="w-full relative" onDoubleClick={handleDoubleClickTable}>
-            {/* 悬停工具栏 - 只在 hover 且未选中或未编辑时显示 */}
-            {(isHovered || isSelected) && !isTableEditing && (
+            {/* 悬停工具栏 - 编辑状态时不显示 */}
+            {!isTableEditing && (
               <HoverToolbar
                 onEdit={handleEditTable}
                 onDelete={handleDeleteComponent}
