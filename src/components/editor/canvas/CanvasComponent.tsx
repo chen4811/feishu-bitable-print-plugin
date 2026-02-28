@@ -312,6 +312,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
           backgroundColor: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.backgroundColor,
           verticalAlign: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.verticalAlign,
           border: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.border,
+          style: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.style,
         }))
       );
       updateComponent(component.id, {
@@ -472,24 +473,102 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                         }
                       }}
                     >
-                    {isCurrentTableEditing ? (
-                      <div className="w-full h-full flex items-stretch">
-                        <AutoResizingTextarea
-                          value={cellContent || ''}
-                          onChange={(value) => handleTableCellChange(rowIndex, colIndex, value)}
-                          onClick={(e) => e.stopPropagation()}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                              e.stopPropagation();
-                            }
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <div className="p-1 whitespace-pre-wrap min-h-[20px]">
-                        {cellContent}
-                      </div>
-                    )}
+                    {(() => {
+                      const cellStyle = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.style || {};
+                      
+                      // 构建单元格文本样式
+                      const textStyles: any = {
+                        fontSize: `${cellStyle.fontSize || styleConfig.fontSize}px`,
+                        fontWeight: cellStyle.bold ? 'bold' : 'normal',
+                        fontStyle: cellStyle.italic ? 'italic' : 'normal',
+                        color: cellStyle.color || '#000000',
+                        backgroundColor: cellStyle.backgroundColor || 'transparent',
+                        textAlign: cellStyle.align || 'left',
+                        lineHeight: cellStyle.lineHeight || styleConfig.lineHeight,
+                        textDecoration: cellStyle.underline ? 'underline' : cellStyle.textDecoration || 'none',
+                        textTransform: cellStyle.textTransform || 'none',
+                      };
+
+                      if (isCurrentTableEditing) {
+                        return (
+                          <div className="w-full h-full flex items-stretch" style={textStyles}>
+                            <AutoResizingTextarea
+                              value={cellContent || ''}
+                              onChange={(value) => handleTableCellChange(rowIndex, colIndex, value)}
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.stopPropagation();
+                                }
+                              }}
+                            />
+                          </div>
+                        );
+                      }
+
+                      // 处理标题、列表等特殊样式
+                      const renderContentWithStyle = () => {
+                        if (cellStyle.headingLevel === 1) {
+                          return (
+                            <h1 style={{ 
+                              fontSize: '24px', 
+                              fontWeight: 'bold', 
+                              marginBottom: '0.5rem' 
+                            }}>
+                              {cellContent || ''}
+                            </h1>
+                          );
+                        }
+                        if (cellStyle.headingLevel === 2) {
+                          return (
+                            <h2 style={{ 
+                              fontSize: '18px', 
+                              fontWeight: 'bold', 
+                              marginBottom: '0.5rem' 
+                            }}>
+                              {cellContent || ''}
+                            </h2>
+                          );
+                        }
+                        if (cellStyle.listType === 'unordered' && !cellStyle.headingLevel) {
+                          return (
+                            <ul style={{ marginLeft: '1.5rem', paddingLeft: 0 }}>
+                              <li>{cellContent || ''}</li>
+                            </ul>
+                          );
+                        }
+                        if (cellStyle.listType === 'ordered' && !cellStyle.headingLevel) {
+                          return (
+                            <ol style={{ marginLeft: '1.5rem', paddingLeft: 0 }}>
+                              <li>{cellContent || ''}</li>
+                            </ol>
+                          );
+                        }
+                        if (cellStyle.linkUrl) {
+                          return (
+                            <a 
+                              href={cellStyle.linkUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              style={{ color: '#3b82f6', textDecoration: 'underline' }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {cellContent || ''}
+                            </a>
+                          );
+                        }
+                        return <span>{cellContent || ''}</span>;
+                      };
+
+                      return (
+                        <div 
+                          className="p-1 whitespace-pre-wrap min-h-[20px]" 
+                          style={textStyles}
+                        >
+                          {renderContentWithStyle()}
+                        </div>
+                      );
+                    })()}
                   </td>
                 );
               })}

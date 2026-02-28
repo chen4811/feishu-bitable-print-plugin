@@ -90,6 +90,101 @@ export function EditorPage({ onExit }: EditorPageProps) {
     ? components.find(comp => comp.id === tableEditing.tableId) as any 
     : null;
 
+  // 获取当前选中单元格的文本样式
+  const getCurrentTableCellTextStyle = (): ComponentTextStyle => {
+    // 默认样式
+    const defaultStyle: ComponentTextStyle = {
+      fontSize: styleConfig.fontSize,
+      color: '#000000',
+      bold: false,
+      italic: false,
+      underline: false,
+      align: 'left',
+      lineHeight: styleConfig.lineHeight,
+    };
+
+    if (!currentEditingTable || !tableCellEditing.rowIndex || !tableCellEditing.colIndex) {
+      return defaultStyle;
+    }
+
+    const tableConfig = currentEditingTable.tableConfig;
+    const cells = tableConfig?.cells || [];
+    const cell = cells[tableCellEditing.rowIndex]?.[tableCellEditing.colIndex];
+
+    if (cell?.style) {
+      return {
+        ...defaultStyle,
+        ...cell.style,
+      };
+    }
+
+    return defaultStyle;
+  };
+
+  // 更新表格单元格文本样式
+  const updateTableCellTextStyle = (updates: Partial<ComponentTextStyle>) => {
+    if (!currentEditingTable || !tableCellEditing.rowIndex || !tableCellEditing.colIndex) {
+      return;
+    }
+
+    const tableConfig = currentEditingTable.tableConfig;
+    const cells = tableConfig?.cells || [];
+
+    // 创建新的单元格数据
+    const newCells = cells.map((row: any[]) => 
+      row.map((cell: any) => ({ ...cell }))
+    );
+
+    // 更新当前单元格的样式
+    const rowIndex = tableCellEditing.rowIndex;
+    const colIndex = tableCellEditing.colIndex;
+    
+    if (!newCells[rowIndex][colIndex].style) {
+      newCells[rowIndex][colIndex].style = {};
+    }
+
+    newCells[rowIndex][colIndex].style = {
+      ...newCells[rowIndex][colIndex].style,
+      ...updates,
+    };
+
+    // 如果有选中多个单元格，也更新它们
+    if (tableEditing.selectedCells.length > 0) {
+      cells.forEach((row: any[], rIndex: number) => {
+        row.forEach((cell: any, cIndex: number) => {
+          const cellId = cell?.id || `cell-${rIndex}-${cIndex}`;
+          if (tableEditing.selectedCells.includes(cellId) && !(rIndex === rowIndex && cIndex === colIndex)) {
+            if (!newCells[rIndex][cIndex].style) {
+              newCells[rIndex][cIndex].style = {};
+            }
+            newCells[rIndex][cIndex].style = {
+              ...newCells[rIndex][cIndex].style,
+              ...updates,
+            };
+          }
+        });
+      });
+    }
+
+    updateComponent(currentEditingTable.id, {
+      tableConfig: {
+        ...tableConfig,
+        cells: newCells,
+      },
+    });
+  };
+
+  // 表格字体大小增减
+  const increaseTableCellFontSize = () => {
+    const currentStyle = getCurrentTableCellTextStyle();
+    updateTableCellTextStyle({ fontSize: Math.min(72, currentStyle.fontSize + 2) });
+  };
+
+  const decreaseTableCellFontSize = () => {
+    const currentStyle = getCurrentTableCellTextStyle();
+    updateTableCellTextStyle({ fontSize: Math.max(8, currentStyle.fontSize - 2) });
+  };
+
   // 处理表头表尾弹窗打开
   const handleOpenHeaderFooterDialog = () => {
     setTableEditing({
@@ -541,23 +636,14 @@ export function EditorPage({ onExit }: EditorPageProps) {
           </div>
         )}
 
-        {/* 表格内容编辑工具栏 - 仅在编辑表格且选中单元格时显示（基础版本）*/}
+        {/* 表格内容编辑工具栏 - 仅在编辑表格且选中单元格时显示 */}
         {tableEditing.isEditing && (
           <div className="border-b bg-background/95 backdrop-blur px-4 py-2">
             <TextToolbar
-              textStyle={{
-                fontSize: styleConfig.fontSize,
-                color: '#000000',
-                bold: false,
-                italic: false,
-                underline: false,
-                align: 'left',
-                lineHeight: styleConfig.lineHeight,
-              }}
-              onChange={(style) => {
-                console.log('表格内容样式变化:', style);
-                // TODO: 实现单元格样式更新
-              }}
+              textStyle={getCurrentTableCellTextStyle()}
+              onChange={updateTableCellTextStyle}
+              onIncreaseFontSize={increaseTableCellFontSize}
+              onDecreaseFontSize={decreaseTableCellFontSize}
             />
           </div>
         )}
