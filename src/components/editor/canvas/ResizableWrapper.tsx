@@ -3,13 +3,14 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { EditorComponent } from '@/types/editor';
 import { useEditorStore } from '@/store/editorStore';
+import { isElement, isEventTarget, stopPropagationSafe, preventDefaultSafe } from '@/utils/domUtils';
 
 interface ResizableWrapperProps {
   component: EditorComponent;
   children: React.ReactNode;
   isSelected: boolean;
   onSelect: () => void;
-  onDoubleClick?: () => void;
+  onDoubleClick?: (e: React.MouseEvent) => void;
 }
 
 // 调整大小的手柄位置
@@ -32,18 +33,21 @@ export function ResizableWrapper({
 
   // 开始拖拽移动
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    // 防御性检查：确保 e.target 是有效的 Element
+    // 防御性检查：确保 target 和 currentTarget 都是有效的 Element
     const target = e.target;
     const currentTarget = e.currentTarget;
     
-    if (target instanceof Element && currentTarget instanceof Element) {
-      if (target !== currentTarget && !target.classList.contains('drag-handle')) {
-        return;
-      }
+    if (!isElement(target) || !isElement(currentTarget)) {
+      return;
     }
     
-    e.preventDefault();
-    e.stopPropagation();
+    // 检查是否点击了子元素（非拖拽区域）
+    if (target !== currentTarget && !target.classList.contains('drag-handle')) {
+      return;
+    }
+    
+    preventDefaultSafe(e.nativeEvent);
+    stopPropagationSafe(e.nativeEvent);
     
     setIsDragging(true);
     startPosRef.current = { x: e.clientX, y: e.clientY };
@@ -59,8 +63,13 @@ export function ResizableWrapper({
 
   // 开始调整大小
   const handleResizeStart = useCallback((e: React.MouseEvent, handle: ResizeHandle) => {
-    e.preventDefault();
-    e.stopPropagation();
+    // 防御性检查
+    if (!isElement(e.target)) {
+      return;
+    }
+    
+    preventDefaultSafe(e.nativeEvent);
+    stopPropagationSafe(e.nativeEvent);
     
     setIsResizing(true);
     setActiveHandle(handle);
@@ -186,6 +195,19 @@ export function ResizableWrapper({
     ));
   };
 
+  // 点击处理
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    stopPropagationSafe(e.nativeEvent);
+    onSelect();
+  }, [onSelect]);
+
+  // 双击处理
+  const handleDoubleClickClick = useCallback((e: React.MouseEvent) => {
+    if (onDoubleClick) {
+      onDoubleClick(e);
+    }
+  }, [onDoubleClick]);
+
   return (
     <div
       className={`absolute ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''} ${
@@ -198,31 +220,12 @@ export function ResizableWrapper({
         minHeight: `${component.height}px`,
         zIndex: component.zIndex,
       }}
-      onClick={(e) => {
-        e.stopPropagation();
-        onSelect();
-      }}
-      onDoubleClick={onDoubleClick}
+      onClick={handleClick}
+      onDoubleClick={handleDoubleClickClick}
       onMouseDown={handleMouseDown}
     >
-      {/* 拖拽区域 */}
-      <div 
-        className="drag-handle absolute inset-0 cursor-move"
-        style={{ background: isSelected ? 'rgba(59, 130, 246, 0.05)' : 'transparent' }}
-      />
-      
-      {/* 内容 */}
-      <div className="relative w-full h-full overflow-hidden pointer-events-none">
-        {children}
-      </div>
-
-      {/* 调整大小手柄 */}
+      {children}
       {renderResizeHandles()}
-
-      {/* hover 效果 */}
-      {!isSelected && (
-        <div className="absolute inset-0 border border-transparent hover:border-primary/50 pointer-events-none transition-colors" />
-      )}
     </div>
   );
 }

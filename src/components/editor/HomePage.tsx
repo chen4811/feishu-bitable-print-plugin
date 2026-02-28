@@ -7,18 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import { 
   Plus, 
   FileText, 
   Table, 
   Upload, 
   FileSpreadsheet, 
   Presentation,
-  Star,
   Crown,
   ChevronRight,
   Search,
@@ -27,13 +21,14 @@ import {
   AlertCircle,
   CheckCircle2,
   RefreshCw,
-  ChevronDown,
   Bug,
-  XCircle
+  XCircle,
+  HelpCircle
 } from 'lucide-react';
 import { presetTemplates, templateCategories } from '@/data/presetTemplates';
 import { PresetTemplate } from '@/types/editor';
 import { usePrintSDK } from '@/hooks/usePrintSDK';
+import { FeishuEnvStatus } from '@/lib/feishu-env';
 
 interface HomePageProps {
   onCreateNew: () => void;
@@ -42,50 +37,66 @@ interface HomePageProps {
 
 // 创建方式卡片
 const createOptions = [
-  {
-    icon: Plus,
-    title: '创建排版',
-    description: '空白自定义排版',
-    action: 'create',
-  },
-  {
-    icon: Table,
-    title: '自动生成表格排版',
-    description: '基于表格数据生成',
-    action: 'auto-table',
-  },
-  {
-    icon: Upload,
-    title: '导入排版',
-    description: '导入已有排版文件',
-    action: 'import',
-  },
-  {
-    icon: FileText,
-    title: '创建文档模板',
-    description: 'Word格式模板',
-    action: 'docx',
-  },
-  {
-    icon: FileSpreadsheet,
-    title: '创建表格模板',
-    description: 'Excel格式模板',
-    action: 'excel',
-  },
-  {
-    icon: Presentation,
-    title: '创建幻灯片模板',
-    description: 'PPT格式模板',
-    action: 'ppt',
-  },
+  { icon: Plus, title: '创建排版', description: '空白自定义排版', action: 'create' },
+  { icon: Table, title: '自动生成表格排版', description: '基于表格数据生成', action: 'auto-table' },
+  { icon: Upload, title: '导入排版', description: '导入已有排版文件', action: 'import' },
+  { icon: FileText, title: '创建文档模板', description: 'Word格式模板', action: 'docx' },
+  { icon: FileSpreadsheet, title: '创建表格模板', description: 'Excel格式模板', action: 'excel' },
+  { icon: Presentation, title: '创建幻灯片模板', description: 'PPT格式模板', action: 'ppt' },
 ];
+
+// 环境状态显示组件
+function EnvStatusBadge({ status, isFeishuEnvironment }: { status: FeishuEnvStatus; isFeishuEnvironment: boolean }) {
+  switch (status) {
+    case 'checking':
+      return (
+        <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+          检测环境...
+        </Badge>
+      );
+    case 'ready':
+      return (
+        <Badge variant="default" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+          <CheckCircle2 className="w-3 h-3 mr-1" />
+          飞书环境已连接
+        </Badge>
+      );
+    case 'not_feishu':
+      return (
+        <Badge variant="outline" className="border-amber-500 text-amber-700">
+          <AlertCircle className="w-3 h-3 mr-1" />
+          非飞书环境（模拟数据）
+        </Badge>
+      );
+    case 'error':
+      return (
+        <Badge variant="destructive">
+          <XCircle className="w-3 h-3 mr-1" />
+          环境错误
+        </Badge>
+      );
+    default:
+      return null;
+  }
+}
 
 export function HomePage({ onCreateNew, onSelectTemplate }: HomePageProps) {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showDebug, setShowDebug] = useState(false);
   
-  const { isLoading, error, isFeishuEnvironment, tableName, fields, records, refreshData, debugInfo } = usePrintSDK();
+  const { 
+    isLoading, 
+    error, 
+    isFeishuEnvironment, 
+    envStatus,
+    tableName, 
+    fields, 
+    records, 
+    refreshData, 
+    debugInfo 
+  } = usePrintSDK();
 
   // 过滤模板
   const filteredTemplates = presetTemplates.filter((template) => {
@@ -99,7 +110,6 @@ export function HomePage({ onCreateNew, onSelectTemplate }: HomePageProps) {
     if (action === 'create' || action === 'auto-table') {
       onCreateNew();
     } else {
-      // TODO: 实现其他创建方式
       alert(`${action} 功能开发中...`);
     }
   };
@@ -116,44 +126,22 @@ export function HomePage({ onCreateNew, onSelectTemplate }: HomePageProps) {
             <h1 className="text-lg font-semibold">排版打印</h1>
           </div>
           <div className="flex items-center gap-3">
-            {/* SDK 状态指示器 */}
-            <div className="flex items-center gap-2 text-sm">
-              {isLoading ? (
-                <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                  加载中
-                </Badge>
-              ) : error ? (
-                <Badge variant="destructive">
-                  <AlertCircle className="w-3 h-3 mr-1" />
-                  加载失败
-                </Badge>
-              ) : isFeishuEnvironment ? (
-                <Badge variant="default" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                  <CheckCircle2 className="w-3 h-3 mr-1" />
-                  飞书环境
-                </Badge>
-              ) : (
-                <Badge variant="outline">
-                  模拟数据
-                </Badge>
-              )}
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={refreshData} title="刷新数据">
-                <RefreshCw className="w-3 h-3" />
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-6 w-6" 
-                onClick={() => setShowDebug(!showDebug)} 
-                title="显示调试信息"
-              >
-                <Bug className="w-3 h-3" />
-              </Button>
-            </div>
-            <Button variant="outline" size="sm">
-              高级版
+            {/* 环境状态 */}
+            <EnvStatusBadge status={envStatus} isFeishuEnvironment={isFeishuEnvironment} />
+            
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={refreshData} title="刷新数据">
+              <RefreshCw className="w-3 h-3" />
             </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-6 w-6" 
+              onClick={() => setShowDebug(!showDebug)} 
+              title="显示调试信息"
+            >
+              <Bug className="w-3 h-3" />
+            </Button>
+            <Button variant="outline" size="sm">高级版</Button>
             <Button size="sm" onClick={onCreateNew}>
               <Plus className="w-4 h-4 mr-1" />
               创建排版
@@ -174,16 +162,7 @@ export function HomePage({ onCreateNew, onSelectTemplate }: HomePageProps) {
               </Button>
             </div>
             <div className="text-xs font-mono bg-background border rounded p-3 max-h-48 overflow-auto">
-              <pre>{JSON.stringify({
-                isLoading,
-                error,
-                isFeishuEnvironment,
-                tableName,
-                fieldsCount: fields.length,
-                recordsCount: records.length,
-                debugInfo,
-                fields: fields.slice(0, 5).map(f => ({ id: f.id, name: f.name, type: f.type })),
-              }, null, 2)}</pre>
+              <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
             </div>
           </div>
         )}
@@ -204,7 +183,7 @@ export function HomePage({ onCreateNew, onSelectTemplate }: HomePageProps) {
             )}
             {!isFeishuEnvironment && !isLoading && (
               <span className="ml-2 text-amber-600 dark:text-amber-400">
-                · 使用模拟数据（请在飞书环境中打开）
+                · 使用模拟数据
               </span>
             )}
             <Button variant="link" className="p-0 ml-2 h-auto">查看最佳实践案例</Button>
@@ -214,33 +193,49 @@ export function HomePage({ onCreateNew, onSelectTemplate }: HomePageProps) {
         {/* 错误提示 */}
         {error && (
           <Card className="mb-6 p-4 border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20">
-            <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-              <AlertCircle className="w-5 h-5" />
-              <span>数据加载失败: {error}</span>
-              <Button variant="outline" size="sm" onClick={refreshData} className="ml-auto">
-                重试
-              </Button>
+            <div className="flex items-start gap-2 text-red-600 dark:text-red-400">
+              <AlertCircle className="w-5 h-5 mt-0.5" />
+              <div>
+                <p className="font-medium">数据加载失败</p>
+                <p className="text-sm mt-1">{error}</p>
+                <Button variant="outline" size="sm" onClick={refreshData} className="mt-2">
+                  重试
+                </Button>
+              </div>
             </div>
           </Card>
         )}
 
-        {/* 字段为空警告 */}
+        {/* 权限提示 */}
         {!isLoading && !error && isFeishuEnvironment && fields.length === 0 && (
           <Card className="mb-6 p-4 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20">
             <div className="flex items-start gap-2 text-amber-700 dark:text-amber-300">
-              <AlertCircle className="w-5 h-5 mt-0.5" />
+              <HelpCircle className="w-5 h-5 mt-0.5" />
               <div>
                 <p className="font-medium">未能读取到字段数据</p>
-                <p className="text-sm mt-1">
-                  可能的原因：
-                </p>
+                <p className="text-sm mt-1">可能的原因：</p>
                 <ul className="text-sm list-disc list-inside mt-1">
                   <li>多维表格插件未获得数据访问权限</li>
                   <li>飞书开放平台应用权限配置不完整</li>
                   <li>当前表格为空或没有字段</li>
                 </ul>
                 <p className="text-sm mt-2">
-                  请检查飞书开放平台的应用权限配置，确保已开通「多维表格」相关权限。
+                  <strong>解决方案：</strong>请在飞书开放平台检查应用权限，确保已开通「多维表格」相关权限（bitable:record:read, bitable:field:read）。
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* 非飞书环境提示 */}
+        {envStatus === 'not_feishu' && !isLoading && (
+          <Card className="mb-6 p-4 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
+            <div className="flex items-start gap-2 text-blue-700 dark:text-blue-300">
+              <AlertCircle className="w-5 h-5 mt-0.5" />
+              <div>
+                <p className="font-medium">当前不在飞书环境中</p>
+                <p className="text-sm mt-1">
+                  请在飞书多维表格的侧边栏中打开此插件，以使用真实数据。当前显示的是模拟数据。
                 </p>
               </div>
             </div>
@@ -310,22 +305,18 @@ export function HomePage({ onCreateNew, onSelectTemplate }: HomePageProps) {
                 className="cursor-pointer hover:border-primary hover:shadow-md transition-all group overflow-hidden"
                 onClick={() => onSelectTemplate(template)}
               >
-                {/* 缩略图 */}
                 <div className="aspect-[3/4] bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 relative">
                   <div className="absolute inset-0 flex items-center justify-center">
                     <FileText className="w-12 h-12 text-slate-300 dark:text-slate-600" />
                   </div>
-                  {/* 格式标签 */}
                   <Badge className="absolute bottom-2 right-2 text-xs" variant="secondary">
                     {template.format}
                   </Badge>
-                  {/* 高级标签 */}
                   {template.isPremium && (
                     <div className="absolute top-2 left-2">
                       <Crown className="w-4 h-4 text-yellow-500" />
                     </div>
                   )}
-                  {/* Hover 遮罩 */}
                   <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
                     <Button size="sm" variant="secondary">
                       使用模板
@@ -333,7 +324,6 @@ export function HomePage({ onCreateNew, onSelectTemplate }: HomePageProps) {
                     </Button>
                   </div>
                 </div>
-                {/* 模板信息 */}
                 <div className="p-3">
                   <h4 className="font-medium text-sm truncate">{template.name}</h4>
                   <p className="text-xs text-muted-foreground truncate">{template.description}</p>
@@ -360,12 +350,8 @@ export function HomePage({ onCreateNew, onSelectTemplate }: HomePageProps) {
             <span>高级版</span>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="link" size="sm" className="text-muted-foreground">
-              快速指南
-            </Button>
-            <Button variant="link" size="sm" className="text-muted-foreground">
-              帮助中心
-            </Button>
+            <Button variant="link" size="sm" className="text-muted-foreground">快速指南</Button>
+            <Button variant="link" size="sm" className="text-muted-foreground">帮助中心</Button>
           </div>
         </div>
       </footer>

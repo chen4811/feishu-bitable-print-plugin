@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { EditorComponent, TextComponent, QRCodeComponent, BarcodeComponent, LineComponent, AutoTableComponent } from '@/types/editor';
 import { useEditorStore } from '@/store/editorStore';
 import { ResizableWrapper } from './ResizableWrapper';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Trash2, Move, ArrowUp, ArrowDown, ChevronUp, ChevronDown } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
+import { isElement, preventDefaultSafe } from '@/utils/domUtils';
 
 interface CanvasComponentProps {
   component: EditorComponent;
@@ -22,19 +23,22 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // 文本组件编辑
-  const handleDoubleClick = () => {
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    // 安全检查
+    if (!isElement(e.target)) return;
+    
     if (component.type === 'text') {
       setIsEditing(true);
       setEditContent((component as TextComponent).content);
     }
-  };
+  }, [component]);
 
-  const handleTextBlur = () => {
+  const handleTextBlur = useCallback(() => {
     setIsEditing(false);
     if (component.type === 'text') {
       updateComponent(component.id, { content: editContent });
     }
-  };
+  }, [component.id, component.type, editContent, updateComponent]);
 
   // 生成二维码
   useEffect(() => {
@@ -43,7 +47,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       QRCode.toCanvas(canvasRef.current, qrcodeComponent.content, {
         width: Math.min(qrcodeComponent.size, component.width),
         margin: 1,
-      });
+      }).catch(console.error);
     }
   }, [component]);
 
@@ -211,6 +215,11 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     const minZIndex = Math.min(...components.map(c => c.zIndex));
     const isAtTop = component.zIndex === maxZIndex;
     const isAtBottom = component.zIndex === minZIndex;
+
+    // 安全的事件处理
+    const handleStopPropagation = (e: React.MouseEvent) => {
+      e.stopPropagation();
+    };
 
     return (
       <div className="absolute -top-10 left-0 flex items-center gap-1 bg-background border rounded px-1 py-0.5 shadow-sm">
