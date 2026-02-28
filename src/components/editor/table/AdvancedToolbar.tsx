@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   CheckSquare, 
-  TableCells, 
+  Layout, 
   Table, 
   AlignLeft, 
   AlignCenter, 
@@ -101,7 +101,7 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
           className="h-8 w-8"
           title="表头"
         >
-          <TableCells className="w-4 h-4" />
+          <Layout className="w-4 h-4" />
         </Button>
         
         <Button 
