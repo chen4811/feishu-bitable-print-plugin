@@ -528,10 +528,20 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 </div>
               )}
               
-              {/* 编辑状态提示 */}
+              {/* 完成编辑按钮和提示 */}
               {isTableEditing && (
-                <div className="text-xs text-center text-muted-foreground mt-1">
-                  点击单元格编辑内容，点击"完成编辑"退出
+                <div className="mt-2 flex items-center justify-center gap-2">
+                  <Button 
+                    variant="default" 
+                    size="sm" 
+                    onClick={handleEditTable}
+                    className="bg-green-500 hover:bg-green-600"
+                  >
+                    完成编辑
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    点击单元格编辑内容，点击"完成编辑"退出
+                  </span>
                 </div>
               )}
             </div>
