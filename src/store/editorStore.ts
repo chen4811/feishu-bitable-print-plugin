@@ -33,7 +33,6 @@ interface TableEditingState {
   onMergeCells: () => void;
   onHeaderFooterChange: (header: boolean, footer: boolean) => void;
   onBorderChange: (borderType: string) => void;
-  onAlignmentChange: (alignment: 'left' | 'center' | 'right') => void;
   onColorChange: (colorType: 'text' | 'fill', color: string) => void;
   onFinishEdit: () => void;
 }
@@ -188,7 +187,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     onMergeCells: () => {},
     onHeaderFooterChange: () => {},
     onBorderChange: () => {},
-    onAlignmentChange: () => {},
     onColorChange: () => {},
     onFinishEdit: () => {},
   },

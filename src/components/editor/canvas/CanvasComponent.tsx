@@ -92,9 +92,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         onBorderChange: (borderType: string) => {
           console.log('边框变化:', borderType);
         },
-        onAlignmentChange: (alignment: 'left' | 'center' | 'right') => {
-          console.log('对齐变化:', alignment);
-        },
         onColorChange: (colorType: 'text' | 'fill', color: string) => {
           console.log('颜色变化:', colorType, color);
         },

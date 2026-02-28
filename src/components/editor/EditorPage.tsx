@@ -404,7 +404,6 @@ export function EditorPage({ onExit }: EditorPageProps) {
                   selectedCellCount={tableEditing.selectedCells.length}
                   onHeaderFooterChange={tableEditing.onHeaderFooterChange}
                   onBorderChange={tableEditing.onBorderChange}
-                  onAlignmentChange={tableEditing.onAlignmentChange}
                   onColorChange={tableEditing.onColorChange}
                   onFinishEdit={tableEditing.onFinishEdit}
                 />

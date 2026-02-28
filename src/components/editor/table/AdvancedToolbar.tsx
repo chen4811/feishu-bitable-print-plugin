@@ -3,9 +3,6 @@ import {
   CheckSquare, 
   Layout, 
   Table, 
-  AlignLeft, 
-  AlignCenter, 
-  AlignRight, 
   Palette, 
   Grid,
   Check as CheckIcon,
@@ -21,7 +18,6 @@ interface AdvancedToolbarProps {
   selectedCellCount: number;
   onHeaderFooterChange: (header: boolean, footer: boolean) => void;
   onBorderChange: (borderType: string) => void;
-  onAlignmentChange: (alignment: 'left' | 'center' | 'right') => void;
   onColorChange: (colorType: 'text' | 'fill', color: string) => void;
   onFinishEdit: () => void;
 }
@@ -31,7 +27,6 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
   selectedCellCount,
   onHeaderFooterChange,
   onBorderChange,
-  onAlignmentChange,
   onColorChange,
   onFinishEdit
 }) => {
@@ -131,40 +126,7 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
         
         <div className="w-px h-5 bg-gray-200 mx-1" />
         
-        {/* 第五组：对齐 */}
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => onAlignmentChange('left')}
-          className="h-8 w-8"
-          title="左对齐"
-        >
-          <AlignLeft className="w-4 h-4" />
-        </Button>
-        
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => onAlignmentChange('center')}
-          className="h-8 w-8"
-          title="居中对齐"
-        >
-          <AlignCenter className="w-4 h-4" />
-        </Button>
-        
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => onAlignmentChange('right')}
-          className="h-8 w-8"
-          title="右对齐"
-        >
-          <AlignRight className="w-4 h-4" />
-        </Button>
-        
-        <div className="w-px h-5 bg-gray-200 mx-1" />
-        
-        {/* 第六组：颜色 */}
+        {/* 第五组：颜色 */}
         <Button 
           variant="ghost" 
           size="icon" 
