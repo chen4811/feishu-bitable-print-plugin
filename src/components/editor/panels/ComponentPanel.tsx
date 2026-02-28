@@ -73,6 +73,8 @@ function DraggableComponentItem({
         isDragging ? 'opacity-50' : ''
       }`}
       onClick={onAdd}
+      {...attributes}
+      {...listeners}
     >
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-1 text-muted-foreground cursor-grab active:cursor-grabbing">
