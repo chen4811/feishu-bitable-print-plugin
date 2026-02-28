@@ -1,9 +1,8 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   DndContext,
-  closestCenter,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -13,7 +12,6 @@ import {
   DragEndEvent,
 } from '@dnd-kit/core';
 import {
-  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
@@ -35,6 +33,7 @@ export function CanvasArea() {
     addComponent,
     deleteComponent,
     reorderComponents,
+    updateComponent,
   } = useEditorStore();
   
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -135,7 +134,6 @@ export function CanvasArea() {
     <div className="flex items-start justify-center">
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
@@ -149,7 +147,7 @@ export function CanvasArea() {
           }}
           onClick={handleCanvasClick}
         >
-          {/* 使用Flexbox垂直布局 */}
+          {/* 使用 flex-wrap 布局，为未来功能预留 */}
           <div
             className="flex flex-col gap-2"
             style={{ minHeight: `${contentHeight}px` }}
