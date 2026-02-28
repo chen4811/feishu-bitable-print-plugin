@@ -182,7 +182,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         newComponent.textStyle = createDefaultTextStyle(state.styleConfig);
         break;
       case 'table':
-        newComponent.minHeight = defaultSize.height;
         newComponent.tableConfig = createDefaultTableConfig();
         break;
       case 'image':

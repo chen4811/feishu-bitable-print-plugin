@@ -234,7 +234,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       `}
       style={{
         width: component.width === 100 ? '100%' : `${component.width}%`,
-        minHeight: (component as any).minHeight ? `${(component as any).minHeight}px` : 'auto',
       }}
       onClick={(e) => {
         e.stopPropagation();
