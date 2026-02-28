@@ -117,7 +117,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
 
   // 获取当前选中单元格的文本样式（取第一个选中单元格的样式）
   const getCurrentTableCellTextStyle = (): ComponentTextStyle => {
-    // 默认样式
+    // 默认样式 - 包含所有必需属性
     const defaultStyle: ComponentTextStyle = {
       fontSize: styleConfig.fontSize,
       color: '#000000',
@@ -126,6 +126,11 @@ export function EditorPage({ onExit }: EditorPageProps) {
       underline: false,
       align: 'left',
       lineHeight: styleConfig.lineHeight,
+      backgroundColor: undefined,
+      headingLevel: null,
+      listType: null,
+      textDecoration: 'none',
+      textTransform: 'none',
     };
 
     if (!currentEditingTable) {

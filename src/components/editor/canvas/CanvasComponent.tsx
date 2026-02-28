@@ -546,19 +546,29 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       // 预览模式 - 渲染带样式的内容
                       // 处理标题、列表等特殊样式
                       const renderContentWithStyle = () => {
+                        // 基础文本样式
+                        const baseTextStyle: React.CSSProperties = {
+                          fontSize: `${cellStyle.fontSize || styleConfig.fontSize}px`,
+                          fontWeight: cellStyle.bold ? 'bold' : 'normal',
+                          fontStyle: cellStyle.italic ? 'italic' : 'normal',
+                          color: cellStyle.color || '#000000',
+                          textAlign: cellStyle.align || 'left',
+                          lineHeight: cellStyle.lineHeight || styleConfig.lineHeight,
+                          textDecoration: cellStyle.underline ? 'underline' : cellStyle.textDecoration || 'none',
+                          textTransform: cellStyle.textTransform || 'none',
+                          margin: 0,
+                          padding: 0,
+                          display: 'block',
+                          width: '100%',
+                        };
+
                         // 标题样式
                         if (cellStyle.headingLevel === 1) {
                           return (
                             <h1 style={{ 
-                              fontSize: cellStyle.fontSize ? `${cellStyle.fontSize}px` : '24px', 
-                              fontWeight: cellStyle.bold ? 'bold' : 'normal',
-                              fontStyle: cellStyle.italic ? 'italic' : 'normal',
-                              color: cellStyle.color || '#000000',
-                              textAlign: cellStyle.align || 'left',
-                              lineHeight: cellStyle.lineHeight || styleConfig.lineHeight,
-                              textDecoration: cellStyle.underline ? 'underline' : 'none',
-                              margin: 0,
-                              padding: 0,
+                              ...baseTextStyle,
+                              fontSize: cellStyle.fontSize ? `${cellStyle.fontSize}px` : '24px',
+                              fontWeight: 'bold',
                             }}>
                               {cellContent || ''}
                             </h1>
@@ -567,15 +577,9 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                         if (cellStyle.headingLevel === 2) {
                           return (
                             <h2 style={{ 
-                              fontSize: cellStyle.fontSize ? `${cellStyle.fontSize}px` : '18px', 
-                              fontWeight: cellStyle.bold ? 'bold' : 'normal',
-                              fontStyle: cellStyle.italic ? 'italic' : 'normal',
-                              color: cellStyle.color || '#000000',
-                              textAlign: cellStyle.align || 'left',
-                              lineHeight: cellStyle.lineHeight || styleConfig.lineHeight,
-                              textDecoration: cellStyle.underline ? 'underline' : 'none',
-                              margin: 0,
-                              padding: 0,
+                              ...baseTextStyle,
+                              fontSize: cellStyle.fontSize ? `${cellStyle.fontSize}px` : '18px',
+                              fontWeight: 'bold',
                             }}>
                               {cellContent || ''}
                             </h2>
@@ -587,15 +591,15 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                             <ul style={{ 
                               marginLeft: '1.5rem', 
                               paddingLeft: 0,
-                              textAlign: cellStyle.align || 'left',
-                              lineHeight: cellStyle.lineHeight || styleConfig.lineHeight,
+                              textAlign: baseTextStyle.textAlign,
+                              lineHeight: baseTextStyle.lineHeight,
                             }}>
                               <li style={{
-                                fontSize: `${cellStyle.fontSize || styleConfig.fontSize}px`,
-                                fontWeight: cellStyle.bold ? 'bold' : 'normal',
-                                fontStyle: cellStyle.italic ? 'italic' : 'normal',
-                                color: cellStyle.color || '#000000',
-                                textDecoration: cellStyle.underline ? 'underline' : 'none',
+                                fontSize: baseTextStyle.fontSize,
+                                fontWeight: baseTextStyle.fontWeight,
+                                fontStyle: baseTextStyle.fontStyle,
+                                color: baseTextStyle.color,
+                                textDecoration: baseTextStyle.textDecoration,
                               }}>
                                 {cellContent || ''}
                               </li>
@@ -607,15 +611,15 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                             <ol style={{ 
                               marginLeft: '1.5rem', 
                               paddingLeft: 0,
-                              textAlign: cellStyle.align || 'left',
-                              lineHeight: cellStyle.lineHeight || styleConfig.lineHeight,
+                              textAlign: baseTextStyle.textAlign,
+                              lineHeight: baseTextStyle.lineHeight,
                             }}>
                               <li style={{
-                                fontSize: `${cellStyle.fontSize || styleConfig.fontSize}px`,
-                                fontWeight: cellStyle.bold ? 'bold' : 'normal',
-                                fontStyle: cellStyle.italic ? 'italic' : 'normal',
-                                color: cellStyle.color || '#000000',
-                                textDecoration: cellStyle.underline ? 'underline' : 'none',
+                                fontSize: baseTextStyle.fontSize,
+                                fontWeight: baseTextStyle.fontWeight,
+                                fontStyle: baseTextStyle.fontStyle,
+                                color: baseTextStyle.color,
+                                textDecoration: baseTextStyle.textDecoration,
                               }}>
                                 {cellContent || ''}
                               </li>
@@ -630,11 +634,10 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                               target="_blank" 
                               rel="noopener noreferrer"
                               style={{ 
+                                ...baseTextStyle,
                                 color: '#3b82f6', 
                                 textDecoration: 'underline',
-                                fontSize: `${cellStyle.fontSize || styleConfig.fontSize}px`,
-                                fontWeight: cellStyle.bold ? 'bold' : 'normal',
-                                fontStyle: cellStyle.italic ? 'italic' : 'normal',
+                                display: 'inline',
                               }}
                               onClick={(e) => e.stopPropagation()}
                             >
@@ -644,10 +647,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                         }
                         // 默认文本样式
                         return (
-                          <span style={{
-                            display: 'block',
-                            width: '100%',
-                          }}>
+                          <span style={baseTextStyle}>
                             {cellContent || ''}
                           </span>
                         );
