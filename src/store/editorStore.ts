@@ -174,6 +174,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       id,
       type,
       width: defaultSize.width,
+      layout: { width: '100%' }, // 默认100%宽度
     };
     
     switch (type) {

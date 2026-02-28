@@ -60,13 +60,21 @@ export interface TableConfig {
   cells: TableCellData[][];
 }
 
-// 画布组件节点（流式布局 - 无position）
+// 网格布局配置
+export interface ComponentLayout {
+  width: '100%' | '50%' | '33%' | '25%'; // 网格宽度占比
+  columnSpan?: number; // 可选：跨列数（12列网格系统）
+}
+
+// 画布组件节点（网格布局 - v17.0）
 export interface BaseCanvasNode {
   id: string;
   type: 'text' | 'table' | 'image' | 'barcode' | 'qrcode' | 'line';
-  width: number; // 相对于画布宽度的百分比或固定值
+  width: number; // 保留兼容性
   height?: number;
   minHeight?: number;
+  // 新增：网格布局属性
+  layout?: ComponentLayout;
 }
 
 // 文本组件节点
