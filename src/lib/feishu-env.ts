@@ -205,7 +205,7 @@ export async function fetchFields(): Promise<Array<{
     console.log('[FeishuEnv] table:', table);
     
     const fields = await table.getFieldList();
-    console.log('[FeishuEnv] 获取到原始字段数据:', fields);
+    console.log('[FeishuEnv] 获取到原始字段数据 (完整 JSON):', JSON.stringify(fields, null, 2));
     console.log('[FeishuEnv] 获取到字段数量:', fields?.length || 0);
 
     if (!Array.isArray(fields)) {
@@ -215,36 +215,37 @@ export async function fetchFields(): Promise<Array<{
 
     const result = fields.map((field: any, index: number) => {
       console.log(`[FeishuEnv] 字段 ${index} 原始数据:`, field);
-      console.log(`[FeishuEnv] 字段 ${index} 所有属性:`, Object.keys(field));
       
-      // 详细打印字段对象的所有属性
-      if (field.context && Array.isArray(field.context)) {
-        console.log(`[FeishuEnv] 字段 ${index} context 内容:`, field.context);
+      // 安全检查
+      if (!field || typeof field !== 'object') {
+        console.log(`[FeishuEnv] 字段 ${index} 无效，使用默认值`);
+        return {
+          id: `field_${index}`,
+          name: `字段${index + 1}`,
+          type: 'text',
+        };
       }
       
-      // 尝试多种可能的字段名路径
+      console.log(`[FeishuEnv] 字段 ${index} 所有属性:`, Object.keys(field));
+      
+      // 尝试多种可能的字段名路径 - 使用更安全的访问方式
       let fieldName = `字段${index + 1}`;
+      
+      // 直接属性尝试
       if (field.name) fieldName = field.name;
       else if (field.fieldName) fieldName = field.fieldName;
+      else if (field.field_name) fieldName = field.field_name;
       else if (field.title) fieldName = field.title;
       else if (field.label) fieldName = field.label;
       
-      // 尝试从 context 中找
-      if (field.context && Array.isArray(field.context)) {
-        for (const ctx of field.context) {
-          if (ctx.name) fieldName = ctx.name;
-          else if (ctx.fieldName) fieldName = ctx.fieldName;
-          else if (ctx.title) fieldName = ctx.title;
-          else if (ctx.label) fieldName = ctx.label;
-        }
-      }
+      // 安全获取字段ID
+      const fieldId = field.id || field.fieldId || field.field_id || `field_${index}`;
+      const fieldType = field.type ? (FIELD_TYPE_MAP[field.type] || 'text') : 'text';
       
-      const fieldType = FIELD_TYPE_MAP[field.type] || 'text';
-      
-      console.log(`[FeishuEnv] 字段 ${index} 解析结果: id=${field.id}, name=${fieldName}, type=${fieldType}`);
+      console.log(`[FeishuEnv] 字段 ${index} 解析结果: id=${fieldId}, name=${fieldName}, type=${fieldType}`);
       
       return {
-        id: field.id || `field_${index}`,
+        id: fieldId,
         name: fieldName,
         type: fieldType,
       };
