@@ -625,9 +625,9 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                           >
                             {/* 列操作按钮 - 仅在第一行 */}
                             {rowIndex === 0 && (
-                              <div className="flex items-center justify-center gap-0.5 mb-1" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                              <>
                                 {hoveredCol === colIndex ? (
-                                  <>
+                                  <div className="flex items-center justify-center gap-0.5" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
                                     <button onClick={(e) => { e.stopPropagation(); handleAddColumn(tableComp, colIndex); }} className="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600" title="在左侧插入列">
                                       <span className="text-xs font-bold">←</span>
                                     </button>
@@ -641,11 +641,13 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                         </svg>
                                       </button>
                                     )}
-                                  </>
+                                  </div>
                                 ) : (
-                                  <div className="w-2 h-2 rounded-full bg-gray-300 hover:bg-gray-400 transition-colors" />
+                                  <div className="flex items-center justify-center">
+                                    <div className="w-2 h-2 rounded-full bg-gray-300 hover:bg-gray-400 transition-colors" />
+                                  </div>
                                 )}
-                              </div>
+                              </>
                             )}
                             
                             {(() => {
@@ -777,7 +779,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       >
                         {/* 保留列操作按钮空间（仅第一行，隐藏内容） */}
                         {rowIndex === 0 && (
-                          <div className="mb-1 opacity-0">
+                          <div className="opacity-0">
                             <div className="w-2 h-2 rounded-full" />
                           </div>
                         )}
