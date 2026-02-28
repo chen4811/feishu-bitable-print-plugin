@@ -105,6 +105,9 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   // 悬停状态 - 用于显示操作按钮
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
   const [hoveredCol, setHoveredCol] = useState<number | null>(null);
+  // 圆点悬停状态 - 只在圆点悬停时显示操作按钮
+  const [hoveredRowDot, setHoveredRowDot] = useState<number | null>(null);
+  const [hoveredColDot, setHoveredColDot] = useState<number | null>(null);
   
   // 判断当前是否在编辑这个表格
   const isCurrentTableEditing = tableEditing.isEditing && tableEditing.tableId === component.id;
@@ -539,8 +542,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     <tr 
                       key={rowIndex} 
                       className={isHeader ? 'bg-gray-100 font-semibold' : isFooter ? 'bg-gray-50' : ''}
-                      onMouseEnter={() => setHoveredRow(rowIndex)}
-                      onMouseLeave={() => setHoveredRow(null)}
                     >
                       {/* 行操作单元格 */}
                       <td 
@@ -550,7 +551,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="flex items-center justify-center gap-0.5 p-1 min-h-full">
-                          {hoveredRow === rowIndex ? (
+                          {hoveredRowDot === rowIndex ? (
                             <>
                               <button onClick={(e) => { e.stopPropagation(); handleAddRow(tableComp, rowIndex); }} className="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600" title="在上方插入行">
                                 <span className="text-xs font-bold">↑</span>
@@ -567,7 +568,11 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                               )}
                             </>
                           ) : (
-                            <div className="w-2 h-2 rounded-full bg-gray-300 hover:bg-gray-400 transition-colors" />
+                            <div 
+                              className="w-2 h-2 rounded-full bg-gray-300 hover:bg-gray-400 transition-colors"
+                              onMouseEnter={() => setHoveredRowDot(rowIndex)}
+                              onMouseLeave={() => setHoveredRowDot(null)}
+                            />
                           )}
                         </div>
                       </td>
@@ -610,10 +615,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                             onMouseDown={(e) => handleCellMouseDown(rowIndex, colIndex, e)}
                             onMouseEnter={(e) => {
                               handleCellMouseMove(rowIndex, colIndex, e);
-                              if (rowIndex === 0) setHoveredCol(colIndex);
-                            }}
-                            onMouseLeave={() => {
-                              if (rowIndex === 0 && hoveredCol === colIndex) setHoveredCol(null);
                             }}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -626,7 +627,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                             {/* 列操作按钮 - 仅在第一行 */}
                             {rowIndex === 0 && (
                               <>
-                                {hoveredCol === colIndex ? (
+                                {hoveredColDot === colIndex ? (
                                   <div className="flex items-center justify-center gap-0.5" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
                                     <button onClick={(e) => { e.stopPropagation(); handleAddColumn(tableComp, colIndex); }} className="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600" title="在左侧插入列">
                                       <span className="text-xs font-bold">←</span>
@@ -644,7 +645,11 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                   </div>
                                 ) : (
                                   <div className="flex items-center justify-center">
-                                    <div className="w-2 h-2 rounded-full bg-gray-300 hover:bg-gray-400 transition-colors" />
+                                    <div 
+                                      className="w-2 h-2 rounded-full bg-gray-300 hover:bg-gray-400 transition-colors"
+                                      onMouseEnter={() => setHoveredColDot(colIndex)}
+                                      onMouseLeave={() => setHoveredColDot(null)}
+                                    />
                                   </div>
                                 )}
                               </>
