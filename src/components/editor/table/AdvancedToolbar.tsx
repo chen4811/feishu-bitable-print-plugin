@@ -6,7 +6,6 @@ import {
   Check as CheckIcon,
   Square,
   Merge,
-  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BorderSettingsPanel } from './BorderSettingsPanel';
@@ -23,8 +22,6 @@ interface AdvancedToolbarProps {
   verticalAlign: 'top' | 'middle' | 'bottom';
   onColorChange: (colorType: 'text' | 'fill', color: string) => void;
   onFinishEdit: () => void;
-  onDeleteRows?: () => void;
-  onDeleteColumns?: () => void;
 }
 
 export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
@@ -37,9 +34,7 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
   onAlignmentChange,
   verticalAlign,
   onColorChange,
-  onFinishEdit,
-  onDeleteRows,
-  onDeleteColumns,
+  onFinishEdit
 }) => {
   const [showBorderPanel, setShowBorderPanel] = useState(false);
   return (
@@ -68,31 +63,6 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
           title="合并单元格"
         >
           <Merge className="w-4 h-4" />
-        </Button>
-        
-        <div className="w-px h-5 bg-gray-200 mx-1" />
-        
-        {/* 第三组：删除行/列 */}
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={onDeleteRows}
-          disabled={!onDeleteRows}
-          className="h-8 w-8 disabled:opacity-50 text-destructive hover:text-destructive"
-          title="删除选中行"
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
-        
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={onDeleteColumns}
-          disabled={!onDeleteColumns}
-          className="h-8 w-8 disabled:opacity-50 text-destructive hover:text-destructive"
-          title="删除选中列"
-        >
-          <Trash2 className="w-4 h-4" />
         </Button>
         
         <div className="w-px h-5 bg-gray-200 mx-1" />
