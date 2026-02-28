@@ -59,6 +59,8 @@ import { Copy, Pencil, Trash2 } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { HoverToolbar } from '../table/HoverToolbar';
+import { RowActionMenu } from '../table/RowActionMenu';
+import { ColumnActionMenu } from '../table/ColumnActionMenu';
 
 interface CanvasComponentProps {
   component: CanvasComponentNode;
@@ -100,6 +102,10 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     endCol: null,
     isSelecting: false,
   });
+  
+  // 行/列操作菜单的悬停状态
+  const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
+  const [hoveredColIndex, setHoveredColIndex] = useState<number | null>(null);
   
   // 判断当前是否在编辑这个表格
   const isCurrentTableEditing = tableEditing.isEditing && tableEditing.tableId === component.id;
@@ -304,6 +310,127 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
   };
 
+  // ========== 表格行/列操作核心逻辑 ==========
+  
+  // 在指定行上方插入新行
+  const addRowAbove = useCallback((rowIndex: number) => {
+    const tableComp = component as any;
+    if (!tableComp.tableConfig?.cells) return;
+    
+    const colCount = tableComp.tableConfig.cells[0]?.length || 3;
+    const newRow = Array(colCount).fill(null).map((_, colIndex) => ({
+      id: `cell-${Date.now()}-${colIndex}`,
+      content: '',
+      backgroundColor: undefined,
+      verticalAlign: 'middle',
+      border: undefined,
+      style: {},
+    }));
+    
+    const newCells = [
+      ...tableComp.tableConfig.cells.slice(0, rowIndex),
+      newRow,
+      ...tableComp.tableConfig.cells.slice(rowIndex),
+    ];
+    
+    // 同时更新 tableEditData
+    const newEditData = [
+      ...tableEditData.slice(0, rowIndex),
+      Array(colCount).fill(''),
+      ...tableEditData.slice(rowIndex),
+    ];
+    setTableEditData(newEditData);
+    
+    updateComponent(component.id, {
+      tableConfig: {
+        ...tableComp.tableConfig,
+        cells: newCells,
+      },
+    });
+  }, [component, tableEditData, updateComponent]);
+
+  // 在指定行下方插入新行
+  const addRowBelow = useCallback((rowIndex: number) => {
+    addRowAbove(rowIndex + 1);
+  }, [addRowAbove]);
+
+  // 删除指定行
+  const deleteRow = useCallback((rowIndex: number) => {
+    const tableComp = component as any;
+    if (!tableComp.tableConfig?.cells || tableComp.tableConfig.cells.length <= 1) return;
+    
+    const newCells = tableComp.tableConfig.cells.filter((_: any, index: number) => index !== rowIndex);
+    const newEditData = tableEditData.filter((_: any, index: number) => index !== rowIndex);
+    
+    setTableEditData(newEditData);
+    updateComponent(component.id, {
+      tableConfig: {
+        ...tableComp.tableConfig,
+        cells: newCells,
+      },
+    });
+  }, [component, tableEditData, updateComponent]);
+
+  // 在指定列左侧插入新列
+  const addColumnLeft = useCallback((colIndex: number) => {
+    const tableComp = component as any;
+    if (!tableComp.tableConfig?.cells) return;
+    
+    const newCells = tableComp.tableConfig.cells.map((row: any[], rowIdx: number) => [
+      ...row.slice(0, colIndex),
+      {
+        id: `cell-${Date.now()}-${rowIdx}`,
+        content: '',
+        backgroundColor: undefined,
+        verticalAlign: 'middle',
+        border: undefined,
+        style: {},
+      },
+      ...row.slice(colIndex),
+    ]);
+    
+    const newEditData = tableEditData.map((row: any[]) => [
+      ...row.slice(0, colIndex),
+      '',
+      ...row.slice(colIndex),
+    ]);
+    
+    setTableEditData(newEditData);
+    updateComponent(component.id, {
+      tableConfig: {
+        ...tableComp.tableConfig,
+        cells: newCells,
+      },
+    });
+  }, [component, tableEditData, updateComponent]);
+
+  // 在指定列右侧插入新列
+  const addColumnRight = useCallback((colIndex: number) => {
+    addColumnLeft(colIndex + 1);
+  }, [addColumnLeft]);
+
+  // 删除指定列
+  const deleteColumn = useCallback((colIndex: number) => {
+    const tableComp = component as any;
+    if (!tableComp.tableConfig?.cells || tableComp.tableConfig.cells[0]?.length <= 1) return;
+    
+    const newCells = tableComp.tableConfig.cells.map((row: any[]) => 
+      row.filter((_: any, index: number) => index !== colIndex)
+    );
+    
+    const newEditData = tableEditData.map((row: any[]) => 
+      row.filter((_: any, index: number) => index !== colIndex)
+    );
+    
+    setTableEditData(newEditData);
+    updateComponent(component.id, {
+      tableConfig: {
+        ...tableComp.tableConfig,
+        cells: newCells,
+      },
+    });
+  }, [component, tableEditData, updateComponent]);
+
   // 自动聚焦到编辑框
   useEffect(() => {
     if (isEditing && textareaRef.current) {
@@ -357,6 +484,18 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
   }, [component]);
 
+  // 辅助函数：生成列标（A, B, C... AA, AB...）
+  const getColumnLabel = (index: number): string => {
+    let label = '';
+    let remaining = index;
+    while (true) {
+      label = String.fromCharCode(65 + (remaining % 26)) + label;
+      remaining = Math.floor(remaining / 26) - 1;
+      if (remaining < 0) break;
+    }
+    return label;
+  };
+
   // 渲染表格内容
   const renderTableContent = (tableComp: any) => {
     if (!tableComp.tableConfig?.cells) {
@@ -381,6 +520,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       );
     }
 
+    const colCount = tableEditData[0]?.length || 0;
+
     return (
       <div 
         onMouseUp={handleCellMouseUp}
@@ -388,6 +529,55 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       >
         <table className="w-full border-collapse">
           <tbody>
+            {/* 列标行 */}
+            {isCurrentTableEditing && (
+              <tr>
+                {/* 左上角角落单元格 */}
+                <td 
+                  style={{
+                    width: '40px',
+                    minWidth: '40px',
+                    maxWidth: '40px',
+                    backgroundColor: '#f9fafb',
+                    border: '1px solid #e5e7eb',
+                  }}
+                />
+                {/* 列标单元格 */}
+                {Array(colCount).fill(null).map((_, colIndex) => (
+                  <td
+                    key={`col-header-${colIndex}`}
+                    className="relative group cursor-pointer select-none"
+                    style={{
+                      backgroundColor: hoveredColIndex === colIndex ? '#e5e7eb' : '#f9fafb',
+                      border: '1px solid #e5e7eb',
+                      textAlign: 'center',
+                      verticalAlign: 'middle',
+                      padding: '4px 8px',
+                      fontWeight: 500,
+                      fontSize: '12px',
+                      color: '#374151',
+                    }}
+                    onMouseEnter={() => setHoveredColIndex(colIndex)}
+                    onMouseLeave={() => setHoveredColIndex(null)}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {getColumnLabel(colIndex)}
+                    {/* 列操作菜单 */}
+                    {hoveredColIndex === colIndex && (
+                      <ColumnActionMenu
+                        onAddLeft={() => addColumnLeft(colIndex)}
+                        onAddRight={() => addColumnRight(colIndex)}
+                        onDelete={() => deleteColumn(colIndex)}
+                        position="bottom"
+                      />
+                    )}
+                  </td>
+                ))}
+              </tr>
+            )}
+            
+            {/* 数据行 */}
             {tableEditData.map((row: any[], rowIndex: number) => {
               const isHeader = rowIndex < (tableComp.tableConfig?.headerRows || 0);
               const isFooter = rowIndex >= tableEditData.length - (tableComp.tableConfig?.footerRows || 0);
@@ -397,6 +587,43 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   key={rowIndex}
                   className={isHeader ? 'bg-gray-100 font-semibold' : isFooter ? 'bg-gray-50' : ''}
                 >
+                {/* 行号单元格 */}
+                {isCurrentTableEditing && (
+                  <td
+                    key={`row-header-${rowIndex}`}
+                    className="relative group cursor-pointer select-none"
+                    style={{
+                      width: '40px',
+                      minWidth: '40px',
+                      maxWidth: '40px',
+                      backgroundColor: hoveredRowIndex === rowIndex ? '#e5e7eb' : '#f9fafb',
+                      border: '1px solid #e5e7eb',
+                      textAlign: 'center',
+                      verticalAlign: 'middle',
+                      padding: '4px 8px',
+                      fontWeight: 500,
+                      fontSize: '12px',
+                      color: '#374151',
+                    }}
+                    onMouseEnter={() => setHoveredRowIndex(rowIndex)}
+                    onMouseLeave={() => setHoveredRowIndex(null)}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {rowIndex + 1}
+                    {/* 行操作菜单 */}
+                    {hoveredRowIndex === rowIndex && (
+                      <RowActionMenu
+                        onAddAbove={() => addRowAbove(rowIndex)}
+                        onAddBelow={() => addRowBelow(rowIndex)}
+                        onDelete={() => deleteRow(rowIndex)}
+                        position="right"
+                      />
+                    )}
+                  </td>
+                )}
+                
+                {/* 数据单元格 */}
                 {row.map((cellContent: any, colIndex: number) => {
                   const cell = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex];
                   const cellId = cell?.id || `cell-${rowIndex}-${colIndex}`;
