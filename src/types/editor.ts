@@ -1,4 +1,4 @@
-// 排版打印插件核心类型定义 (v14.0 可视化排版画布)
+// 排版打印插件核心类型定义 (v15.0 垂直流式布局)
 
 // 飞书上下文类型
 export interface FeishuAppMetadata {
@@ -16,7 +16,7 @@ export interface FeishuContext {
   appMetadata: FeishuAppMetadata | null;
 }
 
-// ========== v14.0 新增：画布状态与组件节点 ==========
+// ========== v15.0 更新：流式布局组件节点 ==========
 
 // 组件边框样式
 export interface ComponentBorderStyle {
@@ -60,20 +60,19 @@ export interface TableConfig {
   cells: TableCellData[][];
 }
 
-// 画布组件节点（基础）
+// 画布组件节点（流式布局 - 无position）
 export interface BaseCanvasNode {
   id: string;
   type: 'text' | 'table' | 'image' | 'barcode' | 'qrcode' | 'line';
-  position: { x: number; y: number };
-  width: number;
-  height: number;
-  zIndex: number;
+  width: number; // 相对于画布宽度的百分比或固定值
+  height?: number;
+  minHeight?: number;
 }
 
 // 文本组件节点
 export interface TextCanvasNode extends BaseCanvasNode {
   type: 'text';
-  content: string; // HTML or ProseMirror doc
+  content: string;
   textStyle: ComponentTextStyle;
 }
 
@@ -89,6 +88,7 @@ export interface ImageCanvasNode extends BaseCanvasNode {
   src: string;
   alt?: string;
   fit: 'contain' | 'cover' | 'fill';
+  aspectRatio?: number;
 }
 
 // 条形码组件节点
@@ -122,13 +122,13 @@ export type CanvasComponentNode =
   | QRCodeCanvasNode 
   | LineCanvasNode;
 
-// 画布状态
+// 画布状态（流式布局）
 export interface CanvasState {
   components: CanvasComponentNode[];
   selectedId: string | null;
 }
 
-// ========== 原有类型保持兼容 ==========
+// ========== 原有类型保持兼容，但简化 ==========
 
 // 组件类型枚举
 export type ComponentType = 
@@ -138,7 +138,7 @@ export type ComponentType =
   | 'qrcode'     // 二维码
   | 'barcode'    // 条形码
   | 'line'       // 水平线
-  | 'freeElement' // 自由拖动元素
+  | 'freeElement' // 自由拖动元素（保留兼容）
   | 'article'    // 文章区块
   | 'autoTable'; // 自动表格
 
@@ -151,15 +151,12 @@ export interface Field {
   isSystem?: boolean;
 }
 
-// 组件基础属性
+// 组件基础属性（简化版 - 无x,y,zIndex）
 export interface BaseComponentProps {
   id: string;
   type: ComponentType;
-  x: number;
-  y: number;
   width: number;
   height: number;
-  zIndex: number;
 }
 
 // 文本组件
@@ -194,7 +191,7 @@ export interface TableConfig {
 // 表格组件
 export interface TableComponent extends BaseComponentProps {
   type: 'table';
-  content?: any; // TipTap JSON 格式内容或简单表格数据
+  content?: any;
   columns: {
     fieldId: string;
     fieldName: string;
@@ -205,9 +202,7 @@ export interface TableComponent extends BaseComponentProps {
     backgroundColor: string;
     fontWeight: 'normal' | 'bold';
   };
-  // 新增：表格配置
   config?: Partial<TableConfig>;
-  // 新增：UI 状态
   uiState?: Partial<TableUIState>;
 }
 
@@ -222,7 +217,7 @@ export interface ImageComponent extends BaseComponentProps {
 // 二维码组件
 export interface QRCodeComponent extends BaseComponentProps {
   type: 'qrcode';
-  content: string; // 可以是字段变量 [字段名]
+  content: string;
   size: number;
 }
 
@@ -291,14 +286,14 @@ export interface PageConfig {
     left: number;
     right: number;
   };
-  continuous: boolean; // 连续页面模式
+  continuous: boolean;
 }
 
 // 全局样式设置
 export interface StyleConfig {
-  fontSize: number; // pt
+  fontSize: number;
   lineHeight: number;
-  paragraphSpacing: number; // pt
+  paragraphSpacing: number;
   fontFamily: string;
 }
 
@@ -310,7 +305,7 @@ export interface PrintTemplate {
   thumbnail?: string;
   category: string;
   tags: string[];
-  components: EditorComponent[];
+  components: (EditorComponent | CanvasComponentNode)[];
   pageConfig: PageConfig;
   styleConfig: StyleConfig;
   createdAt: number;
@@ -345,17 +340,17 @@ export const PAGE_SIZES: Record<string, { width: number; height: number }> = {
   Legal: { width: 216, height: 356 },
 };
 
-// 默认组件尺寸
+// 默认组件尺寸（流式布局版本）
 export const DEFAULT_COMPONENT_SIZES: Record<ComponentType, { width: number; height: number }> = {
-  text: { width: 200, height: 60 },
-  table: { width: 400, height: 200 },
-  image: { width: 150, height: 150 },
-  qrcode: { width: 80, height: 80 },
-  barcode: { width: 150, height: 50 },
-  line: { width: 400, height: 2 },
+  text: { width: 100, height: 60 }, // 100% 宽度
+  table: { width: 100, height: 200 },
+  image: { width: 100, height: 150 },
+  qrcode: { width: 100, height: 80 },
+  barcode: { width: 100, height: 50 },
+  line: { width: 100, height: 2 },
   freeElement: { width: 100, height: 100 },
-  article: { width: 400, height: 150 },
-  autoTable: { width: 400, height: 200 },
+  article: { width: 100, height: 150 },
+  autoTable: { width: 100, height: 200 },
 };
 
 // 默认页面配置

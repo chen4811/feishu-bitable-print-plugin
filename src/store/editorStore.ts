@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import {
-  EditorComponent,
+  CanvasComponentNode,
   PageConfig,
   StyleConfig,
   Field,
@@ -11,14 +11,16 @@ import {
   ComponentType,
   DEFAULT_COMPONENT_SIZES,
   FeishuContext,
+  ComponentTextStyle,
+  TableConfig,
 } from '@/types/editor';
 
-// 编辑器状态
+// 编辑器状态（流式布局版本）
 interface EditorState {
   // 当前模板
   templateId: string | null;
   templateName: string;
-  components: EditorComponent[];
+  components: any[];
   selectedComponentId: string | null;
   
   // 页面和样式配置
@@ -42,24 +44,17 @@ interface EditorState {
   savedTemplates: PrintTemplate[];
   
   // 历史记录（撤销/重做）
-  history: EditorComponent[][];
+  history: CanvasComponentNode[][];
   historyIndex: number;
   
   // 操作方法
   setTemplateName: (name: string) => void;
-  addComponent: (type: ComponentType, position?: { x: number; y: number }) => void;
-  updateComponent: (id: string, updates: Partial<EditorComponent>) => void;
-  removeComponent: (id: string) => void;
+  addComponent: (type: ComponentType) => void;
+  updateComponent: (id: string, updates: Partial<CanvasComponentNode>) => void;
+  deleteComponent: (id: string) => void;
   selectComponent: (id: string | null) => void;
-  moveComponent: (id: string, x: number, y: number) => void;
-  resizeComponent: (id: string, width: number, height: number) => void;
+  reorderComponents: (fromIndex: number, toIndex: number) => void;
   duplicateComponent: (id: string) => void;
-  
-  // 层级管理
-  moveComponentUp: (id: string) => void;
-  moveComponentDown: (id: string) => void;
-  bringToFront: (id: string) => void;
-  sendToBack: (id: string) => void;
   
   // 页面和样式
   setPageConfig: (config: Partial<PageConfig>) => void;
@@ -120,6 +115,29 @@ const saveTemplatesToStorage = (templates: PrintTemplate[]) => {
   }
 };
 
+// 创建默认文本样式
+const createDefaultTextStyle = (styleConfig: StyleConfig): ComponentTextStyle => ({
+  fontSize: styleConfig.fontSize,
+  color: '#000000',
+  bold: false,
+  align: 'left',
+  lineHeight: styleConfig.lineHeight,
+});
+
+// 创建默认表格配置
+const createDefaultTableConfig = (): TableConfig => ({
+  headerRows: 1,
+  footerRows: 0,
+  borderColor: '#000000',
+  borderWidth: 1,
+  showOuterBorder: true,
+  showInnerBorder: true,
+  cells: [
+    [{ id: '1', content: '表头1' }, { id: '2', content: '表头2' }, { id: '3', content: '表头3' }],
+    [{ id: '4', content: '数据1' }, { id: '5', content: '数据2' }, { id: '6', content: '数据3' }],
+  ],
+});
+
 export const useEditorStore = create<EditorState>((set, get) => ({
   // 初始状态
   templateId: null,
@@ -145,79 +163,55 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   // 设置模板名称
   setTemplateName: (name) => set({ templateName: name }),
   
-  // 添加组件
-  addComponent: (type, position) => {
+  // 添加组件（流式布局 - 追加到末尾）
+  addComponent: (type) => {
     const state = get();
     const id = uuidv4();
     const defaultSize = DEFAULT_COMPONENT_SIZES[type];
-    const zIndex = state.components.length > 0 
-      ? Math.max(...state.components.map(c => c.zIndex)) + 1 
-      : 1;
-    const x = position?.x ?? 50;
-    const y = position?.y ?? 50 + (state.components.length * 20);
     
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let newComponent: any = {
       id,
       type,
-      x,
-      y,
       width: defaultSize.width,
-      height: defaultSize.height,
-      zIndex,
     };
     
     switch (type) {
       case 'text':
-        newComponent = {
-          ...newComponent,
-          content: '双击编辑文本',
-          fontSize: state.styleConfig.fontSize,
-          fontWeight: 'normal',
-          textAlign: 'left',
-          lineHeight: state.styleConfig.lineHeight,
-        };
+        newComponent.content = '双击编辑文本';
+        newComponent.textStyle = createDefaultTextStyle(state.styleConfig);
         break;
       case 'table':
-        newComponent = {
-          ...newComponent,
-          content: null, // 初始化为 null，SimpleTableEditor 会自动创建默认表格
-          columns: [],
-          showHeader: true,
-          headerStyle: { backgroundColor: '#f5f5f5', fontWeight: 'bold' },
-        };
+        newComponent.minHeight = defaultSize.height;
+        newComponent.tableConfig = createDefaultTableConfig();
         break;
       case 'image':
-        newComponent = { ...newComponent, src: '', alt: '图片', fit: 'contain' };
+        newComponent.minHeight = defaultSize.height;
+        newComponent.src = '';
+        newComponent.alt = '图片';
+        newComponent.fit = 'contain';
         break;
       case 'qrcode':
-        newComponent = { ...newComponent, content: 'https://example.com', size: 80 };
+        newComponent.content = 'https://example.com';
+        newComponent.size = 80;
         break;
       case 'barcode':
-        newComponent = { ...newComponent, content: '123456789', format: 'CODE128', width: 150, height: 50 };
+        newComponent.content = '123456789';
+        newComponent.format = 'CODE128';
         break;
       case 'line':
-        newComponent = { ...newComponent, color: '#000000', thickness: 1, style: 'solid' };
+        newComponent.color = '#000000';
+        newComponent.thickness = 1;
+        newComponent.style = 'solid';
         break;
-      case 'autoTable':
-        newComponent = {
-          ...newComponent,
-          selectedFields: [],
-          showHeader: true,
-          headerStyle: { backgroundColor: '#f5f5f5', fontWeight: 'bold' },
-        };
-        break;
-      case 'freeElement':
-        newComponent = { ...newComponent, content: '' };
-        break;
-      case 'article':
-        newComponent = { ...newComponent, content: '文章内容' };
-        break;
+      default:
+        newComponent.type = 'text';
+        newComponent.content = '未知组件';
+        newComponent.textStyle = createDefaultTextStyle(state.styleConfig);
     }
     
     set({
-      components: [...state.components, newComponent as EditorComponent],
-      // 新添加的组件默认不选中，让它更清爽
+      components: [...state.components, newComponent],
       selectedComponentId: null,
     });
     
@@ -228,14 +222,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   updateComponent: (id, updates) => {
     const state = get();
     const newComponents = state.components.map((c) =>
-      c.id === id ? { ...c, ...updates } as EditorComponent : c
+      c.id === id ? { ...c, ...updates } : c
     );
     set({ components: newComponents });
     get().saveToHistory();
   },
   
   // 删除组件
-  removeComponent: (id) => {
+  deleteComponent: (id) => {
     const state = get();
     set({
       components: state.components.filter((c) => c.id !== id),
@@ -247,22 +241,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   // 选择组件
   selectComponent: (id) => set({ selectedComponentId: id }),
   
-  // 移动组件
-  moveComponent: (id, x, y) => {
+  // 重新排序组件
+  reorderComponents: (fromIndex, toIndex) => {
     const state = get();
-    const newComponents = state.components.map((c) =>
-      c.id === id ? { ...c, x, y } as EditorComponent : c
-    );
+    const newComponents = [...state.components];
+    const [movedComponent] = newComponents.splice(fromIndex, 1);
+    newComponents.splice(toIndex, 0, movedComponent);
     set({ components: newComponents });
-  },
-  
-  // 调整组件大小
-  resizeComponent: (id, width, height) => {
-    const state = get();
-    const newComponents = state.components.map((c) =>
-      c.id === id ? { ...c, width, height } as EditorComponent : c
-    );
-    set({ components: newComponents });
+    get().saveToHistory();
   },
   
   // 复制组件
@@ -272,80 +258,20 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (!componentToCopy) return;
     
     const newId = uuidv4();
-    const maxZ = Math.max(...state.components.map(c => c.zIndex));
     const duplicatedComponent = {
       ...componentToCopy,
       id: newId,
-      x: componentToCopy.x + 20,
-      y: componentToCopy.y + 20,
-      zIndex: maxZ + 1,
-    } as EditorComponent;
+    };
+    
+    // 找到原组件的索引，复制到它后面
+    const originalIndex = state.components.findIndex(c => c.id === id);
+    const newComponents = [...state.components];
+    newComponents.splice(originalIndex + 1, 0, duplicatedComponent);
     
     set({
-      components: [...state.components, duplicatedComponent],
+      components: newComponents,
       selectedComponentId: newId,
     });
-    get().saveToHistory();
-  },
-  
-  // 层级管理
-  moveComponentUp: (id) => {
-    const state = get();
-    const component = state.components.find(c => c.id === id);
-    if (!component) return;
-    
-    const sortedByZ = [...state.components].sort((a, b) => a.zIndex - b.zIndex);
-    const idx = sortedByZ.findIndex(c => c.id === id);
-    
-    if (idx < sortedByZ.length - 1) {
-      const nextComponent = sortedByZ[idx + 1];
-      const newComponents = state.components.map(c => {
-        if (c.id === id) return { ...c, zIndex: nextComponent.zIndex } as EditorComponent;
-        if (c.id === nextComponent.id) return { ...c, zIndex: component.zIndex } as EditorComponent;
-        return c;
-      });
-      set({ components: newComponents });
-      get().saveToHistory();
-    }
-  },
-  
-  moveComponentDown: (id) => {
-    const state = get();
-    const component = state.components.find(c => c.id === id);
-    if (!component) return;
-    
-    const sortedByZ = [...state.components].sort((a, b) => a.zIndex - b.zIndex);
-    const idx = sortedByZ.findIndex(c => c.id === id);
-    
-    if (idx > 0) {
-      const prevComponent = sortedByZ[idx - 1];
-      const newComponents = state.components.map(c => {
-        if (c.id === id) return { ...c, zIndex: prevComponent.zIndex } as EditorComponent;
-        if (c.id === prevComponent.id) return { ...c, zIndex: component.zIndex } as EditorComponent;
-        return c;
-      });
-      set({ components: newComponents });
-      get().saveToHistory();
-    }
-  },
-  
-  bringToFront: (id) => {
-    const state = get();
-    const maxZ = Math.max(...state.components.map(c => c.zIndex));
-    const newComponents = state.components.map(c =>
-      c.id === id ? { ...c, zIndex: maxZ + 1 } as EditorComponent : c
-    );
-    set({ components: newComponents });
-    get().saveToHistory();
-  },
-  
-  sendToBack: (id) => {
-    const state = get();
-    const minZ = Math.min(...state.components.map(c => c.zIndex));
-    const newComponents = state.components.map(c =>
-      c.id === id ? { ...c, zIndex: minZ - 1 } as EditorComponent : c
-    );
-    set({ components: newComponents });
     get().saveToHistory();
   },
   
@@ -431,13 +357,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   
   // 加载模板
   loadTemplate: (template) => {
+    // 兼容性转换：旧模板可能有position字段
+    const convertedComponents = template.components.map((comp: any) => {
+      const { x, y, zIndex, ...rest } = comp;
+      return rest;
+    }) as CanvasComponentNode[];
+    
     set({
       templateId: template.id,
       templateName: template.name,
-      components: [...template.components],
+      components: convertedComponents,
       pageConfig: { ...template.pageConfig },
       styleConfig: { ...template.styleConfig },
-      history: [[...template.components]],
+      history: [convertedComponents],
       historyIndex: 0,
     });
   },
@@ -447,7 +379,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const state = get();
     const template = state.exportTemplate();
     
-    // 更新或添加模板
     const existingIdx = state.savedTemplates.findIndex(t => t.id === template.id);
     let newTemplates: PrintTemplate[];
     
