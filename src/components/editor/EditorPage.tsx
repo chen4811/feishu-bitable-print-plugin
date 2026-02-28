@@ -304,21 +304,6 @@ export function EditorPage({ onExit }: EditorPageProps) {
           </div>
         )}
 
-        {/* 表格编辑工具栏 - 仅在编辑表格时显示 */}
-        {tableEditing.isEditing && (
-          <div className="border-b bg-background/95 backdrop-blur px-4 py-2">
-            <AdvancedToolbar
-              onMergeCells={tableEditing.onMergeCells}
-              selectedCellCount={tableEditing.selectedCells.length}
-              onHeaderFooterChange={tableEditing.onHeaderFooterChange}
-              onBorderChange={tableEditing.onBorderChange}
-              onAlignmentChange={tableEditing.onAlignmentChange}
-              onColorChange={tableEditing.onColorChange}
-              onFinishEdit={tableEditing.onFinishEdit}
-            />
-          </div>
-        )}
-
         {/* 主内容区 */}
         <div className="flex-1 flex overflow-hidden">
           {/* 左侧面板 */}
@@ -387,8 +372,25 @@ export function EditorPage({ onExit }: EditorPageProps) {
           </aside>
 
           {/* 右侧画布区 */}
-          <main className="flex-1 overflow-auto bg-slate-100 dark:bg-slate-900 p-6">
-            <CanvasArea />
+          <main className="flex-1 overflow-auto bg-slate-100 dark:bg-slate-900">
+            {/* 表格编辑工具栏 - 仅在编辑表格时显示，在画布上方 */}
+            {tableEditing.isEditing && (
+              <div className="bg-background border-b px-4 py-2">
+                <AdvancedToolbar
+                  onMergeCells={tableEditing.onMergeCells}
+                  selectedCellCount={tableEditing.selectedCells.length}
+                  onHeaderFooterChange={tableEditing.onHeaderFooterChange}
+                  onBorderChange={tableEditing.onBorderChange}
+                  onAlignmentChange={tableEditing.onAlignmentChange}
+                  onColorChange={tableEditing.onColorChange}
+                  onFinishEdit={tableEditing.onFinishEdit}
+                />
+              </div>
+            )}
+            {/* 画布区域 */}
+            <div className="p-6">
+              <CanvasArea />
+            </div>
           </main>
         </div>
 
