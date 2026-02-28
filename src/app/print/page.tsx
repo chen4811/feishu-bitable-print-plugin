@@ -1,247 +1,442 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { bitable } from '@lark-base-open/js-sdk';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { PrintPreview, TaskPrintCard } from '@/components/print/PrintPreview';
-import { QRCodeGenerator, BarcodeGenerator, BatchQRCodeGenerator } from '@/components/print/BarcodeGenerator';
-import { BatchPrint } from '@/components/print/BatchPrint';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { PrintConfigPanel } from '@/components/print/PrintConfig';
+import { PrintConfig, PRESET_TEMPLATES } from '@/types/print-config';
 import { mockBitableData } from '@/data/mockData';
-import { Printer, FileText, QrCode, Barcode, Layers, Download } from 'lucide-react';
+import { 
+  Printer, 
+  AlertCircle, 
+  Loader2,
+  FileText,
+  ArrowLeft
+} from 'lucide-react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 export default function PrintPage() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isFeishuEnvironment, setIsFeishuEnvironment] = useState(false);
+  
+  // 数据状态
+  const [fields, setFields] = useState<Array<{ id: string; name: string; type: string }>>([]);
+  const [records, setRecords] = useState<Array<{ id: string; fields: Record<string, any> }>>([]);
   const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
-  const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
-  const [previewRecord, setPreviewRecord] = useState<any>(null);
-  const [qrValue, setQrValue] = useState('https://example.com/task/001');
-  const [barcodeValue, setBarcodeValue] = useState('TASK-001-20250112');
-
-  // 预览单个任务
-  const handlePreview = (record: any) => {
-    setPreviewRecord(record);
-    setPrintPreviewOpen(true);
-  };
-
-  // 转换记录为打印数据格式
-  const recordToPrintData = (record: any) => ({
-    id: record.id,
-    title: record.fields.field_1,
-    status: record.fields.field_2,
-    priority: record.fields.field_3,
-    assignee: record.fields.field_4,
-    progress: record.fields.field_7,
-    startDate: record.fields.field_5,
-    endDate: record.fields.field_6,
-    description: record.fields.field_9,
-    tags: record.fields.field_8,
+  
+  // 打印配置
+  const [printConfig, setPrintConfig] = useState<PrintConfig>({
+    template: PRESET_TEMPLATES[0],
+    selectedRecords: [],
+    options: {
+      includeQRCode: false,
+      includeBarcode: false,
+      barcodeFormat: 'CODE128',
+      generateIndex: true,
+      indexPrefix: 'NO.'
+    }
   });
 
-  // 生成批量二维码数据
-  const batchQRData = mockBitableData.records.map(record => ({
-    id: record.id,
-    value: `https://example.com/task/${record.id}`,
-    label: record.fields.field_1,
-  }));
+  // 预览模式
+  const [showPreview, setShowPreview] = useState(false);
+  const printContentRef = useRef<HTMLDivElement>(null);
+
+  // 初始化飞书 SDK
+  useEffect(() => {
+    const initFeishuSDK = async () => {
+      try {
+        // 检查是否在飞书环境中
+        if (typeof window !== 'undefined' && (window as any).bitable) {
+          setIsFeishuEnvironment(true);
+          
+          // 获取当前表格
+          const table = await bitable.base.getActiveTable();
+          
+          // 获取字段列表
+          const fieldMetaList = await table.getFieldMetaList();
+          const fieldsData = fieldMetaList.map((field: any) => ({
+            id: field.id,
+            name: field.name,
+            type: field.type
+          }));
+          setFields(fieldsData);
+          
+          // 获取记录列表
+          const recordIdList = await table.getRecordIdList();
+          const recordsData: Array<{ id: string; fields: Record<string, any> }> = [];
+          
+          for (const recordId of recordIdList) {
+            try {
+              // 获取记录的所有字段值
+              const fieldValues: Record<string, any> = {};
+              for (const field of fieldsData) {
+                try {
+                  // @ts-ignore
+                  const cell = await table.getCell(recordId, field.id);
+                  if (cell && cell.value !== undefined) {
+                    fieldValues[field.id] = cell.value;
+                  }
+                } catch (e) {
+                  // 忽略单个字段获取失败
+                }
+              }
+              
+              recordsData.push({
+                id: recordId,
+                fields: fieldValues
+              });
+            } catch (e) {
+              console.warn(`获取记录 ${recordId} 失败:`, e);
+            }
+          }
+          
+          setRecords(recordsData);
+        } else {
+          // 不在飞书环境中，使用模拟数据
+          setIsFeishuEnvironment(false);
+          setFields(mockBitableData.fields.map(f => ({
+            id: f.id,
+            name: f.name,
+            type: f.type
+          })));
+          setRecords(mockBitableData.records.map(r => ({
+            id: r.id,
+            fields: r.fields
+          })));
+        }
+      } catch (err) {
+        console.error('初始化失败:', err);
+        setError(err instanceof Error ? err.message : '初始化失败');
+        
+        // 失败时使用模拟数据
+        setIsFeishuEnvironment(false);
+        setFields(mockBitableData.fields.map(f => ({
+          id: f.id,
+          name: f.name,
+          type: f.type
+        })));
+        setRecords(mockBitableData.records.map(r => ({
+          id: r.id,
+          fields: r.fields
+        })));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initFeishuSDK();
+  }, []);
+
+  // 全选/取消全选
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedRecords(records.map(r => r.id));
+    } else {
+      setSelectedRecords([]);
+    }
+  };
+
+  // 切换单个记录选择
+  const handleToggleRecord = (recordId: string) => {
+    setSelectedRecords(prev => 
+      prev.includes(recordId)
+        ? prev.filter(id => id !== recordId)
+        : [...prev, recordId]
+    );
+  };
+
+  // 处理配置变更
+  const handleConfigChange = (config: PrintConfig) => {
+    setPrintConfig(config);
+  };
+
+  // 预览
+  const handlePreview = () => {
+    setShowPreview(true);
+  };
+
+  // 打印
+  const handlePrint = async () => {
+    if (printContentRef.current) {
+      window.print();
+    }
+  };
+
+  // 导出 PDF
+  const handleExportPDF = async () => {
+    if (!printContentRef.current) return;
+
+    try {
+      setIsLoading(true);
+      
+      const canvas = await html2canvas(printContentRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: printConfig.template.layout.orientation === 'portrait' ? 'p' : 'l',
+        unit: 'mm',
+        format: printConfig.template.layout.paperSize.toLowerCase()
+      });
+      
+      const imgWidth = pdf.internal.pageSize.getWidth();
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      pdf.save(`print-${Date.now()}.pdf`);
+    } catch (err) {
+      console.error('导出 PDF 失败:', err);
+      setError('导出 PDF 失败');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 返回主页
+  const handleGoBack = () => {
+    window.location.hash = '/';
+  };
+
+  // 加载状态
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+          <p className="text-sm text-muted-foreground">加载中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 错误状态
+  if (error && !isFeishuEnvironment) {
+    return (
+      <div className="flex items-center justify-center h-screen p-6">
+        <Card className="max-w-md p-6 border-destructive">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-destructive mt-0.5" />
+            <div>
+              <h3 className="font-medium text-destructive">加载失败</h3>
+              <p className="text-sm text-muted-foreground mt-1">{error}</p>
+              <p className="text-sm text-muted-foreground mt-2">使用模拟数据运行</p>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* 页面标题 */}
-      <div className="border-b bg-background/95 backdrop-blur">
-        <div className="flex items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
-              <Printer className="w-5 h-5 text-white" />
+    <div className="flex h-screen bg-background">
+      {/* 非飞书环境提示 */}
+      {!isFeishuEnvironment && (
+        <div className="fixed top-0 left-0 right-0 bg-blue-50 dark:bg-blue-950 border-b border-blue-200 dark:border-blue-800 px-4 py-2 z-50">
+          <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
+            <AlertCircle className="w-4 h-4" />
+            <span>当前使用模拟数据，在飞书环境中将显示真实数据</span>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-1 pt-10">
+        {/* 左侧：记录选择 */}
+        <div className="w-80 border-r flex flex-col">
+          <div className="p-4 border-b">
+            <div className="flex items-center justify-between mb-3">
+              <Button variant="ghost" size="sm" onClick={handleGoBack}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                返回
+              </Button>
             </div>
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold">选择记录</h2>
+              <Badge variant="outline">
+                {selectedRecords.length} / {records.length}
+              </Badge>
+            </div>
+            <div className="flex items-center mt-3 space-x-2">
+              <Checkbox
+                checked={selectedRecords.length === records.length && records.length > 0}
+                onCheckedChange={handleSelectAll}
+                id="selectAll"
+              />
+              <Label htmlFor="selectAll" className="text-sm font-normal cursor-pointer">
+                全选
+              </Label>
+            </div>
+          </div>
+          
+          <ScrollArea className="flex-1">
+            <div className="p-4 space-y-2">
+              {records.map((record) => (
+                <Card
+                  key={record.id}
+                  className={`p-3 cursor-pointer transition-all ${
+                    selectedRecords.includes(record.id)
+                      ? 'border-primary bg-primary/5'
+                      : 'hover:border-primary/50'
+                  }`}
+                  onClick={() => handleToggleRecord(record.id)}
+                >
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={selectedRecords.includes(record.id)}
+                      onCheckedChange={() => handleToggleRecord(record.id)}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {Object.values(record.fields)[0] || `记录 ${record.id}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {Object.keys(record.fields).length} 个字段
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
+
+        {/* 中间：打印预览 */}
+        <div className="flex-1 flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b">
             <div>
-              <h1 className="text-xl font-semibold">排版打印</h1>
-              <p className="text-xs text-muted-foreground">多维度排版生成、批量打印、条码生成</p>
+              <h1 className="text-xl font-semibold flex items-center gap-2">
+                <Printer className="w-5 h-5" />
+                排版打印
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                多维度排版生成 · 批量打印 · 条码生成
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs">
-              {mockBitableData.records.length} 条记录
-            </Badge>
-            <Button size="sm" variant="outline">
-              <Download className="w-4 h-4 mr-2" />
-              导出设置
-            </Button>
-          </div>
+          <ScrollArea className="flex-1 p-6">
+            {showPreview && selectedRecords.length > 0 ? (
+              <div ref={printContentRef} className="bg-white shadow-lg rounded-lg p-8 print:shadow-none print:p-0">
+                {printConfig.template.style.showHeader && printConfig.template.style.headerText && (
+                  <div className="text-center mb-6 pb-3 border-b">
+                    <h2 className="text-lg font-semibold">
+                      {printConfig.template.style.headerText
+                        .replace('{date}', new Date().toLocaleDateString('zh-CN'))
+                        .replace('{count}', String(selectedRecords.length))}
+                    </h2>
+                  </div>
+                )}
+                
+                <div className={`grid gap-4`} style={{
+                  gridTemplateColumns: `repeat(${printConfig.template.layout.columns}, 1fr)`
+                }}>
+                  {selectedRecords.map((recordId, index) => {
+                    const record = records.find(r => r.id === recordId);
+                    if (!record) return null;
+
+                    return (
+                      <Card 
+                        key={recordId} 
+                        className="p-4 print:break-inside-avoid"
+                        style={{
+                          border: printConfig.template.style.showBorder ? undefined : 'none',
+                          fontSize: `${printConfig.template.style.fontSize}px`
+                        }}
+                      >
+                        {printConfig.options.generateIndex && (
+                          <div className="text-xs text-muted-foreground mb-2">
+                            {printConfig.options.indexPrefix}{String(index + 1).padStart(3, '0')}
+                          </div>
+                        )}
+                        <div className="space-y-2">
+                          {printConfig.template.fieldMappings
+                            .filter(m => m.include)
+                            .sort((a, b) => a.order - b.order)
+                            .map(mapping => {
+                              const field = fields.find(f => f.id === mapping.fieldId);
+                              if (!field) return null;
+                              
+                              const value = record.fields[mapping.fieldId];
+                              return (
+                                <div key={mapping.fieldId} className="flex gap-2 text-sm">
+                                  <span className="font-medium min-w-[100px] text-muted-foreground">
+                                    {mapping.displayName || mapping.fieldName}:
+                                  </span>
+                                  <span className="flex-1">
+                                    {String(value || '-')}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+
+                {printConfig.template.style.showFooter && printConfig.template.style.footerText && (
+                  <div className="text-center mt-6 pt-3 border-t text-xs text-muted-foreground">
+                    {printConfig.template.style.footerText
+                      .replace('{date}', new Date().toLocaleDateString('zh-CN'))
+                      .replace('{count}', String(selectedRecords.length))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-full text-center">
+                <div>
+                  <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                  <p className="text-muted-foreground">
+                    {selectedRecords.length === 0 
+                      ? '请在左侧选择要打印的记录'
+                      : '点击右侧"预览"按钮查看打印效果'}
+                  </p>
+                </div>
+              </div>
+            )}
+          </ScrollArea>
+        </div>
+
+        {/* 右侧：打印配置 */}
+        <div className="w-96 border-l">
+          <PrintConfigPanel
+            fields={fields}
+            totalRecords={records.length}
+            selectedRecords={selectedRecords}
+            onConfigChange={handleConfigChange}
+            onPreview={handlePreview}
+            onPrint={handlePrint}
+            onExportPDF={handleExportPDF}
+          />
         </div>
       </div>
 
-      {/* 主内容 */}
-      <main className="p-6">
-        <Tabs defaultValue="batch" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="batch" className="flex items-center gap-2">
-              <Layers className="w-4 h-4" />
-              批量打印
-            </TabsTrigger>
-            <TabsTrigger value="qrcode" className="flex items-center gap-2">
-              <QrCode className="w-4 h-4" />
-              二维码生成
-            </TabsTrigger>
-            <TabsTrigger value="barcode" className="flex items-center gap-2">
-              <Barcode className="w-4 h-4" />
-              条形码生成
-            </TabsTrigger>
-            <TabsTrigger value="template" className="flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              模板管理
-            </TabsTrigger>
-          </TabsList>
-
-          {/* 批量打印 */}
-          <TabsContent value="batch">
-            <BatchPrint
-              records={mockBitableData.records.map(recordToPrintData)}
-              onPrint={(ids) => console.log('批量打印:', ids)}
-              onExport={(ids) => console.log('批量导出:', ids)}
-            />
-          </TabsContent>
-
-          {/* 二维码生成 */}
-          <TabsContent value="qrcode">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* 单个二维码生成器 */}
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">单个二维码</h3>
-                <div className="space-y-4">
-                  <div>
-                    <Label>二维码内容</Label>
-                    <Input
-                      value={qrValue}
-                      onChange={(e) => setQrValue(e.target.value)}
-                      placeholder="输入URL或文本"
-                    />
-                  </div>
-                  <QRCodeGenerator
-                    value={qrValue}
-                    size={200}
-                    title="任务二维码"
-                    showDownload
-                  />
-                </div>
-              </Card>
-
-              {/* 批量二维码 */}
-              <Card className="p-6 lg:col-span-2">
-                <h3 className="text-lg font-semibold mb-4">批量二维码</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  为所有任务生成二维码，每条记录一个二维码
-                </p>
-                <BatchQRCodeGenerator values={batchQRData} size={150} />
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* 条形码生成 */}
-          <TabsContent value="barcode">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* 单个条形码生成器 */}
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">单个条形码</h3>
-                <div className="space-y-4">
-                  <div>
-                    <Label>条形码内容</Label>
-                    <Input
-                      value={barcodeValue}
-                      onChange={(e) => setBarcodeValue(e.target.value)}
-                      placeholder="输入编号或文本"
-                    />
-                  </div>
-                  <BarcodeGenerator
-                    value={barcodeValue}
-                    format="CODE128"
-                    title="任务条形码"
-                    showDownload
-                  />
-                </div>
-              </Card>
-
-              {/* 批量条形码 */}
-              <Card className="p-6 lg:col-span-2">
-                <h3 className="text-lg font-semibold mb-4">批量条形码</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  为所有任务生成条形码
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {mockBitableData.records.map((record, idx) => (
-                    <BarcodeGenerator
-                      key={record.id}
-                      value={`TASK-${String(idx + 1).padStart(3, '0')}-${Date.now()}`}
-                      title={`任务 ${idx + 1}`}
-                      showDownload
-                    />
-                  ))}
-                </div>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* 模板管理 */}
-          <TabsContent value="template">
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">打印模板管理</h3>
-              <div className="space-y-4">
-                <div className="flex gap-4">
-                  <Button className="flex items-center gap-2">
-                    <FileText className="w-4 h-4" />
-                    创建新模板
-                  </Button>
-                  <Button variant="outline" className="flex items-center gap-2">
-                    <Download className="w-4 h-4" />
-                    导入模板
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-                  {/* 预设模板 */}
-                  {['标准任务模板', '简洁卡片模板', '详细报告模板', '标签模板', '证书模板', '发票模板'].map(
-                    (templateName, idx) => (
-                      <Card key={idx} className="p-4 hover:shadow-md transition-shadow cursor-pointer">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                            <FileText className="w-5 h-5 text-blue-600" />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-sm">{templateName}</h4>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {idx < 3 ? '系统模板' : '自定义模板'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2 mt-3">
-                          <Button variant="outline" size="sm" className="flex-1">
-                            编辑
-                          </Button>
-                          <Button size="sm" className="flex-1">
-                            使用
-                          </Button>
-                        </div>
-                      </Card>
-                    )
-                  )}
-                </div>
-              </div>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </main>
-
-      {/* 打印预览对话框 */}
-      <PrintPreview
-        open={printPreviewOpen}
-        onClose={() => setPrintPreviewOpen(false)}
-        content={previewRecord && <TaskPrintCard data={previewRecord} />}
-        title="任务打印预览"
-        filename={`task-${previewRecord?.id}.pdf`}
-      />
+      {/* 打印样式 */}
+      <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .print-content,
+          .print-content * {
+            visibility: visible;
+          }
+          .print-content {
+            position: absolute;
+            left: 0;
+            top: 0;
+          }
+        }
+      `}</style>
     </div>
   );
 }
