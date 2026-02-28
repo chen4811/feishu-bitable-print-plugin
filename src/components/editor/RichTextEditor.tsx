@@ -82,6 +82,7 @@ export function RichTextEditor({
       Underline,
     ],
     content: content || `<p>${placeholder}</p>`,
+    immediatelyRender: false,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
