@@ -22,7 +22,7 @@ const AutoResizingTextarea = ({
   const adjustHeight = useCallback(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.max(textareaRef.current.scrollHeight, 20)}px`;
+      textareaRef.current.style.height = `${Math.max(textareaRef.current.scrollHeight, 24)}px`;
     }
   }, []);
 
@@ -36,6 +36,16 @@ const AutoResizingTextarea = ({
     adjustHeight();
   }, [adjustHeight]);
 
+  // 监听输入事件，实时调整高度
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      const handleInputEvent = () => adjustHeight();
+      textarea.addEventListener('input', handleInputEvent);
+      return () => textarea.removeEventListener('input', handleInputEvent);
+    }
+  }, [adjustHeight]);
+
   return (
     <textarea
       ref={textareaRef}
@@ -46,6 +56,7 @@ const AutoResizingTextarea = ({
       className="w-full border-0 outline-none p-1 resize-none overflow-hidden"
       style={{ 
         height: 'auto',
+        minHeight: '24px',
         backgroundColor: 'transparent',
         ...style,
       }}
@@ -765,8 +776,14 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                           textTransform: textStyles.textTransform,
                         };
                         
+                        // 移除 minHeight 和 h-full，让容器能根据内容自由调整高度
+                        const containerStyles = {
+                          ...textStyles,
+                          minHeight: undefined,
+                        };
+                        
                         return (
-                          <div className="w-full h-full flex items-stretch" style={textStyles}>
+                          <div className="w-full" style={containerStyles}>
                             <AutoResizingTextarea
                               value={cellContent || ''}
                               onChange={(value) => handleTableCellChange(rowIndex, colIndex, value)}
@@ -777,7 +794,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                   e.preventDefault();
                                   e.stopPropagation();
                                 }
-                                // Shift+Enter 允许正常换行，不阻止默认行为
+                                // Shift+Enter 完全不处理，让浏览器自然处理换行
                               }}
                               style={textareaStyles}
                             />
