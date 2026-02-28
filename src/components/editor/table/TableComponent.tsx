@@ -46,10 +46,7 @@ export const TableComponent: React.FC<TableComponentProps> = ({
     e.stopPropagation();
     setIsEditing(true);
     setIsHovered(false);
-    if (!isSelected) {
-      onSelect();
-    }
-  }, [isSelected, onSelect]);
+  }, []);
 
   const handleCellChange = useCallback((row: number, col: number, value: string) => {
     const newData = [...tableData];
@@ -73,7 +70,17 @@ export const TableComponent: React.FC<TableComponentProps> = ({
   const shouldShowSelectionBorder = isSelected && !isEditing;
 
   return (
-    <div className="table-component relative">
+    <div 
+      className="table-component relative"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onClick={handleClick}
+      style={{ 
+        padding: 0, 
+        margin: 0,
+        display: 'inline-block',
+      }}
+    >
       {shouldShowHoverToolbar && (
         <div 
           className="absolute -top-10 right-0 z-20"
@@ -125,12 +132,7 @@ export const TableComponent: React.FC<TableComponentProps> = ({
         </div>
       )}
 
-      <div 
-        className="transition-all duration-200 relative"
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        onClick={handleClick}
-      >
+      <div className="relative" style={{ padding: 0, margin: 0 }}>
         {shouldShowSelectionBorder && (
           <div 
             className="absolute inset-0 border-2 border-blue-500 pointer-events-none" 
@@ -138,7 +140,7 @@ export const TableComponent: React.FC<TableComponentProps> = ({
           />
         )}
         
-        <div className="border bg-white">
+        <div className="border bg-white" style={{ padding: 0, margin: 0 }}>
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
             <tbody>
               {tableData.map((row, rowIndex) => (

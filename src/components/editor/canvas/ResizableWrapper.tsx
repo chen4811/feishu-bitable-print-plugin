@@ -41,8 +41,12 @@ export function ResizableWrapper({
       return;
     }
     
-    // 检查是否点击了子元素（非拖拽区域）
-    if (target !== currentTarget && !target.classList.contains('drag-handle')) {
+    // 检查是否点击了输入框或按钮，如果是则不拖拽
+    const clickedElement = target as HTMLElement;
+    if (clickedElement.tagName === 'INPUT' || 
+        clickedElement.tagName === 'BUTTON' ||
+        clickedElement.closest('button') ||
+        clickedElement.closest('input')) {
       return;
     }
     

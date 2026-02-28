@@ -363,7 +363,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         const tableComp = component as TableComponentType;
         
         return (
-          <div className="w-full h-full">
+          <div style={{ padding: 0, margin: 0 }}>
             <TableComponent 
               component={tableComp}
               isSelected={isSelected}
