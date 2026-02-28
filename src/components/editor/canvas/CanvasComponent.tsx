@@ -626,7 +626,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                           >
                             {/* 列操作按钮 - 仅在第一行 */}
                             {rowIndex === 0 && (
-                              <>
+                              <div className="flex items-center justify-center gap-0.5 mb-1">
                                 {hoveredColDot === colIndex ? (
                                   <>
                                     <button onClick={(e) => { e.stopPropagation(); handleAddColumn(tableComp, colIndex); }} className="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600" title="在左侧插入列" onMouseDown={(e) => e.stopPropagation()}>
@@ -650,7 +650,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                     onMouseLeave={() => setHoveredColDot(null)}
                                   />
                                 )}
-                              </>
+                              </div>
                             )}
                             
                             {(() => {
@@ -782,7 +782,9 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       >
                         {/* 保留列操作按钮空间（仅第一行，隐藏内容） */}
                         {rowIndex === 0 && (
-                          <div className="w-2 h-2 rounded-full opacity-0" />
+                          <div className="flex items-center justify-center gap-0.5 mb-1 opacity-0">
+                            <div className="w-2 h-2 rounded-full" />
+                          </div>
                         )}
                         
                         <div className="whitespace-pre-wrap" style={textStyles}>
