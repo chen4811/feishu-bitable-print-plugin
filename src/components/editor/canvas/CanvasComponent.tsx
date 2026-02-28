@@ -528,9 +528,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     // ========== 编辑状态表格 ==========
     if (isCurrentTableEditing) {
       return (
-        <div className="overflow-x-auto" style={{ maxWidth: '100%' }} onMouseUp={handleCellMouseUp} onMouseLeave={handleTableMouseLeave}>
-          <div className="inline-block min-w-0">
-            <table className="border-collapse">
+        <div className="relative w-full" onMouseUp={handleCellMouseUp} onMouseLeave={handleTableMouseLeave}>
+          <table className="w-full border-collapse">
               <tbody>
                 {tableEditData.map((row: any[], rowIndex: number) => {
                   const isHeader = rowIndex < (tableComp.tableConfig?.headerRows || 0);
@@ -711,9 +710,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               </tbody>
             </table>
           </div>
-        </div>
-      );
-    }
+        );
+      }
 
     // ========== 非编辑状态表格（原生表格）==========
     return (
@@ -726,6 +724,13 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               
               return (
                 <tr key={rowIndex} className={isHeader ? 'bg-gray-100 font-semibold' : isFooter ? 'bg-gray-50' : ''}>
+                  {/* 保留行操作列空间（隐藏内容） */}
+                  <td className="border bg-gray-50 w-8 p-0" style={{ verticalAlign: 'middle' }}>
+                    <div className="p-1 min-h-full opacity-0">
+                      <div className="w-2 h-2 rounded-full" />
+                    </div>
+                  </td>
+                  
                   {row.map((cellContent: any, colIndex: number) => {
                     const cell = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex];
                     const cellId = cell?.id || `cell-${rowIndex}-${colIndex}`;
@@ -774,6 +779,13 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                           ...borderStyles,
                         }}
                       >
+                        {/* 保留列操作按钮空间（仅第一行，隐藏内容） */}
+                        {rowIndex === 0 && (
+                          <div className="p-1 bg-gray-50 border-b mb-1 opacity-0">
+                            <div className="w-2 h-2 rounded-full" />
+                          </div>
+                        )}
+                        
                         <div className="whitespace-pre-wrap" style={textStyles}>
                           {cellContent || ''}
                         </div>
