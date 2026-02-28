@@ -113,8 +113,10 @@ export function usePrintSDK(): UsePrintSDKResult {
       setFeishuEnvironment(true);
 
       // 获取字段
+      console.log('[PrintSDK] 开始获取字段...');
       const feishuFields = await feishuEnv.fetchFields();
-      console.log('[PrintSDK] 获取到字段:', feishuFields.length);
+      console.log('[PrintSDK] feishuEnv.fetchFields() 返回:', feishuFields);
+      console.log('[PrintSDK] 获取到字段数量:', feishuFields.length);
 
       if (feishuFields.length === 0) {
         console.warn('[PrintSDK] 未获取到字段');
@@ -128,8 +130,11 @@ export function usePrintSDK(): UsePrintSDKResult {
         placeholder: `[${f.name}]`,
         isSystem: false,
       }));
+      console.log('[PrintSDK] 转换后的字段:', convertedFields);
+      console.log('[PrintSDK] 准备设置到 store 和 store...');
       setFields(convertedFields);
       setStoreFields(convertedFields);
+      console.log('[PrintSDK] 字段已设置到 store');
 
       // 获取记录
       const feishuRecords = await feishuEnv.fetchRecords();

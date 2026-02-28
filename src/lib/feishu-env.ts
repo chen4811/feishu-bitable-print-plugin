@@ -194,25 +194,42 @@ export async function fetchFields(): Promise<Array<{
 
   try {
     const selection = await base.getSelection();
+    console.log('[FeishuEnv] selection:', selection);
+    
     if (!selection?.tableId) {
       console.error('[FeishuEnv] 无法获取 tableId');
       return [];
     }
     
     const table = await base.getTable(selection.tableId);
+    console.log('[FeishuEnv] table:', table);
+    
     const fields = await table.getFieldList();
-
-    console.log('[FeishuEnv] 获取到字段:', fields?.length || 0);
+    console.log('[FeishuEnv] 获取到原始字段数据:', fields);
+    console.log('[FeishuEnv] 获取到字段数量:', fields?.length || 0);
 
     if (!Array.isArray(fields)) {
+      console.warn('[FeishuEnv] fields 不是数组:', fields);
       return [];
     }
 
-    return fields.map((field: any, index: number) => ({
-      id: field.id || `field_${index}`,
-      name: field.name || `字段${index + 1}`,
-      type: FIELD_TYPE_MAP[field.type] || 'text',
-    }));
+    const result = fields.map((field: any, index: number) => {
+      console.log(`[FeishuEnv] 字段 ${index} 原始数据:`, field);
+      
+      const fieldName = field.name || field.fieldName || `字段${index + 1}`;
+      const fieldType = FIELD_TYPE_MAP[field.type] || 'text';
+      
+      console.log(`[FeishuEnv] 字段 ${index} 解析结果: id=${field.id}, name=${fieldName}, type=${fieldType}`);
+      
+      return {
+        id: field.id || `field_${index}`,
+        name: fieldName,
+        type: fieldType,
+      };
+    });
+    
+    console.log('[FeishuEnv] 最终返回的字段列表:', result);
+    return result;
   } catch (error) {
     console.error('[FeishuEnv] 获取字段失败:', error);
     return [];
