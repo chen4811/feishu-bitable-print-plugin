@@ -630,8 +630,8 @@ export function EditorPage({ onExit }: EditorPageProps) {
           </div>
         </header>
 
-        {/* 文字编辑工具栏 - 仅在选中文本组件时显示 */}
-        {selectedTextComponent && (
+        {/* 文字编辑工具栏 - 仅在选中文本组件且不在编辑表格时显示 */}
+        {selectedTextComponent && !tableEditing.isEditing && (
           <div className="border-b bg-background/95 backdrop-blur px-4 py-2">
             <TextToolbar
               textStyle={{
