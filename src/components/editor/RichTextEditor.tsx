@@ -1,15 +1,26 @@
 'use client';
 
 import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
+import { Document } from '@tiptap/extension-document';
+import { Paragraph } from '@tiptap/extension-paragraph';
+import { Text } from '@tiptap/extension-text';
+import { Bold } from '@tiptap/extension-bold';
+import { Italic } from '@tiptap/extension-italic';
+import { Strike } from '@tiptap/extension-strike';
+import { Heading } from '@tiptap/extension-heading';
+import { BulletList } from '@tiptap/extension-bullet-list';
+import { OrderedList } from '@tiptap/extension-ordered-list';
+import { ListItem } from '@tiptap/extension-list-item';
+import { Blockquote } from '@tiptap/extension-blockquote';
+import { HardBreak } from '@tiptap/extension-hard-break';
+import { HorizontalRule } from '@tiptap/extension-horizontal-rule';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
 import { TextAlign } from '@tiptap/extension-text-align';
 import { Underline } from '@tiptap/extension-underline';
-import { Link } from '@tiptap/extension-link';
 import {
-  Bold,
-  Italic,
+  Bold as BoldIcon,
+  Italic as ItalicIcon,
   Underline as UnderlineIcon,
   AlignLeft,
   AlignCenter,
@@ -18,7 +29,6 @@ import {
   Heading2,
   List,
   ListOrdered,
-  Link as LinkIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -49,20 +59,27 @@ export function RichTextEditor({
 }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        heading: {
-          levels: [1, 2],
-        },
+      Document,
+      Paragraph,
+      Text,
+      Bold,
+      Italic,
+      Strike,
+      Heading.configure({
+        levels: [1, 2],
       }),
+      BulletList,
+      OrderedList,
+      ListItem,
+      Blockquote,
+      HardBreak,
+      HorizontalRule,
       TextStyle,
       Color,
       TextAlign.configure({
         types: ['heading', 'paragraph'],
       }),
       Underline,
-      Link.configure({
-        openOnClick: false,
-      }),
     ],
     content: content || `<p>${placeholder}</p>`,
     onUpdate: ({ editor }) => {
@@ -161,7 +178,7 @@ export function RichTextEditor({
                   onClick={() => editor.chain().focus().toggleBold().run()}
                   data-state={editor.isActive('bold') ? 'active' : 'inactive'}
                 >
-                  <Bold className="w-4 h-4" />
+                  <BoldIcon className="w-4 h-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>粗体</TooltipContent>
@@ -176,7 +193,7 @@ export function RichTextEditor({
                   onClick={() => editor.chain().focus().toggleItalic().run()}
                   data-state={editor.isActive('italic') ? 'active' : 'inactive'}
                 >
-                  <Italic className="w-4 h-4" />
+                  <ItalicIcon className="w-4 h-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>斜体</TooltipContent>
@@ -278,27 +295,6 @@ export function RichTextEditor({
               <TooltipContent>有序列表</TooltipContent>
             </Tooltip>
           </div>
-
-          {/* 链接 */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => {
-                  const url = window.prompt('请输入链接地址:');
-                  if (url) {
-                    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
-                  }
-                }}
-                data-state={editor.isActive('link') ? 'active' : 'inactive'}
-              >
-                <LinkIcon className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>插入链接</TooltipContent>
-          </Tooltip>
 
           {/* 颜色选择器 */}
           <DropdownMenu>
