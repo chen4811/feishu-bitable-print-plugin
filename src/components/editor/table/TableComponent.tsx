@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { TableComponent as TableComponentType } from '@/types/editor';
 import { HoverToolbar } from './HoverToolbar';
 import { AdvancedToolbar } from './AdvancedToolbar';
@@ -23,6 +23,7 @@ export const TableComponent: React.FC<TableComponentProps> = ({
   onCopy,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [isToolbarHovered, setIsToolbarHovered] = useState(false);
   const [editMode, setEditMode] = useState<EditMode>('view');
   const [selectedCells, setSelectedCells] = useState<string[]>([]);
   const [tableData, setTableData] = useState<string[][]>([
@@ -31,15 +32,50 @@ export const TableComponent: React.FC<TableComponentProps> = ({
     ['单元格7', '单元格8', '单元格9'],
   ]);
 
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const handleMouseEnter = () => {
     if (editMode === 'view') {
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+        hideTimeoutRef.current = null;
+      }
       setIsHovered(true);
     }
   };
 
   const handleMouseLeave = () => {
-    setIsHovered(false);
+    if (editMode === 'view') {
+      hideTimeoutRef.current = setTimeout(() => {
+        if (!isToolbarHovered) {
+          setIsHovered(false);
+        }
+      }, 300); // 300ms 延迟关闭
+    }
   };
+
+  const handleToolbarMouseEnter = () => {
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+    setIsToolbarHovered(true);
+  };
+
+  const handleToolbarMouseLeave = () => {
+    setIsToolbarHovered(false);
+    hideTimeoutRef.current = setTimeout(() => {
+      setIsHovered(false);
+    }, 200);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -103,7 +139,11 @@ export const TableComponent: React.FC<TableComponentProps> = ({
     >
       {/* 悬停工具栏 - 仅在悬停且未选中时显示 */}
       {showHoverToolbar && (
-        <div className="absolute -top-12 left-0 right-0 z-20">
+        <div 
+          className="absolute -top-12 left-0 right-0 z-20"
+          onMouseEnter={handleToolbarMouseEnter}
+          onMouseLeave={handleToolbarMouseLeave}
+        >
           <HoverToolbar 
             onEdit={handleEditTable}
             onDelete={onDelete}
