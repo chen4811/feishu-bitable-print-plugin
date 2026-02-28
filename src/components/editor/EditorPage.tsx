@@ -34,6 +34,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { TextToolbar } from './TextToolbar';
+import { AdvancedToolbar } from './table/AdvancedToolbar';
 import { ComponentTextStyle, TextCanvasNode } from '@/types/editor';
 import {
   DropdownMenu,
@@ -77,6 +78,8 @@ export function EditorPage({ onExit }: EditorPageProps) {
     clearCanvas,
     history,
     historyIndex,
+    tableEditing,
+    setTableEditing,
   } = useEditorStore();
 
   // 智能聚焦：选中组件时自动切换到数据源面板
@@ -297,6 +300,21 @@ export function EditorPage({ onExit }: EditorPageProps) {
               onChange={updateTextStyle}
               onIncreaseFontSize={increaseFontSize}
               onDecreaseFontSize={decreaseFontSize}
+            />
+          </div>
+        )}
+
+        {/* 表格编辑工具栏 - 仅在编辑表格时显示 */}
+        {tableEditing.isEditing && (
+          <div className="border-b bg-background/95 backdrop-blur px-4 py-2">
+            <AdvancedToolbar
+              onMergeCells={tableEditing.onMergeCells}
+              selectedCellCount={tableEditing.selectedCells.length}
+              onHeaderFooterChange={tableEditing.onHeaderFooterChange}
+              onBorderChange={tableEditing.onBorderChange}
+              onAlignmentChange={tableEditing.onAlignmentChange}
+              onColorChange={tableEditing.onColorChange}
+              onFinishEdit={tableEditing.onFinishEdit}
             />
           </div>
         )}

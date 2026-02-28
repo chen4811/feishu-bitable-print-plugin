@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { CanvasComponentNode } from '@/types/editor';
 import { useEditorStore } from '@/store/editorStore';
 import { Button } from '@/components/ui/button';
@@ -8,8 +8,6 @@ import { Copy, Pencil, Trash2 } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { HoverToolbar } from '../table/HoverToolbar';
-import { AdvancedToolbar } from '../table/AdvancedToolbar';
-import { Portal } from '@/components/common/Portal';
 
 interface CanvasComponentProps {
   component: CanvasComponentNode;
@@ -18,7 +16,14 @@ interface CanvasComponentProps {
 }
 
 export function CanvasComponent({ component, isSelected, onSelect }: CanvasComponentProps) {
-  const { updateComponent, styleConfig, duplicateComponent, deleteComponent } = useEditorStore();
+  const { 
+    updateComponent, 
+    styleConfig, 
+    duplicateComponent, 
+    deleteComponent,
+    tableEditing,
+    setTableEditing,
+  } = useEditorStore();
   
   // 通用状态
   const [isEditing, setIsEditing] = useState(false);
@@ -26,17 +31,17 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
-  // 表格编辑状态
-  const [isTableEditing, setIsTableEditing] = useState(false);
+  // 表格编辑状态（本地数据，UI 状态在 store）
   const [tableEditData, setTableEditData] = useState<any[][]>([]);
-  const [selectedCells, setSelectedCells] = useState<string[]>([]);
+  
+  // 判断当前是否在编辑这个表格
+  const isCurrentTableEditing = tableEditing.isEditing && tableEditing.tableId === component.id;
 
   // 文本组件编辑
   const handleDoubleClickText = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (component.type === 'text') {
       setIsEditing(true);
-      // 如果有实际内容则编辑实际内容，否则为空
       setEditContent((component as any).content && (component as any).content !== '显示' ? (component as any).content : '');
     }
   };
@@ -49,17 +54,66 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   };
 
   // 表格编辑 - 切换编辑状态
-  const handleEditTable = (e?: React.MouseEvent) => {
+  const handleEditTable = useCallback((e?: React.MouseEvent) => {
     if (e && e.stopPropagation) {
       e.stopPropagation();
     }
-    setIsTableEditing(prev => !prev);
-  };
+    
+    if (isCurrentTableEditing) {
+      // 退出编辑
+      setTableEditing({
+        isEditing: false,
+        tableId: null,
+        selectedCells: [],
+      });
+    } else {
+      // 进入编辑 - 设置回调函数
+      const tableComp = component as any;
+      
+      setTableEditing({
+        isEditing: true,
+        tableId: component.id,
+        selectedCells: [],
+        onMergeCells: () => {
+          console.log('合并单元格');
+        },
+        onHeaderFooterChange: (header: boolean, footer: boolean) => {
+          if (component.type !== 'table') return;
+          const tableComp = component as any;
+          updateComponent(component.id, {
+            tableConfig: {
+              ...tableComp.tableConfig,
+              headerRows: header ? 1 : 0,
+              footerRows: footer ? 1 : 0,
+            },
+          });
+        },
+        onBorderChange: (borderType: string) => {
+          console.log('边框变化:', borderType);
+        },
+        onAlignmentChange: (alignment: 'left' | 'center' | 'right') => {
+          console.log('对齐变化:', alignment);
+        },
+        onColorChange: (colorType: 'text' | 'fill', color: string) => {
+          console.log('颜色变化:', colorType, color);
+        },
+        onFinishEdit: () => {
+          setTableEditing({
+            isEditing: false,
+            tableId: null,
+            selectedCells: [],
+          });
+        },
+      });
+    }
+  }, [component.id, isCurrentTableEditing, setTableEditing, updateComponent]);
 
   // 双击表格进入编辑
   const handleDoubleClickTable = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsTableEditing(true);
+    if (!isCurrentTableEditing) {
+      handleEditTable();
+    }
   };
 
   // 复制组件
@@ -77,178 +131,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
     deleteComponent(component.id);
   };
-
-  // 高级工具栏处理函数
-  const handleMergeCells = () => {
-    if (component.type !== 'table') return;
-    
-    const tableComp = component as any;
-    if (selectedCells.length < 2) return;
-    
-    // 简单实现：合并第一个和第二个选中的单元格
-    // 实际应用中需要更复杂的合并逻辑
-    console.log('合并单元格:', selectedCells);
-    setSelectedCells([]);
-  };
-
-  const handleHeaderFooterChange = (headerRows: number, footerRows: number) => {
-    if (component.type !== 'table') return;
-    
-    const tableComp = component as any;
-    updateComponent(component.id, {
-      tableConfig: {
-        ...tableComp.tableConfig,
-        headerRows,
-        footerRows,
-      },
-    });
-  };
-
-  const handleBorderChange = (hasBorder: boolean) => {
-    if (component.type !== 'table') return;
-    
-    const tableComp = component as any;
-    updateComponent(component.id, {
-      tableConfig: {
-        ...tableComp.tableConfig,
-        showOuterBorder: hasBorder,
-        showInnerBorder: hasBorder,
-        borderWidth: hasBorder ? 1 : 0,
-      },
-    });
-  };
-
-  const handleAlignmentChange = (alignment: 'left' | 'center' | 'right') => {
-    if (component.type !== 'table') return;
-    
-    const tableComp = component as any;
-    // 更新选中单元格的对齐方式
-    if (selectedCells.length > 0) {
-      const newCells = tableComp.tableConfig.cells.map((row: any[]) =>
-        row.map((cell: any) => {
-          if (selectedCells.includes(cell.id)) {
-            return {
-              ...cell,
-              style: {
-                ...cell.style,
-                align: alignment,
-              },
-            };
-          }
-          return cell;
-        })
-      );
-      updateComponent(component.id, {
-        tableConfig: {
-          ...tableComp.tableConfig,
-          cells: newCells,
-        },
-      });
-    }
-  };
-
-  const handleColorChange = (color: string) => {
-    if (component.type !== 'table') return;
-    
-    const tableComp = component as any;
-    // 更新选中单元格的背景色
-    if (selectedCells.length > 0) {
-      const newCells = tableComp.tableConfig.cells.map((row: any[]) =>
-        row.map((cell: any) => {
-          if (selectedCells.includes(cell.id)) {
-            return {
-              ...cell,
-              backgroundColor: color,
-            };
-          }
-          return cell;
-        })
-      );
-      updateComponent(component.id, {
-        tableConfig: {
-          ...tableComp.tableConfig,
-          cells: newCells,
-        },
-      });
-    }
-  };
-
-  const handleInsertLink = () => {
-    if (component.type !== 'table') return;
-    
-    // 简单实现：在选中的单元格中插入链接
-    // 实际应用中应该弹出对话框让用户输入链接
-    const tableComp = component as any;
-    if (selectedCells.length > 0) {
-      const newCells = tableComp.tableConfig.cells.map((row: any[]) =>
-        row.map((cell: any) => {
-          if (selectedCells.includes(cell.id)) {
-            return {
-              ...cell,
-              content: cell.content + ' [链接]',
-            };
-          }
-          return cell;
-        })
-      );
-      updateComponent(component.id, {
-        tableConfig: {
-          ...tableComp.tableConfig,
-          cells: newCells,
-        },
-      });
-      // 更新编辑数据
-      setTableEditData(newCells.map((row: any[]) => row.map((cell: any) => cell.content)));
-    }
-  };
-
-  const handleInsertQRCode = () => {
-    // 在编辑器中插入二维码组件
-    // 实际应用中应该在旁边插入新的二维码组件
-    console.log('插入二维码');
-  };
-
-  const handleInsertBarcode = () => {
-    // 在编辑器中插入条形码组件
-    console.log('插入条形码');
-  };
-
-  const handleInsertImage = () => {
-    // 在编辑器中插入图片组件
-    console.log('插入图片');
-  };
-
-  const handleInsertArticle = () => {
-    // 在编辑器中插入文章组件
-    console.log('插入文章');
-  };
-
-  const handleInsertAttachment = () => {
-    // 在编辑器中插入附件组件
-    console.log('插入附件');
-  };
-
-  const handleAdvancedConfig = () => {
-    // 打开循环字段高级配置对话框
-    console.log('循环字段高级配置');
-  };
-
-  // 初始化表格编辑数据
-  useEffect(() => {
-    if (component.type === 'table') {
-      const tableComp = component as any;
-      if (tableComp.tableConfig?.cells) {
-        setTableEditData(tableComp.tableConfig.cells.map((row: any[]) => 
-          row.map((cell: any) => cell?.content || '')
-        ));
-      } else {
-        setTableEditData([
-          ['', '', ''],
-          ['', '', ''],
-        ]);
-      }
-    }
-  }, [component.id, component.type]);
 
   // 表格单元格编辑
   const handleTableCellChange = (row: number, col: number, value: string) => {
@@ -282,6 +164,23 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
   }, [isEditing]);
 
+  // 初始化表格编辑数据
+  useEffect(() => {
+    if (component.type === 'table') {
+      const tableComp = component as any;
+      if (tableComp.tableConfig?.cells) {
+        setTableEditData(tableComp.tableConfig.cells.map((row: any[]) => 
+          row.map((cell: any) => cell?.content || '')
+        ));
+      } else {
+        setTableEditData([
+          ['', '', ''],
+          ['', '', ''],
+        ]);
+      }
+    }
+  }, [component.id, component.type]);
+
   // 生成二维码
   useEffect(() => {
     if (component.type === 'qrcode' && canvasRef.current) {
@@ -311,7 +210,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
   }, [component]);
 
-  // 渲染表格内容（独立函数，避免代码重复）
+  // 渲染表格内容
   const renderTableContent = (tableComp: any) => {
     if (!tableComp.tableConfig?.cells) {
       return (
@@ -349,7 +248,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               >
               {row.map((cellContent: any, colIndex: number) => {
                 const cellId = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.id || `cell-${rowIndex}-${colIndex}`;
-                const isCellSelected = selectedCells.includes(cellId);
+                const isCellSelected = tableEditing.selectedCells.includes(cellId);
                 
                 return (
                   <td
@@ -360,23 +259,14 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (isTableEditing) {
-                        // 编辑模式下，点击选择单元格
-                        setSelectedCells(prev => {
-                          if (e.shiftKey) {
-                            // Shift + 点击：多选
-                            return [...prev, cellId];
-                          } else {
-                            // 普通点击：单选
-                            return prev.includes(cellId) 
-                              ? prev.filter(id => id !== cellId) 
-                              : [cellId];
-                          }
+                      if (isCurrentTableEditing) {
+                        setTableEditing({
+                          selectedCells: [cellId],
                         });
                       }
                     }}
                   >
-                    {isTableEditing ? (
+                    {isCurrentTableEditing ? (
                       <input
                         type="text"
                         value={cellContent || ''}
@@ -448,7 +338,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
             }}
             onDoubleClick={handleDoubleClickText}
           >
-            {/* 标题样式渲染 */}
             {textComp.textStyle?.headingLevel === 1 && (
               <h1 style={{ 
                 fontSize: '24px', 
@@ -467,7 +356,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 {textComp.content || '显示'}
               </h2>
             )}
-            {/* 列表样式渲染 */}
             {textComp.textStyle?.listType === 'unordered' && !textComp.textStyle?.headingLevel && (
               <ul style={{ marginLeft: '1.5rem', paddingLeft: 0 }}>
                 <li>{textComp.content || '显示'}</li>
@@ -478,7 +366,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 <li>{textComp.content || '显示'}</li>
               </ol>
             )}
-            {/* 普通文本 */}
             {!textComp.textStyle?.headingLevel && !textComp.textStyle?.listType && (
               <span>
                 {textComp.textStyle?.linkUrl ? (
@@ -502,37 +389,18 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       case 'table':
         const tableComp = component as any;
         
-        // 编辑状态：使用 Portal 将工具栏渲染到画布上方，完全独立于表格
-        if (isTableEditing) {
+        // 编辑状态：表格内容，工具栏在 EditorPage 层面
+        if (isCurrentTableEditing) {
           return (
-            <>
-              {/* 使用 Portal 将工具栏渲染到 body，位于画布上方 */}
-              <Portal>
-                <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-40">
-                  <AdvancedToolbar
-                    onMergeCells={handleMergeCells}
-                    selectedCellCount={selectedCells.length}
-                    onHeaderFooterChange={handleHeaderFooterChange}
-                    onBorderChange={handleBorderChange}
-                    onAlignmentChange={handleAlignmentChange}
-                    onColorChange={handleColorChange}
-                    onFinishEdit={handleEditTable}
-                  />
-                </div>
-              </Portal>
-              
-              {/* 表格内容 - 纯粹的原生表格，没有任何包裹 */}
-              <div className="mt-20" onDoubleClick={handleDoubleClickTable}>
-                {renderTableContent(tableComp)}
-              </div>
-            </>
+            <div onDoubleClick={handleDoubleClickTable}>
+              {renderTableContent(tableComp)}
+            </div>
           );
         }
         
-        // 非编辑状态：工具栏在右上角悬浮，表格就是纯粹的原生表格
+        // 非编辑状态：工具栏在右上角悬浮
         return (
           <div className="relative group" onDoubleClick={handleDoubleClickTable}>
-            {/* 非编辑状态下，悬浮工具栏在右上角 */}
             <div className="absolute -top-9 right-0 z-10">
               <HoverToolbar
                 onEdit={handleEditTable}
@@ -541,8 +409,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 isSelected={isSelected}
               />
             </div>
-            
-            {/* 表格内容 - 纯粹的原生表格，没有任何包裹 */}
             {renderTableContent(tableComp)}
           </div>
         );
@@ -605,7 +471,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       default:
         const unknownComp = component as any;
         return (
-          <div className="w-full p-4 text-center text-muted-foreground border">
+          <div className="w-full p-4 text-center text-muted-foreground">
             未知组件类型: {unknownComp.type || 'unknown'}
           </div>
         );

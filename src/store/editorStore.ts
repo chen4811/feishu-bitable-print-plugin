@@ -15,6 +15,19 @@ import {
   TableConfig,
 } from '@/types/editor';
 
+// 表格编辑状态
+interface TableEditingState {
+  isEditing: boolean;
+  tableId: string | null;
+  selectedCells: string[];
+  onMergeCells: () => void;
+  onHeaderFooterChange: (header: boolean, footer: boolean) => void;
+  onBorderChange: (borderType: string) => void;
+  onAlignmentChange: (alignment: 'left' | 'center' | 'right') => void;
+  onColorChange: (colorType: 'text' | 'fill', color: string) => void;
+  onFinishEdit: () => void;
+}
+
 // 编辑器状态（流式布局版本）
 interface EditorState {
   // 当前模板
@@ -22,6 +35,9 @@ interface EditorState {
   templateName: string;
   components: any[];
   selectedComponentId: string | null;
+  
+  // 表格编辑状态
+  tableEditing: TableEditingState;
   
   // 页面和样式配置
   pageConfig: PageConfig;
@@ -80,6 +96,9 @@ interface EditorState {
   undo: () => void;
   redo: () => void;
   saveToHistory: () => void;
+  
+  // 表格编辑
+  setTableEditing: (tableEditing: Partial<TableEditingState>) => void;
   
   // 模板操作
   loadTemplate: (template: PrintTemplate) => void;
@@ -144,6 +163,20 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   templateName: '未命名排版',
   components: [],
   selectedComponentId: null,
+  
+  // 表格编辑状态
+  tableEditing: {
+    isEditing: false,
+    tableId: null,
+    selectedCells: [],
+    onMergeCells: () => {},
+    onHeaderFooterChange: () => {},
+    onBorderChange: () => {},
+    onAlignmentChange: () => {},
+    onColorChange: () => {},
+    onFinishEdit: () => {},
+  },
+  
   pageConfig: DEFAULT_PAGE_CONFIG,
   styleConfig: DEFAULT_STYLE_CONFIG,
   fields: [],
@@ -354,6 +387,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         historyIndex: newHistory.length - 1,
       };
     });
+  },
+  
+  // 设置表格编辑状态
+  setTableEditing: (tableEditing: Partial<TableEditingState>) => {
+    set((state) => ({
+      tableEditing: {
+        ...state.tableEditing,
+        ...tableEditing,
+      },
+    }));
   },
   
   // 加载模板
