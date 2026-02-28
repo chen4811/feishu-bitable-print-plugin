@@ -2,10 +2,11 @@
  * 飞书 SDK 真实实现
  * 用于在飞书环境中获取多维表格数据
  * 
- * API 文档: https://open.feishu.cn/document/client-docs/bitable/bitable-overview
+ * API 文档: https://lark-base-team.github.io/js-sdk-docs/zh/
  */
 
-import { base } from '@lark-base-open/js-sdk';
+// 动态导入飞书 SDK
+let base: any = null;
 
 // 字段类型映射
 const FIELD_TYPE_MAP: Record<number, string> = {
@@ -55,35 +56,141 @@ export interface FeishuRecord {
 // SDK 状态
 let isInitialized = false;
 let currentTable: any = null;
+let currentSelection: any = null;
+let sdkLoadError: string | null = null;
+
+/**
+ * 异步加载飞书 SDK
+ */
+async function loadSDK(): Promise<boolean> {
+  if (base !== null) return true;
+  
+  try {
+    // 动态导入
+    const sdk = await import('@lark-base-open/js-sdk');
+    base = sdk.base;
+    console.log('[飞书SDK] SDK 加载成功');
+    return true;
+  } catch (error) {
+    sdkLoadError = `SDK 加载失败: ${error}`;
+    console.error('[飞书SDK]', sdkLoadError);
+    return false;
+  }
+}
 
 /**
  * 检查是否在飞书环境中
  */
 export function isFeishuEnvironment(): boolean {
-  // 检查是否在 iframe 中且有飞书 SDK
-  return typeof window !== 'undefined' && 
-         window.self !== window.top && 
-         typeof base !== 'undefined';
+  // 检查是否在 iframe 中
+  const inIframe = typeof window !== 'undefined' && window.self !== window.top;
+  
+  // 检查是否有飞书相关的全局变量
+  const hasLarkGlobal = typeof window !== 'undefined' && (
+    !!(window as any).lark ||
+    !!(window as any).Lark ||
+    !!(window as any).__LARK_BASE__
+  );
+  
+  // 检查 URL 是否包含飞书相关参数
+  const urlHasFeishu = typeof window !== 'undefined' && (
+    window.location.href.includes('feishu') ||
+    window.location.href.includes('lark') ||
+    window.location.href.includes('bytedance')
+  );
+  
+  const result = inIframe && (hasLarkGlobal || urlHasFeishu);
+  
+  console.log('[飞书SDK] 环境检测:', { 
+    inIframe, 
+    hasLarkGlobal, 
+    urlHasFeishu, 
+    result 
+  });
+  
+  return result;
 }
 
 /**
  * 初始化飞书 SDK
  */
 export async function initSDK(): Promise<boolean> {
-  if (isInitialized) return true;
+  if (isInitialized && currentTable) {
+    console.log('[飞书SDK] 已初始化，跳过');
+    return true;
+  }
+  
+  console.log('[飞书SDK] 开始初始化...');
+  
+  // 先加载 SDK
+  const sdkLoaded = await loadSDK();
+  if (!sdkLoaded) {
+    console.error('[飞书SDK] SDK 未加载');
+    return false;
+  }
+  
+  if (!base) {
+    console.error('[飞书SDK] base 对象为空');
+    return false;
+  }
   
   try {
-    // 获取当前表格 - base.getTable 需要传入 tableId，但我们使用主动选择的方式
-    const selection = await base.getSelection();
-    if (selection && selection.tableId) {
-      currentTable = await base.getTable(selection.tableId);
-      isInitialized = true;
-      console.log('飞书 SDK 初始化成功');
-      return true;
+    // 方法1: 使用 getSelection 获取当前选中的表格
+    console.log('[飞书SDK] 尝试方法1: getSelection...');
+    
+    try {
+      const selection = await base.getSelection();
+      console.log('[飞书SDK] Selection 结果:', JSON.stringify(selection, null, 2));
+      currentSelection = selection;
+      
+      if (selection && selection.tableId) {
+        console.log('[飞书SDK] 获取到 tableId:', selection.tableId);
+        currentTable = await base.getTable(selection.tableId);
+        isInitialized = true;
+        console.log('[飞书SDK] 初始化成功 (通过 tableId)');
+        return true;
+      }
+    } catch (e) {
+      console.warn('[飞书SDK] getSelection 失败:', e);
     }
+    
+    // 方法2: 尝试获取当前表格（不传参数）
+    console.log('[飞书SDK] 尝试方法2: getTable()...');
+    try {
+      currentTable = await base.getTable();
+      if (currentTable) {
+        isInitialized = true;
+        console.log('[飞书SDK] 初始化成功 (通过 getTable())');
+        return true;
+      }
+    } catch (e) {
+      console.warn('[飞书SDK] getTable() 失败:', e);
+    }
+    
+    // 方法3: 检查是否有其他初始化方式
+    console.log('[飞书SDK] 尝试方法3: 检查 base 其他方法...');
+    try {
+      // 列出 base 对象的所有方法
+      const baseMethods = Object.keys(base).filter(k => typeof base[k] === 'function');
+      console.log('[飞书SDK] base 可用方法:', baseMethods);
+      
+      // 尝试其他可能的初始化方式
+      if (base.getActiveTable && typeof base.getActiveTable === 'function') {
+        currentTable = await base.getActiveTable();
+        if (currentTable) {
+          isInitialized = true;
+          console.log('[飞书SDK] 初始化成功 (通过 base.getActiveTable)');
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn('[飞书SDK] 其他初始化方法失败:', e);
+    }
+    
+    console.error('[飞书SDK] 所有初始化方法都失败');
     return false;
   } catch (error) {
-    console.error('飞书 SDK 初始化失败:', error);
+    console.error('[飞书SDK] 初始化异常:', error);
     return false;
   }
 }
@@ -92,23 +199,67 @@ export async function initSDK(): Promise<boolean> {
  * 获取字段列表
  */
 export async function getFields(): Promise<FeishuField[]> {
+  console.log('[飞书SDK] 开始获取字段列表...');
+  
   if (!currentTable) {
-    await initSDK();
+    console.log('[飞书SDK] currentTable 为空，尝试初始化...');
+    const initialized = await initSDK();
+    if (!initialized) {
+      console.error('[飞书SDK] 初始化失败，无法获取字段');
+      return [];
+    }
   }
   
-  if (!currentTable) return [];
+  if (!currentTable) {
+    console.error('[飞书SDK] currentTable 仍为空');
+    return [];
+  }
   
   try {
-    const fields = await currentTable.getFieldList();
-    return fields.map((field: any) => ({
-      id: field.id,
-      name: field.name || '未命名字段',
-      type: field.type || 1,
-      type_name: FIELD_TYPE_MAP[field.type || 1] || 'unknown',
-      property: field.property as Record<string, unknown> | undefined,
-    }));
+    console.log('[飞书SDK] 调用 getFieldList, table:', currentTable);
+    
+    // 尝试不同的方法获取字段
+    let fields: any[] = [];
+    
+    // 方法1: getFieldList
+    if (typeof currentTable.getFieldList === 'function') {
+      console.log('[飞书SDK] 使用 getFieldList');
+      fields = await currentTable.getFieldList();
+    }
+    // 方法2: fields 属性
+    else if (currentTable.fields) {
+      console.log('[飞书SDK] 使用 fields 属性');
+      fields = currentTable.fields;
+    }
+    // 方法3: getFields 方法
+    else if (typeof currentTable.getFields === 'function') {
+      console.log('[飞书SDK] 使用 getFields 方法');
+      fields = await currentTable.getFields();
+    }
+    
+    console.log('[飞书SDK] 原始字段数据:', fields);
+    
+    if (!fields || !Array.isArray(fields)) {
+      console.error('[飞书SDK] 字段格式不正确:', typeof fields, fields);
+      return [];
+    }
+    
+    const result = fields.map((field: any, index: number) => {
+      const fieldInfo: FeishuField = {
+        id: field.id || `field_${index}`,
+        name: field.name || field.fieldName || `字段${index + 1}`,
+        type: field.type || 1,
+        type_name: FIELD_TYPE_MAP[field.type || 1] || 'text',
+        property: field.property,
+      };
+      console.log('[飞书SDK] 字段:', index, fieldInfo);
+      return fieldInfo;
+    });
+    
+    console.log('[飞书SDK] 转换后字段数:', result.length);
+    return result;
   } catch (error) {
-    console.error('获取字段列表失败:', error);
+    console.error('[飞书SDK] 获取字段列表失败:', error);
     return [];
   }
 }
@@ -116,29 +267,58 @@ export async function getFields(): Promise<FeishuField[]> {
 /**
  * 获取记录列表
  */
-export async function getRecords(options?: {
-  viewId?: string;
-  pageSize?: number;
-  pageToken?: string;
-}): Promise<{
+export async function getRecords(): Promise<{
   records: FeishuRecord[];
   hasMore: boolean;
-  pageToken?: string;
 }> {
+  console.log('[飞书SDK] 开始获取记录列表...');
+  
   if (!currentTable) {
-    await initSDK();
+    const initialized = await initSDK();
+    if (!initialized) {
+      return { records: [], hasMore: false };
+    }
   }
   
-  if (!currentTable) return { records: [], hasMore: false };
+  if (!currentTable) {
+    return { records: [], hasMore: false };
+  }
   
   try {
-    // 获取活动视图记录
-    const view = await currentTable.getActiveView();
-    const records = await view.getAllRecords();
+    let records: any[] = [];
+    
+    // 方法1: 通过视图获取
+    if (typeof currentTable.getActiveView === 'function') {
+      console.log('[飞书SDK] 通过视图获取记录...');
+      const view = await currentTable.getActiveView();
+      console.log('[飞书SDK] 视图:', view);
+      
+      if (view && typeof view.getAllRecords === 'function') {
+        records = await view.getAllRecords();
+      } else if (view && typeof view.getRecords === 'function') {
+        records = await view.getRecords();
+      }
+    }
+    // 方法2: 直接从表格获取
+    else if (typeof currentTable.getAllRecords === 'function') {
+      console.log('[飞书SDK] 直接从表格获取记录...');
+      records = await currentTable.getAllRecords();
+    }
+    // 方法3: records 属性
+    else if (currentTable.records) {
+      console.log('[飞书SDK] 使用 records 属性...');
+      records = currentTable.records;
+    }
+    
+    console.log('[飞书SDK] 获取到记录数:', records?.length || 0);
+    
+    if (!records || !Array.isArray(records)) {
+      return { records: [], hasMore: false };
+    }
     
     return {
       records: records.map((record: any) => ({
-        id: record.id,
+        id: record.id || record.recordId,
         fields: record.fields || {},
         createdTime: record.createdTime,
         modifiedTime: record.modifiedTime,
@@ -146,90 +326,17 @@ export async function getRecords(options?: {
       hasMore: false,
     };
   } catch (error) {
-    console.error('获取记录列表失败:', error);
+    console.error('[飞书SDK] 获取记录列表失败:', error);
     return { records: [], hasMore: false };
   }
 }
 
 /**
- * 获取所有记录（自动分页）
+ * 获取所有记录
  */
-export async function getAllRecords(viewId?: string): Promise<FeishuRecord[]> {
-  const result = await getRecords({ viewId });
+export async function getAllRecords(): Promise<FeishuRecord[]> {
+  const result = await getRecords();
   return result.records;
-}
-
-/**
- * 添加记录
- */
-export async function addRecord(fields: Record<string, unknown>): Promise<FeishuRecord | null> {
-  if (!currentTable) {
-    await initSDK();
-  }
-  
-  if (!currentTable) return null;
-  
-  try {
-    const recordId = await currentTable.addRecord({
-      fields: fields as any
-    });
-    
-    return {
-      id: recordId,
-      fields,
-    };
-  } catch (error) {
-    console.error('添加记录失败:', error);
-    return null;
-  }
-}
-
-/**
- * 更新记录
- */
-export async function updateRecord(
-  recordId: string, 
-  fields: Record<string, unknown>
-): Promise<FeishuRecord | null> {
-  if (!currentTable) {
-    await initSDK();
-  }
-  
-  if (!currentTable) return null;
-  
-  try {
-    await currentTable.updateRecord({
-      id: recordId,
-      fields: fields as any
-    });
-    
-    return {
-      id: recordId,
-      fields,
-    };
-  } catch (error) {
-    console.error('更新记录失败:', error);
-    return null;
-  }
-}
-
-/**
- * 删除记录
- */
-export async function deleteRecord(recordId: string): Promise<boolean> {
-  if (!currentTable) {
-    await initSDK();
-  }
-  
-  if (!currentTable) return false;
-  
-  try {
-    await currentTable.deleteRecord(recordId);
-    return true;
-  } catch (error) {
-    console.error('删除记录失败:', error);
-    return false;
-  }
 }
 
 /**
@@ -243,11 +350,42 @@ export async function getTableName(): Promise<string> {
   if (!currentTable) return '未命名表格';
   
   try {
-    // 飞书 SDK 可能没有直接的 name 属性，使用默认名称
-    return '多维表格';
+    return currentTable.name || currentTable.tableName || '多维表格';
   } catch {
     return '未命名表格';
   }
+}
+
+/**
+ * 获取调试信息
+ */
+export async function getDebugInfo(): Promise<Record<string, unknown>> {
+  const info: Record<string, unknown> = {
+    timestamp: new Date().toISOString(),
+    isFeishuEnv: isFeishuEnvironment(),
+    isInitialized,
+    hasTable: !!currentTable,
+    sdkLoadError,
+    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+    url: typeof window !== 'undefined' ? window.location.href : 'unknown',
+  };
+  
+  if (base) {
+    try {
+      const selection = await base.getSelection();
+      info.selection = selection;
+    } catch (e: any) {
+      info.selectionError = e.message || String(e);
+    }
+  }
+  
+  if (currentTable) {
+    info.tableId = currentTable.id;
+    info.tableName = currentTable.name;
+    info.tableMethods = Object.keys(currentTable).filter(k => typeof currentTable[k] === 'function');
+  }
+  
+  return info;
 }
 
 // 导出统一的 SDK 对象
@@ -257,8 +395,6 @@ export const feishuSDK = {
   getFields,
   getRecords,
   getAllRecords,
-  addRecord,
-  updateRecord,
-  deleteRecord,
   getTableName,
+  getDebugInfo,
 };

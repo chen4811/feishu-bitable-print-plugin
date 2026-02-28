@@ -6,6 +6,11 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { 
   Plus, 
   FileText, 
@@ -21,7 +26,10 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
-  RefreshCw
+  RefreshCw,
+  ChevronDown,
+  Bug,
+  XCircle
 } from 'lucide-react';
 import { presetTemplates, templateCategories } from '@/data/presetTemplates';
 import { PresetTemplate } from '@/types/editor';
@@ -75,8 +83,9 @@ const createOptions = [
 export function HomePage({ onCreateNew, onSelectTemplate }: HomePageProps) {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showDebug, setShowDebug] = useState(false);
   
-  const { isLoading, error, isFeishuEnvironment, tableName, fields, records, refreshData } = usePrintSDK();
+  const { isLoading, error, isFeishuEnvironment, tableName, fields, records, refreshData, debugInfo } = usePrintSDK();
 
   // 过滤模板
   const filteredTemplates = presetTemplates.filter((template) => {
@@ -129,8 +138,17 @@ export function HomePage({ onCreateNew, onSelectTemplate }: HomePageProps) {
                   模拟数据
                 </Badge>
               )}
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={refreshData}>
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={refreshData} title="刷新数据">
                 <RefreshCw className="w-3 h-3" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6" 
+                onClick={() => setShowDebug(!showDebug)} 
+                title="显示调试信息"
+              >
+                <Bug className="w-3 h-3" />
               </Button>
             </div>
             <Button variant="outline" size="sm">
@@ -142,6 +160,33 @@ export function HomePage({ onCreateNew, onSelectTemplate }: HomePageProps) {
             </Button>
           </div>
         </div>
+        
+        {/* 调试信息面板 */}
+        {showDebug && (
+          <div className="border-t px-6 py-3 bg-muted/50">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium flex items-center gap-1">
+                <Bug className="w-4 h-4" />
+                调试信息
+              </span>
+              <Button variant="ghost" size="sm" onClick={() => setShowDebug(false)}>
+                <XCircle className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="text-xs font-mono bg-background border rounded p-3 max-h-48 overflow-auto">
+              <pre>{JSON.stringify({
+                isLoading,
+                error,
+                isFeishuEnvironment,
+                tableName,
+                fieldsCount: fields.length,
+                recordsCount: records.length,
+                debugInfo,
+                fields: fields.slice(0, 5).map(f => ({ id: f.id, name: f.name, type: f.type })),
+              }, null, 2)}</pre>
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
@@ -157,6 +202,11 @@ export function HomePage({ onCreateNew, onSelectTemplate }: HomePageProps) {
                 · 已连接飞书多维表格
               </span>
             )}
+            {!isFeishuEnvironment && !isLoading && (
+              <span className="ml-2 text-amber-600 dark:text-amber-400">
+                · 使用模拟数据（请在飞书环境中打开）
+              </span>
+            )}
             <Button variant="link" className="p-0 ml-2 h-auto">查看最佳实践案例</Button>
           </p>
         </div>
@@ -170,6 +220,29 @@ export function HomePage({ onCreateNew, onSelectTemplate }: HomePageProps) {
               <Button variant="outline" size="sm" onClick={refreshData} className="ml-auto">
                 重试
               </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* 字段为空警告 */}
+        {!isLoading && !error && isFeishuEnvironment && fields.length === 0 && (
+          <Card className="mb-6 p-4 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20">
+            <div className="flex items-start gap-2 text-amber-700 dark:text-amber-300">
+              <AlertCircle className="w-5 h-5 mt-0.5" />
+              <div>
+                <p className="font-medium">未能读取到字段数据</p>
+                <p className="text-sm mt-1">
+                  可能的原因：
+                </p>
+                <ul className="text-sm list-disc list-inside mt-1">
+                  <li>多维表格插件未获得数据访问权限</li>
+                  <li>飞书开放平台应用权限配置不完整</li>
+                  <li>当前表格为空或没有字段</li>
+                </ul>
+                <p className="text-sm mt-2">
+                  请检查飞书开放平台的应用权限配置，确保已开通「多维表格」相关权限。
+                </p>
+              </div>
             </div>
           </Card>
         )}
