@@ -357,6 +357,96 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
   }, [component]);
 
+  // ========== 表格行/列操作函数 ==========
+  
+  // 在指定位置新增行
+  const handleAddRow = useCallback((tableComp: any, rowIndex: number) => {
+    if (!tableComp.tableConfig?.cells) return;
+    
+    const currentCells = tableComp.tableConfig.cells;
+    const colCount = currentCells[0]?.length || 3;
+    
+    // 创建新行的单元格
+    const newRow = Array.from({ length: colCount }, (_, i) => ({
+      id: `cell-${Date.now()}-${i}`,
+      content: '',
+    }));
+    
+    // 插入新行
+    const newCells = [...currentCells];
+    newCells.splice(rowIndex, 0, newRow);
+    
+    // 更新组件
+    updateComponent(tableComp.id, {
+      tableConfig: {
+        ...tableComp.tableConfig,
+        cells: newCells,
+      },
+    });
+    
+    // 同步更新本地编辑数据
+    setTableEditData(newCells.map((row: any[]) => row.map((cell: any) => cell.content || '')));
+  }, [updateComponent]);
+
+  // 删除指定行
+  const handleDeleteRow = useCallback((tableComp: any, rowIndex: number) => {
+    if (!tableComp.tableConfig?.cells) return;
+    if (tableComp.tableConfig.cells.length <= 1) return; // 至少保留一行
+    
+    const newCells = tableComp.tableConfig.cells.filter((_: any, index: number) => index !== rowIndex);
+    
+    updateComponent(tableComp.id, {
+      tableConfig: {
+        ...tableComp.tableConfig,
+        cells: newCells,
+      },
+    });
+    
+    setTableEditData(newCells.map((row: any[]) => row.map((cell: any) => cell.content || '')));
+  }, [updateComponent]);
+
+  // 在指定位置新增列
+  const handleAddColumn = useCallback((tableComp: any, colIndex: number) => {
+    if (!tableComp.tableConfig?.cells) return;
+    
+    const newCells = tableComp.tableConfig.cells.map((row: any[], rowIdx: number) => {
+      const newRow = [...row];
+      newRow.splice(colIndex, 0, {
+        id: `cell-${Date.now()}-${rowIdx}-${colIndex}`,
+        content: '',
+      });
+      return newRow;
+    });
+    
+    updateComponent(tableComp.id, {
+      tableConfig: {
+        ...tableComp.tableConfig,
+        cells: newCells,
+      },
+    });
+    
+    setTableEditData(newCells.map((row: any[]) => row.map((cell: any) => cell.content || '')));
+  }, [updateComponent]);
+
+  // 删除指定列
+  const handleDeleteColumn = useCallback((tableComp: any, colIndex: number) => {
+    if (!tableComp.tableConfig?.cells) return;
+    if (tableComp.tableConfig.cells[0]?.length <= 1) return; // 至少保留一列
+    
+    const newCells = tableComp.tableConfig.cells.map((row: any[]) => 
+      row.filter((_: any, index: number) => index !== colIndex)
+    );
+    
+    updateComponent(tableComp.id, {
+      tableConfig: {
+        ...tableComp.tableConfig,
+        cells: newCells,
+      },
+    });
+    
+    setTableEditData(newCells.map((row: any[]) => row.map((cell: any) => cell.content || '')));
+  }, [updateComponent]);
+
   // 渲染表格内容
   const renderTableContent = (tableComp: any) => {
     if (!tableComp.tableConfig?.cells) {
@@ -382,22 +472,115 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
 
     return (
-      <div 
-        onMouseUp={handleCellMouseUp}
-        onMouseLeave={handleTableMouseLeave}
-      >
-        <table className="w-full border-collapse">
-          <tbody>
-            {tableEditData.map((row: any[], rowIndex: number) => {
-              const isHeader = rowIndex < (tableComp.tableConfig?.headerRows || 0);
-              const isFooter = rowIndex >= tableEditData.length - (tableComp.tableConfig?.footerRows || 0);
-              
-              return (
-                <tr 
-                  key={rowIndex}
-                  className={isHeader ? 'bg-gray-100 font-semibold' : isFooter ? 'bg-gray-50' : ''}
+      <div className="relative inline-block" onMouseUp={handleCellMouseUp} onMouseLeave={handleTableMouseLeave}>
+        {/* 列操作栏 - 顶部 */}
+        {isCurrentTableEditing && (
+          <div className="flex" style={{ marginLeft: '32px' }}>
+            {tableEditData[0]?.map((_, colIndex: number) => (
+              <div 
+                key={`col-header-${colIndex}`}
+                className="relative group"
+                style={{ 
+                  width: colIndex === 0 ? '80px' : '100px', // 第一列稍窄
+                  minWidth: colIndex === 0 ? '80px' : '100px',
+                }}
+              >
+                {/* 列操作按钮 */}
+                <div className="absolute -top-8 left-0 right-0 flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleAddColumn(tableComp, colIndex); }}
+                    className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors shadow-sm"
+                    title="在左侧插入列"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleAddColumn(tableComp, colIndex + 1); }}
+                    className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 transition-colors shadow-sm"
+                    title="在右侧插入列"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                  {tableEditData[0]?.length > 1 && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDeleteColumn(tableComp, colIndex); }}
+                      className="w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors shadow-sm"
+                      title="删除此列"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex">
+          {/* 行操作栏 - 左侧 */}
+          {isCurrentTableEditing && (
+            <div className="flex flex-col">
+              {tableEditData.map((_, rowIndex: number) => (
+                <div 
+                  key={`row-header-${rowIndex}`}
+                  className="relative group"
+                  style={{ height: '32px' }}
                 >
-                {row.map((cellContent: any, colIndex: number) => {
+                  {/* 行操作按钮 */}
+                  <div className="absolute -left-8 top-0 bottom-0 w-8 flex items-center justify-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleAddRow(tableComp, rowIndex); }}
+                      className="w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors shadow-sm"
+                      title="在上方插入行"
+                    >
+                      <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleAddRow(tableComp, rowIndex + 1); }}
+                      className="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 transition-colors shadow-sm"
+                      title="在下方插入行"
+                    >
+                      <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                    </button>
+                    {tableEditData.length > 1 && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeleteRow(tableComp, rowIndex); }}
+                        className="w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors shadow-sm"
+                        title="删除此行"
+                      >
+                        <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <table className="w-full border-collapse">
+            <tbody>
+              {tableEditData.map((row: any[], rowIndex: number) => {
+                const isHeader = rowIndex < (tableComp.tableConfig?.headerRows || 0);
+                const isFooter = rowIndex >= tableEditData.length - (tableComp.tableConfig?.footerRows || 0);
+                
+                return (
+                  <tr 
+                    key={rowIndex}
+                    className={isHeader ? 'bg-gray-100 font-semibold' : isFooter ? 'bg-gray-50' : ''}
+                  >
+                  {row.map((cellContent: any, colIndex: number) => {
                   const cell = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex];
                   const cellId = cell?.id || `cell-${rowIndex}-${colIndex}`;
                   
@@ -657,6 +840,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
           })}
         </tbody>
       </table>
+        </div>
       </div>
     );
   };
