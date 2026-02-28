@@ -55,16 +55,61 @@ export function DataSourcePanel({ onAddField }: DataSourcePanelProps) {
   );
 
   /**
+   * 兼容 iframe 环境的复制函数
+   * 使用 document.execCommand('copy') 替代 navigator.clipboard
+   */
+  const copyToClipboardLegacy = (text: string) => {
+    // 1. 创建临时 textarea 元素
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    
+    // 2. 样式设置：移出可视区域，避免影响布局
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    textArea.style.top = '-9999px';
+    textArea.style.opacity = '0';
+    textArea.setAttribute('readonly', ''); // 防止 iOS 键盘弹出
+    
+    document.body.appendChild(textArea);
+
+    try {
+      // 3. 选中内容
+      textArea.focus();
+      textArea.select();
+      
+      // 4. 执行复制命令 (同步操作，不受 iframe 策略限制)
+      const successful = document.execCommand('copy');
+      
+      if (successful) {
+        // 成功反馈
+        console.log('[Copy] Success:', text);
+        return true;
+      } else {
+        // 命令执行失败
+        console.warn('[Copy] execCommand returned false');
+        return false;
+      }
+    } catch (err) {
+      // 异常捕获
+      console.error('[Copy] Exception:', err);
+      return false;
+    } finally {
+      // 5. 清理临时元素
+      document.body.removeChild(textArea);
+    }
+  };
+
+  /**
    * 处理字段点击 - 复制变量字符串到剪贴板
    * 格式: {{字段名}}
    */
-  const handleFieldClick = async (field: Field) => {
+  const handleFieldClick = (field: Field) => {
     // 构造变量字符串
     const variableToken = field.placeholder || `{{${field.name}}}`;
     
-    try {
-      await navigator.clipboard.writeText(variableToken);
-      
+    const success = copyToClipboardLegacy(variableToken);
+    
+    if (success) {
       // 显示成功状态
       setCopiedFieldId(field.id);
       setTimeout(() => setCopiedFieldId(null), 2000);
@@ -76,10 +121,9 @@ export function DataSourcePanel({ onAddField }: DataSourcePanelProps) {
       });
       
       console.log('[DataSourcePanel] 已复制字段变量:', variableToken);
-    } catch (error) {
-      console.error('[DataSourcePanel] 复制失败:', error);
+    } else {
       toast.error('复制失败', {
-        description: '请检查浏览器剪贴板权限',
+        description: '请手动复制',
       });
     }
   };
@@ -87,13 +131,13 @@ export function DataSourcePanel({ onAddField }: DataSourcePanelProps) {
   /**
    * 处理复制按钮点击（阻止事件冒泡，仅复制）
    */
-  const handleCopyOnly = async (e: React.MouseEvent, field: Field) => {
+  const handleCopyOnly = (e: React.MouseEvent, field: Field) => {
     e.stopPropagation();
     
     const variableToken = field.placeholder || `{{${field.name}}}`;
+    const success = copyToClipboardLegacy(variableToken);
     
-    try {
-      await navigator.clipboard.writeText(variableToken);
+    if (success) {
       setCopiedFieldId(field.id);
       setTimeout(() => setCopiedFieldId(null), 2000);
       
@@ -101,7 +145,7 @@ export function DataSourcePanel({ onAddField }: DataSourcePanelProps) {
         description: variableToken,
         duration: 1500,
       });
-    } catch (error) {
+    } else {
       toast.error('复制失败');
     }
   };
