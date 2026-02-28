@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BorderSettingsPanel } from './BorderSettingsPanel';
+import { AlignmentSettingsPanel } from './AlignmentSettingsPanel';
 
 interface AdvancedToolbarProps {
   onMergeCells: () => void;
@@ -17,6 +18,8 @@ interface AdvancedToolbarProps {
   onBorderChange: (borderType: string) => void;
   onBorderWidthChange: (width: number) => void;
   borderWidth: number;
+  onAlignmentChange: (align: 'top' | 'middle' | 'bottom') => void;
+  verticalAlign: 'top' | 'middle' | 'bottom';
   onColorChange: (colorType: 'text' | 'fill', color: string) => void;
   onFinishEdit: () => void;
 }
@@ -28,6 +31,8 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
   onBorderChange,
   onBorderWidthChange,
   borderWidth,
+  onAlignmentChange,
+  verticalAlign,
   onColorChange,
   onFinishEdit
 }) => {
@@ -106,7 +111,15 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
         
         <div className="w-px h-5 bg-gray-200 mx-1" />
         
-        {/* 第五组：颜色 */}
+        {/* 第五组：对齐 */}
+        <AlignmentSettingsPanel
+          verticalAlign={verticalAlign}
+          onAlignmentChange={onAlignmentChange}
+        />
+        
+        <div className="w-px h-5 bg-gray-200 mx-1" />
+        
+        {/* 第六组：颜色 */}
         <Button 
           variant="ghost" 
           size="icon" 

@@ -64,6 +64,7 @@ export interface TableCellData {
   backgroundColor?: string;
   style?: Partial<ComponentTextStyle>;
   border?: TableCellBorderStyle;
+  verticalAlign?: 'top' | 'middle' | 'bottom';
 }
 
 // 表格配置

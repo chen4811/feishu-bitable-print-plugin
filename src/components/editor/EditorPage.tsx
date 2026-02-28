@@ -273,6 +273,52 @@ export function EditorPage({ onExit }: EditorPageProps) {
     }
   };
 
+  // 处理垂直对齐变化
+  const handleAlignmentChange = (align: 'top' | 'middle' | 'bottom') => {
+    if (currentEditingTable && currentEditingTable.type === 'table') {
+      const tableConfig = currentEditingTable.tableConfig;
+      const cells = tableConfig?.cells || [];
+      
+      // 获取选中的单元格位置
+      const selectedPositions: { row: number; col: number }[] = [];
+      
+      cells.forEach((row: any[], rowIndex: number) => {
+        row.forEach((cell: any, colIndex: number) => {
+          const cellId = cell?.id || `cell-${rowIndex}-${colIndex}`;
+          if (tableEditing.selectedCells.includes(cellId)) {
+            selectedPositions.push({ row: rowIndex, col: colIndex });
+          }
+        });
+      });
+      
+      // 如果没有选中单元格，使用整个表格
+      if (selectedPositions.length === 0) {
+        cells.forEach((row: any[], rowIndex: number) => {
+          row.forEach((cell: any, colIndex: number) => {
+            selectedPositions.push({ row: rowIndex, col: colIndex });
+          });
+        });
+      }
+      
+      // 创建新的单元格数据
+      const newCells = cells.map((row: any[]) => 
+        row.map((cell: any) => ({ ...cell }))
+      );
+      
+      // 更新选中单元格的垂直对齐
+      selectedPositions.forEach(({ row, col }) => {
+        newCells[row][col].verticalAlign = align;
+      });
+      
+      updateComponent(currentEditingTable.id, {
+        tableConfig: {
+          ...tableConfig,
+          cells: newCells,
+        },
+      });
+    }
+  };
+
   // 智能聚焦：选中组件时自动切换到数据源面板
   useEffect(() => {
     if (selectedComponentId) {
@@ -595,6 +641,8 @@ export function EditorPage({ onExit }: EditorPageProps) {
                   onBorderChange={handleBorderChange}
                   onBorderWidthChange={handleBorderWidthChange}
                   borderWidth={currentEditingTable?.tableConfig?.borderWidth || 1}
+                  onAlignmentChange={handleAlignmentChange}
+                  verticalAlign="middle"
                   onColorChange={tableEditing.onColorChange}
                   onFinishEdit={() => {
                     tableEditing.onFinishEdit();

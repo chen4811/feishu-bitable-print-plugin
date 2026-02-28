@@ -402,6 +402,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       style={{
                         backgroundColor: isCellSelected ? '#dbeafe' : (tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.backgroundColor || 'transparent'),
                         userSelect: 'none',
+                        verticalAlign: tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.verticalAlign || 'middle',
                         ...borderStyles,
                       }}
                       onMouseDown={(e) => handleCellMouseDown(rowIndex, colIndex, e)}
@@ -425,17 +426,22 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       }}
                     >
                     {isCurrentTableEditing ? (
-                      <input
-                        type="text"
+                      <textarea
                         value={cellContent || ''}
                         onChange={(e) => handleTableCellChange(rowIndex, colIndex, e.target.value)}
                         onClick={(e) => e.stopPropagation()}
-                        className="w-full border-0 bg-transparent outline-none p-1"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.stopPropagation();
+                          }
+                        }}
+                        className="w-full border-0 bg-transparent outline-none p-1 resize-none min-h-[20px] overflow-hidden"
+                        rows={1}
                       />
                     ) : (
-                      <span className="p-1 block min-h-[20px]">
+                      <div className="p-1 whitespace-pre-wrap min-h-[20px]">
                         {cellContent}
-                      </span>
+                      </div>
                     )}
                   </td>
                 );
