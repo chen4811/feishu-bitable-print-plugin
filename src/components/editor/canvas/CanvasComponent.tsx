@@ -35,8 +35,132 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   // 表格编辑状态（本地数据，UI 状态在 store）
   const [tableEditData, setTableEditData] = useState<any[][]>([]);
   
+  // 表格单元格选择状态（用于拖动选择）
+  const [cellSelection, setCellSelection] = useState<{
+    startRow: number | null;
+    startCol: number | null;
+    endRow: number | null;
+    endCol: number | null;
+    isSelecting: boolean;
+  }>({
+    startRow: null,
+    startCol: null,
+    endRow: null,
+    endCol: null,
+    isSelecting: false,
+  });
+  
   // 判断当前是否在编辑这个表格
   const isCurrentTableEditing = tableEditing.isEditing && tableEditing.tableId === component.id;
+
+  // 检查单元格是否在选中范围内
+  const isCellInSelection = (rowIndex: number, colIndex: number): boolean => {
+    if (cellSelection.startRow === null || cellSelection.startCol === null) {
+      return false;
+    }
+    
+    const minRow = Math.min(cellSelection.startRow, cellSelection.endRow ?? cellSelection.startRow);
+    const maxRow = Math.max(cellSelection.startRow, cellSelection.endRow ?? cellSelection.startRow);
+    const minCol = Math.min(cellSelection.startCol, cellSelection.endCol ?? cellSelection.startCol);
+    const maxCol = Math.max(cellSelection.startCol, cellSelection.endCol ?? cellSelection.startCol);
+    
+    return rowIndex >= minRow && rowIndex <= maxRow && 
+           colIndex >= minCol && colIndex <= maxCol;
+  };
+
+  // 获取选中的所有单元格ID
+  const getSelectedCellIds = (tableComp: any): string[] => {
+    if (!tableComp.tableConfig?.cells) return [];
+    
+    const selectedIds: string[] = [];
+    if (cellSelection.startRow === null || cellSelection.startCol === null) {
+      return [];
+    }
+    
+    const minRow = Math.min(cellSelection.startRow, cellSelection.endRow ?? cellSelection.startRow);
+    const maxRow = Math.max(cellSelection.startRow, cellSelection.endRow ?? cellSelection.startRow);
+    const minCol = Math.min(cellSelection.startCol, cellSelection.endCol ?? cellSelection.startCol);
+    const maxCol = Math.max(cellSelection.startCol, cellSelection.endCol ?? cellSelection.startCol);
+    
+    for (let row = minRow; row <= maxRow; row++) {
+      for (let col = minCol; col <= maxCol; col++) {
+        const cellId = tableComp.tableConfig.cells[row]?.[col]?.id || `cell-${row}-${col}`;
+        selectedIds.push(cellId);
+      }
+    }
+    
+    return selectedIds;
+  };
+
+  // 处理单元格鼠标按下
+  const handleCellMouseDown = (rowIndex: number, colIndex: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isCurrentTableEditing) return;
+    
+    setCellSelection({
+      startRow: rowIndex,
+      startCol: colIndex,
+      endRow: rowIndex,
+      endCol: colIndex,
+      isSelecting: true,
+    });
+  };
+
+  // 处理单元格鼠标移动
+  const handleCellMouseMove = (rowIndex: number, colIndex: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isCurrentTableEditing || !cellSelection.isSelecting) return;
+    
+    setCellSelection(prev => ({
+      ...prev,
+      endRow: rowIndex,
+      endCol: colIndex,
+    }));
+  };
+
+  // 处理单元格鼠标释放
+  const handleCellMouseUp = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isCurrentTableEditing) return;
+    
+    if (cellSelection.isSelecting) {
+      setCellSelection(prev => ({
+        ...prev,
+        isSelecting: false,
+      }));
+      
+      // 更新 store 中的选中单元格
+      const tableComp = component as any;
+      const selectedIds = getSelectedCellIds(tableComp);
+      if (selectedIds.length > 0) {
+        setTableEditing({
+          selectedCells: selectedIds,
+        });
+      }
+    }
+  };
+
+  // 处理鼠标离开表格
+  const handleTableMouseLeave = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isCurrentTableEditing) return;
+    
+    if (cellSelection.isSelecting) {
+      setCellSelection(prev => ({
+        ...prev,
+        isSelecting: false,
+      }));
+      
+      // 更新 store 中的选中单元格
+      const tableComp = component as any;
+      const selectedIds = getSelectedCellIds(tableComp);
+      if (selectedIds.length > 0) {
+        setTableEditing({
+          selectedCells: selectedIds,
+        });
+      }
+    }
+  };
 
   // 文本组件编辑
   const handleDoubleClickText = (e: React.MouseEvent) => {
@@ -230,45 +354,54 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
 
     return (
-      <table className="w-full border-collapse">
-        <tbody>
-          {tableEditData.map((row: any[], rowIndex: number) => {
-            const isHeader = rowIndex < (tableComp.tableConfig?.headerRows || 0);
-            const isFooter = rowIndex >= tableEditData.length - (tableComp.tableConfig?.footerRows || 0);
-            
-            return (
-              <tr 
-                key={rowIndex}
-                className={isHeader ? 'bg-gray-100 font-semibold' : isFooter ? 'bg-gray-50' : ''}
-              >
-              {row.map((cellContent: any, colIndex: number) => {
-                const cellId = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.id || `cell-${rowIndex}-${colIndex}`;
-                const isCellSelected = tableEditing.selectedCells.includes(cellId);
-                
-                return (
-                  <td
-                    key={`${rowIndex}-${colIndex}`}
-                    className={`border p-1 text-sm cursor-pointer transition-colors ${isCellSelected ? 'bg-blue-100' : ''}`}
-                    style={{
-                      backgroundColor: isCellSelected ? '#dbeafe' : (tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.backgroundColor || 'transparent'),
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (isCurrentTableEditing) {
-                        setTableEditing({
-                          selectedCells: [cellId],
-                        });
-                        // 同时设置单元格编辑状态
-                        setTableCellEditing({
-                          isEditing: true,
-                          tableId: component.id,
-                          cellId,
-                          rowIndex,
-                          colIndex,
-                        });
-                      }
-                    }}
-                  >
+      <div 
+        onMouseUp={handleCellMouseUp}
+        onMouseLeave={handleTableMouseLeave}
+      >
+        <table className="w-full border-collapse">
+          <tbody>
+            {tableEditData.map((row: any[], rowIndex: number) => {
+              const isHeader = rowIndex < (tableComp.tableConfig?.headerRows || 0);
+              const isFooter = rowIndex >= tableEditData.length - (tableComp.tableConfig?.footerRows || 0);
+              
+              return (
+                <tr 
+                  key={rowIndex}
+                  className={isHeader ? 'bg-gray-100 font-semibold' : isFooter ? 'bg-gray-50' : ''}
+                >
+                {row.map((cellContent: any, colIndex: number) => {
+                  const cellId = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.id || `cell-${rowIndex}-${colIndex}`;
+                  const isCellInRange = isCellInSelection(rowIndex, colIndex);
+                  const isCellSelected = tableEditing.selectedCells.includes(cellId) || isCellInRange;
+                  
+                  return (
+                    <td
+                      key={`${rowIndex}-${colIndex}`}
+                      className={`border p-1 text-sm cursor-pointer transition-colors select-none ${isCellSelected ? 'bg-blue-100' : ''}`}
+                      style={{
+                        backgroundColor: isCellSelected ? '#dbeafe' : (tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.backgroundColor || 'transparent'),
+                        userSelect: 'none',
+                      }}
+                      onMouseDown={(e) => handleCellMouseDown(rowIndex, colIndex, e)}
+                      onMouseEnter={(e) => handleCellMouseMove(rowIndex, colIndex, e)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isCurrentTableEditing && !cellSelection.isSelecting) {
+                          // 只有在没有拖动选择时才处理单击
+                          setTableEditing({
+                            selectedCells: [cellId],
+                          });
+                          // 同时设置单元格编辑状态
+                          setTableCellEditing({
+                            isEditing: true,
+                            tableId: component.id,
+                            cellId,
+                            rowIndex,
+                            colIndex,
+                          });
+                        }
+                      }}
+                    >
                     {isCurrentTableEditing ? (
                       <input
                         type="text"
@@ -290,6 +423,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
           })}
         </tbody>
       </table>
+      </div>
     );
   };
 
