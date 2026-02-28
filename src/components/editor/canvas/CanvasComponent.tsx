@@ -628,29 +628,27 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                             {rowIndex === 0 && (
                               <>
                                 {hoveredColDot === colIndex ? (
-                                  <div className="flex items-center justify-center gap-0.5" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-                                    <button onClick={(e) => { e.stopPropagation(); handleAddColumn(tableComp, colIndex); }} className="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600" title="在左侧插入列">
+                                  <>
+                                    <button onClick={(e) => { e.stopPropagation(); handleAddColumn(tableComp, colIndex); }} className="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600" title="在左侧插入列" onMouseDown={(e) => e.stopPropagation()}>
                                       <span className="text-xs font-bold">←</span>
                                     </button>
-                                    <button onClick={(e) => { e.stopPropagation(); handleAddColumn(tableComp, colIndex + 1); }} className="w-5 h-5 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600" title="在右侧插入列">
+                                    <button onClick={(e) => { e.stopPropagation(); handleAddColumn(tableComp, colIndex + 1); }} className="w-5 h-5 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600" title="在右侧插入列" onMouseDown={(e) => e.stopPropagation()}>
                                       <span className="text-xs font-bold">→</span>
                                     </button>
                                     {tableEditData[0]?.length > 1 && (
-                                      <button onClick={(e) => { e.stopPropagation(); handleDeleteColumn(tableComp, colIndex); }} className="w-5 h-5 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600" title="删除此列">
+                                      <button onClick={(e) => { e.stopPropagation(); handleDeleteColumn(tableComp, colIndex); }} className="w-5 h-5 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600" title="删除此列" onMouseDown={(e) => e.stopPropagation()}>
                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                         </svg>
                                       </button>
                                     )}
-                                  </div>
+                                  </>
                                 ) : (
-                                  <div className="flex items-center justify-center">
-                                    <div 
-                                      className="w-2 h-2 rounded-full bg-gray-300 hover:bg-gray-400 transition-colors"
-                                      onMouseEnter={() => setHoveredColDot(colIndex)}
-                                      onMouseLeave={() => setHoveredColDot(null)}
-                                    />
-                                  </div>
+                                  <div 
+                                    className="w-2 h-2 rounded-full bg-gray-300 hover:bg-gray-400 transition-colors"
+                                    onMouseEnter={() => setHoveredColDot(colIndex)}
+                                    onMouseLeave={() => setHoveredColDot(null)}
+                                  />
                                 )}
                               </>
                             )}
@@ -784,9 +782,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       >
                         {/* 保留列操作按钮空间（仅第一行，隐藏内容） */}
                         {rowIndex === 0 && (
-                          <div className="opacity-0">
-                            <div className="w-2 h-2 rounded-full" />
-                          </div>
+                          <div className="w-2 h-2 rounded-full opacity-0" />
                         )}
                         
                         <div className="whitespace-pre-wrap" style={textStyles}>
