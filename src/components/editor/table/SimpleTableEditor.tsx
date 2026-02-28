@@ -8,9 +8,9 @@ interface SimpleTableEditorProps {
 export const SimpleTableEditor: React.FC<SimpleTableEditorProps> = ({ content, onChange }) => {
   // 简单的表格数据
   const [tableData, setTableData] = React.useState<string[][]>([
-    ['表头1', '表头2', '表头3'],
-    ['数据1', '数据2', '数据3'],
-    ['数据4', '数据5', '数据6'],
+    ['单元格1', '单元格2', '单元格3'],
+    ['单元格4', '单元格5', '单元格6'],
+    ['单元格7', '单元格8', '单元格9'],
   ]);
 
   const handleCellChange = (row: number, col: number, value: string) => {
@@ -52,8 +52,7 @@ export const SimpleTableEditor: React.FC<SimpleTableEditorProps> = ({ content, o
                   style={{ 
                     border: '1px solid #ddd', 
                     padding: '8px',
-                    backgroundColor: rowIndex === 0 ? '#f3f4f6' : 'white',
-                    fontWeight: rowIndex === 0 ? 'bold' : 'normal',
+                    backgroundColor: 'white',
                   }}
                 >
                   <input
