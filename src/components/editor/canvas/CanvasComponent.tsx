@@ -1,6 +1,51 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+
+// 自适应高度的文本域组件
+const AutoResizingTextarea = ({ 
+  value, 
+  onChange, 
+  onClick, 
+  onKeyDown 
+}: { 
+  value: string;
+  onChange: (value: string) => void;
+  onClick: (e: React.MouseEvent) => void;
+  onKeyDown: (e: React.KeyboardEvent) => void;
+}) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // 自动调整高度
+  const adjustHeight = useCallback(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.max(textareaRef.current.scrollHeight, 20)}px`;
+    }
+  }, []);
+
+  // 内容变化时调整高度
+  useEffect(() => {
+    adjustHeight();
+  }, [value, adjustHeight]);
+
+  // 组件挂载时调整高度
+  useEffect(() => {
+    adjustHeight();
+  }, [adjustHeight]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onClick={onClick}
+      onKeyDown={onKeyDown}
+      className="w-full border-0 bg-transparent outline-none p-1 resize-none overflow-hidden"
+      style={{ height: 'auto' }}
+    />
+  );
+};
 import { CanvasComponentNode } from '@/types/editor';
 import { useEditorStore } from '@/store/editorStore';
 import { Button } from '@/components/ui/button';
@@ -426,20 +471,18 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       }}
                     >
                     {isCurrentTableEditing ? (
-                      <textarea
+                      <AutoResizingTextarea
                         value={cellContent || ''}
-                        onChange={(e) => handleTableCellChange(rowIndex, colIndex, e.target.value)}
+                        onChange={(value) => handleTableCellChange(rowIndex, colIndex, value)}
                         onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && !e.shiftKey) {
                             e.stopPropagation();
                           }
                         }}
-                        className="w-full border-0 bg-transparent outline-none p-1 resize-none min-h-[20px] overflow-hidden"
-                        rows={1}
                       />
                     ) : (
-                      <div className="p-1 whitespace-pre-wrap min-h-[20px]">
+                      <div className="p-1 whitespace-pre-wrap">
                         {cellContent}
                       </div>
                     )}
