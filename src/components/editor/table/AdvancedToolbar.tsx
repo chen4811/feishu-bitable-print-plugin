@@ -9,10 +9,10 @@ import {
   Palette, 
   Grid,
   Check as CheckIcon,
-  BorderAll,
-  BorderHorizontal,
-  BorderVertical,
-  BorderNone,
+  Square,
+  Minus,
+  Columns,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -96,7 +96,7 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
           className="h-8 w-8"
           title="所有边框"
         >
-          <BorderAll className="w-4 h-4" />
+          <Grid className="w-4 h-4" />
         </Button>
         
         <Button 
@@ -106,7 +106,7 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
           className="h-8 w-8"
           title="水平边框"
         >
-          <BorderHorizontal className="w-4 h-4" />
+          <Minus className="w-4 h-4" />
         </Button>
         
         <Button 
@@ -116,7 +116,7 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
           className="h-8 w-8"
           title="垂直边框"
         >
-          <BorderVertical className="w-4 h-4" />
+          <Columns className="w-4 h-4" />
         </Button>
         
         <Button 
@@ -126,7 +126,7 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
           className="h-8 w-8"
           title="无边框"
         >
-          <BorderNone className="w-4 h-4" />
+          <X className="w-4 h-4" />
         </Button>
         
         <div className="w-px h-5 bg-gray-200 mx-1" />
