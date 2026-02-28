@@ -102,6 +102,10 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     isSelecting: false,
   });
   
+  // 悬停状态 - 用于显示操作按钮
+  const [hoveredRow, setHoveredRow] = useState<number | null>(null);
+  const [hoveredCol, setHoveredCol] = useState<number | null>(null);
+  
   // 判断当前是否在编辑这个表格
   const isCurrentTableEditing = tableEditing.isEditing && tableEditing.tableId === component.id;
 
@@ -533,22 +537,38 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   const isFooter = rowIndex >= tableEditData.length - (tableComp.tableConfig?.footerRows || 0);
                   
                   return (
-                    <tr key={rowIndex} className={isHeader ? 'bg-gray-100 font-semibold' : isFooter ? 'bg-gray-50' : ''}>
+                    <tr 
+                      key={rowIndex} 
+                      className={isHeader ? 'bg-gray-100 font-semibold' : isFooter ? 'bg-gray-50' : ''}
+                      onMouseEnter={() => setHoveredRow(rowIndex)}
+                      onMouseLeave={() => setHoveredRow(null)}
+                    >
                       {/* 行操作单元格 */}
-                      <td className="border bg-gray-50 w-8 p-0 align-middle" style={{ verticalAlign: 'middle' }}>
-                        <div className="flex items-center justify-center gap-0.5 p-1">
-                          <button onClick={(e) => { e.stopPropagation(); handleAddRow(tableComp, rowIndex); }} className="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600" title="在上方插入行">
-                            <span className="text-xs font-bold">↑</span>
-                          </button>
-                          <button onClick={(e) => { e.stopPropagation(); handleAddRow(tableComp, rowIndex + 1); }} className="w-5 h-5 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600" title="在下方插入行">
-                            <span className="text-xs font-bold">↓</span>
-                          </button>
-                          {tableEditData.length > 1 && (
-                            <button onClick={(e) => { e.stopPropagation(); handleDeleteRow(tableComp, rowIndex); }} className="w-5 h-5 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600" title="删除此行">
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
+                      <td 
+                        className="border bg-gray-50 w-8 p-0 align-middle" 
+                        style={{ verticalAlign: 'middle' }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex items-center justify-center gap-0.5 p-1 min-h-full">
+                          {hoveredRow === rowIndex ? (
+                            <>
+                              <button onClick={(e) => { e.stopPropagation(); handleAddRow(tableComp, rowIndex); }} className="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600" title="在上方插入行">
+                                <span className="text-xs font-bold">↑</span>
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); handleAddRow(tableComp, rowIndex + 1); }} className="w-5 h-5 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600" title="在下方插入行">
+                                <span className="text-xs font-bold">↓</span>
+                              </button>
+                              {tableEditData.length > 1 && (
+                                <button onClick={(e) => { e.stopPropagation(); handleDeleteRow(tableComp, rowIndex); }} className="w-5 h-5 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600" title="删除此行">
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              )}
+                            </>
+                          ) : (
+                            <div className="w-2 h-2 rounded-full bg-gray-300 hover:bg-gray-400 transition-colors" />
                           )}
                         </div>
                       </td>
@@ -589,7 +609,13 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                               ...borderStyles,
                             }}
                             onMouseDown={(e) => handleCellMouseDown(rowIndex, colIndex, e)}
-                            onMouseEnter={(e) => handleCellMouseMove(rowIndex, colIndex, e)}
+                            onMouseEnter={(e) => {
+                              handleCellMouseMove(rowIndex, colIndex, e);
+                              if (rowIndex === 0) setHoveredCol(colIndex);
+                            }}
+                            onMouseLeave={() => {
+                              if (rowIndex === 0 && hoveredCol === colIndex) setHoveredCol(null);
+                            }}
                             onClick={(e) => {
                               e.stopPropagation();
                               if (!cellSelection.isSelecting) {
@@ -600,19 +626,29 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                           >
                             {/* 列操作按钮 - 仅在第一行 */}
                             {rowIndex === 0 && (
-                              <div className="flex items-center justify-center gap-0.5 p-1 bg-gray-50 border-b mb-1">
-                                <button onClick={(e) => { e.stopPropagation(); handleAddColumn(tableComp, colIndex); }} className="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600" title="在左侧插入列">
-                                  <span className="text-xs font-bold">←</span>
-                                </button>
-                                <button onClick={(e) => { e.stopPropagation(); handleAddColumn(tableComp, colIndex + 1); }} className="w-5 h-5 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600" title="在右侧插入列">
-                                  <span className="text-xs font-bold">→</span>
-                                </button>
-                                {tableEditData[0]?.length > 1 && (
-                                  <button onClick={(e) => { e.stopPropagation(); handleDeleteColumn(tableComp, colIndex); }} className="w-5 h-5 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600" title="删除此列">
-                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                  </button>
+                              <div 
+                                className="flex items-center justify-center gap-0.5 p-1 bg-gray-50 border-b mb-1"
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {hoveredCol === colIndex ? (
+                                  <>
+                                    <button onClick={(e) => { e.stopPropagation(); handleAddColumn(tableComp, colIndex); }} className="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600" title="在左侧插入列">
+                                      <span className="text-xs font-bold">←</span>
+                                    </button>
+                                    <button onClick={(e) => { e.stopPropagation(); handleAddColumn(tableComp, colIndex + 1); }} className="w-5 h-5 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600" title="在右侧插入列">
+                                      <span className="text-xs font-bold">→</span>
+                                    </button>
+                                    {tableEditData[0]?.length > 1 && (
+                                      <button onClick={(e) => { e.stopPropagation(); handleDeleteColumn(tableComp, colIndex); }} className="w-5 h-5 bg-red-500 text-white rounded flex items-center justify-center hover:bg-red-600" title="删除此列">
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                      </button>
+                                    )}
+                                  </>
+                                ) : (
+                                  <div className="w-2 h-2 rounded-full bg-gray-300 hover:bg-gray-400 transition-colors" />
                                 )}
                               </div>
                             )}
