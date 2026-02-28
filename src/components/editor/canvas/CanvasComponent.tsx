@@ -124,11 +124,12 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       case 'table':
         const tableComp = component as any;
         return (
-          <div className="w-full p-2">
-            <div className="border rounded overflow-hidden">
-              {tableComp.tableConfig?.cells ? (
+          <div className="w-full">
+            {tableComp.tableConfig?.cells ? (
+              <div className="border overflow-hidden">
                 <table className="w-full border-collapse">
                   <tbody>
+                    {/* 直接显示所有行，不再移除表头（因为默认数据已更新） */}
                     {tableComp.tableConfig.cells.map((row: any[], rowIndex: number) => (
                       <tr key={rowIndex}>
                         {row.map((cell: any, colIndex: number) => (
@@ -146,12 +147,12 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     ))}
                   </tbody>
                 </table>
-              ) : (
-                <div className="p-4 text-center text-muted-foreground">
-                  表格组件
-                </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="p-2 text-center text-muted-foreground border">
+                表格组件
+              </div>
+            )}
           </div>
         );
 

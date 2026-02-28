@@ -126,15 +126,15 @@ const createDefaultTextStyle = (styleConfig: StyleConfig): ComponentTextStyle =>
 
 // 创建默认表格配置
 const createDefaultTableConfig = (): TableConfig => ({
-  headerRows: 1,
+  headerRows: 0,
   footerRows: 0,
   borderColor: '#000000',
   borderWidth: 1,
   showOuterBorder: true,
   showInnerBorder: true,
   cells: [
-    [{ id: '1', content: '表头1' }, { id: '2', content: '表头2' }, { id: '3', content: '表头3' }],
-    [{ id: '4', content: '数据1' }, { id: '5', content: '数据2' }, { id: '6', content: '数据3' }],
+    [{ id: '1', content: '单元格1' }, { id: '2', content: '单元格2' }, { id: '3', content: '单元格3' }],
+    [{ id: '4', content: '单元格4' }, { id: '5', content: '单元格5' }, { id: '6', content: '单元格6' }],
   ],
 });
 

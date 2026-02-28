@@ -58,8 +58,15 @@ export function CanvasArea() {
   const handleDragEnd = useCallback(
     (event: any) => {
       const { active, over } = event;
-
-      if (over && active.id !== over.id) {
+      
+      // 检查是否是从组件面板拖拽过来的新组件
+      const isFromPanel = active.data.current?.type && !components.some(c => c.id === active.id);
+      
+      if (isFromPanel) {
+        // 添加新组件
+        addComponent(active.data.current.type as ComponentType);
+      } else if (over && active.id !== over.id) {
+        // 重新排序现有组件
         const oldIndex = components.findIndex((c) => c.id === active.id);
         const newIndex = components.findIndex((c) => c.id === over.id);
         
@@ -70,7 +77,7 @@ export function CanvasArea() {
 
       activeId.current = null;
     },
-    [components, reorderComponents]
+    [components, reorderComponents, addComponent]
   );
 
   // 计算画布尺寸
@@ -129,7 +136,7 @@ export function CanvasArea() {
           >
             {/* 垂直流式布局容器 */}
             <div
-              className="flex flex-col gap-3"
+              className="flex flex-col gap-2"
               style={{ minHeight: `${contentHeight}px` }}
             >
               {components.length > 0 ? (

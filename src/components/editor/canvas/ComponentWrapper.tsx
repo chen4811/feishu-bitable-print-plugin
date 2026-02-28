@@ -51,7 +51,7 @@ export function ComponentWrapper({
       className={`
         relative group
         transition-all duration-200
-        ${isSelected ? 'ring-2 ring-primary ring-offset-1' : ''}
+        ${isSelected ? 'ring-1 ring-primary' : ''}
         ${!isSelected ? 'hover:ring-1 hover:ring-gray-300' : ''}
       `}
       onClick={(e) => {
