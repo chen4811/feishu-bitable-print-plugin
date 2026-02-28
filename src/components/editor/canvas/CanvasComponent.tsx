@@ -748,6 +748,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                               onClick={(e) => e.stopPropagation()}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
                                   e.stopPropagation();
                                 }
                               }}
