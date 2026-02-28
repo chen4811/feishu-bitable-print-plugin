@@ -32,17 +32,26 @@ const AutoResizingTextarea = ({
     onClick(e);
   }, [onClick]);
 
-  // 处理键盘事件，确保阻止冒泡，并只在需要时阻止默认行为
+  // 处理键盘事件 - 先阻止冒泡，再调用外部处理
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    // 先调用外部传入的 onKeyDown（它会处理单独 Enter 的阻止）
-    onKeyDown(e);
-    
-    // 确保所有键盘事件都阻止冒泡，防止误触发其他操作
+    // 【关键】先阻止冒泡，构建事件防火墙，防止任何事件逃逸到父组件
     e.stopPropagation();
     
-    // 注意：不要在这里阻止默认行为，让外部的 onKeyDown 来决定
-    // Shift+Enter 需要允许默认行为来换行
+    // 再调用外部传入的 onKeyDown（它会处理单独 Enter 的默认行为阻止）
+    onKeyDown(e);
+    
+    // 注意：默认行为由外部 onKeyDown 决定是否阻止
   }, [onKeyDown]);
+
+  // 处理 KeyUp 事件 - 阻止冒泡
+  const handleKeyUp = useCallback((e: React.KeyboardEvent) => {
+    e.stopPropagation();
+  }, []);
+
+  // 处理 KeyPress 事件 - 阻止冒泡
+  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
+    e.stopPropagation();
+  }, []);
 
   // 处理变化事件
   const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -76,8 +85,8 @@ const AutoResizingTextarea = ({
       onChange={handleChange}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      onKeyUp={(e) => e.stopPropagation()}
-      onKeyPress={(e) => e.stopPropagation()}
+      onKeyUp={handleKeyUp}
+      onKeyPress={handleKeyPress}
       className="w-full border-0 outline-none p-1 resize-none overflow-hidden"
       style={{ 
         height: 'auto',
@@ -812,18 +821,14 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                             <AutoResizingTextarea
                               value={cellContent || ''}
                               onChange={(value) => handleTableCellChange(rowIndex, colIndex, value)}
-                              onClick={(e) => e.stopPropagation()}
+                              onClick={(e) => {}} // AutoResizingTextarea 内部已处理冒泡
                               onKeyDown={(e) => {
-                                // 阻止所有键盘事件冒泡，防止误触发其他操作
-                                e.stopPropagation();
-                                
                                 // 只有单独的 Enter（不带 Shift）才阻止默认行为
                                 if (e.key === 'Enter' && !e.shiftKey) {
                                   e.preventDefault();
                                 }
-                                
-                                // Shift+Enter：不阻止默认行为，让浏览器自然处理换行
-                                // Delete、Backspace 等其他键：不阻止默认行为，正常编辑
+                                // 注意：e.stopPropagation() 已经在 AutoResizingTextarea 内部先调用了
+                                // Shift+Enter、Delete、Backspace 等键：不阻止默认行为，正常编辑
                               }}
                               style={textareaStyles}
                             />
