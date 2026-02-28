@@ -61,9 +61,14 @@ function DraggableComponentItem({
   description: string;
   onAdd: () => void;
 }) {
+  // 使用唯一id：panel-{type}
+  const draggableId = `panel-${type}`;
+  
+  console.log('[ComponentPanel] Draggable 初始化:', { type, draggableId });
+  
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: type,
-    data: { type },
+    id: draggableId,
+    data: { type, isFromPanel: true },
   });
 
   return (

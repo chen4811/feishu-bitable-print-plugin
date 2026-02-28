@@ -24,6 +24,8 @@ import { ComponentWrapper } from './ComponentWrapper';
 import { FloatingAddButton } from './FloatingAddButton';
 
 export function CanvasArea() {
+  console.log('[CanvasArea] ===== 组件渲染 =====');
+  
   const {
     components,
     pageConfig,
@@ -33,17 +35,18 @@ export function CanvasArea() {
     addComponent,
     deleteComponent,
     reorderComponents,
-    updateComponent,
   } = useEditorStore();
   
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isFromPanel, setIsFromPanel] = useState(false);
 
+  console.log('[CanvasArea] 状态:', { activeId, isFromPanel, components: components.length });
+
   // 传感器设置
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 5,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -65,25 +68,39 @@ export function CanvasArea() {
   // 拖拽开始
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const { active } = event;
+    console.log('[CanvasArea] ✅ 拖拽开始触发!', { 
+      id: active.id, 
+      data: active.data.current 
+    });
+    
     setActiveId(active.id as string);
     
     // 判断是否从侧边栏拖拽过来
-    const isNewComponent = !components.some(c => c.id === active.id);
-    setIsFromPanel(isNewComponent);
+    const isNew = active.data.current?.isFromPanel || active.id.toString().startsWith('panel-');
+    console.log('[CanvasArea] 是否从侧边栏:', isNew);
+    setIsFromPanel(isNew);
   }, [components]);
 
   // 拖拽结束
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
-    const activeId = active.id as string;
+    console.log('[CanvasArea] ✅ 拖拽结束!', { 
+      activeId: active.id, 
+      overId: over?.id,
+      activeData: active.data.current 
+    });
+    
+    const activeIdStr = active.id as string;
     
     if (isFromPanel && active.data.current?.type) {
-      // 从侧边栏新增组件
-      addComponent(active.data.current.type as ComponentType);
+      const type = active.data.current.type as ComponentType;
+      console.log('[CanvasArea] 🎯 从侧边栏添加组件:', type);
+      addComponent(type);
     } else if (over && active.id !== over.id) {
-      // 重新排序现有组件
-      const oldIndex = components.findIndex((c) => c.id === active.id);
-      const newIndex = components.findIndex((c) => c.id === over.id);
+      const oldIndex = components.findIndex(c => c.id === activeIdStr);
+      const newIndex = components.findIndex(c => c.id === over.id);
+      
+      console.log('[CanvasArea] 🔄 重排组件:', { oldIndex, newIndex });
       
       if (oldIndex !== -1 && newIndex !== -1) {
         reorderComponents(oldIndex, newIndex);
@@ -92,7 +109,7 @@ export function CanvasArea() {
 
     setActiveId(null);
     setIsFromPanel(false);
-  }, [components, isFromPanel, addComponent, reorderComponents]);
+  }, [isFromPanel, components, addComponent, reorderComponents]);
 
   const handleCanvasClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -101,34 +118,22 @@ export function CanvasArea() {
   };
 
   const handleAddClick = () => {
+    console.log('[CanvasArea] ➕ 点击添加文本');
     addComponent('text');
   };
 
   const handleAddComponent = (type: ComponentType) => {
+    console.log('[CanvasArea] ➕ 添加组件:', type);
     addComponent(type);
   };
 
   const handleDeleteComponent = (id: string) => {
+    console.log('[CanvasArea] 🗑️ 删除组件:', id);
     deleteComponent(id);
   };
 
-  // 获取组件的宽度类名
-  const getComponentWidthClass = (component: CanvasComponentNode) => {
-    const layout = component.layout;
-    if (!layout) return 'w-full';
-    
-    switch (layout.width) {
-      case '50%': return 'w-1/2';
-      case '33%': return 'w-1/3';
-      case '25%': return 'w-1/4';
-      default: return 'w-full';
-    }
-  };
-
   // 获取当前拖拽中的组件
-  const activeComponent = isFromPanel 
-    ? null 
-    : components.find((c) => c.id === activeId);
+  const activeComponent = isFromPanel ? null : components.find(c => c.id === activeId);
 
   return (
     <div className="flex items-start justify-center">
@@ -147,18 +152,18 @@ export function CanvasArea() {
           }}
           onClick={handleCanvasClick}
         >
-          {/* 使用 flex-wrap 布局，为未来功能预留 */}
+          {/* 垂直布局 */}
           <div
             className="flex flex-col gap-2"
             style={{ minHeight: `${contentHeight}px` }}
           >
             <SortableContext
-              items={components.map((c) => c.id)}
+              items={components.map(c => c.id)}
               strategy={verticalListSortingStrategy}
             >
               {components.length > 0 ? (
-                components.map((component) => (
-                  <div key={component.id} className={getComponentWidthClass(component)}>
+                components.map(component => (
+                  <div key={component.id} className="w-full">
                     <ComponentWrapper
                       id={component.id}
                       component={component}
@@ -177,7 +182,6 @@ export function CanvasArea() {
                   </div>
                 ))
               ) : (
-                /* 空状态 */
                 <div
                   className="flex flex-col items-center justify-center text-muted-foreground flex-1"
                   style={{ minHeight: `${contentHeight}px` }}
