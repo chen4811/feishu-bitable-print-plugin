@@ -26,6 +26,29 @@ const AutoResizingTextarea = ({
     }
   }, []);
 
+  // 处理点击事件，确保阻止冒泡
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onClick(e);
+  }, [onClick]);
+
+  // 处理键盘事件，确保阻止冒泡，并只在需要时阻止默认行为
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // 先调用外部传入的 onKeyDown（它会处理单独 Enter 的阻止）
+    onKeyDown(e);
+    
+    // 确保所有键盘事件都阻止冒泡，防止误触发其他操作
+    e.stopPropagation();
+    
+    // 注意：不要在这里阻止默认行为，让外部的 onKeyDown 来决定
+    // Shift+Enter 需要允许默认行为来换行
+  }, [onKeyDown]);
+
+  // 处理变化事件
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onChange(e.target.value);
+  }, [onChange]);
+
   // 内容变化时调整高度
   useEffect(() => {
     adjustHeight();
@@ -50,9 +73,11 @@ const AutoResizingTextarea = ({
     <textarea
       ref={textareaRef}
       value={value}
-      onChange={(e) => onChange(e.target.value)}
-      onClick={onClick}
-      onKeyDown={onKeyDown}
+      onChange={handleChange}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      onKeyUp={(e) => e.stopPropagation()}
+      onKeyPress={(e) => e.stopPropagation()}
       className="w-full border-0 outline-none p-1 resize-none overflow-hidden"
       style={{ 
         height: 'auto',
@@ -789,12 +814,16 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                               onChange={(value) => handleTableCellChange(rowIndex, colIndex, value)}
                               onClick={(e) => e.stopPropagation()}
                               onKeyDown={(e) => {
+                                // 阻止所有键盘事件冒泡，防止误触发其他操作
+                                e.stopPropagation();
+                                
                                 // 只有单独的 Enter（不带 Shift）才阻止默认行为
                                 if (e.key === 'Enter' && !e.shiftKey) {
                                   e.preventDefault();
-                                  e.stopPropagation();
                                 }
-                                // Shift+Enter 完全不处理，让浏览器自然处理换行
+                                
+                                // Shift+Enter：不阻止默认行为，让浏览器自然处理换行
+                                // Delete、Backspace 等其他键：不阻止默认行为，正常编辑
                               }}
                               style={textareaStyles}
                             />
