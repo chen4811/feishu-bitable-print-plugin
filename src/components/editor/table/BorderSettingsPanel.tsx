@@ -38,7 +38,7 @@ const BORDER_OPTIONS = [
 ];
 
 // 边框粗细选项
-const BORDER_WIDTHS = [1, 2, 3, 4, 5];
+const BORDER_WIDTHS = Array.from({ length: 50 }, (_, i) => i + 1);
 
 // 边框图标组件
 const BorderIcon = ({ type }: { type: string }) => {

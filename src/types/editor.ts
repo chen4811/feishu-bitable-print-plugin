@@ -45,6 +45,16 @@ export interface ComponentTextStyle {
   textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize'; // 文本转换
 }
 
+// 表格单元格边框样式
+export interface TableCellBorderStyle {
+  top?: boolean;
+  right?: boolean;
+  bottom?: boolean;
+  left?: boolean;
+  width?: number;
+  color?: string;
+}
+
 // 表格单元格数据
 export interface TableCellData {
   id: string;
@@ -53,6 +63,7 @@ export interface TableCellData {
   colSpan?: number;
   backgroundColor?: string;
   style?: Partial<ComponentTextStyle>;
+  border?: TableCellBorderStyle;
 }
 
 // 表格配置

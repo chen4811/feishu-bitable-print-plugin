@@ -373,14 +373,36 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   const cellId = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.id || `cell-${rowIndex}-${colIndex}`;
                   const isCellInRange = isCellInSelection(rowIndex, colIndex);
                   const isCellSelected = tableEditing.selectedCells.includes(cellId) || isCellInRange;
+                  const cellBorder = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.border;
+                  const borderWidth = cellBorder?.width || tableComp.tableConfig?.borderWidth || 1;
+                  const borderColor = cellBorder?.color || tableComp.tableConfig?.borderColor || '#000000';
+                  
+                  // 构建边框样式
+                  const borderStyles: any = {};
+                  if (cellBorder?.top) {
+                    borderStyles.borderTop = `${borderWidth}px solid ${borderColor}`;
+                  }
+                  if (cellBorder?.right) {
+                    borderStyles.borderRight = `${borderWidth}px solid ${borderColor}`;
+                  }
+                  if (cellBorder?.bottom) {
+                    borderStyles.borderBottom = `${borderWidth}px solid ${borderColor}`;
+                  }
+                  if (cellBorder?.left) {
+                    borderStyles.borderLeft = `${borderWidth}px solid ${borderColor}`;
+                  }
+                  
+                  // 如果没有设置单元格边框，使用默认边框
+                  const hasCellBorder = cellBorder?.top || cellBorder?.right || cellBorder?.bottom || cellBorder?.left;
                   
                   return (
                     <td
                       key={`${rowIndex}-${colIndex}`}
-                      className={`border p-1 text-sm cursor-pointer transition-colors select-none ${isCellSelected ? 'bg-blue-100' : ''}`}
+                      className={`p-1 text-sm cursor-pointer transition-colors select-none ${isCellSelected ? 'bg-blue-100' : ''} ${!hasCellBorder ? 'border' : ''}`}
                       style={{
                         backgroundColor: isCellSelected ? '#dbeafe' : (tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.backgroundColor || 'transparent'),
                         userSelect: 'none',
+                        ...borderStyles,
                       }}
                       onMouseDown={(e) => handleCellMouseDown(rowIndex, colIndex, e)}
                       onMouseEnter={(e) => handleCellMouseMove(rowIndex, colIndex, e)}

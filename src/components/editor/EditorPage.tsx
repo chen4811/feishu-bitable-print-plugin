@@ -133,36 +133,91 @@ export function EditorPage({ onExit }: EditorPageProps) {
   const handleBorderChange = (borderType: string) => {
     if (currentEditingTable && currentEditingTable.type === 'table') {
       const tableConfig = currentEditingTable.tableConfig;
-      let showOuterBorder = tableConfig?.showOuterBorder ?? true;
-      let showInnerBorder = tableConfig?.showInnerBorder ?? true;
+      const cells = tableConfig?.cells || [];
+      const borderWidth = tableConfig?.borderWidth || 1;
       
-      switch (borderType) {
-        case 'left':
-        case 'right':
-        case 'top':
-        case 'bottom':
-          // 单边边框 - 暂时标记，后续可扩展
-          console.log('设置单边边框:', borderType);
-          break;
-        case 'all':
-          showOuterBorder = true;
-          showInnerBorder = true;
-          break;
-        case 'outer':
-          showOuterBorder = true;
-          showInnerBorder = false;
-          break;
-        case 'none':
-          showOuterBorder = false;
-          showInnerBorder = false;
-          break;
+      // 获取选中的单元格位置
+      const selectedPositions: { row: number; col: number }[] = [];
+      
+      cells.forEach((row: any[], rowIndex: number) => {
+        row.forEach((cell: any, colIndex: number) => {
+          const cellId = cell?.id || `cell-${rowIndex}-${colIndex}`;
+          if (tableEditing.selectedCells.includes(cellId)) {
+            selectedPositions.push({ row: rowIndex, col: colIndex });
+          }
+        });
+      });
+      
+      // 如果没有选中单元格，使用整个表格
+      if (selectedPositions.length === 0) {
+        cells.forEach((row: any[], rowIndex: number) => {
+          row.forEach((cell: any, colIndex: number) => {
+            selectedPositions.push({ row: rowIndex, col: colIndex });
+          });
+        });
       }
+      
+      // 创建新的单元格数据
+      const newCells = cells.map((row: any[]) => 
+        row.map((cell: any) => ({ ...cell }))
+      );
+      
+      // 根据边框类型设置
+      selectedPositions.forEach(({ row, col }) => {
+        if (!newCells[row][col].border) {
+          newCells[row][col].border = {};
+        }
+        
+        switch (borderType) {
+          case 'left':
+            newCells[row][col].border.left = true;
+            newCells[row][col].border.width = borderWidth;
+            break;
+          case 'right':
+            newCells[row][col].border.right = true;
+            newCells[row][col].border.width = borderWidth;
+            break;
+          case 'top':
+            newCells[row][col].border.top = true;
+            newCells[row][col].border.width = borderWidth;
+            break;
+          case 'bottom':
+            newCells[row][col].border.bottom = true;
+            newCells[row][col].border.width = borderWidth;
+            break;
+          case 'all':
+            newCells[row][col].border.top = true;
+            newCells[row][col].border.right = true;
+            newCells[row][col].border.bottom = true;
+            newCells[row][col].border.left = true;
+            newCells[row][col].border.width = borderWidth;
+            break;
+          case 'outer':
+            // 设置外边框
+            const isFirstRow = row === 0;
+            const isLastRow = row === cells.length - 1;
+            const isFirstCol = col === 0;
+            const isLastCol = col === (cells[0]?.length || 0) - 1;
+            
+            if (isFirstRow) newCells[row][col].border.top = true;
+            if (isLastRow) newCells[row][col].border.bottom = true;
+            if (isFirstCol) newCells[row][col].border.left = true;
+            if (isLastCol) newCells[row][col].border.right = true;
+            newCells[row][col].border.width = borderWidth;
+            break;
+          case 'none':
+            newCells[row][col].border.top = false;
+            newCells[row][col].border.right = false;
+            newCells[row][col].border.bottom = false;
+            newCells[row][col].border.left = false;
+            break;
+        }
+      });
       
       updateComponent(currentEditingTable.id, {
         tableConfig: {
           ...tableConfig,
-          showOuterBorder,
-          showInnerBorder,
+          cells: newCells,
         },
       });
     }
@@ -171,10 +226,48 @@ export function EditorPage({ onExit }: EditorPageProps) {
   // 处理边框粗细变化
   const handleBorderWidthChange = (width: number) => {
     if (currentEditingTable && currentEditingTable.type === 'table') {
+      const tableConfig = currentEditingTable.tableConfig;
+      const cells = tableConfig?.cells || [];
+      
+      // 获取选中的单元格位置
+      const selectedPositions: { row: number; col: number }[] = [];
+      
+      cells.forEach((row: any[], rowIndex: number) => {
+        row.forEach((cell: any, colIndex: number) => {
+          const cellId = cell?.id || `cell-${rowIndex}-${colIndex}`;
+          if (tableEditing.selectedCells.includes(cellId)) {
+            selectedPositions.push({ row: rowIndex, col: colIndex });
+          }
+        });
+      });
+      
+      // 如果没有选中单元格，使用整个表格
+      if (selectedPositions.length === 0) {
+        cells.forEach((row: any[], rowIndex: number) => {
+          row.forEach((cell: any, colIndex: number) => {
+            selectedPositions.push({ row: rowIndex, col: colIndex });
+          });
+        });
+      }
+      
+      // 创建新的单元格数据
+      const newCells = cells.map((row: any[]) => 
+        row.map((cell: any) => ({ ...cell }))
+      );
+      
+      // 更新选中单元格的边框粗细
+      selectedPositions.forEach(({ row, col }) => {
+        if (!newCells[row][col].border) {
+          newCells[row][col].border = {};
+        }
+        newCells[row][col].border.width = width;
+      });
+      
       updateComponent(currentEditingTable.id, {
         tableConfig: {
-          ...currentEditingTable.tableConfig,
+          ...tableConfig,
           borderWidth: width,
+          cells: newCells,
         },
       });
     }
