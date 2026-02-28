@@ -399,13 +399,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
             </tbody>
           </table>
         </div>
-        
-        {/* 编辑状态提示 */}
-        {isTableEditing && (
-          <div className="text-xs text-center text-muted-foreground mt-1">
-            点击单元格编辑内容，点击上方"完成编辑"退出
-          </div>
-        )}
       </>
     );
   };
@@ -516,7 +509,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
           <div className={`w-full relative ${!isTableEditing ? 'group' : ''}`} onDoubleClick={handleDoubleClickTable}>
             {/* 编辑状态下，高级工具栏悬浮在表格上方 */}
             {isTableEditing && (
-              <div className="absolute -top-16 left-0 right-0 z-20">
+              <div className="absolute -top-14 left-0 right-0 z-20">
                 <AdvancedToolbar
                   onMergeCells={handleMergeCells}
                   selectedCellCount={selectedCells.length}
@@ -548,11 +541,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               </div>
             )}
             
-            {/* 给表格顶部留出空间，避免被悬浮工具栏遮挡 */}
-            <div className={isTableEditing ? 'pt-16' : ''}>
-              {/* 表格内容 */}
-              {renderTableContent(tableComp)}
-            </div>
+            {/* 表格内容 */}
+            {renderTableContent(tableComp)}
           </div>
         );
 
