@@ -310,6 +310,106 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
   }, [component]);
 
+  // 渲染表格内容（独立函数，避免代码重复）
+  const renderTableContent = (tableComp: any) => {
+    if (!tableComp.tableConfig?.cells) {
+      return (
+        <div className="p-4 text-center text-muted-foreground border">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Pencil className="w-4 h-4" />
+            <span>表格组件</span>
+          </div>
+          <div className="flex items-center justify-center gap-2">
+            <Button variant="default" size="sm" onClick={handleEditTable}>
+              编辑表格
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleCopyComponent}>
+              <Copy className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="text-destructive" onClick={handleDeleteComponent}>
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <div className="border overflow-hidden">
+          <table className="w-full border-collapse">
+            <tbody>
+              {tableEditData.map((row: any[], rowIndex: number) => {
+                const isHeader = rowIndex < (tableComp.tableConfig?.headerRows || 0);
+                const isFooter = rowIndex >= tableEditData.length - (tableComp.tableConfig?.footerRows || 0);
+                
+                return (
+                  <tr 
+                    key={rowIndex}
+                    className={isHeader ? 'bg-gray-100 font-semibold' : isFooter ? 'bg-gray-50' : ''}
+                  >
+                  {row.map((cellContent: any, colIndex: number) => {
+                    const cellId = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.id || `cell-${rowIndex}-${colIndex}`;
+                    const isCellSelected = selectedCells.includes(cellId);
+                    
+                    return (
+                      <td
+                        key={`${rowIndex}-${colIndex}`}
+                        className={`border p-1 text-sm cursor-pointer transition-colors ${isCellSelected ? 'bg-blue-100' : ''}`}
+                        style={{
+                          backgroundColor: isCellSelected ? '#dbeafe' : (tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.backgroundColor || 'transparent'),
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isTableEditing) {
+                            // 编辑模式下，点击选择单元格
+                            setSelectedCells(prev => {
+                              if (e.shiftKey) {
+                                // Shift + 点击：多选
+                                return [...prev, cellId];
+                              } else {
+                                // 普通点击：单选
+                                return prev.includes(cellId) 
+                                  ? prev.filter(id => id !== cellId) 
+                                  : [cellId];
+                              }
+                            });
+                          }
+                        }}
+                      >
+                        {isTableEditing ? (
+                          <input
+                            type="text"
+                            value={cellContent || ''}
+                            onChange={(e) => handleTableCellChange(rowIndex, colIndex, e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full border-0 bg-transparent outline-none p-1"
+                          />
+                        ) : (
+                          <span className="p-1 block min-h-[20px]">
+                            {cellContent}
+                          </span>
+                        )}
+                      </td>
+                    );
+                  })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        
+        {/* 编辑状态提示 */}
+        {isTableEditing && (
+          <div className="text-xs text-center text-muted-foreground mt-1">
+            点击单元格编辑内容，点击上方"完成编辑"退出
+          </div>
+        )}
+      </>
+    );
+  };
+
   // 渲染不同类型的组件
   const renderContent = () => {
     switch (component.type) {
@@ -414,9 +514,9 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         
         return (
           <div className="w-full">
-            {/* 高级编辑工具栏 - 编辑状态时显示在最上方 */}
+            {/* 编辑状态下，显示独立的高级工具栏 */}
             {isTableEditing && (
-              <div className="mb-2">
+              <div className="mb-4">
                 <AdvancedToolbar
                   onMergeCells={handleMergeCells}
                   selectedCellCount={selectedCells.length}
@@ -436,9 +536,9 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               </div>
             )}
             
-            {/* 表格容器 - 包含悬停工具栏和表格 */}
+            {/* 表格容器 */}
             <div className={`w-full relative ${!isTableEditing ? 'group' : ''}`} onDoubleClick={handleDoubleClickTable}>
-              {/* 悬停工具栏 - 只在非编辑状态时显示，悬浮在表格上方 */}
+              {/* 非编辑状态下，显示悬浮工具栏 */}
               {!isTableEditing && (
                 <div className="absolute -top-12 left-0 right-0 z-10">
                   <HoverToolbar
@@ -450,97 +550,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 </div>
               )}
               
-              {/* 表格本身 */}
-              {tableComp.tableConfig?.cells ? (
-                <div className="border overflow-hidden">
-                  <table className="w-full border-collapse">
-                    <tbody>
-                      {tableEditData.map((row: any[], rowIndex: number) => {
-                        const isHeader = rowIndex < (tableComp.tableConfig?.headerRows || 0);
-                        const isFooter = rowIndex >= tableEditData.length - (tableComp.tableConfig?.footerRows || 0);
-                        
-                        return (
-                          <tr 
-                            key={rowIndex}
-                            className={isHeader ? 'bg-gray-100 font-semibold' : isFooter ? 'bg-gray-50' : ''}
-                          >
-                          {row.map((cellContent: any, colIndex: number) => {
-                            const cellId = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.id || `cell-${rowIndex}-${colIndex}`;
-                            const isCellSelected = selectedCells.includes(cellId);
-                            
-                            return (
-                              <td
-                                key={`${rowIndex}-${colIndex}`}
-                                className={`border p-1 text-sm cursor-pointer transition-colors ${isCellSelected ? 'bg-blue-100' : ''}`}
-                                style={{
-                                  backgroundColor: isCellSelected ? '#dbeafe' : (tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.backgroundColor || 'transparent'),
-                                }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (isTableEditing) {
-                                    // 编辑模式下，点击选择单元格
-                                    setSelectedCells(prev => {
-                                      if (e.shiftKey) {
-                                        // Shift + 点击：多选
-                                        return [...prev, cellId];
-                                      } else {
-                                        // 普通点击：单选
-                                        return prev.includes(cellId) 
-                                          ? prev.filter(id => id !== cellId) 
-                                          : [cellId];
-                                      }
-                                    });
-                                  }
-                                }}
-                              >
-                                {isTableEditing ? (
-                                  <input
-                                    type="text"
-                                    value={cellContent || ''}
-                                    onChange={(e) => handleTableCellChange(rowIndex, colIndex, e.target.value)}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="w-full border-0 bg-transparent outline-none p-1"
-                                  />
-                                ) : (
-                                  <span className="p-1 block min-h-[20px]">
-                                    {cellContent}
-                                  </span>
-                                )}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="p-4 text-center text-muted-foreground border">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <Pencil className="w-4 h-4" />
-                    <span>表格组件</span>
-                  </div>
-                  <div className="flex items-center justify-center gap-2">
-                    <Button variant="default" size="sm" onClick={handleEditTable}>
-                      {isTableEditing ? '完成编辑' : '编辑表格'}
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={handleCopyComponent}>
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="text-destructive" onClick={handleDeleteComponent}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-              
-              {/* 编辑状态提示 */}
-              {isTableEditing && (
-                <div className="text-xs text-center text-muted-foreground mt-1">
-                  点击单元格编辑内容，点击上方"完成编辑"退出
-                </div>
-              )}
+              {/* 表格内容 */}
+              {renderTableContent(tableComp)}
             </div>
           </div>
         );
