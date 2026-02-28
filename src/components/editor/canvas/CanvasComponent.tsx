@@ -314,7 +314,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   const renderTableContent = (tableComp: any) => {
     if (!tableComp.tableConfig?.cells) {
       return (
-        <div className="p-4 text-center text-muted-foreground border">
+        <div className="p-4 text-center text-muted-foreground">
           <div className="flex items-center justify-center gap-2 mb-2">
             <Pencil className="w-4 h-4" />
             <span>表格组件</span>
@@ -335,71 +335,67 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
 
     return (
-      <>
-        <div className="border overflow-hidden">
-          <table className="w-full border-collapse">
-            <tbody>
-              {tableEditData.map((row: any[], rowIndex: number) => {
-                const isHeader = rowIndex < (tableComp.tableConfig?.headerRows || 0);
-                const isFooter = rowIndex >= tableEditData.length - (tableComp.tableConfig?.footerRows || 0);
+      <table className="w-full border-collapse">
+        <tbody>
+          {tableEditData.map((row: any[], rowIndex: number) => {
+            const isHeader = rowIndex < (tableComp.tableConfig?.headerRows || 0);
+            const isFooter = rowIndex >= tableEditData.length - (tableComp.tableConfig?.footerRows || 0);
+            
+            return (
+              <tr 
+                key={rowIndex}
+                className={isHeader ? 'bg-gray-100 font-semibold' : isFooter ? 'bg-gray-50' : ''}
+              >
+              {row.map((cellContent: any, colIndex: number) => {
+                const cellId = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.id || `cell-${rowIndex}-${colIndex}`;
+                const isCellSelected = selectedCells.includes(cellId);
                 
                 return (
-                  <tr 
-                    key={rowIndex}
-                    className={isHeader ? 'bg-gray-100 font-semibold' : isFooter ? 'bg-gray-50' : ''}
-                  >
-                  {row.map((cellContent: any, colIndex: number) => {
-                    const cellId = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.id || `cell-${rowIndex}-${colIndex}`;
-                    const isCellSelected = selectedCells.includes(cellId);
-                    
-                    return (
-                      <td
-                        key={`${rowIndex}-${colIndex}`}
-                        className={`border p-1 text-sm cursor-pointer transition-colors ${isCellSelected ? 'bg-blue-100' : ''}`}
-                        style={{
-                          backgroundColor: isCellSelected ? '#dbeafe' : (tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.backgroundColor || 'transparent'),
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (isTableEditing) {
-                            // 编辑模式下，点击选择单元格
-                            setSelectedCells(prev => {
-                              if (e.shiftKey) {
-                                // Shift + 点击：多选
-                                return [...prev, cellId];
-                              } else {
-                                // 普通点击：单选
-                                return prev.includes(cellId) 
-                                  ? prev.filter(id => id !== cellId) 
-                                  : [cellId];
-                              }
-                            });
+                  <td
+                    key={`${rowIndex}-${colIndex}`}
+                    className={`border p-1 text-sm cursor-pointer transition-colors ${isCellSelected ? 'bg-blue-100' : ''}`}
+                    style={{
+                      backgroundColor: isCellSelected ? '#dbeafe' : (tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.backgroundColor || 'transparent'),
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (isTableEditing) {
+                        // 编辑模式下，点击选择单元格
+                        setSelectedCells(prev => {
+                          if (e.shiftKey) {
+                            // Shift + 点击：多选
+                            return [...prev, cellId];
+                          } else {
+                            // 普通点击：单选
+                            return prev.includes(cellId) 
+                              ? prev.filter(id => id !== cellId) 
+                              : [cellId];
                           }
-                        }}
-                      >
-                        {isTableEditing ? (
-                          <input
-                            type="text"
-                            value={cellContent || ''}
-                            onChange={(e) => handleTableCellChange(rowIndex, colIndex, e.target.value)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="w-full border-0 bg-transparent outline-none p-1"
-                          />
-                        ) : (
-                          <span className="p-1 block min-h-[20px]">
-                            {cellContent}
-                          </span>
-                        )}
-                      </td>
-                    );
-                  })}
-                  </tr>
+                        });
+                      }
+                    }}
+                  >
+                    {isTableEditing ? (
+                      <input
+                        type="text"
+                        value={cellContent || ''}
+                        onChange={(e) => handleTableCellChange(rowIndex, colIndex, e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full border-0 bg-transparent outline-none p-1"
+                      />
+                    ) : (
+                      <span className="p-1 block min-h-[20px]">
+                        {cellContent}
+                      </span>
+                    )}
+                  </td>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
-      </>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     );
   };
 
@@ -505,12 +501,12 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       case 'table':
         const tableComp = component as any;
         
-        // 编辑状态：工具栏在顶部，表格有顶部padding
+        // 编辑状态：工具栏悬浮在表格上方，表格就是纯粹的原生表格
         if (isTableEditing) {
           return (
-            <div className="w-full" onDoubleClick={handleDoubleClickTable}>
-              {/* 编辑状态下，高级工具栏在顶部 */}
-              <div className="mb-2">
+            <>
+              {/* 编辑状态下，高级工具栏悬浮在表格上方 */}
+              <div className="relative mb-2">
                 <AdvancedToolbar
                   onMergeCells={handleMergeCells}
                   selectedCellCount={selectedCells.length}
@@ -529,24 +525,28 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 />
               </div>
               
-              {/* 表格内容 */}
-              {renderTableContent(tableComp)}
-            </div>
+              {/* 表格内容 - 纯粹的原生表格，没有任何包裹 */}
+              <div onDoubleClick={handleDoubleClickTable}>
+                {renderTableContent(tableComp)}
+              </div>
+            </>
           );
         }
         
-        // 非编辑状态：工具栏在右上角悬浮
+        // 非编辑状态：工具栏在右上角悬浮，表格就是纯粹的原生表格
         return (
-          <div className="w-full relative group" onDoubleClick={handleDoubleClickTable}>
+          <div className="relative group" onDoubleClick={handleDoubleClickTable}>
             {/* 非编辑状态下，悬浮工具栏在右上角 */}
-            <HoverToolbar
-              onEdit={handleEditTable}
-              onDelete={handleDeleteComponent}
-              onCopy={handleCopyComponent}
-              isSelected={isSelected}
-            />
+            <div className="absolute -top-9 right-0 z-10">
+              <HoverToolbar
+                onEdit={handleEditTable}
+                onDelete={handleDeleteComponent}
+                onCopy={handleCopyComponent}
+                isSelected={isSelected}
+              />
+            </div>
             
-            {/* 表格内容 */}
+            {/* 表格内容 - 纯粹的原生表格，没有任何包裹 */}
             {renderTableContent(tableComp)}
           </div>
         );

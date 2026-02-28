@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { Trash2, Copy, Settings, EyeOff, Pencil } from 'lucide-react';
+import { Trash2, Copy, EyeOff, Pencil, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface HoverToolbarProps {
@@ -27,7 +27,7 @@ export const HoverToolbar: React.FC<HoverToolbarProps> = React.memo(({ onEdit, o
 
   return (
     <div className={`transition-opacity duration-200 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-      <div className="absolute -top-9 right-0 flex items-center bg-white border rounded-md shadow-md px-1.5 py-1 gap-0.5">
+      <div className="flex items-center bg-white border rounded-md shadow-md px-1.5 py-1 gap-0.5">
         {/* 编辑按钮 */}
         <Button
           variant="default"
