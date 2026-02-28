@@ -80,6 +80,8 @@ export function EditorPage({ onExit }: EditorPageProps) {
     historyIndex,
     tableEditing,
     setTableEditing,
+    tableCellEditing,
+    setTableCellEditing,
   } = useEditorStore();
 
   // 智能聚焦：选中组件时自动切换到数据源面板
@@ -300,6 +302,27 @@ export function EditorPage({ onExit }: EditorPageProps) {
               onChange={updateTextStyle}
               onIncreaseFontSize={increaseFontSize}
               onDecreaseFontSize={decreaseFontSize}
+            />
+          </div>
+        )}
+
+        {/* 表格内容编辑工具栏 - 仅在编辑表格且选中单元格时显示（基础版本）*/}
+        {tableEditing.isEditing && (
+          <div className="border-b bg-background/95 backdrop-blur px-4 py-2">
+            <TextToolbar
+              textStyle={{
+                fontSize: styleConfig.fontSize,
+                color: '#000000',
+                bold: false,
+                italic: false,
+                underline: false,
+                align: 'left',
+                lineHeight: styleConfig.lineHeight,
+              }}
+              onChange={(style) => {
+                console.log('表格内容样式变化:', style);
+                // TODO: 实现单元格样式更新
+              }}
             />
           </div>
         )}

@@ -23,6 +23,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     deleteComponent,
     tableEditing,
     setTableEditing,
+    setTableCellEditing,
   } = useEditorStore();
   
   // 通用状态
@@ -262,6 +263,14 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       if (isCurrentTableEditing) {
                         setTableEditing({
                           selectedCells: [cellId],
+                        });
+                        // 同时设置单元格编辑状态
+                        setTableCellEditing({
+                          isEditing: true,
+                          tableId: component.id,
+                          cellId,
+                          rowIndex,
+                          colIndex,
                         });
                       }
                     }}

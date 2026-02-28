@@ -15,6 +15,16 @@ import {
   TableConfig,
 } from '@/types/editor';
 
+// 表格单元格编辑状态（用于内容编辑）
+interface TableCellEditingState {
+  isEditing: boolean;
+  tableId: string | null;
+  cellId: string | null;
+  rowIndex: number | null;
+  colIndex: number | null;
+  cellStyle: Partial<ComponentTextStyle>;
+}
+
 // 表格编辑状态
 interface TableEditingState {
   isEditing: boolean;
@@ -38,6 +48,9 @@ interface EditorState {
   
   // 表格编辑状态
   tableEditing: TableEditingState;
+  
+  // 表格单元格编辑状态（内容编辑）
+  tableCellEditing: TableCellEditingState;
   
   // 页面和样式配置
   pageConfig: PageConfig;
@@ -99,6 +112,9 @@ interface EditorState {
   
   // 表格编辑
   setTableEditing: (tableEditing: Partial<TableEditingState>) => void;
+  
+  // 表格单元格编辑
+  setTableCellEditing: (tableCellEditing: Partial<TableCellEditingState>) => void;
   
   // 模板操作
   loadTemplate: (template: PrintTemplate) => void;
@@ -175,6 +191,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     onAlignmentChange: () => {},
     onColorChange: () => {},
     onFinishEdit: () => {},
+  },
+  
+  // 表格单元格编辑状态
+  tableCellEditing: {
+    isEditing: false,
+    tableId: null,
+    cellId: null,
+    rowIndex: null,
+    colIndex: null,
+    cellStyle: {},
   },
   
   pageConfig: DEFAULT_PAGE_CONFIG,
@@ -395,6 +421,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       tableEditing: {
         ...state.tableEditing,
         ...tableEditing,
+      },
+    }));
+  },
+  
+  // 设置表格单元格编辑状态
+  setTableCellEditing: (tableCellEditing: Partial<TableCellEditingState>) => {
+    set((state) => ({
+      tableCellEditing: {
+        ...state.tableCellEditing,
+        ...tableCellEditing,
       },
     }));
   },
