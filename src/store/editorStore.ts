@@ -133,8 +133,8 @@ const createDefaultTableConfig = (): TableConfig => ({
   showOuterBorder: true,
   showInnerBorder: true,
   cells: [
-    [{ id: '1', content: '单元格1' }, { id: '2', content: '单元格2' }, { id: '3', content: '单元格3' }],
-    [{ id: '4', content: '单元格4' }, { id: '5', content: '单元格5' }, { id: '6', content: '单元格6' }],
+    [{ id: '1', content: '' }, { id: '2', content: '' }, { id: '3', content: '' }],
+    [{ id: '4', content: '' }, { id: '5', content: '' }, { id: '6', content: '' }],
   ],
 });
 
@@ -179,7 +179,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     
     switch (type) {
       case 'text':
-        newComponent.content = '双击编辑文本';
+        newComponent.content = '';
         newComponent.textStyle = createDefaultTextStyle(state.styleConfig);
         break;
       case 'table':
