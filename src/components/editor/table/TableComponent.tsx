@@ -101,8 +101,20 @@ export const TableComponent: React.FC<TableComponentProps> = ({
       onMouseLeave={handleMouseLeave}
       onClick={handleClick}
     >
+      {/* 悬停工具栏 - 仅在悬停且未选中时显示 */}
+      {showHoverToolbar && (
+        <div className="absolute -top-12 left-0 right-0 z-20">
+          <HoverToolbar 
+            onEdit={handleEditTable}
+            onDelete={onDelete}
+            onCopy={onCopy}
+          />
+        </div>
+      )}
+
+      {/* 高级编辑工具栏 - 编辑模式时在表格上方显示，不遮挡表格 */}
       {editMode !== 'view' && (
-        <div className="absolute -top-12 left-0 right-0 z-10">
+        <div className="mb-3">
           <AdvancedToolbar 
             mode={getToolbarMode}
             selectedCellsCount={selectedCells.length}
@@ -112,14 +124,7 @@ export const TableComponent: React.FC<TableComponentProps> = ({
         </div>
       )}
 
-      {showHoverToolbar && (
-        <HoverToolbar 
-          onEdit={handleEditTable}
-          onDelete={onDelete}
-          onCopy={onCopy}
-        />
-      )}
-
+      {/* 表格内容 */}
       <div className="border rounded-lg overflow-hidden">
         <table style={{ borderCollapse: 'collapse', width: '100%' }}>
           <tbody>
