@@ -1,13 +1,11 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useDraggable } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
-import { EditorComponent, TextComponent, QRCodeComponent, BarcodeComponent, LineComponent } from '@/types/editor';
+import { EditorComponent, TextComponent, QRCodeComponent, BarcodeComponent, LineComponent, AutoTableComponent } from '@/types/editor';
 import { useEditorStore } from '@/store/editorStore';
+import { ResizableWrapper } from './ResizableWrapper';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Trash2, Move, ChevronDown, ChevronRight } from 'lucide-react';
+import { Trash2, Move, ArrowUp, ArrowDown, ChevronUp, ChevronDown } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 
@@ -18,7 +16,7 @@ interface CanvasComponentProps {
 }
 
 export function CanvasComponent({ component, isSelected, onSelect }: CanvasComponentProps) {
-  const { updateComponent, removeComponent, styleConfig } = useEditorStore();
+  const { updateComponent, removeComponent, styleConfig, components, moveComponentUp, moveComponentDown, bringToFront, sendToBack } = useEditorStore();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -43,7 +41,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     if (component.type === 'qrcode' && canvasRef.current) {
       const qrcodeComponent = component as QRCodeComponent;
       QRCode.toCanvas(canvasRef.current, qrcodeComponent.content, {
-        width: qrcodeComponent.size,
+        width: Math.min(qrcodeComponent.size, component.width),
         margin: 1,
       });
     }
@@ -57,7 +55,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         JsBarcode(canvasRef.current, barcodeComponent.content, {
           format: barcodeComponent.format,
           width: 2,
-          height: 50,
+          height: 40,
           displayValue: true,
         });
       } catch (e) {
@@ -73,18 +71,28 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         const textComp = component as TextComponent;
         if (isEditing) {
           return (
-            <Input
+            <textarea
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
               onBlur={handleTextBlur}
-              onKeyDown={(e) => e.key === 'Enter' && handleTextBlur()}
-              className="h-auto min-h-[40px] resize-none"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleTextBlur();
+                }
+              }}
+              className="w-full h-full min-h-[40px] p-1 border-0 bg-transparent resize-none focus:outline-none focus:ring-1 focus:ring-primary pointer-events-auto"
+              style={{
+                fontSize: `${textComp.fontSize || styleConfig.fontSize}pt`,
+                fontFamily: styleConfig.fontFamily,
+              }}
               autoFocus
             />
           );
         }
         return (
           <div
+            className="whitespace-pre-wrap"
             style={{
               fontSize: `${textComp.fontSize || styleConfig.fontSize}pt`,
               fontWeight: textComp.fontWeight,
@@ -100,19 +108,18 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       case 'qrcode':
         const qrcodeComp = component as QRCodeComponent;
         return (
-          <div className="flex items-center justify-center">
+          <div className="flex items-center justify-center w-full h-full">
             <canvas
               ref={canvasRef}
-              width={qrcodeComp.size}
-              height={qrcodeComp.size}
+              width={Math.min(qrcodeComp.size, component.width - 10)}
+              height={Math.min(qrcodeComp.size, component.height - 10)}
             />
           </div>
         );
 
       case 'barcode':
-        const barcodeComp = component as BarcodeComponent;
         return (
-          <div className="flex items-center justify-center">
+          <div className="flex items-center justify-center w-full h-full">
             <canvas ref={canvasRef} />
           </div>
         );
@@ -126,6 +133,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               height: `${lineComp.thickness}px`,
               backgroundColor: lineComp.color,
               borderTop: lineComp.style === 'dashed' ? '2px dashed ' + lineComp.color : undefined,
+              marginTop: `${(component.height - lineComp.thickness) / 2}px`,
             }}
           />
         );
@@ -158,9 +166,17 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         );
 
       case 'autoTable':
+        const autoTableComp = component as AutoTableComponent;
         return (
           <div className="w-full h-full flex items-center justify-center bg-muted/50 rounded border-2 border-dashed">
-            <span className="text-xs text-muted-foreground">自动表格（拖拽字段配置）</span>
+            <div className="text-center">
+              <span className="text-xs text-muted-foreground">自动表格</span>
+              {autoTableComp.selectedFields.length > 0 && (
+                <span className="text-xs text-muted-foreground block mt-1">
+                  已选择 {autoTableComp.selectedFields.length} 个字段
+                </span>
+              )}
+            </div>
           </div>
         );
 
@@ -187,51 +203,96 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
   };
 
+  // 层级控制面板
+  const renderLayerControls = () => {
+    if (!isSelected) return null;
+    
+    const maxZIndex = Math.max(...components.map(c => c.zIndex));
+    const minZIndex = Math.min(...components.map(c => c.zIndex));
+    const isAtTop = component.zIndex === maxZIndex;
+    const isAtBottom = component.zIndex === minZIndex;
+
+    return (
+      <div className="absolute -top-10 left-0 flex items-center gap-1 bg-background border rounded px-1 py-0.5 shadow-sm">
+        <span className="text-xs text-muted-foreground px-1">层级</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          title="置顶"
+          onClick={(e) => {
+            e.stopPropagation();
+            bringToFront(component.id);
+          }}
+          disabled={isAtTop && components.length === 1}
+        >
+          <ChevronUp className="w-3 h-3" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          title="上移一层"
+          onClick={(e) => {
+            e.stopPropagation();
+            moveComponentUp(component.id);
+          }}
+          disabled={isAtTop}
+        >
+          <ArrowUp className="w-3 h-3" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          title="下移一层"
+          onClick={(e) => {
+            e.stopPropagation();
+            moveComponentDown(component.id);
+          }}
+          disabled={isAtBottom}
+        >
+          <ArrowDown className="w-3 h-3" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          title="置底"
+          onClick={(e) => {
+            e.stopPropagation();
+            sendToBack(component.id);
+          }}
+          disabled={isAtBottom && components.length === 1}
+        >
+          <ChevronDown className="w-3 h-3" />
+        </Button>
+        <div className="w-px h-4 bg-border mx-1" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 text-destructive hover:text-destructive"
+          title="删除"
+          onClick={(e) => {
+            e.stopPropagation();
+            removeComponent(component.id);
+          }}
+        >
+          <Trash2 className="w-3 h-3" />
+        </Button>
+      </div>
+    );
+  };
+
   return (
-    <div
-      className={`absolute cursor-move group ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''}`}
-      style={{
-        left: `${component.x}px`,
-        top: `${component.y}px`,
-        width: `${component.width}px`,
-        minHeight: `${component.height}px`,
-        zIndex: component.zIndex,
-      }}
-      onClick={(e) => {
-        e.stopPropagation();
-        onSelect();
-      }}
+    <ResizableWrapper
+      component={component}
+      isSelected={isSelected}
+      onSelect={onSelect}
       onDoubleClick={handleDoubleClick}
     >
-      {/* 选中时的控制按钮 */}
-      {isSelected && (
-        <div className="absolute -top-8 left-0 flex items-center gap-1 bg-background border rounded px-1 py-0.5 shadow-sm">
-          <Button variant="ghost" size="icon" className="h-6 w-6">
-            <Move className="w-3 h-3" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 text-destructive hover:text-destructive"
-            onClick={(e) => {
-              e.stopPropagation();
-              removeComponent(component.id);
-            }}
-          >
-            <Trash2 className="w-3 h-3" />
-          </Button>
-        </div>
-      )}
-
-      {/* 组件内容 */}
-      <div className="w-full h-full overflow-hidden">
-        {renderContent()}
-      </div>
-
-      {/* hover 效果 */}
-      {!isSelected && (
-        <div className="absolute inset-0 border border-transparent hover:border-primary/50 pointer-events-none transition-colors" />
-      )}
-    </div>
+      {renderLayerControls()}
+      {renderContent()}
+    </ResizableWrapper>
   );
 }

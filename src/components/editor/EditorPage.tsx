@@ -1,22 +1,10 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   DndContext,
   DragEndEvent,
@@ -42,6 +30,8 @@ import {
   Save,
   Download,
   Eye,
+  CheckCircle2,
+  Loader2,
 } from 'lucide-react';
 import { DataSourcePanel } from './panels/DataSourcePanel';
 import { ComponentPanel } from './panels/ComponentPanel';
@@ -49,6 +39,7 @@ import { SettingsPanel } from './panels/SettingsPanel';
 import { CanvasArea } from './canvas/CanvasArea';
 import { PageSettingsDialog } from './dialogs/PageSettingsDialog';
 import { PrintPreviewDialog } from './dialogs/PrintPreviewDialog';
+import { usePrintSDK } from '@/hooks/usePrintSDK';
 
 interface EditorPageProps {
   onExit: () => void;
@@ -77,6 +68,8 @@ export function EditorPage({ onExit }: EditorPageProps) {
     history,
     historyIndex,
   } = useEditorStore();
+
+  const { isLoading, isFeishuEnvironment, tableName, fields, records } = usePrintSDK();
 
   // DnD sensors
   const sensors = useSensors(
@@ -161,6 +154,19 @@ export function EditorPage({ onExit }: EditorPageProps) {
                   </>
                 )}
               </div>
+              
+              {/* 数据源状态 */}
+              {isLoading ? (
+                <Badge variant="secondary">
+                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                  加载数据...
+                </Badge>
+              ) : isFeishuEnvironment ? (
+                <Badge variant="default" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                  {tableName} · {records.length} 条
+                </Badge>
+              ) : null}
             </div>
 
             {/* 右侧 */}

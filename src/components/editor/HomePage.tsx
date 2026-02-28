@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -17,10 +17,15 @@ import {
   Crown,
   ChevronRight,
   Search,
-  Sparkles
+  Sparkles,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  RefreshCw
 } from 'lucide-react';
 import { presetTemplates, templateCategories } from '@/data/presetTemplates';
 import { PresetTemplate } from '@/types/editor';
+import { usePrintSDK } from '@/hooks/usePrintSDK';
 
 interface HomePageProps {
   onCreateNew: () => void;
@@ -70,6 +75,8 @@ const createOptions = [
 export function HomePage({ onCreateNew, onSelectTemplate }: HomePageProps) {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  const { isLoading, error, isFeishuEnvironment, tableName, fields, records, refreshData } = usePrintSDK();
 
   // 过滤模板
   const filteredTemplates = presetTemplates.filter((template) => {
@@ -99,7 +106,33 @@ export function HomePage({ onCreateNew, onSelectTemplate }: HomePageProps) {
             </div>
             <h1 className="text-lg font-semibold">排版打印</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            {/* SDK 状态指示器 */}
+            <div className="flex items-center gap-2 text-sm">
+              {isLoading ? (
+                <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                  加载中
+                </Badge>
+              ) : error ? (
+                <Badge variant="destructive">
+                  <AlertCircle className="w-3 h-3 mr-1" />
+                  加载失败
+                </Badge>
+              ) : isFeishuEnvironment ? (
+                <Badge variant="default" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                  飞书环境
+                </Badge>
+              ) : (
+                <Badge variant="outline">
+                  模拟数据
+                </Badge>
+              )}
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={refreshData}>
+                <RefreshCw className="w-3 h-3" />
+              </Button>
+            </div>
             <Button variant="outline" size="sm">
               高级版
             </Button>
@@ -114,12 +147,32 @@ export function HomePage({ onCreateNew, onSelectTemplate }: HomePageProps) {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* 欢迎区域 */}
         <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold mb-2">把多维表格的数据快速转化为各类文档、单据、合同</h2>
+          <h2 className="text-2xl font-bold mb-2">
+            把{tableName || '多维表格'}的数据快速转化为各类文档、单据、合同
+          </h2>
           <p className="text-muted-foreground">
-            已为用户生成 <span className="text-primary font-semibold">2,892,874</span> 份文件
+            {fields.length} 个字段 · {records.length} 条记录
+            {isFeishuEnvironment && (
+              <span className="ml-2 text-green-600 dark:text-green-400">
+                · 已连接飞书多维表格
+              </span>
+            )}
             <Button variant="link" className="p-0 ml-2 h-auto">查看最佳实践案例</Button>
           </p>
         </div>
+
+        {/* 错误提示 */}
+        {error && (
+          <Card className="mb-6 p-4 border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20">
+            <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+              <AlertCircle className="w-5 h-5" />
+              <span>数据加载失败: {error}</span>
+              <Button variant="outline" size="sm" onClick={refreshData} className="ml-auto">
+                重试
+              </Button>
+            </div>
+          </Card>
+        )}
 
         {/* 创建方式卡片 */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-12">
