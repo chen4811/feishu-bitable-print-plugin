@@ -148,40 +148,64 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         if (isSelected && !isEditing) {
           return (
             <div className="w-full h-full relative">
-              {/* 编辑器模式切换 */}
-              <div className="absolute -top-8 right-0 flex items-center gap-1 z-10">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-7 w-7">
-                      <FileText className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setUseRichTextEditor(false)}>
-                      <Type className="w-4 h-4 mr-2" />
-                      简单文本
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setUseRichTextEditor(true)}>
-                      <FileText className="w-4 h-4 mr-2" />
-                      富文本编辑
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+              {/* 统一的工具栏 - 左侧层级控制，右侧编辑设置 */}
+              <div className="absolute -top-10 left-0 right-0 flex justify-between items-start z-10">
+                {/* 左侧：层级控制 */}
+                {renderLayerControlsInline()}
                 
-                {/* 样式设置按钮 */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => setShowStyleSettings(!showStyleSettings)}
-                >
-                  🎨
-                </Button>
+                {/* 右侧：编辑器设置 */}
+                <div className="flex items-center gap-1 bg-background border rounded px-1 py-0.5 shadow-sm">
+                  {/* 编辑器模式切换 */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-6 w-6">
+                        {useRichTextEditor ? <FileText className="w-3.5 h-3.5" /> : <Type className="w-3.5 h-3.5" />}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setUseRichTextEditor(false)}>
+                        <Type className="w-4 h-4 mr-2" />
+                        简单文本
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setUseRichTextEditor(true)}>
+                        <FileText className="w-4 h-4 mr-2" />
+                        富文本编辑
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  
+                  {/* 样式设置按钮 */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => setShowStyleSettings(!showStyleSettings)}
+                    data-state={showStyleSettings ? 'active' : 'inactive'}
+                  >
+                    <span className="text-sm">🎨</span>
+                  </Button>
+                  
+                  <div className="w-px h-4 bg-border mx-0.5" />
+                  
+                  {/* 删除按钮 */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-destructive hover:text-destructive"
+                    title="删除"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeComponent(component.id);
+                    }}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
               </div>
               
               {/* 样式设置面板 */}
               {showStyleSettings && (
-                <div className="absolute -top-32 right-0 bg-background border rounded-lg p-3 shadow-lg z-20 w-64">
+                <div className="absolute -top-40 right-0 bg-background border rounded-lg p-3 shadow-lg z-20 w-64">
                   <h4 className="text-sm font-medium mb-2">组件样式</h4>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
@@ -419,8 +443,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
   };
 
-  // 层级控制面板
-  const renderLayerControls = () => {
+  // 内联层级控制 - 用于文本组件的统一工具栏
+  const renderLayerControlsInline = () => {
     if (!isSelected) return null;
     
     const maxZIndex = Math.max(...components.map(c => c.zIndex));
@@ -428,10 +452,76 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     const isAtTop = component.zIndex === maxZIndex;
     const isAtBottom = component.zIndex === minZIndex;
 
-    // 安全的事件处理
-    const handleStopPropagation = (e: React.MouseEvent) => {
-      e.stopPropagation();
-    };
+    return (
+      <div className="flex items-center gap-1 bg-background border rounded px-1 py-0.5 shadow-sm">
+        <span className="text-xs text-muted-foreground px-1">层级</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          title="置顶"
+          onClick={(e) => {
+            e.stopPropagation();
+            bringToFront(component.id);
+          }}
+          disabled={isAtTop && components.length === 1}
+        >
+          <ChevronUp className="w-3 h-3" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          title="上移一层"
+          onClick={(e) => {
+            e.stopPropagation();
+            moveComponentUp(component.id);
+          }}
+          disabled={isAtTop}
+        >
+          <ArrowUp className="w-3 h-3" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          title="下移一层"
+          onClick={(e) => {
+            e.stopPropagation();
+            moveComponentDown(component.id);
+          }}
+          disabled={isAtBottom}
+        >
+          <ArrowDown className="w-3 h-3" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          title="置底"
+          onClick={(e) => {
+            e.stopPropagation();
+            sendToBack(component.id);
+          }}
+          disabled={isAtBottom && components.length === 1}
+        >
+          <ChevronDown className="w-3 h-3" />
+        </Button>
+      </div>
+    );
+  };
+
+  // 独立层级控制面板 - 用于其他类型组件
+  const renderLayerControls = () => {
+    if (!isSelected) return null;
+    
+    // 文本组件使用统一工具栏，不显示独立的层级控制
+    if (component.type === 'text') return null;
+    
+    const maxZIndex = Math.max(...components.map(c => c.zIndex));
+    const minZIndex = Math.min(...components.map(c => c.zIndex));
+    const isAtTop = component.zIndex === maxZIndex;
+    const isAtBottom = component.zIndex === minZIndex;
 
     return (
       <div className="absolute -top-10 left-0 flex items-center gap-1 bg-background border rounded px-1 py-0.5 shadow-sm">
