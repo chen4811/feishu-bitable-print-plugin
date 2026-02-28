@@ -217,7 +217,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     
     set({
       components: [...state.components, newComponent as EditorComponent],
-      selectedComponentId: id,
+      // 新添加的组件默认不选中，让它更清爽
+      selectedComponentId: null,
     });
     
     get().saveToHistory();
