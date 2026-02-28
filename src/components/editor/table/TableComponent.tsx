@@ -66,6 +66,30 @@ export const TableComponent: React.FC<TableComponentProps> = ({
     onCopy();
   }, [onCopy]);
 
+  const addRow = useCallback(() => {
+    const newRow = new Array(tableData[0]?.length || 3).fill('');
+    setTableData([...tableData, newRow]);
+  }, [tableData]);
+
+  const addColumn = useCallback(() => {
+    const newData = tableData.map(row => [...row, '']);
+    setTableData(newData);
+  }, [tableData]);
+
+  const deleteRow = useCallback((rowIndex: number) => {
+    if (tableData.length > 1) {
+      const newData = tableData.filter((_, index) => index !== rowIndex);
+      setTableData(newData);
+    }
+  }, [tableData]);
+
+  const deleteColumn = useCallback((colIndex: number) => {
+    if (tableData[0]?.length > 1) {
+      const newData = tableData.map(row => row.filter((_, index) => index !== colIndex));
+      setTableData(newData);
+    }
+  }, [tableData]);
+
   const shouldShowHoverToolbar = isHovered && !isSelected && !isEditing;
   const shouldShowSelectionBorder = isSelected && !isEditing;
 
@@ -77,10 +101,25 @@ export const TableComponent: React.FC<TableComponentProps> = ({
       onClick={handleClick}
       style={{ 
         padding: 0, 
-        margin: 0,
+        margin: '10px',
         display: 'inline-block',
       }}
     >
+      {/* 1. 拖拽手柄 - 左侧垂直居中 */}
+      {isSelected && !isEditing && (
+        <div 
+          className="absolute -left-8 top-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing"
+          style={{ zIndex: 30 }}
+        >
+          <div className="w-6 h-6 bg-gray-100 border border-gray-300 rounded flex items-center justify-center hover:bg-gray-200 transition-colors">
+            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+            </svg>
+          </div>
+        </div>
+      )}
+
+      {/* 2. 悬浮工具栏 - 顶部右侧 */}
       {shouldShowHoverToolbar && (
         <div 
           className="absolute -top-10 right-0 z-20"
@@ -132,7 +171,9 @@ export const TableComponent: React.FC<TableComponentProps> = ({
         </div>
       )}
 
+      {/* 3. 表格主体 */}
       <div className="relative" style={{ padding: 0, margin: 0 }}>
+        {/* 选中框 */}
         {shouldShowSelectionBorder && (
           <div 
             className="absolute inset-0 border-2 border-blue-500 pointer-events-none" 
@@ -144,11 +185,51 @@ export const TableComponent: React.FC<TableComponentProps> = ({
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
             <tbody>
               {tableData.map((row, rowIndex) => (
-                <tr key={rowIndex}>
+                <tr key={rowIndex} className="relative">
+                  {/* 行控制条 - 左侧渐变竖条 */}
+                  {isSelected && !isEditing && (
+                    <td 
+                      style={{ 
+                        position: 'absolute', 
+                        left: -20, 
+                        top: 0, 
+                        bottom: 0, 
+                        width: 16,
+                        background: 'linear-gradient(to right, rgba(59, 130, 246, 0.2), transparent)',
+                        cursor: 'pointer',
+                        zIndex: 20
+                      }}
+                      onMouseEnter={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                    >
+                      <div className="flex items-center justify-center h-full">
+                        <div className="relative group">
+                          <button className="w-4 h-4 flex items-center justify-center">
+                            <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                            </svg>
+                          </button>
+                          {/* 行菜单 */}
+                          <div className="absolute left-full top-0 ml-2 bg-white border rounded shadow-lg p-2 hidden group-hover:block">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); deleteRow(rowIndex); }}
+                              className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100 text-red-600"
+                            >
+                              删除行
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  )}
+                  
                   {row.map((cell, colIndex) => {
                     return (
                       <td 
                         key={colIndex} 
+                        className="relative group"
                         style={{ 
                           border: '1px solid #e5e7eb', 
                           padding: '8px',
@@ -157,6 +238,79 @@ export const TableComponent: React.FC<TableComponentProps> = ({
                           height: '32px',
                         }}
                       >
+                        {/* 列控制条 - 顶部渐变横条 */}
+                        {isSelected && !isEditing && rowIndex === 0 && (
+                          <div 
+                            style={{ 
+                              position: 'absolute', 
+                              top: -20, 
+                              left: 0, 
+                              right: 0, 
+                              height: 16,
+                              background: 'linear-gradient(to bottom, rgba(59, 130, 246, 0.2), transparent)',
+                              cursor: 'pointer',
+                              zIndex: 20
+                            }}
+                            onMouseEnter={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                            }}
+                          >
+                            <div className="flex items-center justify-center w-full">
+                              <div className="relative group">
+                                <button className="w-4 h-4 flex items-center justify-center">
+                                  <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
+                                  </svg>
+                                </button>
+                                {/* 列菜单 */}
+                                <div className="absolute top-full left-0 mt-2 bg-white border rounded shadow-lg p-2 hidden group-hover:block">
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); deleteColumn(colIndex); }}
+                                    className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100 text-red-600"
+                                  >
+                                    删除列
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* 行间添加按钮 */}
+                        {isSelected && !isEditing && (
+                          <div 
+                            className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            style={{ zIndex: 15 }}
+                          >
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); addRow(); }}
+                              className="w-5 h-5 bg-white border border-gray-300 rounded-full flex items-center justify-center hover:bg-gray-50 shadow-sm"
+                            >
+                              <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                        
+                        {/* 列间添加按钮 */}
+                        {isSelected && !isEditing && (
+                          <div 
+                            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            style={{ zIndex: 15 }}
+                          >
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); addColumn(); }}
+                              className="w-5 h-5 bg-white border border-gray-300 rounded-full flex items-center justify-center hover:bg-gray-50 shadow-sm"
+                            >
+                              <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                        
                         {isEditing ? (
                           <input
                             type="text"
@@ -185,6 +339,7 @@ export const TableComponent: React.FC<TableComponentProps> = ({
         </div>
       </div>
 
+      {/* 4. 左侧加号按钮 */}
       {shouldShowHoverToolbar && (
         <div className="absolute -left-8 top-1/2 -translate-y-1/2">
           <button className="w-6 h-6 bg-gray-100 border border-gray-200 rounded flex items-center justify-center hover:bg-gray-200 transition-colors">
