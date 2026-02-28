@@ -13,7 +13,14 @@ import {
   FileText, 
   Image as ImageIcon, 
   Repeat, 
-  Maximize2 
+  Maximize2,
+  Check,
+  Merge,
+  Split,
+  PlusSquare,
+  Trash2,
+  Eraser,
+  MoreHorizontal
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -23,17 +30,37 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 
+type ToolbarMode = 'initial' | 'editing' | 'selecting';
+
 interface AdvancedToolbarProps {
+  mode: ToolbarMode;
   selectedCellsCount: number;
+  onCompleteEdit: () => void;
   onMergeCells?: () => void;
 }
 
 export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({ 
+  mode, 
   selectedCellsCount, 
+  onCompleteEdit,
   onMergeCells 
 }) => {
-  return (
-    <div className="flex items-center gap-1 bg-white border-b p-2 flex-wrap">
+  // 初始编辑状态 - 仅显示基础功能
+  const renderInitialMode = () => (
+    <>
+      {/* 完成编辑按钮 */}
+      <Button
+        variant="default"
+        size="sm"
+        className="h-8 bg-blue-500 hover:bg-blue-600 text-white gap-1"
+        onClick={onCompleteEdit}
+      >
+        <Check className="w-4 h-4" />
+        <span className="text-xs">完成编辑</span>
+      </Button>
+
+      <div className="w-px h-6 bg-border mx-1" />
+
       {/* 表头/表尾 */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -63,19 +90,6 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* 对齐 */}
-      <div className="flex items-center gap-0 border rounded-md">
-        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-r-none">
-          <AlignLeft className="w-4 h-4" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none border-x-0">
-          <AlignCenter className="w-4 h-4" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-l-none">
-          <AlignRight className="w-4 h-4" />
-        </Button>
-      </div>
-
       {/* 颜色 */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -90,48 +104,126 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
         </DropdownMenuContent>
       </DropdownMenu>
 
+      {/* 初始组件 */}
+      <Button variant="ghost" size="sm" className="h-8 gap-1" disabled>
+        <PlusSquare className="w-4 h-4" />
+        <span className="text-xs">初始组件</span>
+      </Button>
+    </>
+  );
+
+  // 文字编辑状态 - 显示完整功能
+  const renderEditingMode = () => (
+    <>
+      {/* 完成编辑按钮 */}
+      <Button
+        variant="default"
+        size="sm"
+        className="h-8 bg-blue-500 hover:bg-blue-600 text-white gap-1"
+        onClick={onCompleteEdit}
+      >
+        <Check className="w-4 h-4" />
+        <span className="text-xs">完成编辑</span>
+      </Button>
+
       <div className="w-px h-6 bg-border mx-1" />
 
-      {/* 插入链接 */}
-      <Button variant="ghost" size="sm" className="h-8 gap-1" disabled>
+      {/* 基础表格操作 */}
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="插入表格">
+        <TableIcon className="w-4 h-4" />
+      </Button>
+      
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="合并单元格" disabled={selectedCellsCount <= 1}>
+        <Merge className="w-4 h-4" />
+      </Button>
+      
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="拆分单元格">
+        <Split className="w-4 h-4" />
+      </Button>
+
+      <div className="w-px h-6 bg-border mx-1" />
+
+      {/* 插入行列 */}
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="上方插入行">
+        <span className="text-xs">↑</span>
+      </Button>
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="下方插入行">
+        <span className="text-xs">↓</span>
+      </Button>
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="左侧插入列">
+        <span className="text-xs">←</span>
+      </Button>
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="右侧插入列">
+        <span className="text-xs">→</span>
+      </Button>
+
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="删除">
+        <Trash2 className="w-4 h-4" />
+      </Button>
+
+      <div className="w-px h-6 bg-border mx-1" />
+
+      {/* 对齐 */}
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="左对齐">
+        <AlignLeft className="w-4 h-4" />
+      </Button>
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="居中对齐">
+        <AlignCenter className="w-4 h-4" />
+      </Button>
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="右对齐">
+        <AlignRight className="w-4 h-4" />
+      </Button>
+
+      <div className="w-px h-6 bg-border mx-1" />
+
+      {/* 颜色 */}
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="颜色">
+        <Palette className="w-4 h-4" />
+      </Button>
+
+      {/* 边框 */}
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="边框">
+        <Box className="w-4 h-4" />
+      </Button>
+
+      {/* 清除格式 */}
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="清除格式">
+        <Eraser className="w-4 h-4" />
+      </Button>
+
+      <div className="w-px h-6 bg-border mx-1" />
+
+      {/* 插入功能 */}
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="插入链接" disabled>
         <Link className="w-4 h-4" />
-        <span className="text-xs">插入链接</span>
       </Button>
-
-      {/* 插入二维码 */}
-      <Button variant="ghost" size="sm" className="h-8 gap-1" disabled>
+      
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="插入二维码" disabled>
         <QrCode className="w-4 h-4" />
-        <span className="text-xs">插入二维码</span>
       </Button>
-
-      {/* 插入条形码 */}
-      <Button variant="ghost" size="sm" className="h-8 gap-1" disabled>
+      
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="插入条形码" disabled>
         <Barcode className="w-4 h-4" />
-        <span className="text-xs">插入条形码</span>
       </Button>
-
-      {/* 插入附件列表/图片 */}
-      <Button variant="ghost" size="sm" className="h-8 gap-1" disabled>
+      
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="插入附件" disabled>
         <Paperclip className="w-4 h-4" />
-        <span className="text-xs">插入附件</span>
       </Button>
-
-      {/* 插入文章 */}
-      <Button variant="ghost" size="sm" className="h-8 gap-1" disabled>
+      
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="插入文章" disabled>
         <FileText className="w-4 h-4" />
-        <span className="text-xs">插入文章</span>
       </Button>
-
-      {/* 插入图片 */}
-      <Button variant="ghost" size="sm" className="h-8 gap-1" disabled>
+      
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="插入图片" disabled>
         <ImageIcon className="w-4 h-4" />
-        <span className="text-xs">插入图片</span>
+      </Button>
+      
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="循环字段" disabled>
+        <Repeat className="w-4 h-4" />
       </Button>
 
-      {/* 循环字段高级配置 */}
-      <Button variant="ghost" size="sm" className="h-8 gap-1" disabled>
-        <Repeat className="w-4 h-4" />
-        <span className="text-xs">循环字段</span>
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="更多">
+        <MoreHorizontal className="w-4 h-4" />
       </Button>
 
       {/* 条件渲染：合并单元格按钮 */}
@@ -149,6 +241,12 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
           </Button>
         </>
       )}
+    </>
+  );
+
+  return (
+    <div className="flex items-center gap-1 bg-gray-100 border-b p-2 flex-wrap">
+      {mode === 'initial' ? renderInitialMode() : renderEditingMode()}
     </div>
   );
 });
