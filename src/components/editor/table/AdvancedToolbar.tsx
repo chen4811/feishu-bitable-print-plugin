@@ -7,15 +7,12 @@ import {
   AlignCenter, 
   AlignRight, 
   Palette, 
-  Link, 
-  Image as ImageIcon, 
-  FileText, 
-  Paperclip, 
-  Settings, 
-  QrCode, 
-  Barcode, 
+  Grid,
   Check as CheckIcon,
-  Grid
+  BorderAll,
+  BorderHorizontal,
+  BorderVertical,
+  BorderNone,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -26,13 +23,6 @@ interface AdvancedToolbarProps {
   onBorderChange: (borderType: string) => void;
   onAlignmentChange: (alignment: 'left' | 'center' | 'right') => void;
   onColorChange: (colorType: 'text' | 'fill', color: string) => void;
-  onInsertLink: () => void;
-  onInsertQRCode: () => void;
-  onInsertBarcode: () => void;
-  onInsertImage: () => void;
-  onInsertArticle: () => void;
-  onInsertAttachment: () => void;
-  onAdvancedConfig: () => void;
   onFinishEdit: () => void;
 }
 
@@ -43,19 +33,12 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
   onBorderChange,
   onAlignmentChange,
   onColorChange,
-  onInsertLink,
-  onInsertQRCode,
-  onInsertBarcode,
-  onInsertImage,
-  onInsertArticle,
-  onInsertAttachment,
-  onAdvancedConfig,
   onFinishEdit
 }) => {
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-1.5">
       <div className="flex items-center gap-0.5">
-        {/* 第一组：保存完成 */}
+        {/* 第一组：完成编辑 */}
         <Button 
           variant="default" 
           size="icon" 
@@ -82,7 +65,7 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
         
         <div className="w-px h-5 bg-gray-200 mx-1" />
         
-        {/* 第三组：表格 */}
+        {/* 第三组：表头表尾 */}
         <Button 
           variant="ghost" 
           size="icon" 
@@ -109,11 +92,41 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
         <Button 
           variant="ghost" 
           size="icon" 
-          onClick={() => onBorderChange('grid')}
+          onClick={() => onBorderChange('all')}
           className="h-8 w-8"
           title="所有边框"
         >
-          <Grid className="w-4 h-4" />
+          <BorderAll className="w-4 h-4" />
+        </Button>
+        
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => onBorderChange('horizontal')}
+          className="h-8 w-8"
+          title="水平边框"
+        >
+          <BorderHorizontal className="w-4 h-4" />
+        </Button>
+        
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => onBorderChange('vertical')}
+          className="h-8 w-8"
+          title="垂直边框"
+        >
+          <BorderVertical className="w-4 h-4" />
+        </Button>
+        
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => onBorderChange('none')}
+          className="h-8 w-8"
+          title="无边框"
+        >
+          <BorderNone className="w-4 h-4" />
         </Button>
         
         <div className="w-px h-5 bg-gray-200 mx-1" />
@@ -160,82 +173,6 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
           title="文字颜色"
         >
           <Palette className="w-4 h-4" />
-        </Button>
-        
-        <div className="w-px h-5 bg-gray-200 mx-1" />
-        
-        {/* 第七组：插入 */}
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={onInsertLink}
-          className="h-8 w-8"
-          title="插入链接"
-        >
-          <Link className="w-4 h-4" />
-        </Button>
-        
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={onInsertImage}
-          className="h-8 w-8"
-          title="插入图片"
-        >
-          <ImageIcon className="w-4 h-4" />
-        </Button>
-        
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={onInsertArticle}
-          className="h-8 w-8"
-          title="插入文章"
-        >
-          <FileText className="w-4 h-4" />
-        </Button>
-        
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={onInsertAttachment}
-          className="h-8 w-8"
-          title="插入附件"
-        >
-          <Paperclip className="w-4 h-4" />
-        </Button>
-        
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={onInsertQRCode}
-          className="h-8 w-8"
-          title="插入二维码"
-        >
-          <QrCode className="w-4 h-4" />
-        </Button>
-        
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={onInsertBarcode}
-          className="h-8 w-8"
-          title="插入条形码"
-        >
-          <Barcode className="w-4 h-4" />
-        </Button>
-        
-        <div className="w-px h-5 bg-gray-200 mx-1" />
-        
-        {/* 第八组：高级设置 */}
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={onAdvancedConfig}
-          className="h-8 w-8"
-          title="高级设置"
-        >
-          <Settings className="w-4 h-4" />
         </Button>
       </div>
     </div>

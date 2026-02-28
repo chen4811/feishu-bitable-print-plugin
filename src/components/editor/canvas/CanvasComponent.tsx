@@ -9,6 +9,7 @@ import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { HoverToolbar } from '../table/HoverToolbar';
 import { AdvancedToolbar } from '../table/AdvancedToolbar';
+import { Portal } from '@/components/common/Portal';
 
 interface CanvasComponentProps {
   component: CanvasComponentNode;
@@ -501,33 +502,30 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       case 'table':
         const tableComp = component as any;
         
-        // 编辑状态：工具栏在画布区域内，表格上方
+        // 编辑状态：使用 Portal 将工具栏渲染到画布上方，完全独立于表格
         if (isTableEditing) {
           return (
-            <div className="relative" onDoubleClick={handleDoubleClickTable}>
-              {/* 编辑状态下，工具栏在表格上方，画布区域内 */}
-              <div className="mb-2">
-                <AdvancedToolbar
-                  onMergeCells={handleMergeCells}
-                  selectedCellCount={selectedCells.length}
-                  onHeaderFooterChange={handleHeaderFooterChange}
-                  onBorderChange={handleBorderChange}
-                  onAlignmentChange={handleAlignmentChange}
-                  onColorChange={handleColorChange}
-                  onInsertLink={handleInsertLink}
-                  onInsertQRCode={handleInsertQRCode}
-                  onInsertBarcode={handleInsertBarcode}
-                  onInsertImage={handleInsertImage}
-                  onInsertArticle={handleInsertArticle}
-                  onInsertAttachment={handleInsertAttachment}
-                  onAdvancedConfig={handleAdvancedConfig}
-                  onFinishEdit={handleEditTable}
-                />
-              </div>
+            <>
+              {/* 使用 Portal 将工具栏渲染到 body，位于画布上方 */}
+              <Portal>
+                <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-40">
+                  <AdvancedToolbar
+                    onMergeCells={handleMergeCells}
+                    selectedCellCount={selectedCells.length}
+                    onHeaderFooterChange={handleHeaderFooterChange}
+                    onBorderChange={handleBorderChange}
+                    onAlignmentChange={handleAlignmentChange}
+                    onColorChange={handleColorChange}
+                    onFinishEdit={handleEditTable}
+                  />
+                </div>
+              </Portal>
               
               {/* 表格内容 - 纯粹的原生表格，没有任何包裹 */}
-              {renderTableContent(tableComp)}
-            </div>
+              <div className="mt-20" onDoubleClick={handleDoubleClickTable}>
+                {renderTableContent(tableComp)}
+              </div>
+            </>
           );
         }
         
