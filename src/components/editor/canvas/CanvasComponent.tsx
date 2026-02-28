@@ -20,7 +20,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   
   // 通用状态
   const [isEditing, setIsEditing] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
   const [editContent, setEditContent] = useState('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -73,15 +72,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       e.stopPropagation();
     }
     deleteComponent(component.id);
-  };
-
-  // 鼠标事件
-  const handleMouseEnter = () => {
-    setIsHovered(true);
-  };
-
-  const handleMouseLeave = () => {
-    setIsHovered(false);
   };
 
   // 初始化表格编辑数据
@@ -265,13 +255,14 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         const tableComp = component as any;
         
         return (
-          <div className="w-full relative" onDoubleClick={handleDoubleClickTable}>
-            {/* 悬停工具栏 - 编辑状态时不显示 */}
+          <div className="w-full relative group" onDoubleClick={handleDoubleClickTable}>
+            {/* 悬停工具栏 - 始终渲染，通过 CSS 控制显示 */}
             {!isTableEditing && (
               <HoverToolbar
                 onEdit={handleEditTable}
                 onDelete={handleDeleteComponent}
                 onCopy={handleCopyComponent}
+                isSelected={isSelected}
               />
             )}
             
@@ -404,11 +395,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   };
 
   return (
-    <div
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      className="w-full"
-    >
+    <div className="w-full">
       {renderContent()}
     </div>
   );

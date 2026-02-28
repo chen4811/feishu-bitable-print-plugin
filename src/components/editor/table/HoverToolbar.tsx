@@ -6,9 +6,10 @@ interface HoverToolbarProps {
   onEdit: (e?: React.MouseEvent) => void;
   onDelete: (e?: React.MouseEvent) => void;
   onCopy: (e?: React.MouseEvent) => void;
+  isSelected?: boolean;
 }
 
-export const HoverToolbar: React.FC<HoverToolbarProps> = React.memo(({ onEdit, onDelete, onCopy }) => {
+export const HoverToolbar: React.FC<HoverToolbarProps> = React.memo(({ onEdit, onDelete, onCopy, isSelected = false }) => {
   const handleEditClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     onEdit(e);
@@ -25,7 +26,7 @@ export const HoverToolbar: React.FC<HoverToolbarProps> = React.memo(({ onEdit, o
   }, [onCopy]);
 
   return (
-    <div className="absolute -top-12 left-0 right-0 z-20">
+    <div className={`absolute -top-12 left-0 right-0 z-20 transition-opacity duration-200 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
       <div className="flex items-center bg-white border rounded-lg shadow-lg px-3 py-2">
         {/* 主按钮：编辑表格 */}
         <Button
