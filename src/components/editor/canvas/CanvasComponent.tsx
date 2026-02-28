@@ -35,6 +35,30 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const styleSettingsRef = useRef<HTMLDivElement>(null);
+  
+  // 点击外部关闭样式设置面板
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        styleSettingsRef.current && 
+        !styleSettingsRef.current.contains(event.target as Node) &&
+        showStyleSettings
+      ) {
+        // 检查是否点击的是打开样式设置的按钮
+        const target = event.target as HTMLElement;
+        const isStyleButton = target.closest('[data-state]') || target.closest('button');
+        if (!isStyleButton || !isStyleButton.textContent?.includes('📦')) {
+          setShowStyleSettings(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showStyleSettings]);
 
   // 文本组件编辑
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
@@ -160,7 +184,9 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               
               {/* 样式设置面板 */}
               {showStyleSettings && (
-                <div className="absolute -top-32 right-0 bg-background border rounded-lg p-3 shadow-lg z-20 w-64">
+                <div 
+                  ref={styleSettingsRef} 
+                  className="absolute -top-32 right-0 bg-background border rounded-lg p-3 shadow-lg z-20 w-64">
                   <h4 className="text-sm font-medium mb-2">组件边框</h4>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
