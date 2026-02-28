@@ -32,8 +32,14 @@ export function ResizableWrapper({
 
   // 开始拖拽移动
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.target !== e.currentTarget && !(e.target as HTMLElement).classList.contains('drag-handle')) {
-      return;
+    // 防御性检查：确保 e.target 是有效的 Element
+    const target = e.target;
+    const currentTarget = e.currentTarget;
+    
+    if (target instanceof Element && currentTarget instanceof Element) {
+      if (target !== currentTarget && !target.classList.contains('drag-handle')) {
+        return;
+      }
     }
     
     e.preventDefault();

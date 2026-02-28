@@ -12,6 +12,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useEditorStore } from '@/store/editorStore';
 import { PAGE_SIZES, EditorComponent, Field } from '@/types/editor';
 import { 
@@ -21,11 +22,18 @@ import {
   ChevronRight, 
   FileText,
   CheckSquare,
-  Square
+  Square,
+  AlertCircle,
+  FileCode
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import { parseVariables, parseComponentVariables } from '@/utils/variableParser';
+import { parseComponentVariables } from '@/utils/variableParser';
+import { 
+  generatePrintHTML, 
+  invokeSystemPrint, 
+  exportAsHTML 
+} from '@/utils/printUtils';
 
 interface PrintPreviewDialogProps {
   open: boolean;
@@ -49,6 +57,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
   const [previewMode, setPreviewMode] = useState<'default' | 'continuous' | 'label'>('default');
   const [currentPage, setCurrentPage] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
+  const [printError, setPrintError] = useState<string | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
 
   // 计算画布尺寸
@@ -158,6 +167,63 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
     }
   };
 
+  // 真正的系统打印
+  const handlePrint = useCallback(() => {
+    setPrintError(null);
+    
+    if (components.length === 0) {
+      setPrintError('请先添加组件到画布');
+      return;
+    }
+    
+    // 获取要打印的记录
+    const recordsToPrint = selectedRecordIds.length > 0
+      ? records.filter(r => selectedRecordIds.includes(r.id as string))
+      : records.length > 0 ? records : [{ id: 'demo', __tableName__: '演示数据' }];
+    
+    try {
+      // 生成打印 HTML
+      const html = generatePrintHTML(
+        components,
+        recordsToPrint,
+        fields,
+        pageConfig,
+        styleConfig,
+        templateName
+      );
+      
+      // 调用系统打印
+      invokeSystemPrint(html, {
+        onError: (error) => {
+          setPrintError(error.message);
+        }
+      });
+    } catch (error) {
+      setPrintError((error as Error).message);
+    }
+  }, [components, fields, pageConfig, styleConfig, templateName, records, selectedRecordIds]);
+
+  // 导出为 HTML 文件
+  const handleExportHTML = useCallback(() => {
+    if (components.length === 0) {
+      alert('请先添加组件到画布');
+      return;
+    }
+    
+    const recordsToExport = selectedRecordIds.length > 0
+      ? records.filter(r => selectedRecordIds.includes(r.id as string))
+      : records.length > 0 ? records : [{ id: 'demo', __tableName__: '演示数据' }];
+    
+    exportAsHTML(
+      components,
+      recordsToExport,
+      fields,
+      pageConfig,
+      styleConfig,
+      templateName
+    );
+  }, [components, fields, pageConfig, styleConfig, templateName, records, selectedRecordIds]);
+
   // 导出 PDF（支持批量）
   const handleExportPDF = async () => {
     setIsExporting(true);
@@ -171,7 +237,11 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
 
-      for (let i = 0; i < previewRecords.length; i++) {
+      const recordsToExport = selectedRecordIds.length > 0
+        ? records.filter(r => selectedRecordIds.includes(r.id as string))
+        : records.length > 0 ? records : [{ id: 'demo', __tableName__: '演示数据' }];
+
+      for (let i = 0; i < recordsToExport.length; i++) {
         if (i > 0) {
           pdf.addPage();
         }
@@ -187,7 +257,6 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
           padding: ${pageConfig.margins.top * mmToPx}px ${pageConfig.margins.right * mmToPx}px ${pageConfig.margins.bottom * mmToPx}px ${pageConfig.margins.left * mmToPx}px;
         `;
         
-        // 这里简化处理，实际应该渲染完整内容
         tempContainer.innerHTML = `<div style="font-family: ${styleConfig.fontFamily}">记录 ${i + 1}</div>`;
         document.body.appendChild(tempContainer);
 
@@ -210,11 +279,6 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
     } finally {
       setIsExporting(false);
     }
-  };
-
-  // 打印
-  const handlePrint = () => {
-    window.print();
   };
 
   // 上一页/下一页
@@ -246,6 +310,14 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
             </div>
           </div>
         </DialogHeader>
+
+        {/* 错误提示 */}
+        {printError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{printError}</AlertDescription>
+          </Alert>
+        )}
 
         {/* 批量选择区域 */}
         {records.length > 0 && (
@@ -355,13 +427,27 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
             </Button>
             <Button 
               variant="outline" 
+              onClick={handleExportHTML} 
+              disabled={components.length === 0}
+              title="导出为独立 HTML 文件，可在任何浏览器中打开并打印"
+            >
+              <FileCode className="w-4 h-4 mr-1" />
+              导出 HTML
+            </Button>
+            <Button 
+              variant="outline" 
               onClick={handleExportPDF} 
               disabled={isExporting || components.length === 0}
             >
               <Download className="w-4 h-4 mr-1" />
               {isExporting ? '导出中...' : `导出 PDF${selectedRecordIds.length > 1 ? ` (${selectedRecordIds.length}页)` : ''}`}
             </Button>
-            <Button onClick={handlePrint} disabled={components.length === 0}>
+            <Button 
+              onClick={handlePrint} 
+              disabled={components.length === 0}
+              className="bg-blue-600 hover:bg-blue-700"
+              title="打开系统打印对话框"
+            >
               <Printer className="w-4 h-4 mr-1" />
               打印
             </Button>
