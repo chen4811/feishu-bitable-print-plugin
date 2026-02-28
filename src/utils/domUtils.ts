@@ -103,7 +103,7 @@ export function stopPropagationSafe(event: Event): void {
 /**
  * 阻止默认行为的包装器
  */
-export function preventDefaultSafe(event: Event): void {
+export function preventDefaultSafe(event: Event | React.SyntheticEvent): void {
   try {
     event.preventDefault();
   } catch {

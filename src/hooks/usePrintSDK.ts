@@ -16,7 +16,7 @@ import {
   offFeishuReady,
   offNotFeishu
 } from '@/lib/feishu-env';
-import { Field } from '@/types/editor';
+import { Field, FeishuContext } from '@/types/editor';
 import { useEditorStore } from '@/store/editorStore';
 import { mockBitableData } from '@/data/mockData';
 
@@ -50,7 +50,9 @@ export function usePrintSDK(): UsePrintSDKResult {
   const { 
     setFields: setStoreFields, 
     setRecords: setStoreRecords, 
-    setFeishuEnvironment 
+    setFeishuEnvironment,
+    setFeishuContext,
+    setFeishuContextLoading
   } = useEditorStore();
 
   // 加载模拟数据（内部函数，不使用 useCallback）
@@ -71,7 +73,7 @@ export function usePrintSDK(): UsePrintSDKResult {
       id: f.id,
       name: f.name,
       type: f.type,
-      placeholder: `[${f.name}]`,
+      placeholder: `{{${f.name}}}`,
       isSystem: false,
     }));
     setFields(mockFields);
@@ -104,6 +106,7 @@ export function usePrintSDK(): UsePrintSDKResult {
     
     console.log('[PrintSDK] 加载真实数据...');
     setIsLoading(true);
+    setFeishuContextLoading(true);
 
     try {
       // 获取表格名称
@@ -111,6 +114,15 @@ export function usePrintSDK(): UsePrintSDKResult {
       setTableName(name);
       setIsFeishuEnvironment(true);
       setFeishuEnvironment(true);
+
+      // 初始化飞书上下文（获取元数据、字段映射、首条记录）
+      console.log('[PrintSDK] 开始初始化飞书上下文...');
+      const context = await feishuEnv.initFeishuContext();
+      console.log('[PrintSDK] 飞书上下文初始化结果:', context);
+      
+      if (context) {
+        setFeishuContext(context);
+      }
 
       // 获取字段
       console.log('[PrintSDK] 开始获取字段...');
@@ -127,7 +139,7 @@ export function usePrintSDK(): UsePrintSDKResult {
         id: f.id,
         name: f.name,
         type: f.type,
-        placeholder: `[${f.name}]`,
+        placeholder: `{{${f.name}}}`,
         isSystem: false,
       }));
       console.log('[PrintSDK] 转换后的字段:', convertedFields);
@@ -153,6 +165,7 @@ export function usePrintSDK(): UsePrintSDKResult {
         dataSource: 'feishu',
         fieldsCount: feishuFields.length,
         recordsCount: feishuRecords.length,
+        hasContext: !!context,
       });
 
       setError(null);
@@ -161,6 +174,7 @@ export function usePrintSDK(): UsePrintSDKResult {
       setError(err instanceof Error ? err.message : '数据加载失败');
     } finally {
       setIsLoading(false);
+      setFeishuContextLoading(false);
       isLoadingData.current = false;
     }
   };

@@ -1,5 +1,21 @@
 // 排版打印插件核心类型定义
 
+// 飞书上下文类型
+export interface FeishuAppMetadata {
+  appId: string;
+  name: string;
+  defaultTableId: string;
+  description?: string;
+}
+
+export interface FeishuContext {
+  appToken: string;
+  targetTableId: string;
+  fieldNameToIdMap: Record<string, string>;
+  firstRecordData: Record<string, unknown> | null;
+  appMetadata: FeishuAppMetadata | null;
+}
+
 // 组件类型枚举
 export type ComponentType = 
   | 'text'       // 文本组件

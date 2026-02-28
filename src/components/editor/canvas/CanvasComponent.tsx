@@ -9,6 +9,12 @@ import { Trash2, Move, ArrowUp, ArrowDown, ChevronUp, ChevronDown } from 'lucide
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { isElement, preventDefaultSafe } from '@/utils/domUtils';
+import { 
+  containsVariables, 
+  replaceVariablesWithChips, 
+  extractVariableNames 
+} from '@/utils/variableUtils';
+import '@/styles/variable-chip.css';
 
 interface CanvasComponentProps {
   component: EditorComponent;
@@ -17,10 +23,11 @@ interface CanvasComponentProps {
 }
 
 export function CanvasComponent({ component, isSelected, onSelect }: CanvasComponentProps) {
-  const { updateComponent, removeComponent, styleConfig, components, moveComponentUp, moveComponentDown, bringToFront, sendToBack } = useEditorStore();
+  const { updateComponent, removeComponent, styleConfig, components, moveComponentUp, moveComponentDown, bringToFront, sendToBack, feishuContext } = useEditorStore();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // 文本组件编辑
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
@@ -39,6 +46,47 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       updateComponent(component.id, { content: editContent });
     }
   }, [component.id, component.type, editContent, updateComponent]);
+
+  // 粘贴事件处理
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    if (component.type !== 'text') return;
+    
+    const pastedText = e.clipboardData.getData('text');
+    
+    // 检查是否包含变量
+    if (containsVariables(pastedText)) {
+      preventDefaultSafe(e);
+      
+      console.log('[CanvasComponent] 检测到变量粘贴:', pastedText);
+      console.log('[CanvasComponent] 当前飞书上下文:', feishuContext);
+      
+      // 替换变量为芯片 HTML
+      const processedHtml = replaceVariablesWithChips(pastedText, feishuContext);
+      
+      console.log('[CanvasComponent] 处理后的 HTML:', processedHtml);
+      
+      // 获取当前光标位置
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        
+        // 由于 textarea 不支持 HTML，我们直接插入处理后的文本
+        // 如果有芯片，我们会在保存到 store 时保留原始格式
+        const newContent = 
+          editContent.substring(0, start) + 
+          pastedText + 
+          editContent.substring(end);
+        
+        setEditContent(newContent);
+        
+        console.log('[CanvasComponent] 更新编辑内容:', newContent);
+      } else {
+        // 如果无法获取光标位置，直接追加
+        setEditContent(editContent + pastedText);
+      }
+    }
+  }, [component.type, editContent, feishuContext, preventDefaultSafe]);
 
   // 生成二维码
   useEffect(() => {
@@ -76,9 +124,11 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         if (isEditing) {
           return (
             <textarea
+              ref={textareaRef}
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
               onBlur={handleTextBlur}
+              onPaste={handlePaste}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -94,6 +144,12 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
             />
           );
         }
+        
+        // 渲染非编辑状态，尝试解析变量
+        const displayContent = containsVariables(textComp.content) && feishuContext 
+          ? replaceVariablesWithChips(textComp.content, feishuContext)
+          : textComp.content;
+          
         return (
           <div
             className="whitespace-pre-wrap"
@@ -104,9 +160,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               lineHeight: textComp.lineHeight || styleConfig.lineHeight,
               fontFamily: styleConfig.fontFamily,
             }}
-          >
-            {textComp.content}
-          </div>
+            dangerouslySetInnerHTML={{ __html: displayContent }}
+          />
         );
 
       case 'qrcode':

@@ -10,6 +10,7 @@ import {
   DEFAULT_STYLE_CONFIG,
   ComponentType,
   DEFAULT_COMPONENT_SIZES,
+  FeishuContext,
 } from '@/types/editor';
 
 // 编辑器状态
@@ -28,6 +29,10 @@ interface EditorState {
   fields: Field[];
   systemFields: Field[];
   isFeishuEnvironment: boolean;
+  
+  // 飞书上下文
+  feishuContext: FeishuContext | null;
+  isFeishuContextLoading: boolean;
   
   // 记录数据（用于批量打印）
   records: Record<string, unknown>[];
@@ -63,6 +68,10 @@ interface EditorState {
   setFields: (fields: Field[]) => void;
   setSystemFields: (fields: Field[]) => void;
   setFeishuEnvironment: (isFeishu: boolean) => void;
+  
+  // 飞书上下文
+  setFeishuContext: (context: FeishuContext | null) => void;
+  setFeishuContextLoading: (loading: boolean) => void;
   
   // 记录数据
   setRecords: (records: Record<string, unknown>[]) => void;
@@ -124,6 +133,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     { id: 'sys_print_time', name: '打印时间', type: 'text', placeholder: '[打印时间]', isSystem: true },
   ],
   isFeishuEnvironment: false,
+  feishuContext: null,
+  isFeishuContextLoading: false,
   records: [],
   selectedRecordIds: [],
   savedTemplates: [],
@@ -330,6 +341,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setFields: (fields) => set({ fields }),
   setSystemFields: (fields) => set({ systemFields: fields }),
   setFeishuEnvironment: (isFeishu) => set({ isFeishuEnvironment: isFeishu }),
+  
+  // 设置飞书上下文
+  setFeishuContext: (context) => set({ feishuContext: context }),
+  setFeishuContextLoading: (loading) => set({ isFeishuContextLoading: loading }),
   
   // 记录数据管理
   setRecords: (records) => set({ records }),

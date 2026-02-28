@@ -17,6 +17,23 @@ interface FieldInfo {
   type: string;
 }
 
+// 应用元数据接口
+interface AppMetadata {
+  appId: string;
+  name: string;
+  defaultTableId: string;
+  description?: string;
+}
+
+// 全局上下文接口
+export interface FeishuContext {
+  appToken: string;
+  targetTableId: string;
+  fieldNameToIdMap: Record<string, string>;
+  firstRecordData: Record<string, unknown> | null;
+  appMetadata: AppMetadata | null;
+}
+
 // 环境状态类型
 export type FeishuEnvStatus = 'checking' | 'ready' | 'not_feishu' | 'error';
 
@@ -318,6 +335,84 @@ export async function fetchRecords(): Promise<Array<{
 }
 
 /**
+ * 获取应用元数据
+ */
+export async function fetchAppMetadata(): Promise<AppMetadata | null> {
+  if (envStatus !== 'ready') {
+    console.error('[FeishuEnv] 环境未就绪，无法获取元数据');
+    return null;
+  }
+
+  try {
+    // 使用 selection 作为元数据的替代方案
+    const selection = await base.getSelection();
+    console.log('[FeishuEnv] selection:', selection);
+    
+    if (!selection?.tableId) {
+      console.error('[FeishuEnv] 无法获取 tableId');
+      return null;
+    }
+    
+    // 构造元数据对象（使用当前 tableId 作为默认）
+    return {
+      appId: (selection as any).appId || 'unknown',
+      name: '多维表格',
+      defaultTableId: selection.tableId,
+      description: '从上下文获取',
+    };
+  } catch (error) {
+    console.error('[FeishuEnv] 获取元数据失败:', error);
+    return null;
+  }
+}
+
+/**
+ * 获取首条记录数据
+ */
+export async function fetchFirstRecord(): Promise<Record<string, unknown> | null> {
+  if (envStatus !== 'ready') {
+    console.error('[FeishuEnv] 环境未就绪，无法获取首条记录');
+    return null;
+  }
+
+  try {
+    const selection = await base.getSelection();
+    if (!selection?.tableId) {
+      console.error('[FeishuEnv] 无法获取 tableId');
+      return null;
+    }
+    
+    const table = await base.getTable(selection.tableId);
+    
+    // 获取记录 ID 列表
+    const recordIdList = await table.getRecordIdList();
+    console.log('[FeishuEnv] 首条记录 - 获取到记录 ID 数量:', recordIdList?.length || 0);
+    
+    if (!Array.isArray(recordIdList) || recordIdList.length === 0) {
+      console.log('[FeishuEnv] 表格为空，没有记录');
+      return null;
+    }
+
+    // 获取第一条记录
+    try {
+      const firstRecordId = recordIdList[0];
+      const record = await table.getRecordById(firstRecordId);
+      if (record) {
+        console.log('[FeishuEnv] 成功获取首条记录:', record);
+        return record.fields || {};
+      }
+    } catch (e) {
+      console.warn('[FeishuEnv] 获取首条记录失败:', e);
+    }
+
+    return null;
+  } catch (error) {
+    console.error('[FeishuEnv] 获取首条记录失败:', error);
+    return null;
+  }
+}
+
+/**
  * 获取表格名称
  */
 export async function fetchTableName(): Promise<string> {
@@ -336,6 +431,55 @@ export async function fetchTableName(): Promise<string> {
     return (table as any).name || '多维表格';
   } catch {
     return '多维表格';
+  }
+}
+
+/**
+ * 综合初始化 - 获取所有需要的数据
+ */
+export async function initFeishuContext(): Promise<FeishuContext | null> {
+  if (envStatus !== 'ready') {
+    console.error('[FeishuEnv] 环境未就绪，无法初始化上下文');
+    return null;
+  }
+
+  try {
+    console.log('[FeishuEnv] 开始初始化飞书上下文...');
+    
+    // 1. 获取元数据
+    const appMetadata = await fetchAppMetadata();
+    if (!appMetadata) {
+      console.error('[FeishuEnv] 无法获取元数据');
+      return null;
+    }
+    
+    // 2. 获取字段列表
+    const fields = await fetchFields();
+    
+    // 3. 构建字段名到ID的映射
+    const fieldNameToIdMap: Record<string, string> = {};
+    fields.forEach(field => {
+      fieldNameToIdMap[field.name] = field.id;
+    });
+    console.log('[FeishuEnv] 字段映射:', fieldNameToIdMap);
+    
+    // 4. 获取首条记录
+    const firstRecordData = await fetchFirstRecord();
+    console.log('[FeishuEnv] 首条记录数据:', firstRecordData);
+    
+    const context: FeishuContext = {
+      appToken: appMetadata.appId,
+      targetTableId: appMetadata.defaultTableId,
+      fieldNameToIdMap,
+      firstRecordData,
+      appMetadata,
+    };
+    
+    console.log('[FeishuEnv] 飞书上下文初始化完成:', context);
+    return context;
+  } catch (error) {
+    console.error('[FeishuEnv] 初始化上下文失败:', error);
+    return null;
   }
 }
 
@@ -368,6 +512,9 @@ export const feishuEnv = {
   fetchFields,
   fetchRecords,
   fetchTableName,
+  fetchAppMetadata,
+  fetchFirstRecord,
+  initFeishuContext,
   getDebugInfo,
 };
 
