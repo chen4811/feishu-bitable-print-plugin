@@ -10,7 +10,8 @@ start_service() {
     echo "Starting HTTP service on port ${DEPLOY_RUN_PORT} for deploy..."
     # 使用静态文件服务器提供静态导出的内容
     # output: 'export' 配置会将静态文件输出到 out 目录
-    npx serve out --port ${DEPLOY_RUN_PORT} --single
+    # 使用 -p 指定端口，-s 用于单页应用（所有路由重定向到 index.html）
+    npx serve out -p ${DEPLOY_RUN_PORT} -s
 }
 
 echo "Starting HTTP service on port ${DEPLOY_RUN_PORT} for deploy..."
