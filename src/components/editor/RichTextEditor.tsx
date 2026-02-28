@@ -1,13 +1,8 @@
 'use client';
 
-import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
 import {
   Bold as BoldIcon,
   Italic as ItalicIcon,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -24,29 +19,6 @@ export function RichTextEditor({
   placeholder = '在这里输入文字...',
   className = '',
 }: RichTextEditorProps) {
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        dropcursor: false,
-        link: false, // 禁用 Link 扩展，避免 linkifyjs 构建错误
-      }),
-    ],
-    content: content,
-    onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
-    },
-    immediatelyRender: false,
-    editorProps: {
-      attributes: {
-        class: 'prose prose-sm focus:outline-none max-w-none',
-      },
-    },
-  });
-
-  if (!editor) {
-    return null;
-  }
-
   return (
     <div className={`rich-text-editor border rounded-lg overflow-hidden ${className}`}>
       {/* 工具栏 */}
@@ -55,8 +27,7 @@ export function RichTextEditor({
           variant="ghost"
           size="icon"
           className="h-8 w-8"
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          data-state={editor.isActive('bold') ? 'active' : 'inactive'}
+          disabled
         >
           <BoldIcon className="w-4 h-4" />
         </Button>
@@ -64,15 +35,19 @@ export function RichTextEditor({
           variant="ghost"
           size="icon"
           className="h-8 w-8"
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          data-state={editor.isActive('italic') ? 'active' : 'inactive'}
+          disabled
         >
           <ItalicIcon className="w-4 h-4" />
         </Button>
       </div>
       
       {/* 编辑区域 */}
-      <EditorContent editor={editor} className="p-4 min-h-[100px]" />
+      <textarea
+        value={content}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full p-4 min-h-[100px] border-0 resize-none focus:outline-none"
+      />
     </div>
   );
 }
