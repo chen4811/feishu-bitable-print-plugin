@@ -472,8 +472,14 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
 
     return (
-      <div className="relative" onMouseUp={handleCellMouseUp} onMouseLeave={handleTableMouseLeave}>
-        <table className="w-full border-collapse">
+      <div 
+        className="relative w-full overflow-x-auto"
+        style={{ maxWidth: '100%' }}
+        onMouseUp={handleCellMouseUp} 
+        onMouseLeave={handleTableMouseLeave}
+      >
+        <div className="inline-block min-w-0">
+          <table className="border-collapse">
           <tbody>
             {tableEditData.map((row: any[], rowIndex: number) => {
               const isHeader = rowIndex < (tableComp.tableConfig?.headerRows || 0);
@@ -497,9 +503,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                           className="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600 transition-colors"
                           title="在上方插入行"
                         >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
+                          <span className="text-xs font-bold">↑</span>
                         </button>
                         {/* 在下边插入行 */}
                         <button
@@ -507,9 +511,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                           className="w-5 h-5 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600 transition-colors"
                           title="在下方插入行"
                         >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
+                          <span className="text-xs font-bold">↓</span>
                         </button>
                         {/* 删除行 */}
                         {tableEditData.length > 1 && (
@@ -619,9 +621,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                           className="w-5 h-5 bg-blue-500 text-white rounded flex items-center justify-center hover:bg-blue-600 transition-colors"
                           title="在左侧插入列"
                         >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
+                          <span className="text-xs font-bold">←</span>
                         </button>
                         {/* 在右侧插入列 */}
                         <button
@@ -629,9 +629,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                           className="w-5 h-5 bg-green-500 text-white rounded flex items-center justify-center hover:bg-green-600 transition-colors"
                           title="在右侧插入列"
                         >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
+                          <span className="text-xs font-bold">→</span>
                         </button>
                         {/* 删除列 */}
                         {tableEditData[0]?.length > 1 && (
@@ -825,6 +823,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
           })}
         </tbody>
       </table>
+        </div>
       </div>
     );
   };
