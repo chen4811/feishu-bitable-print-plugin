@@ -576,6 +576,71 @@ export function EditorPage({ onExit }: EditorPageProps) {
 
   const { isLoading, isFeishuEnvironment, tableName, fields, records } = usePrintSDK();
 
+  // 🔥 终极解决方案：全局键盘事件拦截器
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // 如果正在编辑表格，阻止所有键盘事件冒泡！
+      if (tableEditing.isEditing || tableCellEditing.isEditing) {
+        console.log(`[🔥 EditorPage 全局拦截器] 检测到表格编辑中，拦截键盘事件`, {
+          key: e.key,
+          shiftKey: e.shiftKey,
+          target: e.target,
+          eventPhase: e.eventPhase,
+        });
+        
+        // 检查事件来源是否是 textarea（我们自己的输入框）
+        const target = e.target as HTMLElement;
+        const isTextarea = target.tagName === 'TEXTAREA';
+        
+        if (isTextarea) {
+          console.log(`[🔥 EditorPage 全局拦截器] 事件来自 textarea，允许处理但阻止冒泡`, {
+            key: e.key,
+          });
+          
+          // 对于我们的 textarea，我们阻止冒泡，但不阻止默认行为
+          // 这样 textarea 可以正常编辑，但事件不会传到父组件
+          e.stopImmediatePropagation();
+          e.stopPropagation();
+        } else {
+          console.log(`[🔥 EditorPage 全局拦截器] 事件不来自 textarea，完全阻止`);
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          e.stopPropagation();
+        }
+      }
+    };
+    
+    const handleGlobalKeyUp = (e: KeyboardEvent) => {
+      if (tableEditing.isEditing || tableCellEditing.isEditing) {
+        console.log(`[🔥 EditorPage 全局拦截器] 拦截 keyup`, { key: e.key });
+        e.stopImmediatePropagation();
+        e.stopPropagation();
+      }
+    };
+    
+    const handleGlobalKeyPress = (e: KeyboardEvent) => {
+      if (tableEditing.isEditing || tableCellEditing.isEditing) {
+        console.log(`[🔥 EditorPage 全局拦截器] 拦截 keypress`, { key: e.key });
+        e.stopImmediatePropagation();
+        e.stopPropagation();
+      }
+    };
+    
+    console.log(`[🔥 EditorPage] 安装全局键盘事件拦截器`);
+    
+    // 在捕获阶段就拦截！这样事件根本不会到达其他监听器
+    document.addEventListener('keydown', handleGlobalKeyDown, true);
+    document.addEventListener('keyup', handleGlobalKeyUp, true);
+    document.addEventListener('keypress', handleGlobalKeyPress, true);
+    
+    return () => {
+      console.log(`[🔥 EditorPage] 卸载全局键盘事件拦截器`);
+      document.removeEventListener('keydown', handleGlobalKeyDown, true);
+      document.removeEventListener('keyup', handleGlobalKeyUp, true);
+      document.removeEventListener('keypress', handleGlobalKeyPress, true);
+    };
+  }, [tableEditing.isEditing, tableCellEditing.isEditing]);
+
   // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {

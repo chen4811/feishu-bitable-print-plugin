@@ -49,9 +49,9 @@ const AutoResizingTextarea = ({
       defaultPrevented: e.defaultPrevented,
     });
     
-    // 【关键】先阻止冒泡，构建事件防火墙，防止任何事件逃逸到父组件
+    // 先阻止冒泡，构建事件防火墙，防止任何事件逃逸到父组件
     e.stopPropagation();
-    console.log(`[AutoResizingTextarea] 已调用 stopPropagation()`);
+    console.log(`[AutoResizingTextarea] 🛡️  已调用 stopPropagation()`);
     
     // 再调用外部传入的 onKeyDown（它会处理单独 Enter 的默认行为阻止）
     onKeyDown(e);
