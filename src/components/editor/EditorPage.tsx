@@ -195,6 +195,89 @@ export function EditorPage({ onExit }: EditorPageProps) {
     });
   };
 
+  // 合并单元格
+  const handleMergeCells = useCallback(() => {
+    if (!currentEditingTable || tableEditing.selectedCells.length < 2) {
+      return;
+    }
+
+    const tableConfig = currentEditingTable.tableConfig;
+    const cells = tableConfig?.cells || [];
+    
+    // 获取所有选中单元格的位置
+    const selectedPositions: { row: number; col: number; cell: any }[] = [];
+    
+    cells.forEach((row: any[], rowIndex: number) => {
+      row.forEach((cell: any, colIndex: number) => {
+        const cellId = cell?.id || `cell-${rowIndex}-${colIndex}`;
+        if (tableEditing.selectedCells.includes(cellId)) {
+          selectedPositions.push({ row: rowIndex, col: colIndex, cell });
+        }
+      });
+    });
+
+    if (selectedPositions.length < 2) return;
+
+    // 找出选中区域的边界
+    const minRow = Math.min(...selectedPositions.map(p => p.row));
+    const maxRow = Math.max(...selectedPositions.map(p => p.row));
+    const minCol = Math.min(...selectedPositions.map(p => p.col));
+    const maxCol = Math.max(...selectedPositions.map(p => p.col));
+
+    // 检查是否是矩形区域
+    const expectedCount = (maxRow - minRow + 1) * (maxCol - minCol + 1);
+    if (selectedPositions.length !== expectedCount) {
+      alert('请选择一个矩形区域来合并单元格');
+      return;
+    }
+
+    // 创建新的单元格数据
+    const newCells = cells.map((row: any[]) => 
+      row.map((cell: any) => ({ ...cell }))
+    );
+
+    // 收集所有选中单元格的内容，用换行符连接
+    const allContents = selectedPositions
+      .sort((a, b) => a.row - b.row || a.col - b.col)
+      .map(p => p.cell?.content || '')
+      .filter(Boolean)
+      .join('\n');
+
+    // 设置左上角单元格为合并后的单元格
+    newCells[minRow][minCol] = {
+      ...newCells[minRow][minCol],
+      rowSpan: maxRow - minRow + 1,
+      colSpan: maxCol - minCol + 1,
+      content: allContents,
+    };
+
+    // 标记其他被合并的单元格（设置 rowSpan: 0, colSpan: 0 来表示被合并）
+    for (let row = minRow; row <= maxRow; row++) {
+      for (let col = minCol; col <= maxCol; col++) {
+        if (row !== minRow || col !== minCol) {
+          newCells[row][col] = {
+            ...newCells[row][col],
+            rowSpan: 0,
+            colSpan: 0,
+          };
+        }
+      }
+    }
+
+    updateComponent(currentEditingTable.id, {
+      tableConfig: {
+        ...tableConfig,
+        cells: newCells,
+      },
+    });
+
+    // 清除选中状态，只保留合并后的单元格选中
+    const mergedCellId = newCells[minRow][minCol].id || `cell-${minRow}-${minCol}`;
+    setTableEditing({
+      selectedCells: [mergedCellId],
+    });
+  }, [currentEditingTable, tableEditing.selectedCells, updateComponent, setTableEditing]);
+
   // 表格字体大小增减
   const increaseTableCellFontSize = () => {
     const currentStyle = getCurrentTableCellTextStyle();
@@ -434,6 +517,29 @@ export function EditorPage({ onExit }: EditorPageProps) {
       });
     }
   };
+
+  // 当进入表格编辑模式时，设置回调函数
+  useEffect(() => {
+    if (tableEditing.isEditing && tableEditing.tableId) {
+      setTableEditing({
+        onMergeCells: handleMergeCells,
+        onOpenHeaderFooterDialog: handleOpenHeaderFooterDialog,
+        onBorderChange: handleBorderChange,
+        onBorderWidthChange: handleBorderWidthChange,
+        onColorChange: (colorType: 'text' | 'fill', color: string) => {
+          console.log('颜色变化:', colorType, color);
+        },
+        onFinishEdit: () => {
+          setTableEditing({
+            isEditing: false,
+            tableId: null,
+            selectedCells: [],
+            headerFooterDialogOpen: false,
+          });
+        },
+      });
+    }
+  }, [tableEditing.isEditing, tableEditing.tableId, setTableEditing, handleMergeCells, handleOpenHeaderFooterDialog, handleBorderChange, handleBorderWidthChange]);
 
   // 智能聚焦：选中组件时自动切换到数据源面板
   useEffect(() => {

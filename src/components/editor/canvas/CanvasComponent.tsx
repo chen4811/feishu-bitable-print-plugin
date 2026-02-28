@@ -243,40 +243,14 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         selectedCells: [],
       });
     } else {
-      // 进入编辑 - 设置回调函数
-      const tableComp = component as any;
-      
+      // 进入编辑 - 只设置基本状态，回调函数由 EditorPage 管理
       setTableEditing({
         isEditing: true,
         tableId: component.id,
         selectedCells: [],
-        onMergeCells: () => {
-          console.log('合并单元格');
-        },
-        onOpenHeaderFooterDialog: () => {
-          console.log('打开表头表尾弹窗');
-        },
-        onBorderChange: (borderType: string) => {
-          console.log('边框变化:', borderType);
-        },
-        onBorderWidthChange: (width: number) => {
-          console.log('边框粗细变化:', width);
-        },
-        onColorChange: (colorType: 'text' | 'fill', color: string) => {
-          console.log('颜色变化:', colorType, color);
-        },
-        onFinishEdit: () => {
-          setTableEditing({
-            isEditing: false,
-            tableId: null,
-            selectedCells: [],
-            headerFooterDialogOpen: false,
-          });
-        },
-        headerFooterDialogOpen: false,
       });
     }
-  }, [component.id, isCurrentTableEditing, setTableEditing, updateComponent]);
+  }, [component.id, isCurrentTableEditing, setTableEditing]);
 
   // 双击表格进入编辑
   const handleDoubleClickTable = (e: React.MouseEvent) => {
@@ -424,10 +398,21 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   className={isHeader ? 'bg-gray-100 font-semibold' : isFooter ? 'bg-gray-50' : ''}
                 >
                 {row.map((cellContent: any, colIndex: number) => {
-                  const cellId = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.id || `cell-${rowIndex}-${colIndex}`;
+                  const cell = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex];
+                  const cellId = cell?.id || `cell-${rowIndex}-${colIndex}`;
+                  
+                  // 检查是否是被合并的单元格（rowSpan 或 colSpan 为 0）
+                  const rowSpan = cell?.rowSpan;
+                  const colSpan = cell?.colSpan;
+                  
+                  // 如果是被合并的单元格，不渲染
+                  if (rowSpan === 0 || colSpan === 0) {
+                    return null;
+                  }
+                  
                   const isCellInRange = isCellInSelection(rowIndex, colIndex);
                   const isCellSelected = tableEditing.selectedCells.includes(cellId) || isCellInRange;
-                  const cellBorder = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.border;
+                  const cellBorder = cell?.border;
                   const borderWidth = cellBorder?.width || tableComp.tableConfig?.borderWidth || 1;
                   const borderColor = cellBorder?.color || tableComp.tableConfig?.borderColor || '#000000';
                   
@@ -452,11 +437,13 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   return (
                     <td
                       key={`${rowIndex}-${colIndex}`}
+                      rowSpan={rowSpan && rowSpan > 1 ? rowSpan : undefined}
+                      colSpan={colSpan && colSpan > 1 ? colSpan : undefined}
                       className={`p-1 text-sm cursor-pointer transition-colors select-none ${!hasCellBorder ? 'border' : ''}`}
                       style={{
                         backgroundColor: (() => {
-                          const cellBgColor = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.backgroundColor;
-                          const cellTextBgColor = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.style?.backgroundColor;
+                          const cellBgColor = cell?.backgroundColor;
+                          const cellTextBgColor = cell?.style?.backgroundColor;
                           
                           if (isCellSelected) {
                             // 如果有单元格背景色，使用半透明蓝色叠加
@@ -470,7 +457,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                           return cellBgColor || cellTextBgColor || 'transparent';
                         })(),
                         userSelect: 'none',
-                        verticalAlign: tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.verticalAlign || 'middle',
+                        verticalAlign: cell?.verticalAlign || 'middle',
                         ...borderStyles,
                       }}
                       onMouseDown={(e) => handleCellMouseDown(rowIndex, colIndex, e)}
