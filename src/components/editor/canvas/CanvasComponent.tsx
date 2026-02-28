@@ -414,7 +414,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         
         return (
           <div className="w-full relative">
-            {/* 高级编辑工具栏 - 编辑状态时显示 */}
+            {/* 高级编辑工具栏 - 编辑状态时显示在最上方 */}
             {isTableEditing && (
               <AdvancedToolbar
                 onMergeCells={handleMergeCells}
@@ -434,15 +434,14 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
             )}
             
             <div className="w-full relative group" onDoubleClick={handleDoubleClickTable}>
-              {/* 悬停工具栏 - 非编辑状态时显示 */}
-              {!isTableEditing && (
-                <HoverToolbar
-                  onEdit={handleEditTable}
-                  onDelete={handleDeleteComponent}
-                  onCopy={handleCopyComponent}
-                  isSelected={isSelected}
-                />
-              )}
+              {/* 悬停工具栏 - 始终显示，根据状态切换按钮文字 */}
+              <HoverToolbar
+                onEdit={handleEditTable}
+                onDelete={handleDeleteComponent}
+                onCopy={handleCopyComponent}
+                isSelected={isSelected}
+                isEditing={isTableEditing}
+              />
               
               {tableComp.tableConfig?.cells ? (
                 <div className="border overflow-hidden">
@@ -528,20 +527,10 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 </div>
               )}
               
-              {/* 完成编辑按钮和提示 */}
+              {/* 编辑状态提示 */}
               {isTableEditing && (
-                <div className="mt-2 flex items-center justify-center gap-2">
-                  <Button 
-                    variant="default" 
-                    size="sm" 
-                    onClick={handleEditTable}
-                    className="bg-green-500 hover:bg-green-600"
-                  >
-                    完成编辑
-                  </Button>
-                  <span className="text-xs text-muted-foreground">
-                    点击单元格编辑内容，点击"完成编辑"退出
-                  </span>
+                <div className="text-xs text-center text-muted-foreground mt-1">
+                  点击单元格编辑内容，点击上方"完成编辑"退出
                 </div>
               )}
             </div>
