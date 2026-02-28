@@ -35,7 +35,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     e.stopPropagation();
     if (component.type === 'text') {
       setIsEditing(true);
-      setEditContent((component as any).content);
+      // 如果有实际内容则编辑实际内容，否则为空
+      setEditContent((component as any).content && (component as any).content !== '显示' ? (component as any).content : '');
     }
   };
 
@@ -78,50 +79,156 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
 
   // 高级工具栏处理函数
   const handleMergeCells = () => {
-    console.log('合并单元格');
+    if (component.type !== 'table') return;
+    
+    const tableComp = component as any;
+    if (selectedCells.length < 2) return;
+    
+    // 简单实现：合并第一个和第二个选中的单元格
+    // 实际应用中需要更复杂的合并逻辑
+    console.log('合并单元格:', selectedCells);
+    setSelectedCells([]);
   };
 
   const handleHeaderFooterChange = (headerRows: number, footerRows: number) => {
-    console.log('设置表头/表尾', headerRows, footerRows);
+    if (component.type !== 'table') return;
+    
+    const tableComp = component as any;
+    updateComponent(component.id, {
+      tableConfig: {
+        ...tableComp.tableConfig,
+        headerRows,
+        footerRows,
+      },
+    });
   };
 
   const handleBorderChange = (hasBorder: boolean) => {
-    console.log('设置边框', hasBorder);
+    if (component.type !== 'table') return;
+    
+    const tableComp = component as any;
+    updateComponent(component.id, {
+      tableConfig: {
+        ...tableComp.tableConfig,
+        showOuterBorder: hasBorder,
+        showInnerBorder: hasBorder,
+        borderWidth: hasBorder ? 1 : 0,
+      },
+    });
   };
 
   const handleAlignmentChange = (alignment: 'left' | 'center' | 'right') => {
-    console.log('设置对齐', alignment);
+    if (component.type !== 'table') return;
+    
+    const tableComp = component as any;
+    // 更新选中单元格的对齐方式
+    if (selectedCells.length > 0) {
+      const newCells = tableComp.tableConfig.cells.map((row: any[]) =>
+        row.map((cell: any) => {
+          if (selectedCells.includes(cell.id)) {
+            return {
+              ...cell,
+              style: {
+                ...cell.style,
+                align: alignment,
+              },
+            };
+          }
+          return cell;
+        })
+      );
+      updateComponent(component.id, {
+        tableConfig: {
+          ...tableComp.tableConfig,
+          cells: newCells,
+        },
+      });
+    }
   };
 
   const handleColorChange = (color: string) => {
-    console.log('设置颜色', color);
+    if (component.type !== 'table') return;
+    
+    const tableComp = component as any;
+    // 更新选中单元格的背景色
+    if (selectedCells.length > 0) {
+      const newCells = tableComp.tableConfig.cells.map((row: any[]) =>
+        row.map((cell: any) => {
+          if (selectedCells.includes(cell.id)) {
+            return {
+              ...cell,
+              backgroundColor: color,
+            };
+          }
+          return cell;
+        })
+      );
+      updateComponent(component.id, {
+        tableConfig: {
+          ...tableComp.tableConfig,
+          cells: newCells,
+        },
+      });
+    }
   };
 
   const handleInsertLink = () => {
-    console.log('插入链接');
+    if (component.type !== 'table') return;
+    
+    // 简单实现：在选中的单元格中插入链接
+    // 实际应用中应该弹出对话框让用户输入链接
+    const tableComp = component as any;
+    if (selectedCells.length > 0) {
+      const newCells = tableComp.tableConfig.cells.map((row: any[]) =>
+        row.map((cell: any) => {
+          if (selectedCells.includes(cell.id)) {
+            return {
+              ...cell,
+              content: cell.content + ' [链接]',
+            };
+          }
+          return cell;
+        })
+      );
+      updateComponent(component.id, {
+        tableConfig: {
+          ...tableComp.tableConfig,
+          cells: newCells,
+        },
+      });
+      // 更新编辑数据
+      setTableEditData(newCells.map((row: any[]) => row.map((cell: any) => cell.content)));
+    }
   };
 
   const handleInsertQRCode = () => {
+    // 在编辑器中插入二维码组件
+    // 实际应用中应该在旁边插入新的二维码组件
     console.log('插入二维码');
   };
 
   const handleInsertBarcode = () => {
+    // 在编辑器中插入条形码组件
     console.log('插入条形码');
   };
 
   const handleInsertImage = () => {
+    // 在编辑器中插入图片组件
     console.log('插入图片');
   };
 
   const handleInsertArticle = () => {
+    // 在编辑器中插入文章组件
     console.log('插入文章');
   };
 
   const handleInsertAttachment = () => {
+    // 在编辑器中插入附件组件
     console.log('插入附件');
   };
 
   const handleAdvancedConfig = () => {
+    // 打开循环字段高级配置对话框
     console.log('循环字段高级配置');
   };
 
@@ -258,7 +365,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 fontWeight: 'bold', 
                 marginBottom: '0.5rem' 
               }}>
-                {textComp.content || '双击编辑文本'}
+                {textComp.content || '显示'}
               </h1>
             )}
             {textComp.textStyle?.headingLevel === 2 && (
@@ -267,18 +374,18 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 fontWeight: 'bold', 
                 marginBottom: '0.5rem' 
               }}>
-                {textComp.content || '双击编辑文本'}
+                {textComp.content || '显示'}
               </h2>
             )}
             {/* 列表样式渲染 */}
             {textComp.textStyle?.listType === 'unordered' && !textComp.textStyle?.headingLevel && (
               <ul style={{ marginLeft: '1.5rem', paddingLeft: 0 }}>
-                <li>{textComp.content || '双击编辑文本'}</li>
+                <li>{textComp.content || '显示'}</li>
               </ul>
             )}
             {textComp.textStyle?.listType === 'ordered' && !textComp.textStyle?.headingLevel && (
               <ol style={{ marginLeft: '1.5rem', paddingLeft: 0 }}>
-                <li>{textComp.content || '双击编辑文本'}</li>
+                <li>{textComp.content || '显示'}</li>
               </ol>
             )}
             {/* 普通文本 */}
@@ -292,10 +399,10 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     style={{ color: '#3b82f6', textDecoration: 'underline' }}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {textComp.content || '双击编辑文本'}
+                    {textComp.content || '显示'}
                   </a>
                 ) : (
-                  textComp.content || '双击编辑文本'
+                  textComp.content || '显示'
                 )}
               </span>
             )}
@@ -341,33 +448,63 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 <div className="border overflow-hidden">
                   <table className="w-full border-collapse">
                     <tbody>
-                      {tableEditData.map((row: any[], rowIndex: number) => (
-                        <tr key={rowIndex}>
-                          {row.map((cellContent: any, colIndex: number) => (
-                            <td
-                              key={`${rowIndex}-${colIndex}`}
-                              className="border p-1 text-sm"
-                              style={{
-                                backgroundColor: tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.backgroundColor || 'transparent',
-                              }}
-                            >
-                              {isTableEditing ? (
-                                <input
-                                  type="text"
-                                  value={cellContent || ''}
-                                  onChange={(e) => handleTableCellChange(rowIndex, colIndex, e.target.value)}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="w-full border-0 bg-transparent outline-none p-1"
-                                />
-                              ) : (
-                                <span className="p-1 block min-h-[20px]">
-                                  {cellContent || ''}
-                                </span>
-                              )}
-                            </td>
-                          ))}
+                      {tableEditData.map((row: any[], rowIndex: number) => {
+                        const isHeader = rowIndex < (tableComp.tableConfig?.headerRows || 0);
+                        const isFooter = rowIndex >= tableEditData.length - (tableComp.tableConfig?.footerRows || 0);
+                        
+                        return (
+                          <tr 
+                            key={rowIndex}
+                            className={isHeader ? 'bg-gray-100 font-semibold' : isFooter ? 'bg-gray-50' : ''}
+                          >
+                          {row.map((cellContent: any, colIndex: number) => {
+                            const cellId = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.id || `cell-${rowIndex}-${colIndex}`;
+                            const isCellSelected = selectedCells.includes(cellId);
+                            
+                            return (
+                              <td
+                                key={`${rowIndex}-${colIndex}`}
+                                className={`border p-1 text-sm cursor-pointer transition-colors ${isCellSelected ? 'bg-blue-100' : ''}`}
+                                style={{
+                                  backgroundColor: isCellSelected ? '#dbeafe' : (tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.backgroundColor || 'transparent'),
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (isTableEditing) {
+                                    // 编辑模式下，点击选择单元格
+                                    setSelectedCells(prev => {
+                                      if (e.shiftKey) {
+                                        // Shift + 点击：多选
+                                        return [...prev, cellId];
+                                      } else {
+                                        // 普通点击：单选
+                                        return prev.includes(cellId) 
+                                          ? prev.filter(id => id !== cellId) 
+                                          : [cellId];
+                                      }
+                                    });
+                                  }
+                                }}
+                              >
+                                {isTableEditing ? (
+                                  <input
+                                    type="text"
+                                    value={cellContent || ''}
+                                    onChange={(e) => handleTableCellChange(rowIndex, colIndex, e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="w-full border-0 bg-transparent outline-none p-1"
+                                  />
+                                ) : (
+                                  <span className="p-1 block min-h-[20px]">
+                                    {cellContent}
+                                  </span>
+                                )}
+                              </td>
+                            );
+                          })}
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

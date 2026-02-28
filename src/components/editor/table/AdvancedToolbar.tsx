@@ -79,11 +79,17 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuItem onClick={handleHeaderFooterClick}>
-              设置表头
+            <DropdownMenuItem onClick={() => onHeaderFooterChange?.(1, 0)}>
+              1 行表头
             </DropdownMenuItem>
-            <DropdownMenuItem>
-              设置表尾
+            <DropdownMenuItem onClick={() => onHeaderFooterChange?.(2, 0)}>
+              2 行表头
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onHeaderFooterChange?.(0, 1)}>
+              1 行表尾
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onHeaderFooterChange?.(0, 0)}>
+              无表头表尾
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -134,15 +140,29 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
         <Separator orientation="vertical" className="h-6" />
 
         {/* 颜色 */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 gap-1"
-          onClick={() => onColorChange?.('#000000')}
-        >
-          <Palette className="w-4 h-4" />
-          <span className="text-sm">颜色</span>
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 gap-1">
+              <Palette className="w-4 h-4" />
+              <span className="text-sm">颜色</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <div className="grid grid-cols-5 gap-1 p-2">
+              {['#ffffff', '#f3f4f6', '#fef3c7', '#fce7f3', '#dbeafe', '#d1fae5', '#fee2e2', '#e0e7ff', '#fef9c3', '#dcfce7'].map((color) => (
+                <DropdownMenuItem key={color} onClick={() => onColorChange?.(color)}>
+                  <div 
+                    className="w-6 h-6 rounded border"
+                    style={{ backgroundColor: color }}
+                  />
+                </DropdownMenuItem>
+              ))}
+            </div>
+            <DropdownMenuItem onClick={() => onColorChange?.('transparent')}>
+              透明
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Separator orientation="vertical" className="h-6" />
 
