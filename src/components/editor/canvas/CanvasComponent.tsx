@@ -413,38 +413,44 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         const tableComp = component as any;
         
         return (
-          <div className="w-full relative">
+          <div className="w-full">
             {/* 高级编辑工具栏 - 编辑状态时显示在最上方 */}
             {isTableEditing && (
-              <AdvancedToolbar
-                onMergeCells={handleMergeCells}
-                selectedCellCount={selectedCells.length}
-                onHeaderFooterChange={handleHeaderFooterChange}
-                onBorderChange={handleBorderChange}
-                onAlignmentChange={handleAlignmentChange}
-                onColorChange={handleColorChange}
-                onInsertLink={handleInsertLink}
-                onInsertQRCode={handleInsertQRCode}
-                onInsertBarcode={handleInsertBarcode}
-                onInsertImage={handleInsertImage}
-                onInsertArticle={handleInsertArticle}
-                onInsertAttachment={handleInsertAttachment}
-                onAdvancedConfig={handleAdvancedConfig}
-                onFinishEdit={handleEditTable}
-              />
+              <div className="mb-2">
+                <AdvancedToolbar
+                  onMergeCells={handleMergeCells}
+                  selectedCellCount={selectedCells.length}
+                  onHeaderFooterChange={handleHeaderFooterChange}
+                  onBorderChange={handleBorderChange}
+                  onAlignmentChange={handleAlignmentChange}
+                  onColorChange={handleColorChange}
+                  onInsertLink={handleInsertLink}
+                  onInsertQRCode={handleInsertQRCode}
+                  onInsertBarcode={handleInsertBarcode}
+                  onInsertImage={handleInsertImage}
+                  onInsertArticle={handleInsertArticle}
+                  onInsertAttachment={handleInsertAttachment}
+                  onAdvancedConfig={handleAdvancedConfig}
+                  onFinishEdit={handleEditTable}
+                />
+              </div>
             )}
             
+            {/* 表格容器 - 包含悬停工具栏和表格 */}
             <div className={`w-full relative ${!isTableEditing ? 'group' : ''}`} onDoubleClick={handleDoubleClickTable}>
-              {/* 悬停工具栏 - 只在非编辑状态时显示 */}
+              {/* 悬停工具栏 - 只在非编辑状态时显示，悬浮在表格上方 */}
               {!isTableEditing && (
-                <HoverToolbar
-                  onEdit={handleEditTable}
-                  onDelete={handleDeleteComponent}
-                  onCopy={handleCopyComponent}
-                  isSelected={isSelected}
-                />
+                <div className="absolute -top-12 left-0 right-0 z-10">
+                  <HoverToolbar
+                    onEdit={handleEditTable}
+                    onDelete={handleDeleteComponent}
+                    onCopy={handleCopyComponent}
+                    isSelected={isSelected}
+                  />
+                </div>
               )}
               
+              {/* 表格本身 */}
               {tableComp.tableConfig?.cells ? (
                 <div className="border overflow-hidden">
                   <table className="w-full border-collapse">

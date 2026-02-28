@@ -26,7 +26,7 @@ export const HoverToolbar: React.FC<HoverToolbarProps> = React.memo(({ onEdit, o
   }, [onCopy]);
 
   return (
-    <div className={`absolute -top-12 left-0 right-0 z-20 transition-opacity duration-200 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+    <div className={`transition-opacity duration-200 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
       <div className="flex items-center bg-white border rounded-lg shadow-lg px-3 py-2">
         {/* 主按钮：编辑表格 */}
         <Button
