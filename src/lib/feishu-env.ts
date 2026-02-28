@@ -215,8 +215,30 @@ export async function fetchFields(): Promise<Array<{
 
     const result = fields.map((field: any, index: number) => {
       console.log(`[FeishuEnv] 字段 ${index} 原始数据:`, field);
+      console.log(`[FeishuEnv] 字段 ${index} 所有属性:`, Object.keys(field));
       
-      const fieldName = field.name || field.fieldName || `字段${index + 1}`;
+      // 详细打印字段对象的所有属性
+      if (field.context && Array.isArray(field.context)) {
+        console.log(`[FeishuEnv] 字段 ${index} context 内容:`, field.context);
+      }
+      
+      // 尝试多种可能的字段名路径
+      let fieldName = `字段${index + 1}`;
+      if (field.name) fieldName = field.name;
+      else if (field.fieldName) fieldName = field.fieldName;
+      else if (field.title) fieldName = field.title;
+      else if (field.label) fieldName = field.label;
+      
+      // 尝试从 context 中找
+      if (field.context && Array.isArray(field.context)) {
+        for (const ctx of field.context) {
+          if (ctx.name) fieldName = ctx.name;
+          else if (ctx.fieldName) fieldName = ctx.fieldName;
+          else if (ctx.title) fieldName = ctx.title;
+          else if (ctx.label) fieldName = ctx.label;
+        }
+      }
+      
       const fieldType = FIELD_TYPE_MAP[field.type] || 'text';
       
       console.log(`[FeishuEnv] 字段 ${index} 解析结果: id=${field.id}, name=${fieldName}, type=${fieldType}`);
