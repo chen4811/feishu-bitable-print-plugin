@@ -14,7 +14,6 @@ import {
   Settings, 
   QrCode, 
   Barcode, 
-  ChevronLeft,
   Check as CheckIcon,
   Grid
 } from 'lucide-react';
@@ -56,23 +55,13 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-1.5">
       <div className="flex items-center gap-0.5">
-        {/* 第一组：返回/完成 */}
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={onFinishEdit}
-          className="h-8 w-8 text-gray-500 hover:bg-gray-100 mr-1"
-          title="完成编辑"
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </Button>
-        
+        {/* 第一组：保存完成 */}
         <Button 
           variant="default" 
           size="icon" 
           onClick={onFinishEdit}
           className="h-8 w-8 bg-blue-500 hover:bg-blue-600"
-          title="保存更改"
+          title="完成编辑"
         >
           <CheckIcon className="w-4 h-4" />
         </Button>
