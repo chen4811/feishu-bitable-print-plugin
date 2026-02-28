@@ -3,9 +3,9 @@ import { Trash2, Copy, Settings, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface HoverToolbarProps {
-  onEdit: () => void;
-  onDelete: () => void;
-  onCopy: () => void;
+  onEdit: (e?: React.MouseEvent) => void;
+  onDelete: (e?: React.MouseEvent) => void;
+  onCopy: (e?: React.MouseEvent) => void;
 }
 
 export const HoverToolbar: React.FC<HoverToolbarProps> = React.memo(({ onEdit, onDelete, onCopy }) => {
