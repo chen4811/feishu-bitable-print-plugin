@@ -576,12 +576,12 @@ export function EditorPage({ onExit }: EditorPageProps) {
 
   const { isLoading, isFeishuEnvironment, tableName, fields, records } = usePrintSDK();
 
-  // 🔥 终极解决方案：全局键盘事件拦截器
+  // 🔥 终极解决方案：全局键盘事件拦截器 - 修复版
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      // 如果正在编辑表格，阻止所有键盘事件冒泡！
+      // 如果正在编辑表格，在冒泡阶段阻止事件！
       if (tableEditing.isEditing || tableCellEditing.isEditing) {
-        console.log(`[🔥 EditorPage 全局拦截器] 检测到表格编辑中，拦截键盘事件`, {
+        console.log(`[🔥 EditorPage 全局拦截器] 检测到表格编辑中，在冒泡阶段拦截`, {
           key: e.key,
           shiftKey: e.shiftKey,
           target: e.target,
@@ -593,12 +593,11 @@ export function EditorPage({ onExit }: EditorPageProps) {
         const isTextarea = target.tagName === 'TEXTAREA';
         
         if (isTextarea) {
-          console.log(`[🔥 EditorPage 全局拦截器] 事件来自 textarea，允许处理但阻止冒泡`, {
+          console.log(`[🔥 EditorPage 全局拦截器] 事件来自 textarea，在冒泡阶段阻止`, {
             key: e.key,
           });
           
-          // 对于我们的 textarea，我们阻止冒泡，但不阻止默认行为
-          // 这样 textarea 可以正常编辑，但事件不会传到父组件
+          // 只在冒泡阶段阻止，让事件先到达 textarea
           e.stopImmediatePropagation();
           e.stopPropagation();
         } else {
@@ -626,18 +625,19 @@ export function EditorPage({ onExit }: EditorPageProps) {
       }
     };
     
-    console.log(`[🔥 EditorPage] 安装全局键盘事件拦截器`);
+    console.log(`[🔥 EditorPage] 安装全局键盘事件拦截器（冒泡阶段）`);
     
-    // 在捕获阶段就拦截！这样事件根本不会到达其他监听器
-    document.addEventListener('keydown', handleGlobalKeyDown, true);
-    document.addEventListener('keyup', handleGlobalKeyUp, true);
-    document.addEventListener('keypress', handleGlobalKeyPress, true);
+    // 不在捕获阶段拦截！让事件先到达目标元素（textarea）
+    // 只在冒泡阶段拦截，使用 false 作为第三个参数（默认值）
+    document.addEventListener('keydown', handleGlobalKeyDown, false);
+    document.addEventListener('keyup', handleGlobalKeyUp, false);
+    document.addEventListener('keypress', handleGlobalKeyPress, false);
     
     return () => {
       console.log(`[🔥 EditorPage] 卸载全局键盘事件拦截器`);
-      document.removeEventListener('keydown', handleGlobalKeyDown, true);
-      document.removeEventListener('keyup', handleGlobalKeyUp, true);
-      document.removeEventListener('keypress', handleGlobalKeyPress, true);
+      document.removeEventListener('keydown', handleGlobalKeyDown, false);
+      document.removeEventListener('keyup', handleGlobalKeyUp, false);
+      document.removeEventListener('keypress', handleGlobalKeyPress, false);
     };
   }, [tableEditing.isEditing, tableCellEditing.isEditing]);
 
