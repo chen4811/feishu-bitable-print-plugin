@@ -240,3 +240,132 @@ export const DEFAULT_COMPONENT_SIZES: Record<ComponentType, { width: number; hei
   article: { width: 400, height: 150 },
   autoTable: { width: 400, height: 200 },
 };
+
+// ==================== 新增：可视化排版画布系统类型定义 ====================
+
+// 组件边框样式
+export interface ComponentBorderStyle {
+  show: boolean;
+  color: string;
+  width: number;
+}
+
+// 组件文本样式
+export interface ComponentTextStyle {
+  fontSize: number;
+  color: string;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  align: 'left' | 'center' | 'right';
+  backgroundColor?: string;
+  border?: ComponentBorderStyle;
+}
+
+// 表格单元格数据
+export interface TableCellData {
+  id: string;
+  content: string;
+  rowSpan: number;
+  colSpan: number;
+  backgroundColor?: string;
+  textAlign?: 'left' | 'center' | 'right';
+}
+
+// 表格配置
+export interface TableConfig {
+  headerRows: number;
+  footerRows: number;
+  borderColor: string;
+  borderWidth: number;
+  cells: TableCellData[][];
+}
+
+// 画布组件节点 - 新的数据结构
+export interface CanvasComponentNode {
+  id: string;
+  type: ComponentType;
+  position: { x: number; y: number };
+  width: number;
+  height: number;
+  zIndex: number;
+  
+  // 文本组件特有
+  content?: string; // TipTap JSON 或 HTML
+  textStyle?: Partial<ComponentTextStyle>;
+  
+  // 表格组件特有
+  tableConfig?: Partial<TableConfig>;
+  
+  // 图片组件特有
+  imageSrc?: string;
+  imageFit?: 'contain' | 'cover' | 'fill';
+  
+  // 二维码/条形码特有
+  barcodeContent?: string;
+  barcodeFormat?: string;
+  barcodeSize?: number;
+  
+  // 水平线特有
+  lineColor?: string;
+  lineThickness?: number;
+  lineStyle?: 'solid' | 'dashed' | 'dotted';
+}
+
+// 画布状态
+export interface CanvasState {
+  components: CanvasComponentNode[];
+  selectedId: string | null;
+  activeTab: 'components' | 'dataSource' | 'settings';
+}
+
+// 组件类型图标映射
+export const COMPONENT_TYPE_ICONS: Record<ComponentType, string> = {
+  text: '📝',
+  table: '📋',
+  image: '🖼️',
+  qrcode: '📟',
+  barcode: '📊',
+  line: '➖',
+  freeElement: '🎯',
+  article: '📝',
+  autoTable: '🗒️',
+};
+
+// 组件类型名称映射
+export const COMPONENT_TYPE_NAMES: Record<ComponentType, string> = {
+  text: '文本',
+  table: '表格',
+  image: '图片',
+  qrcode: '二维码',
+  barcode: '条形码',
+  line: '水平线',
+  freeElement: '自由拖动元素',
+  article: '文章区块',
+  autoTable: '自动表格',
+};
+
+// 默认文本样式
+export const DEFAULT_TEXT_STYLE: ComponentTextStyle = {
+  fontSize: 9,
+  color: '#000000',
+  bold: false,
+  italic: false,
+  underline: false,
+  align: 'left',
+  backgroundColor: 'transparent',
+  border: {
+    show: false,
+    color: '#000000',
+    width: 1,
+  },
+};
+
+// 默认表格配置
+export const DEFAULT_TABLE_CONFIG: TableConfig = {
+  headerRows: 1,
+  footerRows: 0,
+  borderColor: '#000000',
+  borderWidth: 1,
+  cells: [],
+};
