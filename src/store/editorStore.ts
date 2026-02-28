@@ -30,12 +30,6 @@ interface TableEditingState {
   isEditing: boolean;
   tableId: string | null;
   selectedCells: string[];
-  onMergeCells: () => void;
-  onOpenHeaderFooterDialog: () => void;
-  onBorderChange: (borderType: string) => void;
-  onBorderWidthChange: (width: number) => void;
-  onColorChange: (colorType: 'text' | 'fill', color: string) => void;
-  onFinishEdit: () => void;
   headerFooterDialogOpen: boolean;
 }
 
@@ -186,12 +180,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     isEditing: false,
     tableId: null,
     selectedCells: [],
-    onMergeCells: () => {},
-    onOpenHeaderFooterDialog: () => {},
-    onBorderChange: () => {},
-    onBorderWidthChange: () => {},
-    onColorChange: () => {},
-    onFinishEdit: () => {},
     headerFooterDialogOpen: false,
   },
   

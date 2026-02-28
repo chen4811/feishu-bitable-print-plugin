@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { 
-  CheckSquare, 
   Layout, 
   Palette, 
   Grid,
   Check as CheckIcon,
   Square,
+  Merge,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BorderSettingsPanel } from './BorderSettingsPanel';
@@ -62,7 +62,7 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
           className="h-8 w-8 disabled:opacity-50"
           title="合并单元格"
         >
-          <CheckSquare className="w-4 h-4" />
+          <Merge className="w-4 h-4" />
         </Button>
         
         <div className="w-px h-5 bg-gray-200 mx-1" />

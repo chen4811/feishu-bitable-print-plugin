@@ -243,7 +243,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         selectedCells: [],
       });
     } else {
-      // 进入编辑 - 只设置基本状态，回调函数由 EditorPage 管理
+      // 进入编辑 - 只设置基本状态
       setTableEditing({
         isEditing: true,
         tableId: component.id,

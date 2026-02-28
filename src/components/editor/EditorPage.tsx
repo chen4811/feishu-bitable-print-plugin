@@ -293,7 +293,6 @@ export function EditorPage({ onExit }: EditorPageProps) {
   const handleOpenHeaderFooterDialog = () => {
     setTableEditing({
       headerFooterDialogOpen: true,
-      onOpenHeaderFooterDialog: handleOpenHeaderFooterDialog,
     });
   };
 
@@ -518,29 +517,20 @@ export function EditorPage({ onExit }: EditorPageProps) {
     }
   };
 
-  // 当进入表格编辑模式时，设置回调函数
-  useEffect(() => {
-    if (tableEditing.isEditing && tableEditing.tableId && !tableEditing.onMergeCells) {
-      // 只在第一次进入编辑模式且回调函数未设置时才设置
-      setTableEditing({
-        onMergeCells: handleMergeCells,
-        onOpenHeaderFooterDialog: handleOpenHeaderFooterDialog,
-        onBorderChange: handleBorderChange,
-        onBorderWidthChange: handleBorderWidthChange,
-        onColorChange: (colorType: 'text' | 'fill', color: string) => {
-          console.log('颜色变化:', colorType, color);
-        },
-        onFinishEdit: () => {
-          setTableEditing({
-            isEditing: false,
-            tableId: null,
-            selectedCells: [],
-            headerFooterDialogOpen: false,
-          });
-        },
-      });
-    }
-  }, [tableEditing.isEditing, tableEditing.tableId, tableEditing.onMergeCells, setTableEditing]);
+  // 完成表格编辑
+  const handleFinishEdit = useCallback(() => {
+    setTableEditing({
+      isEditing: false,
+      tableId: null,
+      selectedCells: [],
+      headerFooterDialogOpen: false,
+    });
+  }, [setTableEditing]);
+
+  // 处理颜色变化
+  const handleColorChange = useCallback((colorType: 'text' | 'fill', color: string) => {
+    console.log('颜色变化:', colorType, color);
+  }, []);
 
   // 智能聚焦：选中组件时自动切换到数据源面板
   useEffect(() => {
@@ -849,7 +839,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
             {tableEditing.isEditing && (
               <div className="bg-background border-b px-4 py-2">
                 <AdvancedToolbar
-                  onMergeCells={tableEditing.onMergeCells}
+                  onMergeCells={handleMergeCells}
                   selectedCellCount={tableEditing.selectedCells.length}
                   onOpenHeaderFooterDialog={handleOpenHeaderFooterDialog}
                   onBorderChange={handleBorderChange}
@@ -871,9 +861,9 @@ export function EditorPage({ onExit }: EditorPageProps) {
                     }
                     return 'middle';
                   })()}
-                  onColorChange={tableEditing.onColorChange}
+                  onColorChange={handleColorChange}
                   onFinishEdit={() => {
-                    tableEditing.onFinishEdit();
+                    handleFinishEdit();
                     handleHeaderFooterDialogClose();
                   }}
                 />
