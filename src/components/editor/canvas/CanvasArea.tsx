@@ -3,13 +3,18 @@
 import { useCallback, useRef } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { useEditorStore } from '@/store/editorStore';
-import { PAGE_SIZES, EditorComponent } from '@/types/editor';
+import { PAGE_SIZES, EditorComponent, ComponentType } from '@/types/editor';
 import { Plus, Move } from 'lucide-react';
 import { CanvasComponent } from './CanvasComponent';
+import { FloatingAddButton } from './FloatingAddButton';
 
 export function CanvasArea() {
   const { components, pageConfig, styleConfig, selectComponent, selectedComponentId, addComponent } = useEditorStore();
   const canvasRef = useRef<HTMLDivElement>(null);
+
+  const handleAddComponent = (type: ComponentType) => {
+    addComponent(type);
+  };
 
   // 设置画布为可放置区域
   const { setNodeRef, isOver } = useDroppable({
@@ -92,6 +97,9 @@ export function CanvasArea() {
         <div className="absolute bottom-2 right-2 text-xs text-muted-foreground/50">
           {pageConfig.size} {isLandscape ? '横向' : '纵向'}
         </div>
+        
+        {/* 浮动添加按钮 - 始终显示在画布右下角 */}
+        <FloatingAddButton onAddComponent={handleAddComponent} />
       </div>
     </div>
   );

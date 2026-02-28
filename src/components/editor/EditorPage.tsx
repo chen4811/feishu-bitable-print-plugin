@@ -89,6 +89,16 @@ export function EditorPage({ onExit }: EditorPageProps) {
     historyIndex,
   } = useEditorStore();
 
+  // 智能聚焦：选中组件时自动切换到数据源面板
+  useEffect(() => {
+    if (selectedComponentId) {
+      const selectedComponent = components.find(c => c.id === selectedComponentId);
+      if (selectedComponent && (selectedComponent.type === 'text' || selectedComponent.type === 'table')) {
+        setActiveTab('data');
+      }
+    }
+  }, [selectedComponentId, components, setActiveTab]);
+
   // 获取当前选中的文本组件
   const selectedTextComponent = components.find(
     (c) => c.id === selectedComponentId && c.type === 'text'

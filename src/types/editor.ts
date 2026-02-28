@@ -1,4 +1,4 @@
-// 排版打印插件核心类型定义
+// 排版打印插件核心类型定义 (v14.0 可视化排版画布)
 
 // 飞书上下文类型
 export interface FeishuAppMetadata {
@@ -15,6 +15,120 @@ export interface FeishuContext {
   firstRecordData: Record<string, unknown> | null;
   appMetadata: FeishuAppMetadata | null;
 }
+
+// ========== v14.0 新增：画布状态与组件节点 ==========
+
+// 组件边框样式
+export interface ComponentBorderStyle {
+  show: boolean;
+  color: string;
+  width: number;
+}
+
+// 文本样式
+export interface ComponentTextStyle {
+  fontSize: number;
+  color: string;
+  bold: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  align: 'left' | 'center' | 'right';
+  backgroundColor?: string;
+  border?: ComponentBorderStyle;
+  lineHeight?: number;
+  paragraphSpacing?: number;
+}
+
+// 表格单元格数据
+export interface TableCellData {
+  id: string;
+  content: string;
+  rowSpan?: number;
+  colSpan?: number;
+  backgroundColor?: string;
+  style?: Partial<ComponentTextStyle>;
+}
+
+// 表格配置
+export interface TableConfig {
+  headerRows: number;
+  footerRows: number;
+  borderColor: string;
+  borderWidth: number;
+  showOuterBorder: boolean;
+  showInnerBorder: boolean;
+  cells: TableCellData[][];
+}
+
+// 画布组件节点（基础）
+export interface BaseCanvasNode {
+  id: string;
+  type: 'text' | 'table' | 'image' | 'barcode' | 'qrcode' | 'line';
+  position: { x: number; y: number };
+  width: number;
+  height: number;
+  zIndex: number;
+}
+
+// 文本组件节点
+export interface TextCanvasNode extends BaseCanvasNode {
+  type: 'text';
+  content: string; // HTML or ProseMirror doc
+  textStyle: ComponentTextStyle;
+}
+
+// 表格组件节点
+export interface TableCanvasNode extends BaseCanvasNode {
+  type: 'table';
+  tableConfig: TableConfig;
+}
+
+// 图片组件节点
+export interface ImageCanvasNode extends BaseCanvasNode {
+  type: 'image';
+  src: string;
+  alt?: string;
+  fit: 'contain' | 'cover' | 'fill';
+}
+
+// 条形码组件节点
+export interface BarcodeCanvasNode extends BaseCanvasNode {
+  type: 'barcode';
+  content: string;
+  format: string;
+}
+
+// 二维码组件节点
+export interface QRCodeCanvasNode extends BaseCanvasNode {
+  type: 'qrcode';
+  content: string;
+  size: number;
+}
+
+// 线条组件节点
+export interface LineCanvasNode extends BaseCanvasNode {
+  type: 'line';
+  color: string;
+  thickness: number;
+  style: 'solid' | 'dashed' | 'dotted';
+}
+
+// 画布组件节点联合类型
+export type CanvasComponentNode = 
+  | TextCanvasNode 
+  | TableCanvasNode 
+  | ImageCanvasNode 
+  | BarcodeCanvasNode 
+  | QRCodeCanvasNode 
+  | LineCanvasNode;
+
+// 画布状态
+export interface CanvasState {
+  components: CanvasComponentNode[];
+  selectedId: string | null;
+}
+
+// ========== 原有类型保持兼容 ==========
 
 // 组件类型枚举
 export type ComponentType = 
@@ -54,6 +168,7 @@ export interface TextComponent extends BaseComponentProps {
   content: string;
   fontSize: number;
   fontWeight: 'normal' | 'bold';
+  fontStyle?: 'normal' | 'italic';
   textAlign: 'left' | 'center' | 'right';
   lineHeight: number;
 }
@@ -199,40 +314,19 @@ export interface PrintRecord {
   status: 'pending' | 'completed' | 'failed';
 }
 
-// 纸张尺寸映射 (mm)
+// 页面尺寸常量 (单位: mm)
 export const PAGE_SIZES: Record<string, { width: number; height: number }> = {
   A4: { width: 210, height: 297 },
   A3: { width: 297, height: 420 },
-  Letter: { width: 215.9, height: 279.4 },
-  Legal: { width: 215.9, height: 355.6 },
+  Letter: { width: 216, height: 279 },
+  Legal: { width: 216, height: 356 },
 };
 
-// 默认页面配置
-export const DEFAULT_PAGE_CONFIG: PageConfig = {
-  size: 'A4',
-  orientation: 'portrait',
-  margins: {
-    top: 17.3,
-    bottom: 17.3,
-    left: 13.5,
-    right: 13.5,
-  },
-  continuous: false,
-};
-
-// 默认样式配置
-export const DEFAULT_STYLE_CONFIG: StyleConfig = {
-  fontSize: 9,
-  lineHeight: 1.5,
-  paragraphSpacing: 0,
-  fontFamily: 'PingFang SC, Microsoft YaHei, sans-serif',
-};
-
-// 组件默认尺寸
+// 默认组件尺寸
 export const DEFAULT_COMPONENT_SIZES: Record<ComponentType, { width: number; height: number }> = {
-  text: { width: 200, height: 40 },
+  text: { width: 200, height: 60 },
   table: { width: 400, height: 200 },
-  image: { width: 100, height: 100 },
+  image: { width: 150, height: 150 },
   qrcode: { width: 80, height: 80 },
   barcode: { width: 150, height: 50 },
   line: { width: 400, height: 2 },
@@ -241,131 +335,23 @@ export const DEFAULT_COMPONENT_SIZES: Record<ComponentType, { width: number; hei
   autoTable: { width: 400, height: 200 },
 };
 
-// ==================== 新增：可视化排版画布系统类型定义 ====================
-
-// 组件边框样式
-export interface ComponentBorderStyle {
-  show: boolean;
-  color: string;
-  width: number;
-}
-
-// 组件文本样式
-export interface ComponentTextStyle {
-  fontSize: number;
-  color: string;
-  bold: boolean;
-  italic: boolean;
-  underline: boolean;
-  align: 'left' | 'center' | 'right';
-  backgroundColor?: string;
-  border?: ComponentBorderStyle;
-}
-
-// 表格单元格数据
-export interface TableCellData {
-  id: string;
-  content: string;
-  rowSpan: number;
-  colSpan: number;
-  backgroundColor?: string;
-  textAlign?: 'left' | 'center' | 'right';
-}
-
-// 表格配置
-export interface TableConfig {
-  headerRows: number;
-  footerRows: number;
-  borderColor: string;
-  borderWidth: number;
-  cells: TableCellData[][];
-}
-
-// 画布组件节点 - 新的数据结构
-export interface CanvasComponentNode {
-  id: string;
-  type: ComponentType;
-  position: { x: number; y: number };
-  width: number;
-  height: number;
-  zIndex: number;
-  
-  // 文本组件特有
-  content?: string; // TipTap JSON 或 HTML
-  textStyle?: Partial<ComponentTextStyle>;
-  
-  // 表格组件特有
-  tableConfig?: Partial<TableConfig>;
-  
-  // 图片组件特有
-  imageSrc?: string;
-  imageFit?: 'contain' | 'cover' | 'fill';
-  
-  // 二维码/条形码特有
-  barcodeContent?: string;
-  barcodeFormat?: string;
-  barcodeSize?: number;
-  
-  // 水平线特有
-  lineColor?: string;
-  lineThickness?: number;
-  lineStyle?: 'solid' | 'dashed' | 'dotted';
-}
-
-// 画布状态
-export interface CanvasState {
-  components: CanvasComponentNode[];
-  selectedId: string | null;
-  activeTab: 'components' | 'dataSource' | 'settings';
-}
-
-// 组件类型图标映射
-export const COMPONENT_TYPE_ICONS: Record<ComponentType, string> = {
-  text: '📝',
-  table: '📋',
-  image: '🖼️',
-  qrcode: '📟',
-  barcode: '📊',
-  line: '➖',
-  freeElement: '🎯',
-  article: '📝',
-  autoTable: '🗒️',
-};
-
-// 组件类型名称映射
-export const COMPONENT_TYPE_NAMES: Record<ComponentType, string> = {
-  text: '文本',
-  table: '表格',
-  image: '图片',
-  qrcode: '二维码',
-  barcode: '条形码',
-  line: '水平线',
-  freeElement: '自由拖动元素',
-  article: '文章区块',
-  autoTable: '自动表格',
-};
-
-// 默认文本样式
-export const DEFAULT_TEXT_STYLE: ComponentTextStyle = {
-  fontSize: 9,
-  color: '#000000',
-  bold: false,
-  italic: false,
-  underline: false,
-  align: 'left',
-  backgroundColor: 'transparent',
-  border: {
-    show: false,
-    color: '#000000',
-    width: 1,
+// 默认页面配置
+export const DEFAULT_PAGE_CONFIG: PageConfig = {
+  size: 'A4',
+  orientation: 'portrait',
+  margins: {
+    top: 20,
+    bottom: 20,
+    left: 20,
+    right: 20,
   },
+  continuous: false,
 };
 
-// 默认表格配置
-export const DEFAULT_TABLE_CONFIG: TableConfig = {
-  headerRows: 1,
-  footerRows: 0,
-  borderColor: '#000000',
-  borderWidth: 1,
-  cells: [],
+// 默认样式配置
+export const DEFAULT_STYLE_CONFIG: StyleConfig = {
+  fontSize: 12,
+  lineHeight: 1.5,
+  paragraphSpacing: 6,
+  fontFamily: 'system-ui, -apple-system, sans-serif',
 };
