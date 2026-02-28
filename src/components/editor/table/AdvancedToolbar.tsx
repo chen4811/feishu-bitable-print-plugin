@@ -2,7 +2,6 @@ import React from 'react';
 import { 
   CheckSquare, 
   Layout, 
-  Table, 
   Palette, 
   Grid,
   Check as CheckIcon,
@@ -16,7 +15,7 @@ import { Button } from '@/components/ui/button';
 interface AdvancedToolbarProps {
   onMergeCells: () => void;
   selectedCellCount: number;
-  onHeaderFooterChange: (header: boolean, footer: boolean) => void;
+  onOpenHeaderFooterDialog: () => void;
   onBorderChange: (borderType: string) => void;
   onColorChange: (colorType: 'text' | 'fill', color: string) => void;
   onFinishEdit: () => void;
@@ -25,7 +24,7 @@ interface AdvancedToolbarProps {
 export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
   onMergeCells,
   selectedCellCount,
-  onHeaderFooterChange,
+  onOpenHeaderFooterDialog,
   onBorderChange,
   onColorChange,
   onFinishEdit
@@ -64,21 +63,11 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
         <Button 
           variant="ghost" 
           size="icon" 
-          onClick={() => onHeaderFooterChange(true, false)}
+          onClick={onOpenHeaderFooterDialog}
           className="h-8 w-8"
-          title="表头"
+          title="表头表尾"
         >
           <Layout className="w-4 h-4" />
-        </Button>
-        
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => onHeaderFooterChange(false, true)}
-          className="h-8 w-8"
-          title="表尾"
-        >
-          <Table className="w-4 h-4" />
         </Button>
         
         <div className="w-px h-5 bg-gray-200 mx-1" />

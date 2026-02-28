@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { TextToolbar } from './TextToolbar';
 import { AdvancedToolbar } from './table/AdvancedToolbar';
+import { HeaderFooterSettingsDialog } from './dialogs/HeaderFooterSettingsDialog';
 import { ComponentTextStyle, TextCanvasNode } from '@/types/editor';
 import {
   DropdownMenu,
@@ -83,6 +84,50 @@ export function EditorPage({ onExit }: EditorPageProps) {
     tableCellEditing,
     setTableCellEditing,
   } = useEditorStore();
+
+  // 获取当前正在编辑的表格
+  const currentEditingTable = tableEditing.tableId 
+    ? components.find(comp => comp.id === tableEditing.tableId) as any 
+    : null;
+
+  // 处理表头表尾弹窗打开
+  const handleOpenHeaderFooterDialog = () => {
+    setTableEditing({
+      headerFooterDialogOpen: true,
+      onOpenHeaderFooterDialog: handleOpenHeaderFooterDialog,
+    });
+  };
+
+  // 处理表头行变化
+  const handleHeaderRowsChange = (rows: number) => {
+    if (currentEditingTable && currentEditingTable.type === 'table') {
+      updateComponent(currentEditingTable.id, {
+        tableConfig: {
+          ...currentEditingTable.tableConfig,
+          headerRows: rows,
+        },
+      });
+    }
+  };
+
+  // 处理表尾行变化
+  const handleFooterRowsChange = (rows: number) => {
+    if (currentEditingTable && currentEditingTable.type === 'table') {
+      updateComponent(currentEditingTable.id, {
+        tableConfig: {
+          ...currentEditingTable.tableConfig,
+          footerRows: rows,
+        },
+      });
+    }
+  };
+
+  // 处理弹窗关闭
+  const handleHeaderFooterDialogClose = () => {
+    setTableEditing({
+      headerFooterDialogOpen: false,
+    });
+  };
 
   // 智能聚焦：选中组件时自动切换到数据源面板
   useEffect(() => {
@@ -402,12 +447,31 @@ export function EditorPage({ onExit }: EditorPageProps) {
                 <AdvancedToolbar
                   onMergeCells={tableEditing.onMergeCells}
                   selectedCellCount={tableEditing.selectedCells.length}
-                  onHeaderFooterChange={tableEditing.onHeaderFooterChange}
+                  onOpenHeaderFooterDialog={handleOpenHeaderFooterDialog}
                   onBorderChange={tableEditing.onBorderChange}
                   onColorChange={tableEditing.onColorChange}
                   onFinishEdit={tableEditing.onFinishEdit}
                 />
               </div>
+            )}
+
+            {/* 表头表尾设置弹窗 */}
+            {currentEditingTable && (
+              <HeaderFooterSettingsDialog
+                open={tableEditing.headerFooterDialogOpen}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    handleHeaderFooterDialogClose();
+                  } else {
+                    setTableEditing({ headerFooterDialogOpen: true });
+                  }
+                }}
+                headerRows={currentEditingTable.tableConfig?.headerRows || 0}
+                footerRows={currentEditingTable.tableConfig?.footerRows || 0}
+                onHeaderRowsChange={handleHeaderRowsChange}
+                onFooterRowsChange={handleFooterRowsChange}
+                maxRows={currentEditingTable.tableConfig?.cells?.length || 0}
+              />
             )}
             {/* 画布区域 */}
             <div className="p-6">

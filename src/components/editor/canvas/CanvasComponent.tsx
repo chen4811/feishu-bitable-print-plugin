@@ -78,16 +78,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         onMergeCells: () => {
           console.log('合并单元格');
         },
-        onHeaderFooterChange: (header: boolean, footer: boolean) => {
-          if (component.type !== 'table') return;
-          const tableComp = component as any;
-          updateComponent(component.id, {
-            tableConfig: {
-              ...tableComp.tableConfig,
-              headerRows: header ? 1 : 0,
-              footerRows: footer ? 1 : 0,
-            },
-          });
+        onOpenHeaderFooterDialog: () => {
+          console.log('打开表头表尾弹窗');
         },
         onBorderChange: (borderType: string) => {
           console.log('边框变化:', borderType);
@@ -100,8 +92,10 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
             isEditing: false,
             tableId: null,
             selectedCells: [],
+            headerFooterDialogOpen: false,
           });
         },
+        headerFooterDialogOpen: false,
       });
     }
   }, [component.id, isCurrentTableEditing, setTableEditing, updateComponent]);

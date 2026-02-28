@@ -31,10 +31,11 @@ interface TableEditingState {
   tableId: string | null;
   selectedCells: string[];
   onMergeCells: () => void;
-  onHeaderFooterChange: (header: boolean, footer: boolean) => void;
+  onOpenHeaderFooterDialog: () => void;
   onBorderChange: (borderType: string) => void;
   onColorChange: (colorType: 'text' | 'fill', color: string) => void;
   onFinishEdit: () => void;
+  headerFooterDialogOpen: boolean;
 }
 
 // 编辑器状态（流式布局版本）
@@ -185,10 +186,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     tableId: null,
     selectedCells: [],
     onMergeCells: () => {},
-    onHeaderFooterChange: () => {},
+    onOpenHeaderFooterDialog: () => {},
     onBorderChange: () => {},
     onColorChange: () => {},
     onFinishEdit: () => {},
+    headerFooterDialogOpen: false,
   },
   
   // 表格单元格编辑状态
