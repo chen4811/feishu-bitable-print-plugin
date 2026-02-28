@@ -69,22 +69,18 @@ export const TableComponent: React.FC<TableComponentProps> = ({
     onCopy();
   }, [onCopy]);
 
-  // 只在悬停且未选中且未编辑时显示工具栏
   const shouldShowHoverToolbar = isHovered && !isSelected && !isEditing;
-  // 只在选中且未编辑时显示选中框
   const shouldShowSelectionBorder = isSelected && !isEditing;
 
   return (
-    <div className="table-component relative" style={{ paddingTop: '8px' }}>
-      {/* 悬浮工具栏 - 位于右上角 */}
+    <div className="table-component relative">
       {shouldShowHoverToolbar && (
         <div 
-          className="absolute -top-2 right-0 z-20"
+          className="absolute -top-10 right-0 z-20"
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
           <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg shadow-sm px-2 py-1">
-            {/* 编辑表格按钮 */}
             <button
               onClick={handleEditTable}
               className="flex items-center gap-1 px-3 py-1.5 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm"
@@ -95,14 +91,12 @@ export const TableComponent: React.FC<TableComponentProps> = ({
               <span>编辑表格</span>
             </button>
             
-            {/* 保存图标 */}
             <button className="p-1.5 hover:bg-gray-100 rounded-md transition-colors">
               <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
               </svg>
             </button>
             
-            {/* 复制图标 */}
             <button
               onClick={handleCopy}
               className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
@@ -112,7 +106,6 @@ export const TableComponent: React.FC<TableComponentProps> = ({
               </svg>
             </button>
             
-            {/* 更多设置图标 */}
             <button className="p-1.5 hover:bg-gray-100 rounded-md transition-colors">
               <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -120,7 +113,6 @@ export const TableComponent: React.FC<TableComponentProps> = ({
               </svg>
             </button>
             
-            {/* 删除图标 */}
             <button
               onClick={handleDelete}
               className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
@@ -133,18 +125,20 @@ export const TableComponent: React.FC<TableComponentProps> = ({
         </div>
       )}
 
-      {/* 表格内容 */}
       <div 
-        className={`transition-all duration-200 ${
-          shouldShowSelectionBorder 
-            ? 'ring-2 ring-blue-500 ring-offset-2 rounded-lg' 
-            : ''
-        }`}
+        className="transition-all duration-200 relative"
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onClick={handleClick}
       >
-        <div className="border rounded-lg overflow-hidden bg-white">
+        {shouldShowSelectionBorder && (
+          <div 
+            className="absolute inset-0 border-2 border-blue-500 pointer-events-none" 
+            style={{ zIndex: 5 }}
+          />
+        )}
+        
+        <div className="border bg-white">
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
             <tbody>
               {tableData.map((row, rowIndex) => (
@@ -189,7 +183,6 @@ export const TableComponent: React.FC<TableComponentProps> = ({
         </div>
       </div>
 
-      {/* 左侧加号按钮 */}
       {shouldShowHoverToolbar && (
         <div className="absolute -left-8 top-1/2 -translate-y-1/2">
           <button className="w-6 h-6 bg-gray-100 border border-gray-200 rounded flex items-center justify-center hover:bg-gray-200 transition-colors">

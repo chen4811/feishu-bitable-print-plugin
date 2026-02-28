@@ -210,9 +210,7 @@ export function ResizableWrapper({
 
   return (
     <div
-      className={`absolute ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''} ${
-        isDragging || isResizing ? 'select-none' : ''
-      }`}
+      className={`absolute ${isDragging || isResizing ? 'select-none' : ''}`}
       style={{
         left: `${component.x}px`,
         top: `${component.y}px`,

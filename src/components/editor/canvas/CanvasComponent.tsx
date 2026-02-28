@@ -136,8 +136,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
             <div className="w-full h-full relative">
               {/* 统一工具栏 */}
               <div className="absolute -top-10 left-0 right-0 flex justify-between items-start z-10">
-                {/* 左侧：层级控制 */}
-                {renderLayerControlsInline()}
+                {/* 左侧：层级控制 - 排版打印无需层级 */}
+                {/* {renderLayerControlsInline()} */}
                 
                 {/* 右侧：组件操作 */}
                 <div className="flex items-center gap-1 bg-background border rounded px-1 py-0.5 shadow-sm">
@@ -570,7 +570,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       onSelect={onSelect}
       onDoubleClick={handleDoubleClick}
     >
-      {renderLayerControls()}
+      {/* {renderLayerControls()} - 排版打印无需层级 */}
       {renderContent()}
     </ResizableWrapper>
   );
