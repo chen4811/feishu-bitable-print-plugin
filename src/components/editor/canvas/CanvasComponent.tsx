@@ -42,20 +42,26 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   }, [component.id, component.type, editContent, updateComponent]);
 
   // 表格编辑
-  const handleEditTable = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleEditTable = useCallback((e?: React.MouseEvent) => {
+    if (e && typeof e.stopPropagation === 'function') {
+      e.stopPropagation();
+    }
     alert('表格编辑功能开发中...');
   }, []);
 
   // 复制组件
-  const handleCopyComponent = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleCopyComponent = useCallback((e?: React.MouseEvent) => {
+    if (e && typeof e.stopPropagation === 'function') {
+      e.stopPropagation();
+    }
     duplicateComponent(component.id);
   }, [component.id, duplicateComponent]);
 
   // 删除组件
-  const handleDeleteComponent = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDeleteComponent = useCallback((e?: React.MouseEvent) => {
+    if (e && typeof e.stopPropagation === 'function') {
+      e.stopPropagation();
+    }
     deleteComponent(component.id);
   }, [component.id, deleteComponent]);
 
@@ -206,30 +212,14 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       case 'table':
         const tableComp = component as any;
         
-        // 创建包装函数来处理可选参数
-        const handleEdit = (e?: React.MouseEvent) => {
-          if (e) e.stopPropagation();
-          handleEditTable(e || {} as React.MouseEvent);
-        };
-        
-        const handleDelete = (e?: React.MouseEvent) => {
-          if (e) e.stopPropagation();
-          handleDeleteComponent(e || {} as React.MouseEvent);
-        };
-        
-        const handleCopy = (e?: React.MouseEvent) => {
-          if (e) e.stopPropagation();
-          handleCopyComponent(e || {} as React.MouseEvent);
-        };
-        
         return (
           <div className="w-full relative">
             {/* 悬停工具栏 - 只在 hover 且未选中或未编辑时显示 */}
             {(isHovered || isSelected) && !isEditing && (
               <HoverToolbar
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                onCopy={handleCopy}
+                onEdit={handleEditTable}
+                onDelete={handleDeleteComponent}
+                onCopy={handleCopyComponent}
               />
             )}
             
@@ -262,13 +252,13 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   <span>表格组件</span>
                 </div>
                 <div className="flex items-center justify-center gap-2">
-                  <Button variant="default" size="sm" onClick={handleEdit}>
+                  <Button variant="default" size="sm" onClick={handleEditTable}>
                     编辑表格
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={handleCopy}>
+                  <Button variant="ghost" size="icon" onClick={handleCopyComponent}>
                     <Copy className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="text-destructive" onClick={handleDelete}>
+                  <Button variant="ghost" size="icon" className="text-destructive" onClick={handleDeleteComponent}>
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>

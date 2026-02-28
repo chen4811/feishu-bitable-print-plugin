@@ -11,17 +11,17 @@ interface HoverToolbarProps {
 export const HoverToolbar: React.FC<HoverToolbarProps> = React.memo(({ onEdit, onDelete, onCopy }) => {
   const handleEditClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    onEdit();
+    onEdit(e);
   }, [onEdit]);
 
   const handleDeleteClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    onDelete();
+    onDelete(e);
   }, [onDelete]);
 
   const handleCopyClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    onCopy();
+    onCopy(e);
   }, [onCopy]);
 
   return (
