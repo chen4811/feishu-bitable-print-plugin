@@ -430,18 +430,20 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 onInsertArticle={handleInsertArticle}
                 onInsertAttachment={handleInsertAttachment}
                 onAdvancedConfig={handleAdvancedConfig}
+                onFinishEdit={handleEditTable}
               />
             )}
             
-            <div className="w-full relative group" onDoubleClick={handleDoubleClickTable}>
-              {/* 悬停工具栏 - 始终显示，根据状态切换按钮文字 */}
-              <HoverToolbar
-                onEdit={handleEditTable}
-                onDelete={handleDeleteComponent}
-                onCopy={handleCopyComponent}
-                isSelected={isSelected}
-                isEditing={isTableEditing}
-              />
+            <div className={`w-full relative ${!isTableEditing ? 'group' : ''}`} onDoubleClick={handleDoubleClickTable}>
+              {/* 悬停工具栏 - 只在非编辑状态时显示 */}
+              {!isTableEditing && (
+                <HoverToolbar
+                  onEdit={handleEditTable}
+                  onDelete={handleDeleteComponent}
+                  onCopy={handleCopyComponent}
+                  isSelected={isSelected}
+                />
+              )}
               
               {tableComp.tableConfig?.cells ? (
                 <div className="border overflow-hidden">

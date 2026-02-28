@@ -40,6 +40,7 @@ interface AdvancedToolbarProps {
   onInsertArticle?: () => void;
   onInsertAttachment?: () => void;
   onAdvancedConfig?: () => void;
+  onFinishEdit?: () => void;
 }
 
 export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
@@ -56,6 +57,7 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
   onInsertArticle,
   onInsertAttachment,
   onAdvancedConfig,
+  onFinishEdit,
 }) => {
   const handleHeaderFooterClick = useCallback(() => {
     // 默认设置 1 行表头，0 行表尾
@@ -252,6 +254,21 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
             </Button>
           </>
         )}
+
+        <Separator orientation="vertical" className="h-6" />
+
+        {/* 完成编辑按钮 */}
+        <Button
+          variant="default"
+          size="sm"
+          className="h-8 gap-1 bg-green-500 hover:bg-green-600"
+          onClick={(e) => {
+            e.stopPropagation();
+            onFinishEdit?.();
+          }}
+        >
+          <span className="text-sm">完成编辑</span>
+        </Button>
       </div>
     </div>
   );
