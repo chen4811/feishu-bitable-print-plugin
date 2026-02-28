@@ -544,7 +544,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     >
                       {/* 行操作单元格 */}
                       <td 
-                        className="border bg-gray-50 w-8 p-0 align-middle" 
+                        className="w-8 p-0 align-middle" 
                         style={{ verticalAlign: 'middle' }}
                         onMouseDown={(e) => e.stopPropagation()}
                         onClick={(e) => e.stopPropagation()}
@@ -626,7 +626,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                             {/* 列操作按钮 - 仅在第一行 */}
                             {rowIndex === 0 && (
                               <div 
-                                className="flex items-center justify-center gap-0.5 p-1 bg-gray-50 border-b mb-1"
+                                className="flex items-center justify-center gap-0.5 p-1 mb-1"
                                 onMouseDown={(e) => e.stopPropagation()}
                                 onClick={(e) => e.stopPropagation()}
                               >
@@ -725,7 +725,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               return (
                 <tr key={rowIndex} className={isHeader ? 'bg-gray-100 font-semibold' : isFooter ? 'bg-gray-50' : ''}>
                   {/* 保留行操作列空间（隐藏内容） */}
-                  <td className="border bg-gray-50 w-8 p-0" style={{ verticalAlign: 'middle' }}>
+                  <td className="w-8 p-0" style={{ verticalAlign: 'middle' }}>
                     <div className="p-1 min-h-full opacity-0">
                       <div className="w-2 h-2 rounded-full" />
                     </div>
@@ -781,7 +781,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       >
                         {/* 保留列操作按钮空间（仅第一行，隐藏内容） */}
                         {rowIndex === 0 && (
-                          <div className="p-1 bg-gray-50 border-b mb-1 opacity-0">
+                          <div className="p-1 mb-1 opacity-0">
                             <div className="w-2 h-2 rounded-full" />
                           </div>
                         )}
