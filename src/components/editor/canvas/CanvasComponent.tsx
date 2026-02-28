@@ -55,17 +55,10 @@ const AutoResizingTextarea = ({
 import { CanvasComponentNode } from '@/types/editor';
 import { useEditorStore } from '@/store/editorStore';
 import { Button } from '@/components/ui/button';
-import { Copy, Pencil, Trash2, Plus } from 'lucide-react';
+import { Copy, Pencil, Trash2 } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { HoverToolbar } from '../table/HoverToolbar';
-import { DeleteCellDialog, DeleteCellOption } from '../table/DeleteCellDialog';
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from '@/components/ui/context-menu';
 
 interface CanvasComponentProps {
   component: CanvasComponentNode;
@@ -92,10 +85,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   
   // 表格编辑状态（本地数据，UI 状态在 store）
   const [tableEditData, setTableEditData] = useState<any[][]>([]);
-  
-  // 删除单元格对话框状态
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteCellPosition, setDeleteCellPosition] = useState<{ row: number; col: number } | null>(null);
   
   // 表格单元格选择状态（用于拖动选择）
   const [cellSelection, setCellSelection] = useState<{
@@ -315,130 +304,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
   };
 
-  // 增加新行
-  const handleAddRow = () => {
-    const tableComp = component as any;
-    if (!tableComp.tableConfig?.cells) return;
-    
-    const colCount = tableComp.tableConfig.cells[0]?.length || 3;
-    const newRow: any[] = [];
-    for (let i = 0; i < colCount; i++) {
-      newRow.push({
-        id: `cell-${tableEditData.length}-${i}`,
-        content: '',
-      });
-    }
-    
-    const newCells = [...tableComp.tableConfig.cells, newRow];
-    const newEditData = [...tableEditData, new Array(colCount).fill('')];
-    
-    setTableEditData(newEditData);
-    updateComponent(component.id, {
-      tableConfig: {
-        ...tableComp.tableConfig,
-        cells: newCells,
-      },
-    });
-  };
-
-  // 增加新列
-  const handleAddColumn = () => {
-    const tableComp = component as any;
-    if (!tableComp.tableConfig?.cells) return;
-    
-    const newCells = tableComp.tableConfig.cells.map((row: any[], rowIndex: number) => [
-      ...row,
-      {
-        id: `cell-${rowIndex}-${row.length}`,
-        content: '',
-      },
-    ]);
-    
-    const newEditData = tableEditData.map((row: any[]) => [...row, '']);
-    
-    setTableEditData(newEditData);
-    updateComponent(component.id, {
-      tableConfig: {
-        ...tableComp.tableConfig,
-        cells: newCells,
-      },
-    });
-  };
-
-  // 打开删除单元格对话框
-  const handleOpenDeleteDialog = (row: number, col: number, e: React.MouseEvent) => {
-    e.preventDefault();
-    setDeleteCellPosition({ row, col });
-    setDeleteDialogOpen(true);
-  };
-
-  // 确认删除单元格
-  const handleConfirmDeleteCell = (option: DeleteCellOption) => {
-    if (!deleteCellPosition) return;
-    
-    const tableComp = component as any;
-    if (!tableComp.tableConfig?.cells) return;
-    
-    const { row: targetRow, col: targetCol } = deleteCellPosition;
-    let newCells = tableComp.tableConfig.cells.map((row: any[]) => [...row]);
-    let newEditData = tableEditData.map((row: any[]) => [...row]);
-    
-    switch (option) {
-      case 'shift-left':
-        // 右侧单元格左移
-        for (let col = targetCol; col < newCells[targetRow].length - 1; col++) {
-          newCells[targetRow][col] = newCells[targetRow][col + 1];
-          newEditData[targetRow][col] = newEditData[targetRow][col + 1];
-        }
-        newCells[targetRow].pop();
-        newEditData[targetRow].pop();
-        break;
-        
-      case 'shift-up':
-        // 下方单元格上移
-        for (let row = targetRow; row < newCells.length - 1; row++) {
-          newCells[row][targetCol] = newCells[row + 1][targetCol];
-          newEditData[row][targetCol] = newEditData[row + 1][targetCol];
-        }
-        // 如果是最后一列，删除该位置
-        if (newCells[newCells.length - 1].length > targetCol) {
-          newCells[newCells.length - 1][targetCol] = { id: `cell-${newCells.length - 1}-${targetCol}`, content: '' };
-          newEditData[newCells.length - 1][targetCol] = '';
-        }
-        break;
-        
-      case 'delete-row':
-        // 删除整行
-        if (newCells.length > 1) {
-          newCells = newCells.filter((_: any, index: number) => index !== targetRow);
-          newEditData = newEditData.filter((_: any, index: number) => index !== targetRow);
-        }
-        break;
-        
-      case 'delete-column':
-        // 删除整列
-        if (newCells[0]?.length > 1) {
-          newCells = newCells.map((row: any[]) => 
-            row.filter((_, index) => index !== targetCol)
-          );
-          newEditData = newEditData.map((row: any[]) => 
-            row.filter((_, index) => index !== targetCol)
-          );
-        }
-        break;
-    }
-    
-    setTableEditData(newEditData);
-    updateComponent(component.id, {
-      tableConfig: {
-        ...tableComp.tableConfig,
-        cells: newCells,
-      },
-    });
-    
-    setDeleteCellPosition(null);
-  };
-
   // 自动聚焦到编辑框
   useEffect(() => {
     if (isEditing && textareaRef.current) {
@@ -517,331 +382,282 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
 
     return (
-      <ContextMenu>
-        <ContextMenuTrigger asChild>
-          <div 
-            className="relative inline-block"
-            onMouseUp={handleCellMouseUp}
-            onMouseLeave={handleTableMouseLeave}
-          >
-            <div className="flex">
-              <table className="w-full border-collapse">
-                <tbody>
-                  {tableEditData.map((row: any[], rowIndex: number) => {
-                    const isHeader = rowIndex < (tableComp.tableConfig?.headerRows || 0);
-                    const isFooter = rowIndex >= tableEditData.length - (tableComp.tableConfig?.footerRows || 0);
-                    
-                    return (
-                      <tr 
-                        key={rowIndex}
-                        className={isHeader ? 'bg-gray-100 font-semibold' : isFooter ? 'bg-gray-50' : ''}
-                      >
-                      {row.map((cellContent: any, colIndex: number) => {
-                        const cell = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex];
-                        const cellId = cell?.id || `cell-${rowIndex}-${colIndex}`;
-                        
-                        // 检查是否是被合并的单元格（rowSpan 或 colSpan 为 0）
-                        const rowSpan = cell?.rowSpan;
-                        const colSpan = cell?.colSpan;
-                        
-                        // 如果是被合并的单元格，不渲染
-                        if (rowSpan === 0 || colSpan === 0) {
-                          return null;
+      <div 
+        onMouseUp={handleCellMouseUp}
+        onMouseLeave={handleTableMouseLeave}
+      >
+        <table className="w-full border-collapse">
+          <tbody>
+            {tableEditData.map((row: any[], rowIndex: number) => {
+              const isHeader = rowIndex < (tableComp.tableConfig?.headerRows || 0);
+              const isFooter = rowIndex >= tableEditData.length - (tableComp.tableConfig?.footerRows || 0);
+              
+              return (
+                <tr 
+                  key={rowIndex}
+                  className={isHeader ? 'bg-gray-100 font-semibold' : isFooter ? 'bg-gray-50' : ''}
+                >
+                {row.map((cellContent: any, colIndex: number) => {
+                  const cell = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex];
+                  const cellId = cell?.id || `cell-${rowIndex}-${colIndex}`;
+                  
+                  // 检查是否是被合并的单元格（rowSpan 或 colSpan 为 0）
+                  const rowSpan = cell?.rowSpan;
+                  const colSpan = cell?.colSpan;
+                  
+                  // 如果是被合并的单元格，不渲染
+                  if (rowSpan === 0 || colSpan === 0) {
+                    return null;
+                  }
+                  
+                  const isCellInRange = isCellInSelection(rowIndex, colIndex);
+                  const isCellSelected = tableEditing.selectedCells.includes(cellId) || isCellInRange;
+                  const cellBorder = cell?.border;
+                  const borderWidth = cellBorder?.width || tableComp.tableConfig?.borderWidth || 1;
+                  const borderColor = cellBorder?.color || tableComp.tableConfig?.borderColor || '#000000';
+                  
+                  // 构建边框样式
+                  const borderStyles: any = {};
+                  if (cellBorder?.top) {
+                    borderStyles.borderTop = `${borderWidth}px solid ${borderColor}`;
+                  }
+                  if (cellBorder?.right) {
+                    borderStyles.borderRight = `${borderWidth}px solid ${borderColor}`;
+                  }
+                  if (cellBorder?.bottom) {
+                    borderStyles.borderBottom = `${borderWidth}px solid ${borderColor}`;
+                  }
+                  if (cellBorder?.left) {
+                    borderStyles.borderLeft = `${borderWidth}px solid ${borderColor}`;
+                  }
+                  
+                  // 如果没有设置单元格边框，使用默认边框
+                  const hasCellBorder = cellBorder?.top || cellBorder?.right || cellBorder?.bottom || cellBorder?.left;
+                  
+                  return (
+                    <td
+                      key={`${rowIndex}-${colIndex}`}
+                      rowSpan={rowSpan && rowSpan > 1 ? rowSpan : undefined}
+                      colSpan={colSpan && colSpan > 1 ? colSpan : undefined}
+                      className={`p-1 text-sm cursor-pointer transition-colors select-none ${!hasCellBorder ? 'border' : ''}`}
+                      style={{
+                        backgroundColor: (() => {
+                          const cellBgColor = cell?.backgroundColor;
+                          const cellTextBgColor = cell?.style?.backgroundColor;
+                          
+                          if (isCellSelected) {
+                            // 如果有单元格背景色，使用半透明蓝色叠加
+                            if (cellBgColor || cellTextBgColor) {
+                              return 'rgba(59, 130, 246, 0.2)';
+                            }
+                            return '#dbeafe';
+                          }
+                          
+                          // 优先使用单元格背景色，其次是文本背景色
+                          return cellBgColor || cellTextBgColor || 'transparent';
+                        })(),
+                        userSelect: 'none',
+                        verticalAlign: cell?.verticalAlign || 'middle',
+                        ...borderStyles,
+                      }}
+                      onMouseDown={(e) => handleCellMouseDown(rowIndex, colIndex, e)}
+                      onMouseEnter={(e) => handleCellMouseMove(rowIndex, colIndex, e)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isCurrentTableEditing && !cellSelection.isSelecting) {
+                          // 只有在没有拖动选择时才处理单击
+                          setTableEditing({
+                            selectedCells: [cellId],
+                          });
+                          // 同时设置单元格编辑状态
+                          setTableCellEditing({
+                            isEditing: true,
+                            tableId: component.id,
+                            cellId,
+                            rowIndex,
+                            colIndex,
+                          });
                         }
-                        
-                        const isCellInRange = isCellInSelection(rowIndex, colIndex);
-                        const isCellSelected = tableEditing.selectedCells.includes(cellId) || isCellInRange;
-                        const cellBorder = cell?.border;
-                        const borderWidth = cellBorder?.width || tableComp.tableConfig?.borderWidth || 1;
-                        const borderColor = cellBorder?.color || tableComp.tableConfig?.borderColor || '#000000';
-                        
-                        // 构建边框样式
-                        const borderStyles: any = {};
-                        if (cellBorder?.top) {
-                          borderStyles.borderTop = `${borderWidth}px solid ${borderColor}`;
-                        }
-                        if (cellBorder?.right) {
-                          borderStyles.borderRight = `${borderWidth}px solid ${borderColor}`;
-                        }
-                        if (cellBorder?.bottom) {
-                          borderStyles.borderBottom = `${borderWidth}px solid ${borderColor}`;
-                        }
-                        if (cellBorder?.left) {
-                          borderStyles.borderLeft = `${borderWidth}px solid ${borderColor}`;
-                        }
-                        
-                        // 如果没有设置单元格边框，使用默认边框
-                        const hasCellBorder = cellBorder?.top || cellBorder?.right || cellBorder?.bottom || cellBorder?.left;
+                      }}
+                    >
+                    {(() => {
+                      const cellStyle = tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.style || {};
+                      
+                      // 构建单元格文本样式
+                      const textStyles: React.CSSProperties = {
+                        fontSize: `${cellStyle.fontSize || styleConfig.fontSize}px`,
+                        fontWeight: cellStyle.bold ? 'bold' : 'normal',
+                        fontStyle: cellStyle.italic ? 'italic' : 'normal',
+                        color: cellStyle.color || '#000000',
+                        backgroundColor: cellStyle.backgroundColor || 'transparent',
+                        textAlign: cellStyle.align || 'left',
+                        lineHeight: cellStyle.lineHeight || styleConfig.lineHeight,
+                        textDecoration: cellStyle.underline ? 'underline' : cellStyle.textDecoration || 'none',
+                        textTransform: cellStyle.textTransform || 'none',
+                        paddingBottom: cellStyle.paragraphSpacing ? `${cellStyle.paragraphSpacing}px` : 0,
+                        width: '100%',
+                        minHeight: '20px',
+                      };
+
+                      // 编辑模式 - 应用样式到 textarea
+                      if (isCurrentTableEditing) {
+                        // 为 textarea 构建样式（只应用影响文本显示的样式）
+                        const textareaStyles: React.CSSProperties = {
+                          fontSize: textStyles.fontSize,
+                          fontWeight: textStyles.fontWeight,
+                          fontStyle: textStyles.fontStyle,
+                          color: textStyles.color,
+                          textAlign: textStyles.textAlign,
+                          lineHeight: textStyles.lineHeight,
+                          textDecoration: textStyles.textDecoration,
+                          textTransform: textStyles.textTransform,
+                        };
                         
                         return (
-                          <ContextMenuTrigger key={`${rowIndex}-${colIndex}`} asChild>
-                            <td
-                              rowSpan={rowSpan && rowSpan > 1 ? rowSpan : undefined}
-                              colSpan={colSpan && colSpan > 1 ? colSpan : undefined}
-                              className={`p-1 text-sm cursor-pointer transition-colors select-none ${!hasCellBorder ? 'border' : ''}`}
-                              style={{
-                                backgroundColor: (() => {
-                                  const cellBgColor = cell?.backgroundColor;
-                                  const cellTextBgColor = cell?.style?.backgroundColor;
-                                  
-                                  if (isCellSelected) {
-                                    // 如果有单元格背景色，使用半透明蓝色叠加
-                                    if (cellBgColor || cellTextBgColor) {
-                                      return 'rgba(59, 130, 246, 0.2)';
-                                    }
-                                    return '#dbeafe';
-                                  }
-                                  
-                                  // 优先使用单元格背景色，其次是文本背景色
-                                  return cellBgColor || cellTextBgColor || 'transparent';
-                                })(),
-                                userSelect: 'none',
-                                verticalAlign: cell?.verticalAlign || 'middle',
-                                ...borderStyles,
-                              }}
-                              onMouseDown={(e) => handleCellMouseDown(rowIndex, colIndex, e)}
-                              onMouseEnter={(e) => handleCellMouseMove(rowIndex, colIndex, e)}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (isCurrentTableEditing && !cellSelection.isSelecting) {
-                                  // 只有在没有拖动选择时才处理单击
-                                  setTableEditing({
-                                    selectedCells: [cellId],
-                                  });
-                                  // 同时设置单元格编辑状态
-                                  setTableCellEditing({
-                                    isEditing: true,
-                                    tableId: component.id,
-                                    cellId,
-                                    rowIndex,
-                                    colIndex,
-                                  });
+                          <div className="w-full h-full flex items-stretch" style={textStyles}>
+                            <AutoResizingTextarea
+                              value={cellContent || ''}
+                              onChange={(value) => handleTableCellChange(rowIndex, colIndex, value)}
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.stopPropagation();
                                 }
                               }}
-                              onContextMenu={(e) => {
-                                if (isCurrentTableEditing) {
-                                  handleOpenDeleteDialog(rowIndex, colIndex, e);
-                                }
-                              }}
-                            >
-                              {(() => {
-                                const cellStyle = cell?.style || {};
-                                const cellContent = tableEditData[rowIndex]?.[colIndex] || '';
-                                
-                                // 构建文本样式
-                                const textStyles: React.CSSProperties = {
-                                  fontSize: `${cellStyle.fontSize || styleConfig.fontSize}px`,
-                                  fontWeight: cellStyle.bold ? 'bold' : 'normal',
-                                  fontStyle: cellStyle.italic ? 'italic' : 'normal',
-                                  color: cellStyle.color || '#000000',
-                                  textAlign: cellStyle.align || 'left',
-                                  lineHeight: cellStyle.lineHeight || styleConfig.lineHeight,
-                                  textDecoration: cellStyle.underline ? 'underline' : cellStyle.textDecoration || 'none',
-                                  textTransform: cellStyle.textTransform || 'none',
-                                };
-
-                                // 编辑模式 - 应用样式到 textarea
-                                if (isCurrentTableEditing) {
-                                  // 为 textarea 构建样式（只应用影响文本显示的样式）
-                                  const textareaStyles: React.CSSProperties = {
-                                    fontSize: textStyles.fontSize,
-                                    fontWeight: textStyles.fontWeight,
-                                    fontStyle: textStyles.fontStyle,
-                                    color: textStyles.color,
-                                    textAlign: textStyles.textAlign,
-                                    lineHeight: textStyles.lineHeight,
-                                    textDecoration: textStyles.textDecoration,
-                                    textTransform: textStyles.textTransform,
-                                  };
-                                  
-                                  return (
-                                    <div className="w-full h-full flex items-stretch" style={textStyles}>
-                                      <AutoResizingTextarea
-                                        value={cellContent || ''}
-                                        onChange={(value) => handleTableCellChange(rowIndex, colIndex, value)}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter' && !e.shiftKey) {
-                                            e.stopPropagation();
-                                          }
-                                        }}
-                                        style={textareaStyles}
-                                      />
-                                    </div>
-                                  );
-                                }
-
-                                // 预览模式 - 渲染带样式的内容
-                                // 处理标题、列表等特殊样式
-                                const renderContentWithStyle = () => {
-                                  // 基础文本样式
-                                  const baseTextStyle: React.CSSProperties = {
-                                    fontSize: `${cellStyle.fontSize || styleConfig.fontSize}px`,
-                                    fontWeight: cellStyle.bold ? 'bold' : 'normal',
-                                    fontStyle: cellStyle.italic ? 'italic' : 'normal',
-                                    color: cellStyle.color || '#000000',
-                                    textAlign: cellStyle.align || 'left',
-                                    lineHeight: cellStyle.lineHeight || styleConfig.lineHeight,
-                                    textDecoration: cellStyle.underline ? 'underline' : cellStyle.textDecoration || 'none',
-                                    textTransform: cellStyle.textTransform || 'none',
-                                    margin: 0,
-                                    padding: 0,
-                                    display: 'block',
-                                    width: '100%',
-                                  };
-
-                                  // 标题样式
-                                  if (cellStyle.headingLevel === 1) {
-                                    return (
-                                      <h1 style={{ 
-                                        ...baseTextStyle,
-                                        fontSize: cellStyle.fontSize ? `${cellStyle.fontSize}px` : '24px',
-                                        fontWeight: 'bold',
-                                      }}>
-                                        {cellContent || ''}
-                                      </h1>
-                                    );
-                                  }
-                                  if (cellStyle.headingLevel === 2) {
-                                    return (
-                                      <h2 style={{ 
-                                        ...baseTextStyle,
-                                        fontSize: cellStyle.fontSize ? `${cellStyle.fontSize}px` : '18px',
-                                        fontWeight: 'bold',
-                                      }}>
-                                        {cellContent || ''}
-                                      </h2>
-                                    );
-                                  }
-                                  // 列表样式
-                                  if (cellStyle.listType === 'unordered' && !cellStyle.headingLevel) {
-                                    return (
-                                      <ul style={{ 
-                                        marginLeft: '1.5rem', 
-                                        paddingLeft: 0,
-                                        textAlign: baseTextStyle.textAlign,
-                                        lineHeight: baseTextStyle.lineHeight,
-                                      }}>
-                                        <li style={{
-                                          fontSize: baseTextStyle.fontSize,
-                                          fontWeight: baseTextStyle.fontWeight,
-                                          fontStyle: baseTextStyle.fontStyle,
-                                          color: baseTextStyle.color,
-                                          textDecoration: baseTextStyle.textDecoration,
-                                        }}>
-                                          {cellContent || ''}
-                                        </li>
-                                      </ul>
-                                    );
-                                  }
-                                  if (cellStyle.listType === 'ordered' && !cellStyle.headingLevel) {
-                                    return (
-                                      <ol style={{ 
-                                        marginLeft: '1.5rem', 
-                                        paddingLeft: 0,
-                                        textAlign: baseTextStyle.textAlign,
-                                        lineHeight: baseTextStyle.lineHeight,
-                                      }}>
-                                        <li style={{
-                                          fontSize: baseTextStyle.fontSize,
-                                          fontWeight: baseTextStyle.fontWeight,
-                                          fontStyle: baseTextStyle.fontStyle,
-                                          color: baseTextStyle.color,
-                                          textDecoration: baseTextStyle.textDecoration,
-                                        }}>
-                                          {cellContent || ''}
-                                        </li>
-                                      </ol>
-                                    );
-                                  }
-                                  // 链接样式
-                                  if (cellStyle.linkUrl) {
-                                    return (
-                                      <a 
-                                        href={cellStyle.linkUrl} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        style={{ 
-                                          ...baseTextStyle,
-                                          color: '#3b82f6', 
-                                          textDecoration: 'underline',
-                                          display: 'inline',
-                                        }}
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        {cellContent || ''}
-                                      </a>
-                                    );
-                                  }
-                                  // 默认文本样式
-                                  return (
-                                    <span style={baseTextStyle}>
-                                      {cellContent || ''}
-                                    </span>
-                                  );
-                                };
-
-                                return (
-                                  <div 
-                                    className="whitespace-pre-wrap" 
-                                    style={textStyles}
-                                  >
-                                    {renderContentWithStyle()}
-                                  </div>
-                                );
-                              })()}
-                            </td>
-                          </ContextMenuTrigger>
+                              style={textareaStyles}
+                            />
+                          </div>
                         );
-                      })}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              
-              {/* 右侧添加列按钮 */}
-              {isCurrentTableEditing && (
-                <div className="flex flex-col">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleAddColumn(); }}
-                    className="w-8 h-8 bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors mt-0"
-                    style={{ marginTop: '2px' }}
-                  >
-                    <Plus className="w-4 h-4 text-gray-600" />
-                  </button>
-                </div>
-              )}
-            </div>
-            
-            {/* 底部添加行按钮 */}
-            {isCurrentTableEditing && (
-              <div className="flex">
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleAddRow(); }}
-                  className="w-full h-8 bg-white border border-t-0 border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                >
-                  <Plus className="w-4 h-4 text-gray-600" />
-                </button>
-              </div>
-            )}
-          </div>
-        </ContextMenuTrigger>
-        
-        <ContextMenuContent>
-          {isCurrentTableEditing && deleteCellPosition && (
-            <ContextMenuItem
-              onClick={(e) => {
-                e.preventDefault();
-                setDeleteDialogOpen(true);
-              }}
-              className="text-red-600"
-            >
-              删除单元格
-            </ContextMenuItem>
-          )}
-        </ContextMenuContent>
-      </ContextMenu>
+                      }
+
+                      // 预览模式 - 渲染带样式的内容
+                      // 处理标题、列表等特殊样式
+                      const renderContentWithStyle = () => {
+                        // 基础文本样式
+                        const baseTextStyle: React.CSSProperties = {
+                          fontSize: `${cellStyle.fontSize || styleConfig.fontSize}px`,
+                          fontWeight: cellStyle.bold ? 'bold' : 'normal',
+                          fontStyle: cellStyle.italic ? 'italic' : 'normal',
+                          color: cellStyle.color || '#000000',
+                          textAlign: cellStyle.align || 'left',
+                          lineHeight: cellStyle.lineHeight || styleConfig.lineHeight,
+                          textDecoration: cellStyle.underline ? 'underline' : cellStyle.textDecoration || 'none',
+                          textTransform: cellStyle.textTransform || 'none',
+                          margin: 0,
+                          padding: 0,
+                          display: 'block',
+                          width: '100%',
+                        };
+
+                        // 标题样式
+                        if (cellStyle.headingLevel === 1) {
+                          return (
+                            <h1 style={{ 
+                              ...baseTextStyle,
+                              fontSize: cellStyle.fontSize ? `${cellStyle.fontSize}px` : '24px',
+                              fontWeight: 'bold',
+                            }}>
+                              {cellContent || ''}
+                            </h1>
+                          );
+                        }
+                        if (cellStyle.headingLevel === 2) {
+                          return (
+                            <h2 style={{ 
+                              ...baseTextStyle,
+                              fontSize: cellStyle.fontSize ? `${cellStyle.fontSize}px` : '18px',
+                              fontWeight: 'bold',
+                            }}>
+                              {cellContent || ''}
+                            </h2>
+                          );
+                        }
+                        // 列表样式
+                        if (cellStyle.listType === 'unordered' && !cellStyle.headingLevel) {
+                          return (
+                            <ul style={{ 
+                              marginLeft: '1.5rem', 
+                              paddingLeft: 0,
+                              textAlign: baseTextStyle.textAlign,
+                              lineHeight: baseTextStyle.lineHeight,
+                            }}>
+                              <li style={{
+                                fontSize: baseTextStyle.fontSize,
+                                fontWeight: baseTextStyle.fontWeight,
+                                fontStyle: baseTextStyle.fontStyle,
+                                color: baseTextStyle.color,
+                                textDecoration: baseTextStyle.textDecoration,
+                              }}>
+                                {cellContent || ''}
+                              </li>
+                            </ul>
+                          );
+                        }
+                        if (cellStyle.listType === 'ordered' && !cellStyle.headingLevel) {
+                          return (
+                            <ol style={{ 
+                              marginLeft: '1.5rem', 
+                              paddingLeft: 0,
+                              textAlign: baseTextStyle.textAlign,
+                              lineHeight: baseTextStyle.lineHeight,
+                            }}>
+                              <li style={{
+                                fontSize: baseTextStyle.fontSize,
+                                fontWeight: baseTextStyle.fontWeight,
+                                fontStyle: baseTextStyle.fontStyle,
+                                color: baseTextStyle.color,
+                                textDecoration: baseTextStyle.textDecoration,
+                              }}>
+                                {cellContent || ''}
+                              </li>
+                            </ol>
+                          );
+                        }
+                        // 链接样式
+                        if (cellStyle.linkUrl) {
+                          return (
+                            <a 
+                              href={cellStyle.linkUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              style={{ 
+                                ...baseTextStyle,
+                                color: '#3b82f6', 
+                                textDecoration: 'underline',
+                                display: 'inline',
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {cellContent || ''}
+                            </a>
+                          );
+                        }
+                        // 默认文本样式
+                        return (
+                          <span style={baseTextStyle}>
+                            {cellContent || ''}
+                          </span>
+                        );
+                      };
+
+                      return (
+                        <div 
+                          className="whitespace-pre-wrap" 
+                          style={textStyles}
+                        >
+                          {renderContentWithStyle()}
+                        </div>
+                      );
+                    })()}
+                  </td>
+                );
+              })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      </div>
     );
   };
 
@@ -1036,13 +852,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   return (
     <div className="w-full">
       {renderContent()}
-      
-      {/* 删除单元格对话框 */}
-      <DeleteCellDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        onConfirm={handleConfirmDeleteCell}
-      />
     </div>
   );
 }
