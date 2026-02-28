@@ -517,6 +517,107 @@ export function EditorPage({ onExit }: EditorPageProps) {
     }
   };
 
+  // 删除选中的行
+  const handleDeleteRows = useCallback(() => {
+    if (!currentEditingTable) return;
+    
+    const tableConfig = currentEditingTable.tableConfig;
+    const cells = tableConfig?.cells || [];
+    
+    // 获取所有选中单元格的行索引
+    const selectedRowIndices = new Set<number>();
+    
+    cells.forEach((row: any[], rowIndex: number) => {
+      row.forEach((cell: any, colIndex: number) => {
+        const cellId = cell?.id || `cell-${rowIndex}-${colIndex}`;
+        if (tableEditing.selectedCells.includes(cellId)) {
+          selectedRowIndices.add(rowIndex);
+        }
+      });
+    });
+    
+    // 如果没有选中的单元格，使用当前正在编辑的单元格
+    if (selectedRowIndices.size === 0 && tableCellEditing.rowIndex !== null) {
+      selectedRowIndices.add(tableCellEditing.rowIndex);
+    }
+    
+    // 如果没有选中的行，不执行删除
+    if (selectedRowIndices.size === 0) return;
+    
+    // 至少保留一行
+    if (selectedRowIndices.size >= cells.length) {
+      alert('至少需要保留一行');
+      return;
+    }
+    
+    // 创建新的单元格数据，过滤掉选中的行
+    const newCells = cells.filter((_: any[], rowIndex: number) => !selectedRowIndices.has(rowIndex));
+    
+    updateComponent(currentEditingTable.id, {
+      tableConfig: {
+        ...tableConfig,
+        cells: newCells,
+      },
+    });
+    
+    // 清除选中状态
+    setTableEditing({
+      selectedCells: [],
+    });
+  }, [currentEditingTable, tableEditing.selectedCells, tableCellEditing.rowIndex, updateComponent, setTableEditing]);
+
+  // 删除选中的列
+  const handleDeleteColumns = useCallback(() => {
+    if (!currentEditingTable) return;
+    
+    const tableConfig = currentEditingTable.tableConfig;
+    const cells = tableConfig?.cells || [];
+    
+    // 获取所有选中单元格的列索引
+    const selectedColIndices = new Set<number>();
+    
+    cells.forEach((row: any[], rowIndex: number) => {
+      row.forEach((cell: any, colIndex: number) => {
+        const cellId = cell?.id || `cell-${rowIndex}-${colIndex}`;
+        if (tableEditing.selectedCells.includes(cellId)) {
+          selectedColIndices.add(colIndex);
+        }
+      });
+    });
+    
+    // 如果没有选中的单元格，使用当前正在编辑的单元格
+    if (selectedColIndices.size === 0 && tableCellEditing.colIndex !== null) {
+      selectedColIndices.add(tableCellEditing.colIndex);
+    }
+    
+    // 如果没有选中的列，不执行删除
+    if (selectedColIndices.size === 0) return;
+    
+    // 至少保留一列
+    const firstRowLength = cells[0]?.length || 0;
+    if (selectedColIndices.size >= firstRowLength) {
+      alert('至少需要保留一列');
+      return;
+    }
+    
+    // 创建新的单元格数据，过滤掉选中的列
+    const newCells = cells.map((row: any[]) => 
+      row.filter((_: any, colIndex: number) => !selectedColIndices.has(colIndex))
+    );
+    
+    updateComponent(currentEditingTable.id, {
+      tableConfig: {
+        ...tableConfig,
+        cells: newCells,
+      },
+    });
+    
+    // 清除选中状态
+    setTableEditing({
+      selectedCells: [],
+    });
+  }, [currentEditingTable, tableEditing.selectedCells, tableCellEditing.colIndex, updateComponent, setTableEditing]);
+
   // 完成表格编辑
   const handleFinishEdit = useCallback(() => {
     setTableEditing({
@@ -866,6 +967,8 @@ export function EditorPage({ onExit }: EditorPageProps) {
                     handleFinishEdit();
                     handleHeaderFooterDialogClose();
                   }}
+                  onDeleteRows={handleDeleteRows}
+                  onDeleteColumns={handleDeleteColumns}
                 />
               </div>
             )}
