@@ -1,51 +1,46 @@
-'use client';
-
-import React, { useCallback } from 'react';
-import {
-  Table,
-  Grid,
-  Square,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  Palette,
-  Link,
-  QrCode,
-  Barcode,
-  Image as ImageIcon,
-  FileText,
-  Settings,
-  Merge
+import React from 'react';
+import { 
+  CheckSquare, 
+  TableCells, 
+  Table, 
+  AlignLeft, 
+  AlignCenter, 
+  AlignRight, 
+  Palette, 
+  Link, 
+  Image as ImageIcon, 
+  FileText, 
+  Paperclip, 
+  Settings, 
+  QrCode, 
+  Barcode, 
+  ChevronLeft,
+  Check as CheckIcon,
+  Grid
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface AdvancedToolbarProps {
-  onMergeCells?: () => void;
-  selectedCellCount?: number;
-  onHeaderFooterChange?: (headerRows: number, footerRows: number) => void;
-  onBorderChange?: (hasBorder: boolean) => void;
-  onAlignmentChange?: (alignment: 'left' | 'center' | 'right') => void;
-  onColorChange?: (color: string) => void;
-  onInsertLink?: () => void;
-  onInsertQRCode?: () => void;
-  onInsertBarcode?: () => void;
-  onInsertImage?: () => void;
-  onInsertArticle?: () => void;
-  onInsertAttachment?: () => void;
-  onAdvancedConfig?: () => void;
-  onFinishEdit?: () => void;
+  onMergeCells: () => void;
+  selectedCellCount: number;
+  onHeaderFooterChange: (header: boolean, footer: boolean) => void;
+  onBorderChange: (borderType: string) => void;
+  onAlignmentChange: (alignment: 'left' | 'center' | 'right') => void;
+  onColorChange: (colorType: 'text' | 'fill', color: string) => void;
+  onInsertLink: () => void;
+  onInsertQRCode: () => void;
+  onInsertBarcode: () => void;
+  onInsertImage: () => void;
+  onInsertArticle: () => void;
+  onInsertAttachment: () => void;
+  onAdvancedConfig: () => void;
+  onFinishEdit: () => void;
 }
 
 export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
   onMergeCells,
-  selectedCellCount = 0,
+  selectedCellCount,
   onHeaderFooterChange,
   onBorderChange,
   onAlignmentChange,
@@ -57,218 +52,338 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
   onInsertArticle,
   onInsertAttachment,
   onAdvancedConfig,
-  onFinishEdit,
+  onFinishEdit
 }) => {
-  const handleHeaderFooterClick = useCallback(() => {
-    // 默认设置 1 行表头，0 行表尾
-    onHeaderFooterChange?.(1, 0);
-  }, [onHeaderFooterChange]);
-
-  const handleMergeClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    onMergeCells?.();
-  }, [onMergeCells]);
-
   return (
-    <div className="w-full bg-white border-b rounded-t-lg px-2 py-1 shadow-sm">
-      <div className="flex items-center gap-0.5 flex-wrap">
-        {/* 表头/表尾 */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 gap-1 px-2">
-              <Table className="w-3.5 h-3.5" />
-              <span className="text-xs">表头/表尾</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => onHeaderFooterChange?.(1, 0)}>
-              1 行表头
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onHeaderFooterChange?.(2, 0)}>
-              2 行表头
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onHeaderFooterChange?.(0, 1)}>
-              1 行表尾
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onHeaderFooterChange?.(0, 0)}>
-              无表头表尾
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <Separator orientation="vertical" className="h-6" />
-
-        {/* 边框 */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 gap-1 px-2"
-          onClick={() => onBorderChange?.(true)}
+    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-1.5">
+      <div className="flex items-center gap-0.5">
+        {/* 第一组：返回/完成 */}
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={onFinishEdit}
+          className="h-8 w-8 text-gray-500 hover:bg-gray-100 mr-1"
+          title="完成编辑"
         >
-          <Square className="w-3.5 h-3.5" />
-          <span className="text-xs">边框</span>
+          <ChevronLeft className="w-4 h-4" />
         </Button>
-
-        <Separator orientation="vertical" className="h-5" />
-
-        {/* 对齐 */}
-        <div className="flex items-center gap-0.5">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => onAlignmentChange?.('left')}
-          >
-            <AlignLeft className="w-3.5 h-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => onAlignmentChange?.('center')}
-          >
-            <AlignCenter className="w-3.5 h-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => onAlignmentChange?.('right')}
-          >
-            <AlignRight className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-
-        <Separator orientation="vertical" className="h-5" />
-
-        {/* 颜色 */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 gap-1 px-2">
-              <Palette className="w-3.5 h-3.5" />
-              <span className="text-xs">颜色</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <div className="grid grid-cols-5 gap-1 p-2">
-              {['#ffffff', '#f3f4f6', '#fef3c7', '#fce7f3', '#dbeafe', '#d1fae5', '#fee2e2', '#e0e7ff', '#fef9c3', '#dcfce7'].map((color) => (
-                <DropdownMenuItem key={color} onClick={() => onColorChange?.(color)}>
-                  <div 
-                    className="w-6 h-6 rounded border"
-                    style={{ backgroundColor: color }}
-                  />
-                </DropdownMenuItem>
-              ))}
-            </div>
-            <DropdownMenuItem onClick={() => onColorChange?.('transparent')}>
-              透明
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <Separator orientation="vertical" className="h-6" />
-
-        {/* 插入功能 */}
-        <div className="flex items-center gap-0.5">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={onInsertLink}
-            title="插入链接"
-          >
-            <Link className="w-3.5 h-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={onInsertQRCode}
-            title="插入二维码"
-          >
-            <QrCode className="w-3.5 h-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={onInsertBarcode}
-            title="插入条形码"
-          >
-            <Barcode className="w-3.5 h-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={onInsertAttachment}
-            title="插入附件列表"
-          >
-            <FileText className="w-3.5 h-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={onInsertArticle}
-            title="插入文章"
-          >
-            <FileText className="w-3.5 h-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={onInsertImage}
-            title="插入图片"
-          >
-            <ImageIcon className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-
-        <Separator orientation="vertical" className="h-5" />
-
-        {/* 循环字段高级配置 */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 gap-1 px-2"
-          onClick={onAdvancedConfig}
+        
+        <Button 
+          variant="default" 
+          size="icon" 
+          onClick={onFinishEdit}
+          className="h-8 w-8 bg-blue-500 hover:bg-blue-600"
+          title="保存更改"
         >
-          <Settings className="w-3.5 h-3.5" />
-          <span className="text-xs">循环字段高级配置</span>
+          <CheckIcon className="w-4 h-4" />
         </Button>
-
-        {/* 合并单元格 - 条件显示 */}
-        {selectedCellCount > 1 && (
-          <>
-            <Separator orientation="vertical" className="h-5" />
-            <Button
-              variant="default"
-              size="sm"
-              className="h-7 gap-1 px-2 bg-blue-500 hover:bg-blue-600"
-              onClick={handleMergeClick}
-            >
-              <Merge className="w-3.5 h-3.5" />
-              <span className="text-xs">合并单元格</span>
-            </Button>
-          </>
-        )}
-
-        <Separator orientation="vertical" className="h-5" />
-
-        {/* 完成编辑按钮 */}
-        <Button
-          variant="default"
-          size="sm"
-          className="h-7 gap-1 px-2 bg-green-500 hover:bg-green-600"
-          onClick={(e) => {
-            e.stopPropagation();
-            onFinishEdit?.();
-          }}
-        >
-          <span className="text-xs">完成编辑</span>
-        </Button>
+        
+        <div className="w-px h-5 bg-gray-200 mx-1" />
+        
+        {/* 第二组：合并单元格 */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={onMergeCells}
+                disabled={selectedCellCount < 2}
+                className="h-8 w-8 disabled:opacity-50"
+                title="合并单元格"
+              >
+                <CheckSquare className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p className="text-xs">合并单元格</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <div className="w-px h-5 bg-gray-200 mx-1" />
+        
+        {/* 第三组：表格 */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => onHeaderFooterChange(true, false)}
+                className="h-8 w-8"
+                title="表头"
+              >
+                <TableCells className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p className="text-xs">表头</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => onHeaderFooterChange(false, true)}
+                className="h-8 w-8"
+                title="表尾"
+              >
+                <Table className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p className="text-xs">表尾</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <div className="w-px h-5 bg-gray-200 mx-1" />
+        
+        {/* 第四组：边框 */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => onBorderChange('grid')}
+                className="h-8 w-8"
+                title="所有边框"
+              >
+                <Grid className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p className="text-xs">所有边框</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <div className="w-px h-5 bg-gray-200 mx-1" />
+        
+        {/* 第五组：对齐 */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => onAlignmentChange('left')}
+                className="h-8 w-8"
+                title="左对齐"
+              >
+                <AlignLeft className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p className="text-xs">左对齐</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => onAlignmentChange('center')}
+                className="h-8 w-8"
+                title="居中对齐"
+              >
+                <AlignCenter className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p className="text-xs">居中对齐</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => onAlignmentChange('right')}
+                className="h-8 w-8"
+                title="右对齐"
+              >
+                <AlignRight className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p className="text-xs">右对齐</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <div className="w-px h-5 bg-gray-200 mx-1" />
+        
+        {/* 第六组：颜色 */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => onColorChange('text', '#000000')}
+                className="h-8 w-8"
+                title="文字颜色"
+              >
+                <Palette className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p className="text-xs">文字颜色</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <div className="w-px h-5 bg-gray-200 mx-1" />
+        
+        {/* 第七组：插入 */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={onInsertLink}
+                className="h-8 w-8"
+                title="插入链接"
+              >
+                <Link className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p className="text-xs">插入链接</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={onInsertImage}
+                className="h-8 w-8"
+                title="插入图片"
+              >
+                <ImageIcon className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p className="text-xs">插入图片</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={onInsertArticle}
+                className="h-8 w-8"
+                title="插入文章"
+              >
+                <FileText className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p className="text-xs">插入文章</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={onInsertAttachment}
+                className="h-8 w-8"
+                title="插入附件"
+              >
+                <Paperclip className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p className="text-xs">插入附件</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={onInsertQRCode}
+                className="h-8 w-8"
+                title="插入二维码"
+              >
+                <QrCode className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p className="text-xs">插入二维码</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={onInsertBarcode}
+                className="h-8 w-8"
+                title="插入条形码"
+              >
+                <Barcode className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p className="text-xs">插入条形码</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <div className="w-px h-5 bg-gray-200 mx-1" />
+        
+        {/* 第八组：高级设置 */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={onAdvancedConfig}
+                className="h-8 w-8"
+                title="高级设置"
+              >
+                <Settings className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p className="text-xs">高级设置</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
     </div>
   );

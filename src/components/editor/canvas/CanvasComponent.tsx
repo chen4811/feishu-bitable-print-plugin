@@ -505,11 +505,12 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       case 'table':
         const tableComp = component as any;
         
-        return (
-          <div className={`w-full relative ${!isTableEditing ? 'group' : ''}`} onDoubleClick={handleDoubleClickTable}>
-            {/* 编辑状态下，高级工具栏悬浮在表格上方 */}
-            {isTableEditing && (
-              <div className="absolute -top-12 left-0 right-0 z-20">
+        // 编辑状态：工具栏在顶部，表格有顶部padding
+        if (isTableEditing) {
+          return (
+            <div className="w-full" onDoubleClick={handleDoubleClickTable}>
+              {/* 编辑状态下，高级工具栏在顶部 */}
+              <div className="mb-2">
                 <AdvancedToolbar
                   onMergeCells={handleMergeCells}
                   selectedCellCount={selectedCells.length}
@@ -527,19 +528,23 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   onFinishEdit={handleEditTable}
                 />
               </div>
-            )}
-            
-            {/* 非编辑状态下，显示悬浮工具栏 */}
-            {!isTableEditing && (
-              <div className="absolute -top-10 left-0 right-0 z-10">
-                <HoverToolbar
-                  onEdit={handleEditTable}
-                  onDelete={handleDeleteComponent}
-                  onCopy={handleCopyComponent}
-                  isSelected={isSelected}
-                />
-              </div>
-            )}
+              
+              {/* 表格内容 */}
+              {renderTableContent(tableComp)}
+            </div>
+          );
+        }
+        
+        // 非编辑状态：工具栏在右上角悬浮
+        return (
+          <div className="w-full relative group" onDoubleClick={handleDoubleClickTable}>
+            {/* 非编辑状态下，悬浮工具栏在右上角 */}
+            <HoverToolbar
+              onEdit={handleEditTable}
+              onDelete={handleDeleteComponent}
+              onCopy={handleCopyComponent}
+              isSelected={isSelected}
+            />
             
             {/* 表格内容 */}
             {renderTableContent(tableComp)}
