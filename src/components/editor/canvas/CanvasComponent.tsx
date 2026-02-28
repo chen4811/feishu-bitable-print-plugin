@@ -17,6 +17,9 @@ const AutoResizingTextarea = ({
   style?: React.CSSProperties;
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const componentId = useRef(`textarea-${Math.random().toString(36).substr(2, 9)}`);
+
+  console.log(`[AutoResizingTextarea] 组件初始化，ID: ${componentId.current}`);
 
   // 自动调整高度
   const adjustHeight = useCallback(() => {
@@ -28,14 +31,27 @@ const AutoResizingTextarea = ({
 
   // 处理点击事件，确保阻止冒泡
   const handleClick = useCallback((e: React.MouseEvent) => {
+    console.log(`[AutoResizingTextarea] onClick 触发，阻止冒泡`, { event: e.type });
     e.stopPropagation();
     onClick(e);
   }, [onClick]);
 
   // 处理键盘事件 - 先阻止冒泡，再调用外部处理
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    console.log(`[AutoResizingTextarea] onKeyDown 触发`, { 
+      key: e.key, 
+      shiftKey: e.shiftKey,
+      ctrlKey: e.ctrlKey,
+      altKey: e.altKey,
+      eventPhase: e.eventPhase,
+      bubbles: e.bubbles,
+      cancelable: e.cancelable,
+      defaultPrevented: e.defaultPrevented,
+    });
+    
     // 【关键】先阻止冒泡，构建事件防火墙，防止任何事件逃逸到父组件
     e.stopPropagation();
+    console.log(`[AutoResizingTextarea] 已调用 stopPropagation()`);
     
     // 再调用外部传入的 onKeyDown（它会处理单独 Enter 的默认行为阻止）
     onKeyDown(e);
@@ -45,11 +61,13 @@ const AutoResizingTextarea = ({
 
   // 处理 KeyUp 事件 - 阻止冒泡
   const handleKeyUp = useCallback((e: React.KeyboardEvent) => {
+    console.log(`[AutoResizingTextarea] onKeyUp 触发，阻止冒泡`, { key: e.key });
     e.stopPropagation();
   }, []);
 
   // 处理 KeyPress 事件 - 阻止冒泡
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
+    console.log(`[AutoResizingTextarea] onKeyPress 触发，阻止冒泡`, { key: e.key });
     e.stopPropagation();
   }, []);
 
@@ -123,6 +141,48 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     setTableEditing,
     setTableCellEditing,
   } = useEditorStore();
+  
+  // 添加全局键盘事件监听器来检测事件是否逃逸
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      console.log(`[全局 document onKeyDown] 捕获到事件!`, {
+        key: e.key,
+        shiftKey: e.shiftKey,
+        target: e.target,
+        eventPhase: e.eventPhase,
+        bubbles: e.bubbles,
+        cancelable: e.cancelable,
+        defaultPrevented: e.defaultPrevented,
+        timestamp: Date.now(),
+      });
+      
+      // 如果这里能捕获到 Enter 或 Backspace，说明事件逃逸了！
+      if (e.key === 'Enter' || e.key === 'Backspace' || e.key === 'Delete') {
+        console.warn(`[⚠️  警告] 全局监听器捕获到 ${e.key} 键！事件可能逃逸了！`);
+      }
+    };
+    
+    const handleGlobalKeyUp = (e: KeyboardEvent) => {
+      console.log(`[全局 document onKeyUp] 捕获到事件`, { key: e.key });
+    };
+    
+    const handleGlobalKeyPress = (e: KeyboardEvent) => {
+      console.log(`[全局 document onKeyPress] 捕获到事件`, { key: e.key });
+    };
+    
+    console.log(`[CanvasComponent] 添加全局键盘监听器，组件ID: ${component.id}`);
+    
+    document.addEventListener('keydown', handleGlobalKeyDown, true); // 捕获阶段监听
+    document.addEventListener('keyup', handleGlobalKeyUp, true);
+    document.addEventListener('keypress', handleGlobalKeyPress, true);
+    
+    return () => {
+      console.log(`[CanvasComponent] 移除全局键盘监听器，组件ID: ${component.id}`);
+      document.removeEventListener('keydown', handleGlobalKeyDown, true);
+      document.removeEventListener('keyup', handleGlobalKeyUp, true);
+      document.removeEventListener('keypress', handleGlobalKeyPress, true);
+    };
+  }, [component.id]);
   
   // 通用状态
   const [isEditing, setIsEditing] = useState(false);
@@ -823,10 +883,28 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                               onChange={(value) => handleTableCellChange(rowIndex, colIndex, value)}
                               onClick={(e) => {}} // AutoResizingTextarea 内部已处理冒泡
                               onKeyDown={(e) => {
+                                console.log(`[表格单元格 onKeyDown] 触发`, { 
+                                  key: e.key, 
+                                  shiftKey: e.shiftKey,
+                                  ctrlKey: e.ctrlKey,
+                                  altKey: e.altKey,
+                                  eventPhase: e.eventPhase,
+                                  bubbles: e.bubbles,
+                                  cancelable: e.cancelable,
+                                  defaultPrevented: e.defaultPrevented,
+                                  位置: `行${rowIndex + 1}, 列${colIndex + 1}`,
+                                });
+                                
                                 // 只有单独的 Enter（不带 Shift）才阻止默认行为
                                 if (e.key === 'Enter' && !e.shiftKey) {
+                                  console.log(`[表格单元格 onKeyDown] 单独 Enter，调用 preventDefault()`);
                                   e.preventDefault();
+                                } else if (e.key === 'Enter' && e.shiftKey) {
+                                  console.log(`[表格单元格 onKeyDown] Shift+Enter，不阻止默认行为，允许换行`);
+                                } else if (e.key === 'Backspace' || e.key === 'Delete') {
+                                  console.log(`[表格单元格 onKeyDown] ${e.key}，不阻止默认行为`);
                                 }
+                                
                                 // 注意：e.stopPropagation() 已经在 AutoResizingTextarea 内部先调用了
                                 // Shift+Enter、Delete、Backspace 等键：不阻止默认行为，正常编辑
                               }}
