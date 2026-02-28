@@ -8,6 +8,7 @@ import { Copy, Pencil, Trash2 } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { HoverToolbar } from '../table/HoverToolbar';
+import { AdvancedToolbar } from '../table/AdvancedToolbar';
 
 interface CanvasComponentProps {
   component: CanvasComponentNode;
@@ -27,6 +28,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   // 表格编辑状态
   const [isTableEditing, setIsTableEditing] = useState(false);
   const [tableEditData, setTableEditData] = useState<any[][]>([]);
+  const [selectedCells, setSelectedCells] = useState<string[]>([]);
 
   // 文本组件编辑
   const handleDoubleClickText = (e: React.MouseEvent) => {
@@ -72,6 +74,55 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       e.stopPropagation();
     }
     deleteComponent(component.id);
+  };
+
+  // 高级工具栏处理函数
+  const handleMergeCells = () => {
+    console.log('合并单元格');
+  };
+
+  const handleHeaderFooterChange = (headerRows: number, footerRows: number) => {
+    console.log('设置表头/表尾', headerRows, footerRows);
+  };
+
+  const handleBorderChange = (hasBorder: boolean) => {
+    console.log('设置边框', hasBorder);
+  };
+
+  const handleAlignmentChange = (alignment: 'left' | 'center' | 'right') => {
+    console.log('设置对齐', alignment);
+  };
+
+  const handleColorChange = (color: string) => {
+    console.log('设置颜色', color);
+  };
+
+  const handleInsertLink = () => {
+    console.log('插入链接');
+  };
+
+  const handleInsertQRCode = () => {
+    console.log('插入二维码');
+  };
+
+  const handleInsertBarcode = () => {
+    console.log('插入条形码');
+  };
+
+  const handleInsertImage = () => {
+    console.log('插入图片');
+  };
+
+  const handleInsertArticle = () => {
+    console.log('插入文章');
+  };
+
+  const handleInsertAttachment = () => {
+    console.log('插入附件');
+  };
+
+  const handleAdvancedConfig = () => {
+    console.log('循环字段高级配置');
   };
 
   // 初始化表格编辑数据
@@ -255,77 +306,98 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         const tableComp = component as any;
         
         return (
-          <div className="w-full relative group" onDoubleClick={handleDoubleClickTable}>
-            {/* 悬停工具栏 - 始终渲染，通过 CSS 控制显示 */}
-            {!isTableEditing && (
-              <HoverToolbar
-                onEdit={handleEditTable}
-                onDelete={handleDeleteComponent}
-                onCopy={handleCopyComponent}
-                isSelected={isSelected}
+          <div className="w-full relative">
+            {/* 高级编辑工具栏 - 编辑状态时显示 */}
+            {isTableEditing && (
+              <AdvancedToolbar
+                onMergeCells={handleMergeCells}
+                selectedCellCount={selectedCells.length}
+                onHeaderFooterChange={handleHeaderFooterChange}
+                onBorderChange={handleBorderChange}
+                onAlignmentChange={handleAlignmentChange}
+                onColorChange={handleColorChange}
+                onInsertLink={handleInsertLink}
+                onInsertQRCode={handleInsertQRCode}
+                onInsertBarcode={handleInsertBarcode}
+                onInsertImage={handleInsertImage}
+                onInsertArticle={handleInsertArticle}
+                onInsertAttachment={handleInsertAttachment}
+                onAdvancedConfig={handleAdvancedConfig}
               />
             )}
             
-            {tableComp.tableConfig?.cells ? (
-              <div className="border overflow-hidden">
-                <table className="w-full border-collapse">
-                  <tbody>
-                    {tableEditData.map((row: any[], rowIndex: number) => (
-                      <tr key={rowIndex}>
-                        {row.map((cellContent: any, colIndex: number) => (
-                          <td
-                            key={`${rowIndex}-${colIndex}`}
-                            className="border p-1 text-sm"
-                            style={{
-                              backgroundColor: tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.backgroundColor || 'transparent',
-                            }}
-                          >
-                            {isTableEditing ? (
-                              <input
-                                type="text"
-                                value={cellContent || ''}
-                                onChange={(e) => handleTableCellChange(rowIndex, colIndex, e.target.value)}
-                                onClick={(e) => e.stopPropagation()}
-                                className="w-full border-0 bg-transparent outline-none p-1"
-                              />
-                            ) : (
-                              <span className="p-1 block min-h-[20px]">
-                                {cellContent || ''}
-                              </span>
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="p-4 text-center text-muted-foreground border">
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <Pencil className="w-4 h-4" />
-                  <span>表格组件</span>
+            <div className="w-full relative group" onDoubleClick={handleDoubleClickTable}>
+              {/* 悬停工具栏 - 非编辑状态时显示 */}
+              {!isTableEditing && (
+                <HoverToolbar
+                  onEdit={handleEditTable}
+                  onDelete={handleDeleteComponent}
+                  onCopy={handleCopyComponent}
+                  isSelected={isSelected}
+                />
+              )}
+              
+              {tableComp.tableConfig?.cells ? (
+                <div className="border overflow-hidden">
+                  <table className="w-full border-collapse">
+                    <tbody>
+                      {tableEditData.map((row: any[], rowIndex: number) => (
+                        <tr key={rowIndex}>
+                          {row.map((cellContent: any, colIndex: number) => (
+                            <td
+                              key={`${rowIndex}-${colIndex}`}
+                              className="border p-1 text-sm"
+                              style={{
+                                backgroundColor: tableComp.tableConfig?.cells?.[rowIndex]?.[colIndex]?.backgroundColor || 'transparent',
+                              }}
+                            >
+                              {isTableEditing ? (
+                                <input
+                                  type="text"
+                                  value={cellContent || ''}
+                                  onChange={(e) => handleTableCellChange(rowIndex, colIndex, e.target.value)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="w-full border-0 bg-transparent outline-none p-1"
+                                />
+                              ) : (
+                                <span className="p-1 block min-h-[20px]">
+                                  {cellContent || ''}
+                                </span>
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="flex items-center justify-center gap-2">
-                  <Button variant="default" size="sm" onClick={handleEditTable}>
-                    {isTableEditing ? '完成编辑' : '编辑表格'}
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={handleCopyComponent}>
-                    <Copy className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="text-destructive" onClick={handleDeleteComponent}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+              ) : (
+                <div className="p-4 text-center text-muted-foreground border">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Pencil className="w-4 h-4" />
+                    <span>表格组件</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-2">
+                    <Button variant="default" size="sm" onClick={handleEditTable}>
+                      {isTableEditing ? '完成编辑' : '编辑表格'}
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={handleCopyComponent}>
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="text-destructive" onClick={handleDeleteComponent}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
-            
-            {/* 编辑状态提示 */}
-            {isTableEditing && (
-              <div className="text-xs text-center text-muted-foreground mt-1">
-                点击单元格编辑内容，再次点击"编辑表格"完成
-              </div>
-            )}
+              )}
+              
+              {/* 编辑状态提示 */}
+              {isTableEditing && (
+                <div className="text-xs text-center text-muted-foreground mt-1">
+                  点击单元格编辑内容，点击"完成编辑"退出
+                </div>
+              )}
+            </div>
           </div>
         );
 
