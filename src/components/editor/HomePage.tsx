@@ -29,6 +29,8 @@ import { presetTemplates, templateCategories } from '@/data/presetTemplates';
 import { PresetTemplate } from '@/types/editor';
 import { usePrintSDK } from '@/hooks/usePrintSDK';
 import { FeishuEnvStatus } from '@/lib/feishu-env';
+import { TemplateSidebar } from './TemplateSidebar';
+import { UserTemplate } from '@/store/templateStore';
 
 interface HomePageProps {
   onCreateNew: () => void;
@@ -114,61 +116,72 @@ export function HomePage({ onCreateNew, onSelectTemplate }: HomePageProps) {
     }
   };
 
+  // 处理选择用户模板
+  const handleSelectUserTemplate = (template: UserTemplate) => {
+    console.log('[HomePage] 选择用户模板:', template);
+    // TODO: 加载用户模板内容
+    onCreateNew();
+  };
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* 顶部导航栏 */}
-      <header className="border-b bg-background/95 backdrop-blur">
-        <div className="flex items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-              <FileText className="w-4 h-4 text-white" />
+    <div className="min-h-screen bg-background flex h-screen overflow-hidden">
+      {/* 左侧边栏 */}
+      <TemplateSidebar
+        onSelectTemplate={handleSelectUserTemplate}
+        onCreateNew={onCreateNew}
+      />
+
+      {/* 主内容区域 */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* 顶部导航栏 */}
+        <header className="border-b bg-background/95 backdrop-blur flex-shrink-0">
+          <div className="flex items-center justify-between px-6 py-4">
+            <div className="flex items-center gap-3">
+              <h1 className="text-lg font-semibold">欢迎使用排版打印</h1>
             </div>
-            <h1 className="text-lg font-semibold">排版打印</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            {/* 环境状态 */}
-            <EnvStatusBadge status={envStatus} isFeishuEnvironment={isFeishuEnvironment} />
-            
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={refreshData} title="刷新数据">
-              <RefreshCw className="w-3 h-3" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-6 w-6" 
-              onClick={() => setShowDebug(!showDebug)} 
-              title="显示调试信息"
-            >
-              <Bug className="w-3 h-3" />
-            </Button>
-            <Button variant="outline" size="sm">高级版</Button>
-            <Button size="sm" onClick={onCreateNew}>
-              <Plus className="w-4 h-4 mr-1" />
-              创建排版
-            </Button>
-          </div>
-        </div>
-        
-        {/* 调试信息面板 */}
-        {showDebug && (
-          <div className="border-t px-6 py-3 bg-muted/50">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium flex items-center gap-1">
-                <Bug className="w-4 h-4" />
-                调试信息
-              </span>
-              <Button variant="ghost" size="sm" onClick={() => setShowDebug(false)}>
-                <XCircle className="w-4 h-4" />
+            <div className="flex items-center gap-3">
+              {/* 环境状态 */}
+              <EnvStatusBadge status={envStatus} isFeishuEnvironment={isFeishuEnvironment} />
+              
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={refreshData} title="刷新数据">
+                <RefreshCw className="w-3 h-3" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6" 
+                onClick={() => setShowDebug(!showDebug)} 
+                title="显示调试信息"
+              >
+                <Bug className="w-3 h-3" />
+              </Button>
+              <Button size="sm" onClick={onCreateNew}>
+                <Plus className="w-4 h-4 mr-1" />
+                创建排版
               </Button>
             </div>
-            <div className="text-xs font-mono bg-background border rounded p-3 max-h-48 overflow-auto">
-              <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
-            </div>
           </div>
-        )}
-      </header>
+          
+          {/* 调试信息面板 */}
+          {showDebug && (
+            <div className="border-t px-6 py-3 bg-muted/50">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium flex items-center gap-1">
+                  <Bug className="w-4 h-4" />
+                  调试信息
+                </span>
+                <Button variant="ghost" size="sm" onClick={() => setShowDebug(false)}>
+                  <XCircle className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="text-xs font-mono bg-background border rounded p-3 max-h-48 overflow-auto">
+                <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+              </div>
+            </div>
+          )}
+        </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
+        <main className="flex-1 overflow-y-auto">
         {/* 欢迎区域 */}
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold mb-2">
@@ -340,21 +353,18 @@ export function HomePage({ onCreateNew, onSelectTemplate }: HomePageProps) {
             </div>
           )}
         </div>
-      </main>
+        </main>
 
-      {/* 底部信息 */}
-      <footer className="border-t mt-12">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <Crown className="w-4 h-4 text-yellow-500" />
-            <span>高级版</span>
+        {/* 底部信息 */}
+        <footer className="border-t mt-12 flex-shrink-0">
+          <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between text-sm text-muted-foreground">
+            <div className="flex items-center gap-4">
+              <Button variant="link" size="sm" className="text-muted-foreground">快速指南</Button>
+              <Button variant="link" size="sm" className="text-muted-foreground">帮助中心</Button>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <Button variant="link" size="sm" className="text-muted-foreground">快速指南</Button>
-            <Button variant="link" size="sm" className="text-muted-foreground">帮助中心</Button>
-          </div>
-        </div>
-      </footer>
+        </footer>
+      </div>
     </div>
   );
 }
