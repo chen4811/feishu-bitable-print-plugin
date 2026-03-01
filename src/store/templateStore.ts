@@ -15,6 +15,9 @@ export interface Template {
   updatedAt: Date;
 }
 
+// 兼容旧代码的别名
+export type UserTemplate = Template;
+
 interface TemplateStore {
   templates: Template[];
   currentTemplate: Template | null;

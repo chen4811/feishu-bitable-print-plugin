@@ -1,15 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAdminStore } from '@/store/adminStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Plus,
   Edit,
@@ -20,62 +21,63 @@ import {
   CheckCircle2,
   XCircle,
   Eye,
+  RefreshCw,
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
+// 授权码掩码显示
+function maskToken(token: string): string {
+  if (!token || token.length < 8) return '***';
+  return token.slice(0, 4) + '****' + token.slice(-4);
+}
+
 export default function AuthorizationsPage() {
-  const { authorizations, addAuthorization, updateAuthorization, deleteAuthorization } = useAdminStore();
+  const { authorizations, fetchAuthorizations, updateAuthorization, deleteAuthorization } = useAdminStore();
   const [searchQuery, setSearchQuery] = useState('');
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingAuth, setEditingAuth] = useState<any>(null);
-  const [formData, setFormData] = useState({
-    tableId: '',
-    tableName: '',
-    appToken: '',
-  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [viewToken, setViewToken] = useState<string | null>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+
+  // 页面加载时获取授权码数据
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      await fetchAuthorizations();
+      setIsLoading(false);
+    };
+    loadData();
+  }, [fetchAuthorizations]);
 
   // 过滤授权码
   const filteredAuthorizations = authorizations.filter((auth) =>
-    auth.tableName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    auth.tableId.toLowerCase().includes(searchQuery.toLowerCase())
+    auth.tableName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    auth.tableId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    auth.userName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    auth.feishuUserId?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleAdd = async () => {
-    await addAuthorization(formData);
-    setFormData({ tableId: '', tableName: '', appToken: '' });
-    setIsAddDialogOpen(false);
+  const handleRefresh = async () => {
+    setIsLoading(true);
+    await fetchAuthorizations();
+    setIsLoading(false);
   };
 
-  const handleEdit = async () => {
-    if (editingAuth) {
-      await updateAuthorization(editingAuth.tableId, {
-        tableName: formData.tableName,
-        appToken: formData.appToken,
-      });
-      setIsEditDialogOpen(false);
-      setEditingAuth(null);
+  const handleToggleActive = async (id: number, isActive: boolean) => {
+    await updateAuthorization(id, { isActive: !isActive });
+  };
+
+  const handleDelete = async (id: number) => {
+    if (confirm('确定要删除这个授权码吗？此操作不可恢复。')) {
+      setDeletingId(id);
+      await deleteAuthorization(id);
+      setDeletingId(null);
     }
   };
 
-  const handleDelete = async (tableId: string) => {
-    if (confirm('确定要删除这个授权码吗？')) {
-      await deleteAuthorization(tableId);
-    }
-  };
-
-  const handleToggleActive = async (tableId: string, isActive: boolean) => {
-    await updateAuthorization(tableId, { isActive: !isActive });
-  };
-
-  const openEditDialog = (auth: any) => {
-    setEditingAuth(auth);
-    setFormData({
-      tableId: auth.tableId,
-      tableName: auth.tableName,
-      appToken: '', // 不显示已加密的 token
-    });
-    setIsEditDialogOpen(true);
+  const handleViewToken = (token: string) => {
+    setViewToken(token);
+    setIsViewDialogOpen(true);
   };
 
   return (
@@ -84,61 +86,13 @@ export default function AuthorizationsPage() {
         <div>
           <h1 className="text-2xl font-bold">授权码管理</h1>
           <p className="text-muted-foreground">
-            管理飞书多维表格的授权码配置
+            管理用户的飞书多维表格授权码配置
           </p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              新增授权码
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>新增授权码</DialogTitle>
-              <DialogDescription>
-                添加一个新的飞书多维表格授权码配置
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="tableId">表格 ID</Label>
-                <Input
-                  id="tableId"
-                  placeholder="请输入表格 ID"
-                  value={formData.tableId}
-                  onChange={(e) => setFormData({ ...formData, tableId: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="tableName">表格名称</Label>
-                <Input
-                  id="tableName"
-                  placeholder="请输入表格名称"
-                  value={formData.tableName}
-                  onChange={(e) => setFormData({ ...formData, tableName: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="appToken">App Token</Label>
-                <Input
-                  id="appToken"
-                  type="password"
-                  placeholder="请输入 App Token"
-                  value={formData.appToken}
-                  onChange={(e) => setFormData({ ...formData, appToken: e.target.value })}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setIsAddDialogOpen(false)}>
-                取消
-              </Button>
-              <Button onClick={handleAdd}>添加</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button variant="outline" onClick={handleRefresh} disabled={isLoading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          刷新
+        </Button>
       </div>
 
       {/* 搜索栏 */}
@@ -147,7 +101,7 @@ export default function AuthorizationsPage() {
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="搜索授权码..."
+              placeholder="搜索表格名称、ID、用户名或飞书用户ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -165,109 +119,162 @@ export default function AuthorizationsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>表格名称</TableHead>
-                <TableHead>表格 ID</TableHead>
-                <TableHead>状态</TableHead>
-                <TableHead>最后使用</TableHead>
-                <TableHead>创建时间</TableHead>
-                <TableHead className="text-right">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredAuthorizations.map((auth) => (
-                <TableRow key={auth.id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      <Key className="h-4 w-4 text-muted-foreground" />
-                      {auth.tableName}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-mono text-sm">{auth.tableId}</TableCell>
-                  <TableCell>
-                    <Badge variant={auth.isActive ? 'default' : 'secondary'}>
-                      {auth.isActive ? (
-                        <CheckCircle2 className="h-3 w-3 mr-1" />
-                      ) : (
-                        <XCircle className="h-3 w-3 mr-1" />
-                      )}
-                      {auth.isActive ? '活跃' : '未激活'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {auth.lastUsedAt ? new Date(auth.lastUsedAt).toLocaleString() : '从未使用'}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {new Date(auth.createdAt).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleToggleActive(auth.tableId, auth.isActive)}>
-                          {auth.isActive ? '停用' : '激活'}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => openEditDialog(auth)}>
-                          <Edit className="h-4 w-4 mr-2" />
-                          编辑
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-red-600"
-                          onClick={() => handleDelete(auth.tableId)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          删除
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+              <span className="ml-3 text-muted-foreground">加载中...</span>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>用户信息</TableHead>
+                  <TableHead>表格名称</TableHead>
+                  <TableHead>表格 ID</TableHead>
+                  <TableHead>授权码</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableHead>最后使用</TableHead>
+                  <TableHead>创建时间</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredAuthorizations.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      暂无授权码数据
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredAuthorizations.map((auth) => (
+                    <TableRow key={auth.id}>
+                      {/* 用户信息 */}
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={auth.userAvatar} alt={auth.userName} />
+                            <AvatarFallback>{auth.userName?.charAt(0) || 'U'}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium text-sm">{auth.userName || '未知用户'}</p>
+                            <p className="text-xs text-muted-foreground font-mono">
+                              {auth.feishuUserId?.slice(0, 16)}...
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      {/* 表格名称 */}
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <Key className="h-4 w-4 text-muted-foreground" />
+                          {auth.tableName || '未命名表格'}
+                        </div>
+                      </TableCell>
+
+                      {/* 表格 ID */}
+                      <TableCell className="font-mono text-sm">
+                        {auth.tableId}
+                      </TableCell>
+
+                      {/* 授权码（掩码显示） */}
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm text-muted-foreground">
+                            {maskToken(auth.appTokenEncrypted)}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => handleViewToken(auth.appTokenEncrypted)}
+                          >
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+
+                      {/* 状态 */}
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={auth.isActive}
+                            onCheckedChange={() => handleToggleActive(auth.id, auth.isActive)}
+                          />
+                          <Badge variant={auth.isActive ? 'default' : 'secondary'}>
+                            {auth.isActive ? '启用' : '禁用'}
+                          </Badge>
+                        </div>
+                      </TableCell>
+
+                      {/* 最后使用 */}
+                      <TableCell className="text-sm text-muted-foreground">
+                        {auth.lastUsedAt ? new Date(auth.lastUsedAt).toLocaleString() : '从未使用'}
+                      </TableCell>
+
+                      {/* 创建时间 */}
+                      <TableCell className="text-sm text-muted-foreground">
+                        {auth.createdAt ? new Date(auth.createdAt).toLocaleString() : '-'}
+                      </TableCell>
+
+                      {/* 操作 */}
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleToggleActive(auth.id, auth.isActive)}>
+                              {auth.isActive ? (
+                                <>
+                                  <XCircle className="h-4 w-4 mr-2" />
+                                  停用
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                                  启用
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-red-600"
+                              onClick={() => handleDelete(auth.id)}
+                              disabled={deletingId === auth.id}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              {deletingId === auth.id ? '删除中...' : '删除'}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
-      {/* 编辑对话框 */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      {/* 查看授权码对话框 */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>编辑授权码</DialogTitle>
+            <DialogTitle>查看授权码</DialogTitle>
             <DialogDescription>
-              修改授权码配置信息
+              完整授权码信息（请妥善保管，不要泄露）
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-tableName">表格名称</Label>
-              <Input
-                id="edit-tableName"
-                value={formData.tableName}
-                onChange={(e) => setFormData({ ...formData, tableName: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-appToken">新的 App Token（留空则不修改）</Label>
-              <Input
-                id="edit-appToken"
-                type="password"
-                placeholder="请输入新的 App Token"
-                value={formData.appToken}
-                onChange={(e) => setFormData({ ...formData, appToken: e.target.value })}
-              />
+          <div className="py-4">
+            <div className="bg-muted p-4 rounded-lg">
+              <code className="text-sm break-all font-mono">{viewToken}</code>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsEditDialogOpen(false)}>
-              取消
-            </Button>
-            <Button onClick={handleEdit}>保存</Button>
+            <Button onClick={() => setIsViewDialogOpen(false)}>关闭</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -155,12 +155,9 @@ export function TemplatePreview({ template, onBack, onEdit }: TemplatePreviewPro
                 <div>
                   <p className="text-sm text-gray-500 mb-1">模板状态</p>
                   <div className="flex items-center gap-2">
-                    <div className={`
-                      w-2 h-2 rounded-full
-                      ${template.isActive ? 'bg-green-500' : 'bg-gray-300'}
-                    `} />
+                    <div className="w-2 h-2 rounded-full bg-green-500" />
                     <span className="text-sm text-gray-600">
-                      {template.isActive ? '使用中' : '未使用'}
+                      可用
                     </span>
                   </div>
                 </div>

@@ -65,8 +65,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      token,
-      admin: adminWithoutPassword,
+      data: {
+        token,
+        admin: adminWithoutPassword,
+      },
     });
   } catch (error) {
     console.error('Admin login error:', error);

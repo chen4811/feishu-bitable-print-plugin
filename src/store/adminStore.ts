@@ -12,10 +12,13 @@ interface AdminUser {
   updatedAt: string;
 }
 
-// 授权码类型
+// 授权码类型（包含用户信息）
 interface Authorization {
   id: number;
   userId: number;
+  userName: string;
+  userAvatar: string;
+  feishuUserId: string;
   tableId: string;
   tableName: string;
   appTokenEncrypted: string;
@@ -43,21 +46,21 @@ interface AdminState {
   isLoggedIn: boolean;
   adminUser: AdminUser | null;
   token: string | null;
-  
+
   // 数据
   authorizations: Authorization[];
   templates: Template[];
-  
+
   // 操作方法
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
-  
+
   // 授权码管理
   fetchAuthorizations: () => Promise<void>;
   addAuthorization: (data: { tableId: string; tableName: string; appToken: string }) => Promise<void>;
-  updateAuthorization: (tableId: string, data: { tableName?: string; appToken?: string; isActive?: boolean }) => Promise<void>;
-  deleteAuthorization: (tableId: string) => Promise<void>;
-  
+  updateAuthorization: (id: number, data: { isActive?: boolean }) => Promise<void>;
+  deleteAuthorization: (id: number) => Promise<void>;
+
   // 模板管理
   fetchTemplates: () => Promise<void>;
   addTemplate: (data: { name: string; description: string; config: Record<string, unknown> }) => Promise<void>;
@@ -65,67 +68,8 @@ interface AdminState {
   deleteTemplate: (id: number) => Promise<void>;
 }
 
-// 模拟数据
-const mockAdminUser: AdminUser = {
-  id: 1,
-  username: 'fsadmins',
-  name: '管理员',
-  email: 'admin@example.com',
-  isActive: true,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-};
-
-const mockAuthorizations: Authorization[] = [
-  {
-    id: 1,
-    userId: 1,
-    tableId: 'table_001',
-    tableName: '客户信息表',
-    appTokenEncrypted: 'encrypted_token_001',
-    isActive: true,
-    lastUsedAt: new Date().toISOString(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 2,
-    userId: 1,
-    tableId: 'table_002',
-    tableName: '订单记录表',
-    appTokenEncrypted: 'encrypted_token_002',
-    isActive: true,
-    lastUsedAt: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
-
-const mockTemplates: Template[] = [
-  {
-    id: 1,
-    name: '标准合同模板',
-    description: '适用于各类合同文档',
-    config: {},
-    isPublic: true,
-    createdBy: 1,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 2,
-    name: '发票打印模板',
-    description: '用于发票打印',
-    config: {},
-    isPublic: true,
-    createdBy: 1,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
-
 export const useAdminStore = create<AdminState>()(
-  // persist(
+  persist(
     (set, get) => ({
       // 初始状态
       isLoggedIn: false,
@@ -137,28 +81,32 @@ export const useAdminStore = create<AdminState>()(
       // 登录
       login: async (username: string, password: string): Promise<boolean> => {
         console.log('[adminStore] login 被调用');
-        console.log('[adminStore] 用户名:', username);
-        console.log('[adminStore] 密码:', password ? '***' : '空');
-        
-        // 模拟登录验证
-        console.log('[adminStore] 等待 500ms...');
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        console.log('[adminStore] 验证用户名密码...');
-        if (username === 'fsadmins' && password === 'Xxy94128866') {
-          console.log('[adminStore] 验证成功，设置状态...');
-          set({
-            isLoggedIn: true,
-            adminUser: mockAdminUser,
-            token: 'mock_token_' + Date.now(),
-            authorizations: mockAuthorizations,
-            templates: mockTemplates,
+
+        try {
+          const response = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password }),
           });
-          console.log('[adminStore] 状态已设置，isLoggedIn:', true);
-          return true;
+
+          const result = await response.json();
+
+          if (result.success && result.data?.token) {
+            console.log('[adminStore] 登录成功');
+            set({
+              isLoggedIn: true,
+              adminUser: result.data.admin,
+              token: result.data.token,
+            });
+            return true;
+          } else {
+            console.log('[adminStore] 登录失败:', result.error);
+            return false;
+          }
+        } catch (error) {
+          console.error('[adminStore] 登录请求失败:', error);
+          return false;
         }
-        console.log('[adminStore] 验证失败，返回 false');
-        return false;
       },
 
       // 登出
@@ -171,111 +119,120 @@ export const useAdminStore = create<AdminState>()(
           authorizations: [],
           templates: [],
         });
-        console.log('[adminStore] 已登出');
       },
 
-      // 授权码管理
+      // 授权码管理 - 从真实 API 获取
       fetchAuthorizations: async () => {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        // 保持现有数据不变
+        const { token } = get();
+        if (!token) {
+          console.error('[adminStore] 未登录，无法获取授权码');
+          return;
+        }
+
+        try {
+          console.log('[adminStore] 获取授权码列表...');
+          const response = await fetch('/api/admin/authorizations', {
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+
+          const result = await response.json();
+
+          if (result.success && result.data) {
+            console.log('[adminStore] 获取到', result.data.length, '条授权码');
+            set({ authorizations: result.data });
+          } else {
+            console.error('[adminStore] 获取授权码失败:', result.error);
+          }
+        } catch (error) {
+          console.error('[adminStore] 获取授权码请求失败:', error);
+        }
       },
 
       addAuthorization: async (data: { tableId: string; tableName: string; appToken: string }) => {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        const newAuth: Authorization = {
-          id: Date.now(),
-          userId: 1,
-          tableId: data.tableId,
-          tableName: data.tableName,
-          appTokenEncrypted: 'encrypted_' + data.appToken,
-          isActive: true,
-          lastUsedAt: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        set(state => ({
-          authorizations: [...state.authorizations, newAuth],
-        }));
+        // 管理员后台不直接添加授权码，由用户在前端绑定
+        console.log('[adminStore] 管理员后台不支持直接添加授权码');
       },
 
-      updateAuthorization: async (tableId: string, data: { tableName?: string; appToken?: string; isActive?: boolean }) => {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        set(state => ({
-          authorizations: state.authorizations.map(auth => {
-            if (auth.tableId === tableId) {
-              return {
-                ...auth,
-                ...(data.tableName && { tableName: data.tableName }),
-                ...(data.appToken && { appTokenEncrypted: 'encrypted_' + data.appToken }),
-                ...(data.isActive !== undefined && { isActive: data.isActive }),
-                updatedAt: new Date().toISOString(),
-              };
-            }
-            return auth;
-          }),
-        }));
+      updateAuthorization: async (id: number, data: { isActive?: boolean }) => {
+        const { token, authorizations } = get();
+        if (!token) return;
+
+        try {
+          const response = await fetch('/api/admin/authorizations', {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ id, ...data }),
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            // 更新本地状态
+            set({
+              authorizations: authorizations.map(auth =>
+                auth.id === id ? { ...auth, ...data } : auth
+              ),
+            });
+          } else {
+            console.error('[adminStore] 更新授权码失败:', result.error);
+          }
+        } catch (error) {
+          console.error('[adminStore] 更新授权码请求失败:', error);
+        }
       },
 
-      deleteAuthorization: async (tableId: string) => {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        set(state => ({
-          authorizations: state.authorizations.filter(auth => auth.tableId !== tableId),
-        }));
+      deleteAuthorization: async (id: number) => {
+        const { token, authorizations } = get();
+        if (!token) return;
+
+        try {
+          const response = await fetch(`/api/admin/authorizations?id=${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            // 从本地状态中移除
+            set({
+              authorizations: authorizations.filter(auth => auth.id !== id),
+            });
+            console.log('[adminStore] 授权码已删除');
+          } else {
+            console.error('[adminStore] 删除授权码失败:', result.error);
+          }
+        } catch (error) {
+          console.error('[adminStore] 删除授权码请求失败:', error);
+        }
       },
 
-      // 模板管理
+      // 模板管理（保持 mock 实现，如需真实数据可后续添加）
       fetchTemplates: async () => {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        // 保持现有数据不变
+        console.log('[adminStore] fetchTemplates 被调用');
+        // TODO: 从真实 API 获取
       },
 
       addTemplate: async (data: { name: string; description: string; config: Record<string, unknown> }) => {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        const newTemplate: Template = {
-          id: Date.now(),
-          name: data.name,
-          description: data.description,
-          config: data.config,
-          isPublic: true,
-          createdBy: 1,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        set(state => ({
-          templates: [...state.templates, newTemplate],
-        }));
+        console.log('[adminStore] addTemplate 被调用', data);
+        // TODO: 调用真实 API
       },
 
       updateTemplate: async (id: number, data: { name?: string; description?: string; config?: Record<string, unknown> }) => {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        set(state => ({
-          templates: state.templates.map(template => {
-            if (template.id === id) {
-              return {
-                ...template,
-                ...data,
-                updatedAt: new Date().toISOString(),
-              };
-            }
-            return template;
-          }),
-        }));
+        console.log('[adminStore] updateTemplate 被调用', id, data);
+        // TODO: 调用真实 API
       },
 
       deleteTemplate: async (id: number) => {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        set(state => ({
-          templates: state.templates.filter(template => template.id !== id),
-        }));
+        console.log('[adminStore] deleteTemplate 被调用', id);
+        // TODO: 调用真实 API
       },
-    })
-  // ),
-  // {
-  //   name: 'admin-storage',
-  //   partialize: (state) => ({
-  //     isLoggedIn: state.isLoggedIn,
-  //     adminUser: state.adminUser,
-  //     token: state.token,
-  //   }),
-  // }
+    }),
+    {
+      name: 'admin-storage',
+    }
+  )
 );

@@ -141,11 +141,11 @@ function TemplateItem({
 export function TemplateSidebar({ onSelectTemplate, onCreateNew }: TemplateSidebarProps) {
   const { 
     templates, 
-    activeTemplateId, 
-    addTemplate, 
+    currentTemplate,
+    saveTemplate, 
     updateTemplate, 
     deleteTemplate, 
-    setActiveTemplate 
+    setCurrentTemplate 
   } = useTemplateStore();
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -157,7 +157,7 @@ export function TemplateSidebar({ onSelectTemplate, onCreateNew }: TemplateSideb
 
   console.log('[TemplateSidebar] 渲染');
   console.log('[TemplateSidebar] templates:', templates);
-  console.log('[TemplateSidebar] activeTemplateId:', activeTemplateId);
+  console.log('[TemplateSidebar] currentTemplate:', currentTemplate);
 
   // 过滤模板
   const filteredTemplates = templates.filter((template) => {
@@ -170,12 +170,14 @@ export function TemplateSidebar({ onSelectTemplate, onCreateNew }: TemplateSideb
   });
 
   // 处理创建新模板
-  const handleCreateTemplate = () => {
+  const handleCreateTemplate = async () => {
     if (!newTemplateName.trim()) return;
 
-    addTemplate({
+    await saveTemplate({
       name: newTemplateName.trim(),
       description: newTemplateDesc.trim() || undefined,
+      data: {},
+      isPublic: false,
     });
 
     setNewTemplateName('');
@@ -199,7 +201,7 @@ export function TemplateSidebar({ onSelectTemplate, onCreateNew }: TemplateSideb
   };
 
   // 处理删除模板
-  const handleDeleteTemplate = (id: string) => {
+  const handleDeleteTemplate = (id: number) => {
     if (confirm('确定要删除这个模板吗？')) {
       deleteTemplate(id);
     }
@@ -208,7 +210,7 @@ export function TemplateSidebar({ onSelectTemplate, onCreateNew }: TemplateSideb
   // 处理选择模板
   const handleSelectTemplate = (template: UserTemplate) => {
     console.log('[TemplateSidebar] 选择模板:', template);
-    setActiveTemplate(template.id);
+    setCurrentTemplate(template);
     onSelectTemplate?.(template);
   };
 
@@ -280,7 +282,7 @@ export function TemplateSidebar({ onSelectTemplate, onCreateNew }: TemplateSideb
                 <TemplateItem
                   key={template.id}
                   template={template}
-                  isActive={template.id === activeTemplateId}
+                  isActive={template.id === currentTemplate?.id}
                   onSelect={() => handleSelectTemplate(template)}
                   onEdit={() => openEditDialog(template)}
                   onDelete={() => handleDeleteTemplate(template.id)}

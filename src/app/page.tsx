@@ -70,7 +70,7 @@ export default function PrintPluginApp() {
 
     setFields(fields);
     setSystemFields(systemFields);
-  }, [setFields, setSystemFields, isLoggedIn, isAuthCodeBound]);
+  }, [setFields, setSystemFields, isLoggedIn, hasAuthorizations]);
 
   // 处理创建新排版
   const handleCreateNew = () => {
