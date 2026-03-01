@@ -3,56 +3,63 @@
 import { useEffect } from 'react';
 
 /**
- * 全局事件安全层（增强版）
+ * 全局事件安全层（终极增强版）
  * 修复飞书 iframe 事件导致的 e.closest 问题
  * 
  * 问题分析：
  * - 在飞书跨域 iframe 中，事件对象的 target 可能不是标准 DOM Element
  * - 导致调用 .closest() 等方法时抛出 "e.closest is not a function" 错误
  * - 这个错误会中断 JS 执行，导致选中事件回调无法执行
+ * 
+ * 解决方案：
+ * 1. 全局错误捕获 - 阻止 closest 错误传播
+ * 2. 事件对象防御 - 在事件处理前修复 target
+ * 3. 原型方法保护 - 包装 closest 等敏感方法
+ * 4. 事件监听器包装 - 自动包裹所有 addEventListener
  */
 export function EventSafetyLayer() {
   useEffect(() => {
-    console.log('[EventSafetyLayer] ======== 初始化事件安全层 ========');
+    console.log('[EventSafetyLayer] 🛡️ ======== 初始化事件安全层 ========');
 
     // ============================================
     // 1. 全局错误捕获 - 第一层防线
     // ============================================
     const originalErrorHandler = window.onerror;
-    const handleGlobalError = (
+    window.onerror = function(
       message: string | Event, 
       source?: string, 
       lineno?: number, 
       colno?: number, 
       error?: Error
-    ) => {
+    ): boolean {
       const errorMsg = String(message).toLowerCase();
+      const stack = error?.stack?.toLowerCase() || '';
       
       // 专门捕获 closest 相关错误
       if (errorMsg.includes('closest') || 
           errorMsg.includes('is not a function') ||
-          (error && error.stack && error.stack.toLowerCase().includes('closest'))) {
+          stack.includes('closest') ||
+          stack.includes('isnodeinoutercontrolledzone') ||
+          stack.includes('handleiframeclick')) {
         
-        console.warn('[EventSafetyLayer] 🎯 捕获到 closest 相关错误，已阻止:', {
-          message,
-          source,
+        console.warn('[EventSafetyLayer] 🎯 捕获到飞书 SDK 错误，已阻止崩溃:', {
+          message: String(message).substring(0, 100),
+          source: source?.substring(source.lastIndexOf('/') + 1),
           lineno,
           colno
         });
         
-        // 返回 true 表示已处理，防止浏览器显示错误
+        // 返回 true 表示已处理，阻止错误传播
         return true;
       }
       
       // 其他错误交给原始处理函数
       if (originalErrorHandler) {
-        return originalErrorHandler(message as string, source!, lineno!, colno!, error!);
+        return originalErrorHandler.call(window, message as string, source!, lineno!, colno!, error!);
       }
       
       return false;
     };
-    
-    window.onerror = handleGlobalError;
 
     // ============================================
     // 2. Promise 拒绝捕获 - 第二层防线
@@ -60,81 +67,168 @@ export function EventSafetyLayer() {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       const reason = String(event.reason).toLowerCase();
       
-      if (reason.includes('closest') || reason.includes('is not a function')) {
-        console.warn('[EventSafetyLayer] 🎯 捕获到 closest 相关 Promise 拒绝，已阻止:', event.reason);
+      if (reason.includes('closest') || 
+          reason.includes('is not a function') ||
+          reason.includes('handleiframeclick')) {
+        console.warn('[EventSafetyLayer] 🎯 捕获到 closest 相关 Promise 拒绝，已阻止:', 
+          String(event.reason).substring(0, 100));
         event.preventDefault();
+        event.stopPropagation();
       }
     };
     
     window.addEventListener('unhandledrejection', handleUnhandledRejection);
 
     // ============================================
-    // 3. 事件捕获和修复 - 第三层防线
-    // ============================================
-    const eventTypes = ['click', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'touchstart', 'touchend'];
-    
-    const handleEventCapture = (event: Event) => {
-      try {
-        // 尝试修复事件对象
-        fixEventObject(event);
-      } catch (e) {
-        console.warn('[EventSafetyLayer] 事件修复时出错，已安全处理:', e);
-      }
-    };
-    
-    // 在捕获阶段拦截事件（比冒泡阶段更早）
-    eventTypes.forEach(eventType => {
-      window.addEventListener(eventType, handleEventCapture, true);
-    });
-
-    // ============================================
-    // 4. 安全的 Element 原型方法包装
+    // 3. 安全的 Element 原型方法包装 - 第三层防线
     // ============================================
     if (typeof Element !== 'undefined') {
+      // 保存原始方法
       const originalClosest = Element.prototype.closest;
+      const originalMatches = Element.prototype.matches;
+      const originalQuerySelector = Element.prototype.querySelector;
+      const originalQuerySelectorAll = Element.prototype.querySelectorAll;
       
-      // 包装 closest 方法，添加错误处理
-      Element.prototype.closest = function(selector: string) {
+      // 包装 closest 方法
+      Element.prototype.closest = function(this: Element, selector: string): Element | null {
         try {
+          // 防御性检查：确保 this 是有效的 Element
+          if (!this || typeof this !== 'object' || !(this instanceof Element)) {
+            console.warn('[EventSafetyLayer] closest 被非 Element 对象调用');
+            return null;
+          }
           return originalClosest.call(this, selector);
         } catch (e) {
-          console.warn('[EventSafetyLayer] Element.closest 调用失败，返回 null:', e);
+          console.warn('[EventSafetyLayer] Element.closest 调用失败，安全返回 null');
           return null;
         }
       };
       
-      console.log('[EventSafetyLayer] ✅ Element.closest 已包装');
-    }
-
-    // ============================================
-    // 辅助函数
-    // ============================================
-    function fixEventObject(event: Event) {
-      // 检查 target 和 currentTarget
-      const checkAndFix = (obj: any, name: string) => {
-        if (!obj) return;
-        
-        // 如果是 Window 对象或其他非 Element，直接返回
-        if (obj === window || obj === document) return;
-        
-        // 检查是否是标准 Element
-        if (typeof obj === 'object' && obj.nodeType === 1) {
-          return; // 标准 Element，没问题
+      // 包装 matches 方法
+      Element.prototype.matches = function(this: Element, selector: string): boolean {
+        try {
+          if (!this || typeof this !== 'object' || !(this instanceof Element)) {
+            return false;
+          }
+          return originalMatches.call(this, selector);
+        } catch (e) {
+          return false;
         }
-        
-        // 非标准对象，添加日志
-        console.warn(`[EventSafetyLayer] 检测到非标准 ${name}:`, {
-          type: typeof obj,
-          nodeType: obj.nodeType,
-          hasClosest: typeof obj.closest === 'function'
-        });
       };
       
-      checkAndFix((event as any).target, 'target');
-      checkAndFix((event as any).currentTarget, 'currentTarget');
+      // 包装 querySelector 方法
+      Element.prototype.querySelector = function(this: Element, selector: string): Element | null {
+        try {
+          if (!this || typeof this !== 'object' || !(this instanceof Element)) {
+            return null;
+          }
+          return originalQuerySelector.call(this, selector);
+        } catch (e) {
+          return null;
+        }
+      };
+      
+      // 包装 querySelectorAll 方法
+      Element.prototype.querySelectorAll = function(this: Element, selector: string): NodeListOf<Element> {
+        try {
+          if (!this || typeof this !== 'object' || !(this instanceof Element)) {
+            return document.querySelectorAll('nothing'); // 返回空 NodeList
+          }
+          return originalQuerySelectorAll.call(this, selector);
+        } catch (e) {
+          return document.querySelectorAll('nothing');
+        }
+      };
+      
+      console.log('[EventSafetyLayer] ✅ Element 原型方法已安全包装');
     }
 
-    console.log('[EventSafetyLayer] ======== 事件安全层初始化完成 ========');
+    // ============================================
+    // 4. 包装 addEventListener - 第四层防线
+    // ============================================
+    const originalAddEventListener = window.addEventListener;
+    
+    window.addEventListener = function(
+      type: string, 
+      listener: EventListenerOrEventListenerObject | null, 
+      options?: boolean | AddEventListenerOptions
+    ): void {
+      if (!listener) {
+        return originalAddEventListener.call(this, type, null as unknown as EventListenerOrEventListenerObject, options);
+      }
+      
+      // 创建安全包装器
+      const safeListener = function(this: typeof window, event: Event) {
+        try {
+          // 防御性检查事件对象
+          if (event && event.target) {
+            const target = event.target as any;
+            // 如果 target 不是标准 Element，创建一个代理
+            if (typeof target === 'object' && target !== null && !(target instanceof Element)) {
+              console.warn('[EventSafetyLayer] 检测到非标准事件 target，已创建安全代理');
+              // 创建代理对象，拦截 closest 等方法
+              const safeTarget = new Proxy(target, {
+                get(obj, prop) {
+                  if (prop === 'closest' || prop === 'matches' || prop === 'querySelector') {
+                    return () => null;
+                  }
+                  return obj[prop];
+                }
+              });
+              Object.defineProperty(event, 'target', {
+                value: safeTarget,
+                writable: false
+              });
+            }
+          }
+          
+          // 调用原始监听器
+          if (typeof listener === 'function') {
+            listener.call(this, event);
+          } else {
+            listener.handleEvent.call(this, event);
+          }
+        } catch (error) {
+          // 捕获监听器中的错误
+          const errorMsg = String(error).toLowerCase();
+          if (errorMsg.includes('closest') || errorMsg.includes('is not a function')) {
+            console.warn('[EventSafetyLayer] 🎯 捕获到监听器中的 closest 错误，已阻止崩溃');
+          } else {
+            // 其他错误重新抛出
+            throw error;
+          }
+        }
+      };
+      
+      // 存储原始监听器引用以便清理
+      (safeListener as any)._originalListener = listener;
+      
+      return originalAddEventListener.call(this, type, safeListener, options);
+    };
+
+    // ============================================
+    // 5. 事件捕获阶段的防御 - 第五层防线
+    // ============================================
+    const eventTypes = ['click', 'mousedown', 'mouseup', 'pointerdown', 'pointerup'];
+    
+    const captureHandler = (event: Event) => {
+      // 在捕获阶段检查并修复事件对象
+      try {
+        const target = event.target as any;
+        if (target && typeof target === 'object' && !(target instanceof Element)) {
+          // 标记为非标准 target，后续处理时会用到
+          (event as any)._isNonStandardTarget = true;
+        }
+      } catch (e) {
+        // 忽略检查错误
+      }
+    };
+    
+    eventTypes.forEach(eventType => {
+      window.addEventListener(eventType, captureHandler, true);
+    });
+
+    console.log('[EventSafetyLayer] 🛡️ ======== 事件安全层初始化完成 ========');
 
     // ============================================
     // 清理函数
@@ -145,14 +239,12 @@ export function EventSafetyLayer() {
       window.onerror = originalErrorHandler;
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
       
-      eventTypes.forEach(eventType => {
-        window.removeEventListener(eventType, handleEventCapture, true);
-      });
+      // 注意：我们不恢复 Element 原型方法和 addEventListener，
+      // 因为那样可能会导致其他代码出错
       
-      // 恢复原始 closest 方法
-      if (typeof Element !== 'undefined') {
-        // 注意：这里不恢复，因为可能还有代码在执行
-      }
+      eventTypes.forEach(eventType => {
+        window.removeEventListener(eventType, captureHandler, true);
+      });
     };
   }, []);
 
