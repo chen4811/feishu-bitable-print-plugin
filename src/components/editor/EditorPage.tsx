@@ -62,7 +62,7 @@ import { CanvasArea } from './canvas/CanvasArea';
 import { PageSettingsDialog } from './dialogs/PageSettingsDialog';
 import { PrintPreviewDialog } from './dialogs/PrintPreviewDialog';
 import { usePrintSDK } from '@/hooks/usePrintSDK';
-import { useFeishuSDK } from '@/hooks/useFeishuSDK';
+import { feishuEnv } from '@/lib/feishu-env';
 
 interface EditorPageProps {
   onExit: () => void;
@@ -93,15 +93,11 @@ export function EditorPage({ onExit }: EditorPageProps) {
     isLoading: isStoreLoading 
   } = useTemplateStore();
 
-  // 🔥 使用飞书SDK获取数据
-  const { 
-    records: feishuRecords, 
-    fields: feishuFields,
-    isLoading: feishuLoading, 
-    isFeishuEnvironment: feishuEnvFlag,
-    fetchRecords,
-    fetchFields
-  } = useFeishuSDK();
+  // 🔥 使用飞书SDK获取数据（feishu-env)
+  const isFeishuEnvironment = feishuEnv.isFeishuEnvironment();
+  const [feishuRecords, setFeishuRecords] = useState<any[]>([]);
+  const [feishuFields, setFeishuFields] = useState<any[]>([]);
+  const [feishuLoading, setFeishuLoading] = useState(false);
 
   const {
     templateName,
@@ -128,29 +124,92 @@ export function EditorPage({ onExit }: EditorPageProps) {
     loadTemplateFromData,
   } = useEditorStore();
 
-  // 同步飞书SDK数据到store
+  // 从 feishu-env 获取数据并监听点击行
   useEffect(() => {
+    if (!isFeishuEnvironment) {
+      console.log('[EditorPage] 不在飞书环境，跳过');
+      return;
+    }
+
+    console.log('[EditorPage] ======== 初始化飞书环境 ========');
+    setFeishuEnvironment(true);
+
     // 设置是否在飞书环境
-    setFeishuEnvironment(feishuEnvFlag);
-    
-    // 同步records到store（类型转换）
-    if (feishuRecords && feishuRecords.length > 0) {
-      setRecords(feishuRecords as unknown as Record<string, unknown>[]);
-    }
-    
-    // 同步fields到store（需要转换格式）
-    if (feishuFields && feishuFields.length > 0) {
-      // 转换飞书字段格式为应用字段格式
-      const appFields = feishuFields.map((field: any) => ({
-        id: field.field_id || field.id,
-        name: field.field_name || field.name,
-        type: field.type_name || field.type || 'text',
-        placeholder: `[${field.field_name || field.name}]`,
-        isSystem: false,
-      }));
-      setFields(appFields);
-    }
-  }, [feishuRecords, feishuFields, feishuEnvFlag, setRecords, setFields, setFeishuEnvironment]);
+
+    const initData = async () => {
+      try {
+        setFeishuLoading(true);
+        
+        // 1. 获取字段
+        console.log('[EditorPage] 获取字段...');
+        const fields = await feishuEnv.fetchFields();
+        console.log('[EditorPage] 获取到字段:', fields);
+        
+        // 转换字段格式
+        const appFields = fields.map((field: any) => ({
+          id: field.id,
+          name: field.name,
+          type: field.type,
+          placeholder: `[${field.name}]`,
+          isSystem: false,
+        }));
+        setFeishuFields(fields);
+        setFields(appFields);
+
+        // 2. 默认获取第一条记录
+        console.log('[EditorPage] 获取第一条记录...');
+        const records = await feishuEnv.getSelectedRecords();
+        console.log('[EditorPage] 获取到记录:', records);
+        
+        if (records.length > 0) {
+          // 转换记录格式
+          const appRecords = records.map((record, index) => ({
+            id: record.id,
+            ...record.fields,
+            _rowIndex: index,
+          }));
+          setFeishuRecords(records);
+          setRecords(appRecords as unknown as Record<string, unknown>[]);
+        }
+        
+        setFeishuLoading(false);
+      } catch (error) {
+        console.error('[EditorPage] 初始化数据失败:', error);
+        setFeishuLoading(false);
+      }
+    };
+
+    // 初始化数据
+    initData();
+
+    // 设置点击行监听
+    console.log('[EditorPage] 设置点击行监听...');
+    const unsubscribe = feishuEnv.onSelectionChange(async (event) => {
+      console.log('[EditorPage] ======== 收到点击行事件 ========');
+      console.log('[EditorPage] 事件数据:', event);
+      
+      // 获取新的选中记录
+      try {
+        const records = await feishuEnv.getSelectedRecords();
+        console.log('[EditorPage] 获取到新的选中记录:', records);
+        
+        if (records.length > 0) {
+          // 转换记录格式
+          const appRecords = records.map((record, index) => ({
+            id: record.id,
+            ...record.fields,
+            _rowIndex: index,
+          }));
+          setFeishuRecords(records);
+          setRecords(appRecords as unknown as Record<string, unknown>[]);
+        }
+      } catch (error) {
+        console.error('[EditorPage] 获取选中记录失败:', error);
+      }
+    });
+
+    return unsubscribe;
+  }, [isFeishuEnvironment, setFeishuEnvironment, setFields, setRecords]);
 
   // 初始化当前编辑的模板
   useEffect(() => {
@@ -877,7 +936,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
     }
   };
 
-  const { isLoading, isFeishuEnvironment, tableName, fields, records } = usePrintSDK();
+  // 只保留usePrintSDK用于旧功能兼容，新功能使用feishuEnv
 
   // 全局键盘事件拦截器
   useEffect(() => {
@@ -1026,8 +1085,8 @@ export function EditorPage({ onExit }: EditorPageProps) {
                 )}
               </div>
               
-              {/* 数据源状态 */}
-              {isLoading ? (
+              {/* 数据源状态（新 feishu-env） */}
+              {feishuLoading ? (
                 <Badge variant="secondary">
                   <Loader2 className="w-3 h-3 mr-1 animate-spin" />
                   加载数据...
@@ -1035,7 +1094,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
               ) : isFeishuEnvironment ? (
                 <Badge variant="default" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
                   <CheckCircle2 className="w-3 h-3 mr-1" />
-                  {tableName} · {records.length} 条
+                  飞书数据 · {feishuRecords.length} 条
                 </Badge>
               ) : null}
             </div>

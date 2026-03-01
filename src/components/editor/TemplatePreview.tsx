@@ -296,8 +296,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     setCurrentIndex,
     nextRecord,
     prevRecord,
-    isListening,
-    setIsListening,
     isFromFeishu,
     setIsFromFeishu,
     getCurrentRecord,
@@ -328,18 +326,12 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     console.log('[TemplatePreview] 飞书环境状态:', isFeishuEnvironment);
     setIsFromFeishu(isFeishuEnvironment);
     
-    // 如果在飞书环境，默认开启监听
-    if (isFeishuEnvironment && !isListening) {
-      console.log('[TemplatePreview] 自动开启监听...');
-      setIsListening(true);
-    }
-    
-    // 主动获取一次选中记录
+    // 主动获取一次记录（默认获取第一条
     if (isFeishuEnvironment) {
-      console.log('[TemplatePreview] 初始化时主动获取选中记录...');
+      console.log('[TemplatePreview] 初始化时主动获取第一条记录...');
       fetchSelectedRecordsFromEnv();
     }
-  }, [isFeishuEnvironment, setIsFromFeishu, isListening, setIsListening]);
+  }, [isFeishuEnvironment, setIsFromFeishu]);
 
   // 从 feishu-env 获取选中记录
   const fetchSelectedRecordsFromEnv = useCallback(async () => {
@@ -369,34 +361,17 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     }
   }, [setRecords, setCurrentIndex, showDebugInfo]);
 
-  // 注册选中变化监听（使用 feishu-env）
+  // 注册复选框勾选监听（使用 feishu-env）
   useEffect(() => {
-    if (!isListening || !isFeishuEnvironment) {
-      console.log('[TemplatePreview] 不满足监听条件，跳过注册:', { isListening, isFeishuEnvironment });
+    if (!isFeishuEnvironment) {
+      console.log('[TemplatePreview] 不在飞书环境，跳过注册');
       return;
     }
 
-    console.log('[TemplatePreview] ======== 注册飞书选中变化监听 ========');
+    console.log('[TemplatePreview] ======== 注册飞书复选框勾选监听 ========');
 
-    // 监听器1: 点击行选择
-    const unsubscribe1 = feishuEnv.onSelectionChange(async (event) => {
-      console.log('[TemplatePreview] ======== 收到点击行选中事件 ========');
-      console.log('[TemplatePreview] 完整事件:', event);
-      console.log('[TemplatePreview] event.data:', event?.data);
-      console.log('[TemplatePreview] event.data.recordId:', event?.data?.recordId);
-
-      if (showDebugInfo) {
-        setDebugInfo(`点击行选中事件: ${JSON.stringify(event, null, 2)}`);
-      }
-
-      console.log('[TemplatePreview] 准备调用 fetchSelectedRecordsFromEnv()...');
-      await fetchSelectedRecordsFromEnv();
-      console.log('[TemplatePreview] fetchSelectedRecordsFromEnv() 调用完成');
-      console.log('[TemplatePreview] ===========================================');
-    });
-
-    // 监听器2: 复选框勾选
-    const unsubscribe2 = feishuEnv.onRecordSelectChange(async (event) => {
+    // 监听器: 复选框勾选（打印预览模式只监听复选框
+    const unsubscribe = feishuEnv.onRecordSelectChange(async (event) => {
       console.log('[TemplatePreview] ======== 收到复选框勾选事件 ========');
       console.log('[TemplatePreview] 完整事件:', event);
       console.log('[TemplatePreview] event.data:', event?.data);
@@ -443,11 +418,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     console.log('[TemplatePreview] ======== 监听注册完成 ========');
     
     // 返回清理函数
-    return () => {
-      unsubscribe1();
-      unsubscribe2();
-    };
-  }, [isListening, isFeishuEnvironment, fetchSelectedRecordsFromEnv, showDebugInfo]);
+    return unsubscribe;
+  }, [isFeishuEnvironment, showDebugInfo, setRecords, setCurrentIndex]);
 
   // 处理模板选择
   const handleSelectTemplate = useCallback((template: Template) => {
@@ -630,7 +602,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     selectedTemplateId: selectedTemplate?.id,
     recordsCount: records.length,
     currentIndex,
-    isListening,
     isFromFeishu,
   });
 
@@ -694,22 +665,11 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         <Card className="mb-4">
           <CardContent className="p-4">
             <div className="flex items-center justify-between flex-wrap gap-4">
-              {/* 左侧：飞书监听开关 + 编辑按钮 */}
+              {/* 左侧：飞书状态 + 编辑按钮 */}
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="feishu-listen"
-                    checked={isListening}
-                    onCheckedChange={setIsListening}
-                  />
-                  <Label htmlFor="feishu-listen" className="text-sm">
-                    监听飞书选中
-                  </Label>
-                </div>
-
                 {isFromFeishu && (
                   <Badge variant="secondary" className="text-xs">
-                    已连接飞书
+                    已连接飞书（复选框监听中）
                   </Badge>
                 )}
 
