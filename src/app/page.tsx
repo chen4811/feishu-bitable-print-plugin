@@ -18,9 +18,9 @@ type AppView = 'home' | 'editor' | 'preview';
 export default function PrintPluginApp() {
   const router = useRouter();
   const [view, setView] = useState<AppView>('home');
-  const { setFields, setSystemFields } = useEditorStore();
+  const { setFields, setSystemFields, setTemplateName } = useEditorStore();
   const { user, token, hasAuthorizations, logout } = useUserStore();
-  const { fetchTemplates } = useTemplateStore();
+  const { fetchTemplates, setCurrentTemplate } = useTemplateStore();
 
   // 计算登录状态
   const isLoggedIn = !!token && !!user;
@@ -99,6 +99,14 @@ export default function PrintPluginApp() {
   const handleSelectUserTemplate = () => {
     console.log('[PrintPluginApp] 选择用户模板进入预览');
     setView('preview');
+  };
+
+  // 处理从预览进入编辑
+  const handleEditTemplate = (template: any) => {
+    console.log('[PrintPluginApp] 从预览进入编辑，模板:', template.id);
+    setCurrentTemplate(template);
+    setTemplateName(template.name);
+    setView('editor');
   };
 
   // 处理退出编辑器
@@ -184,7 +192,7 @@ export default function PrintPluginApp() {
           </div>
           {/* 预览内容 */}
           <div className="flex-1 overflow-hidden">
-            <TemplatePreview />
+            <TemplatePreview onEditTemplate={handleEditTemplate} />
           </div>
         </div>
       )}

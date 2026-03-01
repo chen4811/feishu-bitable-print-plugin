@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Printer, ChevronLeft, ChevronRight, Eye, RefreshCw, FileText } from 'lucide-react';
+import { Printer, ChevronLeft, ChevronRight, Eye, RefreshCw, FileText, Pencil, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,18 +11,21 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useTemplateStore, type Template } from '@/store/templateStore';
 import { useSelectedDataStore } from '@/store/selectedDataStore';
+import { useEditorStore } from '@/store/editorStore';
 import feishuSDK from '@/lib/feishu-sdk-real';
 
 interface TemplatePreviewProps {
   baseId?: string;
   tableId?: string;
+  onEditTemplate?: (template: Template) => void;
 }
 
 // 检测模板中的变量
 const extractVariables = (components: any[]): string[] => {
+  console.log('[extractVariables] 开始提取变量，组件数量:', components?.length);
   const variables: string[] = [];
 
-  const traverse = (comp: any) => {
+  const traverse = (comp: any, depth: number = 0) => {
     if (!comp) return;
 
     // 检测文本中的变量 [字段名]
@@ -33,6 +36,7 @@ const extractVariables = (components: any[]): string[] => {
           const varName = match.slice(1, -1);
           if (!variables.includes(varName)) {
             variables.push(varName);
+            console.log(`[extractVariables] 发现变量: [${varName}]`);
           }
         });
       }
@@ -46,6 +50,7 @@ const extractVariables = (components: any[]): string[] => {
           const varName = match.slice(1, -1);
           if (!variables.includes(varName)) {
             variables.push(varName);
+            console.log(`[extractVariables] 发现变量: [${varName}]`);
           }
         });
       }
@@ -53,11 +58,12 @@ const extractVariables = (components: any[]): string[] => {
 
     // 递归检查子组件
     if (comp.children && Array.isArray(comp.children)) {
-      comp.children.forEach(traverse);
+      comp.children.forEach((child: any) => traverse(child, depth + 1));
     }
   };
 
-  components.forEach(traverse);
+  components.forEach((comp, idx) => traverse(comp, 0));
+  console.log('[extractVariables] 提取完成，变量列表:', variables);
   return variables;
 };
 
@@ -76,7 +82,10 @@ const replaceVariables = (text: string, data: Record<string, any>): string => {
 
 // 渲染单个组件（带变量替换）
 const renderComponent = (component: any, data: Record<string, any>): React.ReactNode => {
-  if (!component) return null;
+  if (!component) {
+    console.log('[renderComponent] 组件为空');
+    return null;
+  }
 
   const {
     id,
@@ -86,6 +95,8 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
     style = {},
     children = [],
   } = component;
+
+  console.log(`[renderComponent] 渲染组件: id=${id}, type=${type}`);
 
   // 替换变量
   const processedText = text ? replaceVariables(text, data) : undefined;
@@ -191,8 +202,10 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
   }
 };
 
-export function TemplatePreview({ baseId, tableId }: TemplatePreviewProps) {
-  const { templates, fetchTemplates } = useTemplateStore();
+export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePreviewProps) {
+  console.log('[TemplatePreview] 组件渲染，props:', { baseId, tableId });
+
+  const { templates, fetchTemplates, setCurrentTemplate } = useTemplateStore();
   const {
     records,
     currentIndex,
@@ -210,15 +223,29 @@ export function TemplatePreview({ baseId, tableId }: TemplatePreviewProps) {
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showVariableMapping, setShowVariableMapping] = useState(true);
+  const [debugInfo, setDebugInfo] = useState<string>('');
 
   // 加载模板列表
   useEffect(() => {
-    fetchTemplates();
+    console.log('[TemplatePreview] useEffect - 加载模板列表');
+    fetchTemplates().then(() => {
+      console.log('[TemplatePreview] 模板列表加载完成，数量:', templates.length);
+    }).catch(err => {
+      console.error('[TemplatePreview] 加载模板列表失败:', err);
+    });
   }, [fetchTemplates]);
+
+  // 监听模板变化
+  useEffect(() => {
+    console.log('[TemplatePreview] 模板列表变化:', templates.map(t => ({ id: t.id, name: t.name })));
+  }, [templates]);
 
   // 设置飞书选中监听
   useEffect(() => {
+    console.log('[TemplatePreview] useEffect - 飞书监听状态变化:', isListening);
+
     if (!isListening) {
+      console.log('[TemplatePreview] 监听已关闭');
       setIsFromFeishu(false);
       return;
     }
@@ -231,6 +258,8 @@ export function TemplatePreview({ baseId, tableId }: TemplatePreviewProps) {
       (window.bitable !== undefined)
     );
 
+    console.log('[TemplatePreview] 飞书环境检测:', { isInFeishu, href: window.location.href });
+
     if (!isInFeishu) {
       toast.info('当前不在飞书环境中，无法监听选中变化');
       setIsListening(false);
@@ -238,14 +267,18 @@ export function TemplatePreview({ baseId, tableId }: TemplatePreviewProps) {
     }
 
     setIsFromFeishu(true);
+    console.log('[TemplatePreview] 开始在飞书环境中监听选中变化');
 
     // 注册选中变化监听
     const unsubscribe = feishuSDK.onSelectionChange(async (event) => {
-      console.log('[TemplatePreview] 检测到选中变化:', event);
+      console.log('[TemplatePreview] 检测到选中变化:', JSON.stringify(event, null, 2));
+      setDebugInfo(`选中事件: ${JSON.stringify(event, null, 2)}`);
 
       try {
         // 获取选中数据
+        console.log('[TemplatePreview] 正在获取选中数据...');
         const selectedData = await feishuSDK.getSelectedData(event);
+        console.log('[TemplatePreview] 获取到的选中数据:', selectedData);
 
         if (selectedData && selectedData.length > 0) {
           // 转换为记录格式
@@ -254,9 +287,11 @@ export function TemplatePreview({ baseId, tableId }: TemplatePreviewProps) {
             ...data,
           }));
 
+          console.log('[TemplatePreview] 设置记录数据:', records);
           setRecords(records);
           toast.success(`已获取 ${records.length} 条选中数据`);
         } else {
+          console.log('[TemplatePreview] 未获取到数据');
           setRecords([]);
           toast.info('未检测到选中的数据');
         }
@@ -269,16 +304,44 @@ export function TemplatePreview({ baseId, tableId }: TemplatePreviewProps) {
     toast.success('已开始监听飞书选中变化');
 
     return () => {
+      console.log('[TemplatePreview] 取消飞书监听');
       unsubscribe?.();
     };
   }, [isListening, setRecords, setIsFromFeishu]);
 
+  // 处理模板选择
+  const handleSelectTemplate = useCallback((template: Template) => {
+    console.log('[TemplatePreview] 选择模板:', {
+      id: template.id,
+      name: template.name,
+      hasData: !!template.data,
+      dataKeys: template.data ? Object.keys(template.data) : [],
+      componentsCount: template.data?.components?.length || 0,
+    });
+    setSelectedTemplate(template);
+    setDebugInfo(`选中模板: ${template.name}\n数据: ${JSON.stringify(template.data, null, 2).slice(0, 500)}...`);
+  }, []);
+
+  // 处理编辑模板
+  const handleEdit = useCallback(() => {
+    if (!selectedTemplate) {
+      toast.error('请先选择一个模板');
+      return;
+    }
+    console.log('[TemplatePreview] 编辑模板:', selectedTemplate.id);
+    setCurrentTemplate(selectedTemplate);
+    onEditTemplate?.(selectedTemplate);
+  }, [selectedTemplate, setCurrentTemplate, onEditTemplate]);
+
   // 获取当前选中的模板
   const currentRecord = getCurrentRecord();
+  console.log('[TemplatePreview] 当前记录:', currentRecord);
 
   // 提取模板中的变量
   const templateVariables = useMemo(() => {
+    console.log('[TemplatePreview] 计算模板变量，selectedTemplate:', selectedTemplate?.id);
     if (!selectedTemplate || !selectedTemplate.data?.components) {
+      console.log('[TemplatePreview] 没有模板数据或组件');
       return [];
     }
     return extractVariables(selectedTemplate.data.components);
@@ -302,6 +365,7 @@ export function TemplatePreview({ baseId, tableId }: TemplatePreviewProps) {
 
   // 处理打印
   const handlePrint = useCallback(() => {
+    console.log('[TemplatePreview] 打印当前页');
     if (!selectedTemplate) {
       toast.error('请先选择一个模板');
       return;
@@ -317,6 +381,7 @@ export function TemplatePreview({ baseId, tableId }: TemplatePreviewProps) {
 
   // 处理批量打印（所有记录）
   const handleBatchPrint = useCallback(() => {
+    console.log('[TemplatePreview] 批量打印，记录数:', records.length);
     if (!selectedTemplate) {
       toast.error('请先选择一个模板');
       return;
@@ -335,7 +400,9 @@ export function TemplatePreview({ baseId, tableId }: TemplatePreviewProps) {
     }
 
     // 生成批量打印内容
-    const printContent = records.map((record, index) => `
+    const printContent = records.map((record, index) => {
+      console.log(`[TemplatePreview] 生成打印页 ${index + 1}/${records.length}`);
+      return `
       <div class="print-page" style="
         width: 210mm;
         height: 297mm;
@@ -373,7 +440,7 @@ export function TemplatePreview({ baseId, tableId }: TemplatePreviewProps) {
           })
           .join('') || ''}
       </div>
-    `).join('');
+    `}).join('');
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -404,6 +471,15 @@ export function TemplatePreview({ baseId, tableId }: TemplatePreviewProps) {
     toast.success(`已打开批量打印窗口，共 ${records.length} 条记录`);
   }, [selectedTemplate, records]);
 
+  console.log('[TemplatePreview] 渲染，状态:', {
+    templatesCount: templates.length,
+    selectedTemplateId: selectedTemplate?.id,
+    recordsCount: records.length,
+    currentIndex,
+    isListening,
+    isFromFeishu,
+  });
+
   return (
     <div className="flex h-full gap-4 p-4">
       {/* 左侧：模板列表 */}
@@ -411,7 +487,7 @@ export function TemplatePreview({ baseId, tableId }: TemplatePreviewProps) {
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            模板列表
+            模板列表 ({templates.length})
           </CardTitle>
         </CardHeader>
         <CardContent className="flex-1 p-0">
@@ -420,7 +496,7 @@ export function TemplatePreview({ baseId, tableId }: TemplatePreviewProps) {
               {templates.map((template) => (
                 <button
                   key={template.id}
-                  onClick={() => setSelectedTemplate(template)}
+                  onClick={() => handleSelectTemplate(template)}
                   className={`w-full text-left p-3 rounded-lg border transition-all ${
                     selectedTemplate?.id === template.id
                       ? 'border-blue-500 bg-blue-50'
@@ -464,7 +540,7 @@ export function TemplatePreview({ baseId, tableId }: TemplatePreviewProps) {
         <Card className="mb-4">
           <CardContent className="p-4">
             <div className="flex items-center justify-between flex-wrap gap-4">
-              {/* 飞书监听开关 */}
+              {/* 左侧：飞书监听开关 + 编辑按钮 */}
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <Switch
@@ -482,9 +558,21 @@ export function TemplatePreview({ baseId, tableId }: TemplatePreviewProps) {
                     已连接飞书
                   </Badge>
                 )}
+
+                {/* 编辑模板按钮 */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEdit}
+                  disabled={!selectedTemplate}
+                  className="ml-4"
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  编辑模板
+                </Button>
               </div>
 
-              {/* 数据导航 */}
+              {/* 中间：数据导航 */}
               {records.length > 0 && (
                 <div className="flex items-center gap-4">
                   <Button
@@ -509,7 +597,7 @@ export function TemplatePreview({ baseId, tableId }: TemplatePreviewProps) {
                 </div>
               )}
 
-              {/* 打印按钮 */}
+              {/* 右侧：打印按钮 */}
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -530,6 +618,24 @@ export function TemplatePreview({ baseId, tableId }: TemplatePreviewProps) {
                 </Button>
               </div>
             </div>
+
+            {/* 调试信息 */}
+            {debugInfo && (
+              <div className="mt-4 p-3 bg-gray-100 rounded text-xs font-mono max-h-32 overflow-auto">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold">调试信息:</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2"
+                    onClick={() => setDebugInfo('')}
+                  >
+                    清除
+                  </Button>
+                </div>
+                <pre className="whitespace-pre-wrap">{debugInfo}</pre>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -548,9 +654,10 @@ export function TemplatePreview({ baseId, tableId }: TemplatePreviewProps) {
                 }}
               >
                 {records.length > 0 && currentRecord ? (
-                  selectedTemplate.data?.components?.map((component: any) =>
-                    renderComponent(component, currentRecord)
-                  )
+                  selectedTemplate.data?.components?.map((component: any, idx: number) => {
+                    console.log(`[TemplatePreview] 渲染组件 ${idx}:`, component.id, component.type);
+                    return renderComponent(component, currentRecord);
+                  })
                 ) : (
                   <div className="h-full flex items-center justify-center text-gray-400">
                     <div className="text-center">
@@ -588,7 +695,7 @@ export function TemplatePreview({ baseId, tableId }: TemplatePreviewProps) {
               <div className="space-y-4">
                 {/* 模板变量 */}
                 <div>
-                  <h4 className="text-sm font-medium mb-2 text-gray-700">模板变量</h4>
+                  <h4 className="text-sm font-medium mb-2 text-gray-700">模板变量 ({templateVariables.length})</h4>
                   {templateVariables.length > 0 ? (
                     <div className="space-y-1">
                       {templateVariables.map((varName) => (
@@ -642,7 +749,7 @@ export function TemplatePreview({ baseId, tableId }: TemplatePreviewProps) {
                 {/* 当前数据预览 */}
                 {currentRecord && (
                   <div>
-                    <h4 className="text-sm font-medium mb-2 text-gray-700">当前数据</h4>
+                    <h4 className="text-sm font-medium mb-2 text-gray-700">当前数据 (前10项)</h4>
                     <div className="space-y-1 text-xs">
                       {Object.entries(currentRecord)
                         .filter(([key]) => !key.startsWith('_'))

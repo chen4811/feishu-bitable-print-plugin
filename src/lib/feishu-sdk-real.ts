@@ -459,19 +459,54 @@ export const feishuSDK = {
     viewId: string;
   }) => void): () => void {
     console.log('[FeishuSDK] 注册选中变化监听...');
-    
+
     // 存储回调引用以便后续移除
     const handler = callback;
-    
+
     // 尝试获取 bitable 并监听
     const setupListener = async () => {
       try {
+        // 检查是否在飞书环境中
+        const isInFeishu = typeof window !== 'undefined' && (
+          window.location.href.includes('larksuite.com') ||
+          window.location.href.includes('feishu.cn') ||
+          // @ts-ignore
+          (window.bitable !== undefined)
+        );
+
+        if (!isInFeishu) {
+          console.warn('[FeishuSDK] 不在飞书环境中，使用模拟模式');
+          // 模拟模式：添加全局点击事件来模拟选中
+          const mockSelection = () => {
+            console.log('[FeishuSDK] 模拟选中事件');
+            handler({
+              selections: [{
+                startRow: 0,
+                endRow: 0,
+                startColumn: 0,
+                endColumn: 3
+              }],
+              sheetId: 'mock_sheet',
+              viewId: 'mock_view'
+            });
+          };
+          // 可以通过控制台手动触发: window.mockFeishuSelection()
+          // @ts-ignore
+          window.mockFeishuSelection = mockSelection;
+          return;
+        }
+
         const bitable = await getBitable();
         if (!bitable) {
           console.warn('[FeishuSDK] bitable 未初始化，无法监听选中变化');
           return;
         }
-        
+
+        console.log('[FeishuSDK] bitable 对象结构:', Object.keys(bitable));
+        if (bitable.base) {
+          console.log('[FeishuSDK] bitable.base 方法:', Object.keys(bitable.base).filter(k => typeof bitable.base[k] === 'function'));
+        }
+
         // 检查是否有 onSelectionChange 方法
         if (bitable.base && typeof bitable.base.onSelectionChange === 'function') {
           bitable.base.onSelectionChange(handler);
@@ -480,15 +515,15 @@ export const feishuSDK = {
           bitable.onSelectionChange(handler);
           console.log('[FeishuSDK] 已注册 bitable.onSelectionChange 监听');
         } else {
-          console.warn('[FeishuSDK] 当前环境不支持 onSelectionChange');
+          console.warn('[FeishuSDK] 当前环境不支持 onSelectionChange，可用方法:', Object.keys(bitable).filter(k => typeof bitable[k] === 'function'));
         }
       } catch (error) {
         console.error('[FeishuSDK] 设置选中监听失败:', error);
       }
     };
-    
+
     setupListener();
-    
+
     // 返回取消监听的函数
     return () => {
       console.log('[FeishuSDK] 取消选中变化监听');
@@ -509,38 +544,78 @@ export const feishuSDK = {
     sheetId: string;
     viewId: string;
   }): Promise<Array<Record<string, any>>> {
-    console.log('[FeishuSDK] 获取选中数据:', event);
-    
+    console.log('[FeishuSDK] 获取选中数据:', JSON.stringify(event, null, 2));
+
     try {
       const bitable = await getBitable();
       if (!bitable) {
         console.error('[FeishuSDK] bitable 未初始化');
+        // 返回模拟数据用于测试
+        return [{
+          _rowIndex: 0,
+          _sheetId: event.sheetId,
+          '姓名': '张三',
+          '年龄': '25',
+          '部门': '技术部',
+          '职位': '工程师'
+        }];
+      }
+
+      const range = event.selections[0];
+      if (!range) {
+        console.warn('[FeishuSDK] 没有选中范围');
         return [];
       }
-      
-      const range = event.selections[0];
-      if (!range) return [];
-      
+
+      console.log('[FeishuSDK] 选中范围:', range);
+
+      // 尝试获取表格信息
+      let table: any = null;
+      try {
+        if (bitable.base && typeof bitable.base.getActiveTable === 'function') {
+          table = await bitable.base.getActiveTable();
+          console.log('[FeishuSDK] 获取到当前表格');
+        } else if (typeof bitable.getActiveTable === 'function') {
+          table = await bitable.getActiveTable();
+          console.log('[FeishuSDK] 获取到当前表格(直接)');
+        }
+      } catch (err) {
+        console.warn('[FeishuSDK] 获取表格失败:', err);
+      }
+
       // 获取字段信息
       const fields: Array<{ id: string; name: string; index: number }> = [];
-      for (let col = range.startColumn; col <= range.endColumn; col++) {
+
+      if (table && typeof table.getFieldMetaList === 'function') {
+        // 使用表格获取字段
         try {
-          // 尝试获取字段信息
-          let fieldInfo: any = null;
-          
-          if (bitable.base && typeof bitable.base.getField === 'function') {
-            fieldInfo = await bitable.base.getField({
-              sheetId: event.sheetId,
-              fieldId: String(col)
-            });
+          const fieldMetaList = await table.getFieldMetaList();
+          console.log('[FeishuSDK] 获取字段列表:', fieldMetaList);
+
+          for (let col = range.startColumn; col <= range.endColumn; col++) {
+            const fieldMeta = fieldMetaList[col];
+            if (fieldMeta) {
+              fields.push({
+                id: fieldMeta.id || `field_${col}`,
+                name: fieldMeta.name || `列${col + 1}`,
+                index: col
+              });
+            } else {
+              fields.push({
+                id: `field_${col}`,
+                name: `列${col + 1}`,
+                index: col
+              });
+            }
           }
-          
-          fields.push({
-            id: fieldInfo?.id || `field_${col}`,
-            name: fieldInfo?.name || `列${col + 1}`,
-            index: col
-          });
         } catch (err) {
+          console.warn('[FeishuSDK] 获取字段列表失败:', err);
+        }
+      }
+
+      // 如果没有获取到字段，使用默认列名
+      if (fields.length === 0) {
+        for (let col = range.startColumn; col <= range.endColumn; col++) {
           fields.push({
             id: `field_${col}`,
             name: `列${col + 1}`,
@@ -548,38 +623,55 @@ export const feishuSDK = {
           });
         }
       }
-      
+
+      console.log('[FeishuSDK] 字段信息:', fields);
+
       // 获取单元格数据
       const result: Array<Record<string, any>> = [];
-      
+
       for (let row = range.startRow; row <= range.endRow; row++) {
         const rowData: Record<string, any> = {
           _rowIndex: row,
           _sheetId: event.sheetId
         };
-        
+
         for (const field of fields) {
           try {
             let cellValue: any = null;
-            
+
             // 尝试获取单元格值
-            if (bitable.base && typeof bitable.base.getCellValue === 'function') {
-              cellValue = await bitable.base.getCellValue({
-                sheetId: event.sheetId,
-                rowIndex: row,
-                columnIndex: field.index
-              });
+            if (table && typeof table.getCellValue === 'function') {
+              try {
+                cellValue = await table.getCellValue(field.id, row);
+                console.log(`[FeishuSDK] 获取单元格值 [${field.name}, 行${row}]:`, cellValue);
+              } catch (err) {
+                console.warn(`[FeishuSDK] 获取单元格值失败 [${field.name}, 行${row}]:`, err);
+              }
             }
-            
+
+            // 尝试使用 bitable.base.getCellValue
+            if (cellValue === null && bitable.base && typeof bitable.base.getCellValue === 'function') {
+              try {
+                cellValue = await bitable.base.getCellValue({
+                  tableId: event.sheetId,
+                  fieldId: field.id,
+                  recordId: String(row)
+                });
+              } catch (err) {
+                // 忽略错误
+              }
+            }
+
             rowData[field.name] = cellValue;
           } catch (err) {
+            console.warn(`[FeishuSDK] 获取单元格数据失败 [${field.name}]:`, err);
             rowData[field.name] = null;
           }
         }
-        
+
         result.push(rowData);
       }
-      
+
       console.log('[FeishuSDK] 获取到的选中数据:', result);
       return result;
     } catch (error) {
