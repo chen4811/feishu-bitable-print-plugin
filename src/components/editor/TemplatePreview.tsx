@@ -331,14 +331,22 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
   // 初始化：设置飞书环境状态
   useEffect(() => {
+    console.log('[TemplatePreview] ======== 组件初始化 ========');
     console.log('[TemplatePreview] 飞书环境状态:', isFeishuEnvironment);
     setIsFromFeishu(isFeishuEnvironment);
     
     // 如果在飞书环境，默认开启监听
     if (isFeishuEnvironment && !isListening) {
+      console.log('[TemplatePreview] 自动开启监听...');
       setIsListening(true);
     }
-  }, [isFeishuEnvironment, setIsFromFeishu, isListening, setIsListening]);
+    
+    // 主动获取一次选中记录
+    if (isFeishuEnvironment) {
+      console.log('[TemplatePreview] 初始化时主动获取选中记录...');
+      fetchSelectedRecords();
+    }
+  }, [isFeishuEnvironment, setIsFromFeishu, isListening, setIsListening, fetchSelectedRecords]);
 
   // 处理飞书记录数据，转换格式并设置到 store
   useEffect(() => {
@@ -374,28 +382,30 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   // 注册选中变化监听
   useEffect(() => {
     if (!isListening || !isFeishuEnvironment) {
+      console.log('[TemplatePreview] 不满足监听条件，跳过注册:', { isListening, isFeishuEnvironment });
       return;
     }
 
-    console.log('[TemplatePreview] 注册飞书选中变化监听');
+    console.log('[TemplatePreview] ======== 注册飞书选中变化监听 ========');
 
     const unsubscribe = registerSelectionChange(async (event) => {
-      console.log('[TemplatePreview] 监听到选中变化事件:', event);
+      console.log('[TemplatePreview] ======== 收到选中变化事件 ========');
+      console.log('[TemplatePreview] 完整事件:', event);
+      console.log('[TemplatePreview] event.data:', event?.data);
+      console.log('[TemplatePreview] event.data.recordId:', event?.data?.recordId);
 
       if (showDebugInfo) {
         setDebugInfo(`选中事件: ${JSON.stringify(event, null, 2)}`);
       }
 
-      // 检查是否有 recordId
-      if (event.data?.recordId) {
-        console.log('[TemplatePreview] 选中了单条记录:', event.data.recordId);
-        // 获取选中的记录
-        await fetchSelectedRecords();
-      } else {
-        console.log('[TemplatePreview] 没有选中记录');
-      }
+      console.log('[TemplatePreview] 准备调用 fetchSelectedRecords()...');
+      // 无论有没有 recordId，都尝试获取一次选中记录
+      await fetchSelectedRecords();
+      console.log('[TemplatePreview] fetchSelectedRecords() 调用完成');
+      console.log('[TemplatePreview] ===========================================');
     });
 
+    console.log('[TemplatePreview] ======== 监听注册完成 ========');
     return unsubscribe;
   }, [isListening, isFeishuEnvironment, registerSelectionChange, fetchSelectedRecords, showDebugInfo]);
 
