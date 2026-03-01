@@ -242,6 +242,9 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   // 行/列操作菜单的悬停状态
   const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
   const [hoveredColIndex, setHoveredColIndex] = useState<number | null>(null);
+  // 菜单自身的悬停状态
+  const [isRowMenuHovered, setIsRowMenuHovered] = useState(false);
+  const [isColMenuHovered, setIsColMenuHovered] = useState(false);
 
   // 拖动调整行高列宽的状态
   const [resizingRow, setResizingRow] = useState<{ rowIndex: number; startY: number; startHeight: number } | null>(null);
@@ -820,19 +823,30 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                         width: colWidth ? `${colWidth}px` : undefined,
                         minWidth: colWidth ? `${colWidth}px` : undefined,
                       }}
-                      onMouseEnter={() => setHoveredColIndex(colIndex)}
-                      onMouseLeave={() => setHoveredColIndex(null)}
+                      onMouseEnter={() => {
+                        setHoveredColIndex(colIndex);
+                      }}
+                      onMouseLeave={() => {
+                        if (!isColMenuHovered) {
+                          setHoveredColIndex(null);
+                        }
+                      }}
                       onMouseDown={(e) => e.stopPropagation()}
                       onClick={(e) => e.stopPropagation()}
                     >
                       {getColumnLabel(colIndex)}
                       {/* 列操作菜单 */}
-                      {hoveredColIndex === colIndex && (
+                      {(hoveredColIndex === colIndex || isColMenuHovered) && hoveredColIndex === colIndex && (
                         <ColumnActionMenu
                           onAddLeft={() => addColumnLeft(colIndex)}
                           onAddRight={() => addColumnRight(colIndex)}
                           onDelete={() => deleteColumn(colIndex)}
                           position="bottom"
+                          onMouseEnter={() => setIsColMenuHovered(true)}
+                          onMouseLeave={() => {
+                            setIsColMenuHovered(false);
+                            setHoveredColIndex(null);
+                          }}
                         />
                       )}
                       {/* 🔥 列宽调整手柄 - 仅在编辑模式下显示 */}
@@ -879,19 +893,30 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       color: '#374151',
                       height: rowHeights[rowIndex] ? `${rowHeights[rowIndex]}px` : undefined,
                     }}
-                    onMouseEnter={() => setHoveredRowIndex(rowIndex)}
-                    onMouseLeave={() => setHoveredRowIndex(null)}
+                    onMouseEnter={() => {
+                      setHoveredRowIndex(rowIndex);
+                    }}
+                    onMouseLeave={() => {
+                      if (!isRowMenuHovered) {
+                        setHoveredRowIndex(null);
+                      }
+                    }}
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
                   >
                     {rowIndex + 1}
                     {/* 行操作菜单 */}
-                    {hoveredRowIndex === rowIndex && (
+                    {(hoveredRowIndex === rowIndex || isRowMenuHovered) && hoveredRowIndex === rowIndex && (
                       <RowActionMenu
                         onAddAbove={() => addRowAbove(rowIndex)}
                         onAddBelow={() => addRowBelow(rowIndex)}
                         onDelete={() => deleteRow(rowIndex)}
                         position="right"
+                        onMouseEnter={() => setIsRowMenuHovered(true)}
+                        onMouseLeave={() => {
+                          setIsRowMenuHovered(false);
+                          setHoveredRowIndex(null);
+                        }}
                       />
                     )}
                     {/* 🔥 行高调整手柄 - 仅在编辑模式下显示 */}
@@ -920,8 +945,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   const isCellInRange = isCellInSelection(rowIndex, colIndex);
                   const isCellSelected = tableEditing.selectedCells.includes(cellId) || isCellInRange;
                   const cellBorder = cell?.border;
-                  const borderWidth = cellBorder?.width || tableComp.tableConfig?.borderWidth || 1;
-                  const borderColor = cellBorder?.color || tableComp.tableConfig?.borderColor || '#000000';
+                  const borderWidth = cellBorder?.width || tableComp.tableConfig?.borderWidth || 2;
+                  const borderColor = cellBorder?.color || tableComp.tableConfig?.borderColor || '#6b7280';
                   
                   // 🔥 获取列宽和行高
                   const colWidth = colWidths[colIndex];
@@ -950,7 +975,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       key={`${rowIndex}-${colIndex}`}
                       rowSpan={rowSpan && rowSpan > 1 ? rowSpan : undefined}
                       colSpan={colSpan && colSpan > 1 ? colSpan : undefined}
-                      className={`p-1 text-sm cursor-pointer transition-colors select-none ${!hasCellBorder ? 'border' : ''}`}
+                      className={`p-1 text-sm cursor-pointer transition-colors select-none`}
                       style={{
                         backgroundColor: (() => {
                           const cellBgColor = cell?.backgroundColor;
@@ -972,6 +997,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                         width: colWidth ? `${colWidth}px` : undefined,
                         minWidth: colWidth ? `${colWidth}px` : undefined,
                         height: rowHeight ? `${rowHeight}px` : undefined,
+                        // 强制添加默认边框，确保表格线明显
+                        border: !hasCellBorder ? `${borderWidth}px solid ${borderColor}` : undefined,
                         ...borderStyles,
                       }}
                       onMouseDown={(e) => handleCellMouseDown(rowIndex, colIndex, e)}

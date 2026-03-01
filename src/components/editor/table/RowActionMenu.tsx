@@ -7,6 +7,8 @@ interface RowActionMenuProps {
   onAddBelow: () => void;
   onDelete: () => void;
   position?: 'left' | 'right';
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 }
 
 export const RowActionMenu: React.FC<RowActionMenuProps> = ({
@@ -14,6 +16,8 @@ export const RowActionMenu: React.FC<RowActionMenuProps> = ({
   onAddBelow,
   onDelete,
   position = 'right',
+  onMouseEnter,
+  onMouseLeave,
 }) => {
   return (
     <div 
@@ -22,6 +26,8 @@ export const RowActionMenu: React.FC<RowActionMenuProps> = ({
       }`}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       <button
         onClick={onAddAbove}

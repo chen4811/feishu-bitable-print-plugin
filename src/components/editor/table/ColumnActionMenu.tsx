@@ -7,6 +7,8 @@ interface ColumnActionMenuProps {
   onAddRight: () => void;
   onDelete: () => void;
   position?: 'top' | 'bottom';
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 }
 
 export const ColumnActionMenu: React.FC<ColumnActionMenuProps> = ({
@@ -14,6 +16,8 @@ export const ColumnActionMenu: React.FC<ColumnActionMenuProps> = ({
   onAddRight,
   onDelete,
   position = 'bottom',
+  onMouseEnter,
+  onMouseLeave,
 }) => {
   return (
     <div 
@@ -22,6 +26,8 @@ export const ColumnActionMenu: React.FC<ColumnActionMenuProps> = ({
       }`}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       <button
         onClick={onAddLeft}
