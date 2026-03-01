@@ -21,31 +21,34 @@ export default function PrintPluginApp() {
   const [view, setView] = useState<AppView>('home');
   const [selectedTemplate, setSelectedTemplate] = useState<UserTemplate | null>(null);
   const { setFields, setSystemFields } = useEditorStore();
-  const { user, isLoggedIn, isAuthCodeBound, authCode, logout } = useUserStore();
+  const { user, token, hasAuthorizations, logout } = useUserStore();
+
+  // 计算登录状态
+  const isLoggedIn = !!token && !!user;
 
   console.log('[PrintPluginApp] 渲染');
   console.log('[PrintPluginApp] isLoggedIn:', isLoggedIn);
-  console.log('[PrintPluginApp] isAuthCodeBound:', isAuthCodeBound);
+  console.log('[PrintPluginApp] hasAuthorizations:', hasAuthorizations);
   console.log('[PrintPluginApp] user:', user);
 
   // 检查登录状态
   useEffect(() => {
     console.log('[PrintPluginApp] 检查登录状态 useEffect 触发');
     console.log('[PrintPluginApp] isLoggedIn:', isLoggedIn);
-    console.log('[PrintPluginApp] isAuthCodeBound:', isAuthCodeBound);
+    console.log('[PrintPluginApp] hasAuthorizations:', hasAuthorizations);
     
     if (!isLoggedIn) {
       console.log('[PrintPluginApp] 未登录，跳转到登录页面');
       router.push('/login');
-    } else if (!isAuthCodeBound) {
+    } else if (!hasAuthorizations) {
       console.log('[PrintPluginApp] 已登录但未绑定授权码，跳转到绑定页面');
       router.push('/bind-auth');
     }
-  }, [isLoggedIn, isAuthCodeBound, router]);
+  }, [isLoggedIn, hasAuthorizations, router]);
 
   // 初始化字段数据
   useEffect(() => {
-    if (!isLoggedIn || !isAuthCodeBound) {
+    if (!isLoggedIn || !hasAuthorizations) {
       return;
     }
 
@@ -113,7 +116,7 @@ export default function PrintPluginApp() {
   };
 
   // 如果未登录或未绑定授权码，显示加载状态
-  if (!isLoggedIn || !isAuthCodeBound) {
+  if (!isLoggedIn || !hasAuthorizations) {
     console.log('[PrintPluginApp] 状态不满足，显示加载状态');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
