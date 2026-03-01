@@ -100,27 +100,18 @@ export function EditorPage({ onExit }: EditorPageProps) {
     setFields,
   } = useEditorStore();
 
-  // 🔥 同步飞书SDK数据到store
+  // 同步飞书SDK数据到store
   useEffect(() => {
-    console.log('[EditorPage] 飞书SDK数据更新:', { 
-      recordsCount: feishuRecords?.length, 
-      fieldsCount: feishuFields?.length,
-      isFeishuEnvironment: feishuEnvFlag,
-      feishuLoading 
-    });
-    
     // 设置是否在飞书环境
     setFeishuEnvironment(feishuEnvFlag);
     
     // 同步records到store（类型转换）
     if (feishuRecords && feishuRecords.length > 0) {
-      console.log('[EditorPage] 同步records到store:', feishuRecords);
       setRecords(feishuRecords as unknown as Record<string, unknown>[]);
     }
     
-    // 🔥 同步fields到store（需要转换格式）
+    // 同步fields到store（需要转换格式）
     if (feishuFields && feishuFields.length > 0) {
-      console.log('[EditorPage] 同步fields到store:', feishuFields);
       // 转换飞书字段格式为应用字段格式
       const appFields = feishuFields.map((field: any) => ({
         id: field.field_id || field.id,
@@ -668,7 +659,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
 
   // 处理颜色变化
   const handleColorChange = useCallback((colorType: 'text' | 'fill', color: string) => {
-    console.log('颜色变化:', colorType, color);
+    // 颜色变化处理
   }, []);
 
   // 智能聚焦：选中组件时自动切换到数据源面板
@@ -715,32 +706,20 @@ export function EditorPage({ onExit }: EditorPageProps) {
 
   const { isLoading, isFeishuEnvironment, tableName, fields, records } = usePrintSDK();
 
-  // 🔥 终极解决方案：全局键盘事件拦截器 - 修复版
+  // 全局键盘事件拦截器
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       // 如果正在编辑表格，在冒泡阶段阻止事件！
       if (tableEditing.isEditing || tableCellEditing.isEditing) {
-        console.log(`[🔥 EditorPage 全局拦截器] 检测到表格编辑中，在冒泡阶段拦截`, {
-          key: e.key,
-          shiftKey: e.shiftKey,
-          target: e.target,
-          eventPhase: e.eventPhase,
-        });
-        
         // 检查事件来源是否是 textarea（我们自己的输入框）
         const target = e.target as HTMLElement;
         const isTextarea = target.tagName === 'TEXTAREA';
         
         if (isTextarea) {
-          console.log(`[🔥 EditorPage 全局拦截器] 事件来自 textarea，在冒泡阶段阻止`, {
-            key: e.key,
-          });
-          
           // 只在冒泡阶段阻止，让事件先到达 textarea
           e.stopImmediatePropagation();
           e.stopPropagation();
         } else {
-          console.log(`[🔥 EditorPage 全局拦截器] 事件不来自 textarea，完全阻止`);
           e.preventDefault();
           e.stopImmediatePropagation();
           e.stopPropagation();
@@ -750,7 +729,6 @@ export function EditorPage({ onExit }: EditorPageProps) {
     
     const handleGlobalKeyUp = (e: KeyboardEvent) => {
       if (tableEditing.isEditing || tableCellEditing.isEditing) {
-        console.log(`[🔥 EditorPage 全局拦截器] 拦截 keyup`, { key: e.key });
         e.stopImmediatePropagation();
         e.stopPropagation();
       }
@@ -758,13 +736,10 @@ export function EditorPage({ onExit }: EditorPageProps) {
     
     const handleGlobalKeyPress = (e: KeyboardEvent) => {
       if (tableEditing.isEditing || tableCellEditing.isEditing) {
-        console.log(`[🔥 EditorPage 全局拦截器] 拦截 keypress`, { key: e.key });
         e.stopImmediatePropagation();
         e.stopPropagation();
       }
     };
-    
-    console.log(`[🔥 EditorPage] 安装全局键盘事件拦截器（冒泡阶段）`);
     
     // 不在捕获阶段拦截！让事件先到达目标元素（textarea）
     // 只在冒泡阶段拦截，使用 false 作为第三个参数（默认值）
@@ -773,7 +748,6 @@ export function EditorPage({ onExit }: EditorPageProps) {
     document.addEventListener('keypress', handleGlobalKeyPress, false);
     
     return () => {
-      console.log(`[🔥 EditorPage] 卸载全局键盘事件拦截器`);
       document.removeEventListener('keydown', handleGlobalKeyDown, false);
       document.removeEventListener('keyup', handleGlobalKeyUp, false);
       document.removeEventListener('keypress', handleGlobalKeyPress, false);

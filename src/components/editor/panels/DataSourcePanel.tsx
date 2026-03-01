@@ -82,16 +82,13 @@ export function DataSourcePanel({ onAddField }: DataSourcePanelProps) {
       
       if (successful) {
         // 成功反馈
-        console.log('[Copy] Success:', text);
         return true;
       } else {
         // 命令执行失败
-        console.warn('[Copy] execCommand returned false');
         return false;
       }
-    } catch (err) {
+    } catch (_err) {
       // 异常捕获
-      console.error('[Copy] Exception:', err);
       return false;
     } finally {
       // 5. 清理临时元素
@@ -119,8 +116,6 @@ export function DataSourcePanel({ onAddField }: DataSourcePanelProps) {
         description: variableToken,
         duration: 2000,
       });
-      
-      console.log('[DataSourcePanel] 已复制字段变量:', variableToken);
     } else {
       toast.error('复制失败', {
         description: '请手动复制',

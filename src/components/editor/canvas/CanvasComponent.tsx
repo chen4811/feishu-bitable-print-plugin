@@ -19,19 +19,9 @@ const AutoResizingTextarea = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const componentId = useRef(`textarea-${Math.random().toString(36).substr(2, 9)}`);
 
-  console.log(`[AutoResizingTextarea] 组件初始化，ID: ${componentId.current}`);
-
   // 自动调整高度
   const adjustHeight = useCallback(() => {
     if (textareaRef.current) {
-      console.log(`[AutoResizingTextarea] adjustHeight 触发`, {
-        scrollHeight: textareaRef.current.scrollHeight,
-        clientHeight: textareaRef.current.clientHeight,
-        offsetHeight: textareaRef.current.offsetHeight,
-        valueLength: value?.length || 0,
-        value: value?.substring(0, 50),
-      });
-      
       // 关键修复：先重置高度，然后精确计算
       textareaRef.current.style.height = '0px'; // 强制重置为0，确保scrollHeight计算准确
       
@@ -42,37 +32,19 @@ const AutoResizingTextarea = ({
       const newHeight = Math.max(contentHeight, 24);
       
       textareaRef.current.style.height = `${newHeight}px`;
-      
-      console.log(`[AutoResizingTextarea] 高度调整完成`, {
-        contentHeight,
-        newHeight,
-      });
     }
   }, [value]);
 
   // 处理点击事件，确保阻止冒泡
   const handleClick = useCallback((e: React.MouseEvent) => {
-    console.log(`[AutoResizingTextarea] onClick 触发，阻止冒泡`, { event: e.type });
     e.stopPropagation();
     onClick(e);
   }, [onClick]);
 
   // 处理键盘事件 - 先阻止冒泡，再调用外部处理
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    console.log(`[AutoResizingTextarea] onKeyDown 触发`, { 
-      key: e.key, 
-      shiftKey: e.shiftKey,
-      ctrlKey: e.ctrlKey,
-      altKey: e.altKey,
-      eventPhase: e.eventPhase,
-      bubbles: e.bubbles,
-      cancelable: e.cancelable,
-      defaultPrevented: e.defaultPrevented,
-    });
-    
     // 先阻止冒泡，构建事件防火墙，防止任何事件逃逸到父组件
     e.stopPropagation();
-    console.log(`[AutoResizingTextarea] 🛡️  已调用 stopPropagation()`);
     
     // 再调用外部传入的 onKeyDown（它会处理单独 Enter 的默认行为阻止）
     onKeyDown(e);
@@ -82,13 +54,11 @@ const AutoResizingTextarea = ({
 
   // 处理 KeyUp 事件 - 阻止冒泡
   const handleKeyUp = useCallback((e: React.KeyboardEvent) => {
-    console.log(`[AutoResizingTextarea] onKeyUp 触发，阻止冒泡`, { key: e.key });
     e.stopPropagation();
   }, []);
 
   // 处理 KeyPress 事件 - 阻止冒泡
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
-    console.log(`[AutoResizingTextarea] onKeyPress 触发，阻止冒泡`, { key: e.key });
     e.stopPropagation();
   }, []);
 
@@ -99,13 +69,11 @@ const AutoResizingTextarea = ({
 
   // 内容变化时调整高度
   useEffect(() => {
-    console.log(`[AutoResizingTextarea] useEffect 触发 - value 变化`, { value: value?.substring(0, 30) });
     adjustHeight();
   }, [value]); // 移除 adjustHeight 依赖，避免循环调用
 
   // 组件挂载时调整高度
   useEffect(() => {
-    console.log(`[AutoResizingTextarea] useEffect 触发 - 组件挂载`);
     adjustHeight();
   }, []); // 只在挂载时执行一次
 
@@ -114,7 +82,6 @@ const AutoResizingTextarea = ({
     const textarea = textareaRef.current;
     if (textarea) {
       const handleInputEvent = () => {
-        console.log(`[AutoResizingTextarea] input 事件触发`);
         adjustHeight();
       };
       textarea.addEventListener('input', handleInputEvent);
@@ -176,32 +143,27 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     fields,
   } = useEditorStore();
 
-  // 🔥 获取预览用的记录（优先使用第一条记录）
+  // 获取预览用的记录（优先使用第一条记录）
   const previewRecord = (() => {
     if (records && records.length > 0) {
       const firstRecord = records[0] as any;
       // 将 BitableRecord 格式转换为普通对象
       const recordData: Record<string, unknown> = {};
       
-      console.log('[CanvasComponent] 原始第一条记录:', firstRecord);
-      console.log('[CanvasComponent] fields列表:', fields);
-      
       // 处理 fields 格式（飞书SDK返回的格式）
       if (firstRecord.fields && typeof firstRecord.fields === 'object') {
         Object.entries(firstRecord.fields as Record<string, unknown>).forEach(([key, value]) => {
           recordData[key] = value;
-          console.log(`[CanvasComponent] 添加字段ID映射: ${key} =`, value);
         });
       }
       
-      // 🔥 关键：同时添加字段名到值的映射（支持通过字段名查找）
+      // 关键：同时添加字段名到值的映射（支持通过字段名查找）
       if (firstRecord.fields && typeof firstRecord.fields === 'object' && fields && fields.length > 0) {
         fields.forEach(field => {
           const fieldsObj = firstRecord.fields as Record<string, unknown>;
           const value = fieldsObj[field.id];
           if (value !== undefined) {
             recordData[field.name] = value;
-            console.log(`[CanvasComponent] 添加字段名映射: ${field.name} =`, value);
           }
         });
       }
@@ -213,49 +175,33 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         }
       });
       
-      console.log('[CanvasComponent] 最终previewRecord:', recordData);
       return recordData;
     }
-    console.log('[CanvasComponent] 没有records数据');
     return {};
   })();
   
   // 添加全局键盘事件监听器来检测事件是否逃逸
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      console.log(`[全局 document onKeyDown] 捕获到事件!`, {
-        key: e.key,
-        shiftKey: e.shiftKey,
-        target: e.target,
-        eventPhase: e.eventPhase,
-        bubbles: e.bubbles,
-        cancelable: e.cancelable,
-        defaultPrevented: e.defaultPrevented,
-        timestamp: Date.now(),
-      });
-      
       // 如果这里能捕获到 Enter 或 Backspace，说明事件逃逸了！
       if (e.key === 'Enter' || e.key === 'Backspace' || e.key === 'Delete') {
-        console.warn(`[⚠️  警告] 全局监听器捕获到 ${e.key} 键！事件可能逃逸了！`);
+        // 事件逃逸检测
       }
     };
     
-    const handleGlobalKeyUp = (e: KeyboardEvent) => {
-      console.log(`[全局 document onKeyUp] 捕获到事件`, { key: e.key });
+    const handleGlobalKeyUp = (_e: KeyboardEvent) => {
+      // 事件处理
     };
     
-    const handleGlobalKeyPress = (e: KeyboardEvent) => {
-      console.log(`[全局 document onKeyPress] 捕获到事件`, { key: e.key });
+    const handleGlobalKeyPress = (_e: KeyboardEvent) => {
+      // 事件处理
     };
-    
-    console.log(`[CanvasComponent] 添加全局键盘监听器，组件ID: ${component.id}`);
     
     document.addEventListener('keydown', handleGlobalKeyDown, true); // 捕获阶段监听
     document.addEventListener('keyup', handleGlobalKeyUp, true);
     document.addEventListener('keypress', handleGlobalKeyPress, true);
     
     return () => {
-      console.log(`[CanvasComponent] 移除全局键盘监听器，组件ID: ${component.id}`);
       document.removeEventListener('keydown', handleGlobalKeyDown, true);
       document.removeEventListener('keyup', handleGlobalKeyUp, true);
       document.removeEventListener('keypress', handleGlobalKeyPress, true);
@@ -471,8 +417,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
 
   // 表格单元格编辑
   const handleTableCellChange = (row: number, col: number, value: string) => {
-    console.log(`[handleTableCellChange] 触发`, { row, col, value: value?.substring(0, 30) });
-    
     const newData = [...tableEditData];
     newData[row] = [...newData[row]];
     newData[row][col] = value;
@@ -480,13 +424,13 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     
     const tableComp = component as any;
     if (tableComp.tableConfig?.cells) {
-      // 🔥 关键修复：保留所有原始单元格属性，特别是 rowSpan 和 colSpan！
+      // 关键修复：保留所有原始单元格属性，特别是 rowSpan 和 colSpan！
       const newCells = tableComp.tableConfig.cells.map((rowData: any[], rowIndex: number) =>
         rowData.map((originalCell: any, colIndex: number) => {
           // 如果是当前编辑的单元格，更新 content，其他属性完全保留！
           if (rowIndex === row && colIndex === col) {
             return {
-              ...originalCell, // 🔥 保留所有原始属性！包括 rowSpan、colSpan 等！
+              ...originalCell, // 保留所有原始属性！包括 rowSpan、colSpan 等！
               content: value, // 只更新 content 字段
             };
           }
@@ -501,8 +445,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
           cells: newCells,
         },
       });
-      
-      console.log(`[handleTableCellChange] 完成更新，保留了所有单元格属性`);
     }
   };
 
@@ -1108,30 +1050,13 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                               onChange={(value) => handleTableCellChange(rowIndex, colIndex, value)}
                               onClick={(e) => {}} // AutoResizingTextarea 内部已处理冒泡
                               onKeyDown={(e) => {
-                                console.log(`[表格单元格 onKeyDown] 触发`, { 
-                                  key: e.key, 
-                                  shiftKey: e.shiftKey,
-                                  ctrlKey: e.ctrlKey,
-                                  altKey: e.altKey,
-                                  eventPhase: e.eventPhase,
-                                  bubbles: e.bubbles,
-                                  cancelable: e.cancelable,
-                                  defaultPrevented: e.defaultPrevented,
-                                  位置: `行${rowIndex + 1}, 列${colIndex + 1}`,
-                                });
-                                
                                 // 只有单独的 Enter（不带 Shift）才阻止默认行为
                                 if (e.key === 'Enter' && !e.shiftKey) {
-                                  console.log(`[表格单元格 onKeyDown] 单独 Enter，调用 preventDefault()`);
                                   e.preventDefault();
-                                } else if (e.key === 'Enter' && e.shiftKey) {
-                                  console.log(`[表格单元格 onKeyDown] Shift+Enter，不阻止默认行为，允许换行`);
-                                } else if (e.key === 'Backspace' || e.key === 'Delete') {
-                                  console.log(`[表格单元格 onKeyDown] ${e.key}，不阻止默认行为`);
                                 }
+                                // Shift+Enter、Delete、Backspace 等键：不阻止默认行为，正常编辑
                                 
                                 // 注意：e.stopPropagation() 已经在 AutoResizingTextarea 内部先调用了
-                                // Shift+Enter、Delete、Backspace 等键：不阻止默认行为，正常编辑
                               }}
                               style={textareaStyles}
                             />
