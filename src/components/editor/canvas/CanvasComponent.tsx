@@ -307,10 +307,19 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     return selectedIds;
   };
 
+  // 全局引用，用于访问当前表格数据
+  const tableDataRef = useRef<{
+    tableComp: any;
+  } | null>(null);
+
   // 处理单元格鼠标按下
   const handleCellMouseDown = (rowIndex: number, colIndex: number, e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault(); // 防止文本选择
     if (!isCurrentTableEditing) return;
+    
+    const tableComp = component as any;
+    tableDataRef.current = { tableComp };
     
     setCellSelection({
       startRow: rowIndex,
@@ -332,6 +341,58 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       endCol: colIndex,
     }));
   };
+
+  // 全局鼠标移动监听 - 处理拖拽选择到单元格外部的情况
+  useEffect(() => {
+    if (!isCurrentTableEditing || !cellSelection.isSelecting || !tableDataRef.current) {
+      return;
+    }
+
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      // 通过 elementFromPoint 找到当前鼠标位置的单元格
+      const elem = document.elementFromPoint(e.clientX, e.clientY);
+      if (!elem) return;
+      
+      // 查找有 data-row 和 data-col 属性的元素
+      const cellElem = elem.closest('[data-row][data-col]');
+      if (cellElem) {
+        const row = parseInt(cellElem.getAttribute('data-row') || '0', 10);
+        const col = parseInt(cellElem.getAttribute('data-col') || '0', 10);
+        
+        setCellSelection(prev => ({
+          ...prev,
+          endRow: row,
+          endCol: col,
+        }));
+      }
+    };
+
+    const handleGlobalMouseUp = () => {
+      if (cellSelection.isSelecting && tableDataRef.current) {
+        setCellSelection(prev => ({
+          ...prev,
+          isSelecting: false,
+        }));
+        
+        // 更新 store 中的选中单元格
+        const selectedIds = getSelectedCellIds(tableDataRef.current.tableComp);
+        if (selectedIds.length > 0) {
+          setTableEditing({
+            selectedCells: selectedIds,
+          });
+        }
+      }
+      tableDataRef.current = null;
+    };
+
+    document.addEventListener('mousemove', handleGlobalMouseMove);
+    document.addEventListener('mouseup', handleGlobalMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMouseMove);
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [isCurrentTableEditing, cellSelection.isSelecting, getSelectedCellIds, setTableEditing]);
 
   // 处理单元格鼠标释放
   const handleCellMouseUp = (e: React.MouseEvent) => {
@@ -796,6 +857,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
 
     return (
       <div 
+        data-table-id={component.id}
         onMouseUp={handleCellMouseUp}
         onMouseLeave={handleTableMouseLeave}
       >
@@ -1022,6 +1084,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   return (
                     <td
                       key={`${rowIndex}-${colIndex}`}
+                      data-row={rowIndex}
+                      data-col={colIndex}
                       rowSpan={rowSpan && rowSpan > 1 ? rowSpan : undefined}
                       colSpan={colSpan && colSpan > 1 ? colSpan : undefined}
                       className={`p-1 text-sm cursor-pointer transition-colors select-none`}
