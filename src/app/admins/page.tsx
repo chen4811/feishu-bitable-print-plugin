@@ -19,7 +19,7 @@ export default function AdminLoginPage() {
 
   // 如果已经登录，跳转到管理仪表板
   if (isLoggedIn) {
-    router.push('/admin/dashboard');
+    router.push('/admins/dashboard');
     return null;
   }
 
@@ -31,7 +31,7 @@ export default function AdminLoginPage() {
     try {
       const success = await login(username, password);
       if (success) {
-        router.push('/admin/dashboard');
+        router.push('/admins/dashboard');
       } else {
         setError('用户名或密码错误');
       }

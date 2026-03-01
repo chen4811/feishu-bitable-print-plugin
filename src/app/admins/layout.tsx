@@ -13,10 +13,10 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-  { href: '/admin/dashboard', label: '仪表板', icon: LayoutDashboard },
-  { href: '/admin/authorizations', label: '授权码管理', icon: Key },
-  { href: '/admin/templates', label: '模板管理', icon: FileText },
-  { href: '/admin/settings', label: '系统设置', icon: Settings },
+  { href: '/admins/dashboard', label: '仪表板', icon: LayoutDashboard },
+  { href: '/admins/authorizations', label: '授权码管理', icon: Key },
+  { href: '/admins/templates', label: '模板管理', icon: FileText },
+  { href: '/admins/settings', label: '系统设置', icon: Settings },
 ];
 
 export default function AdminLayout({
@@ -29,7 +29,7 @@ export default function AdminLayout({
 
   // 如果未登录，跳转到登录页
   if (!isLoggedIn) {
-    router.push('/admin');
+    router.push('/admins');
     return null;
   }
 
