@@ -35,6 +35,7 @@ import { UserTemplate } from '@/store/templateStore';
 interface HomePageProps {
   onCreateNew: () => void;
   onSelectTemplate: (template: PresetTemplate) => void;
+  onSelectUserTemplate?: (template: UserTemplate) => void;
 }
 
 // 创建方式卡片
@@ -83,7 +84,7 @@ function EnvStatusBadge({ status, isFeishuEnvironment }: { status: FeishuEnvStat
   }
 }
 
-export function HomePage({ onCreateNew, onSelectTemplate }: HomePageProps) {
+export function HomePage({ onCreateNew, onSelectTemplate, onSelectUserTemplate }: HomePageProps) {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showDebug, setShowDebug] = useState(false);
@@ -116,18 +117,11 @@ export function HomePage({ onCreateNew, onSelectTemplate }: HomePageProps) {
     }
   };
 
-  // 处理选择用户模板
-  const handleSelectUserTemplate = (template: UserTemplate) => {
-    console.log('[HomePage] 选择用户模板:', template);
-    // TODO: 加载用户模板内容
-    onCreateNew();
-  };
-
   return (
     <div className="min-h-screen bg-background flex h-screen overflow-hidden">
       {/* 左侧边栏 */}
       <TemplateSidebar
-        onSelectTemplate={handleSelectUserTemplate}
+        onSelectTemplate={onSelectUserTemplate}
         onCreateNew={onCreateNew}
       />
 
