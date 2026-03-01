@@ -4,13 +4,13 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useEditorStore } from '@/store/editorStore';
 import { useUserStore } from '@/store/userStore';
+import { useTemplateStore, UserTemplate } from '@/store/templateStore';
 import { mockBitableData } from '@/data/mockData';
 import { Field } from '@/types/editor';
 import { HomePage } from '@/components/editor/HomePage';
 import { EditorPage } from '@/components/editor/EditorPage';
 import { TemplatePreview } from '@/components/editor/TemplatePreview';
 import { PresetTemplate } from '@/types/editor';
-import { UserTemplate } from '@/store/templateStore';
 import { Loader2 } from 'lucide-react';
 
 type AppView = 'home' | 'editor' | 'preview';
@@ -21,6 +21,7 @@ export default function PrintPluginApp() {
   const [selectedTemplate, setSelectedTemplate] = useState<UserTemplate | null>(null);
   const { setFields, setSystemFields } = useEditorStore();
   const { user, token, hasAuthorizations, logout } = useUserStore();
+  const { fetchTemplates } = useTemplateStore();
 
   // 计算登录状态
   const isLoggedIn = !!token && !!user;
@@ -59,6 +60,11 @@ export default function PrintPluginApp() {
       // 忽略清理错误
     }
 
+    // 加载用户模板列表
+    fetchTemplates().catch((error) => {
+      console.error('[PrintPluginApp] 加载模板列表失败:', error);
+    });
+
     // 从模拟数据或真实数据中获取字段
     const fields: Field[] = mockBitableData.fields.map((field) => ({
       id: field.id,
@@ -77,7 +83,7 @@ export default function PrintPluginApp() {
 
     setFields(fields);
     setSystemFields(systemFields);
-  }, [setFields, setSystemFields, isLoggedIn, hasAuthorizations]);
+  }, [setFields, setSystemFields, isLoggedIn, hasAuthorizations, fetchTemplates]);
 
   // 处理创建新排版
   const handleCreateNew = () => {

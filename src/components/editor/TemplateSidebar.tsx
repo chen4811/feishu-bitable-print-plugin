@@ -36,6 +36,7 @@ import {
   X,
   Search,
   LogOut,
+  Loader2,
 } from 'lucide-react';
 import { useTemplateStore, UserTemplate } from '@/store/templateStore';
 import { useUserStore } from '@/store/userStore';
@@ -176,6 +177,7 @@ export function TemplateSidebar({ onSelectTemplate, onCreateNew, onLogout, onDel
   const [editingTemplate, setEditingTemplate] = useState<UserTemplate | null>(null);
   const [newTemplateName, setNewTemplateName] = useState('');
   const [newTemplateDesc, setNewTemplateDesc] = useState('');
+  const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
   const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [deleteTemplateId, setDeleteTemplateId] = useState<number | null>(null);
@@ -200,16 +202,24 @@ export function TemplateSidebar({ onSelectTemplate, onCreateNew, onLogout, onDel
   const handleCreateTemplate = async () => {
     if (!newTemplateName.trim()) return;
 
-    await saveTemplate({
-      name: newTemplateName.trim(),
-      description: newTemplateDesc.trim() || undefined,
-      data: {},
-      isPublic: false,
-    });
+    setIsCreatingTemplate(true);
+    try {
+      await saveTemplate({
+        name: newTemplateName.trim(),
+        description: newTemplateDesc.trim() || undefined,
+        data: {},
+        isPublic: false,
+      });
 
-    setNewTemplateName('');
-    setNewTemplateDesc('');
-    setShowCreateDialog(false);
+      setNewTemplateName('');
+      setNewTemplateDesc('');
+      setShowCreateDialog(false);
+    } catch (error) {
+      console.error('[TemplateSidebar] 创建模板失败:', error);
+      alert('创建模板失败: ' + (error instanceof Error ? error.message : '未知错误'));
+    } finally {
+      setIsCreatingTemplate(false);
+    }
   };
 
   // 处理编辑模板
@@ -414,9 +424,16 @@ export function TemplateSidebar({ onSelectTemplate, onCreateNew, onLogout, onDel
             </Button>
             <Button 
               onClick={handleCreateTemplate}
-              disabled={!newTemplateName.trim()}
+              disabled={!newTemplateName.trim() || isCreatingTemplate}
             >
-              创建
+              {isCreatingTemplate ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  创建中...
+                </>
+              ) : (
+                '创建'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
