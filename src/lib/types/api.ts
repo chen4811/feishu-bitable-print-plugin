@@ -17,6 +17,46 @@ export interface PaginatedResponse<T> {
   };
 }
 
+// 用户相关类型
+export interface User {
+  id: number;
+  feishuUserId: string;
+  feishuUnionId?: string;
+  name?: string;
+  avatar?: string;
+  email?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 用户表格授权类型（核心）
+export interface UserTableAuthorization {
+  id: number;
+  userId: number;
+  tableId: string;
+  tableName?: string;
+  // appToken 只在创建/更新时传入，返回时不包含（安全考虑）
+  appToken?: string;
+  isActive: boolean;
+  lastUsedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 创建授权码请求
+export interface CreateAuthorizationRequest {
+  tableId: string;
+  tableName?: string;
+  appToken: string;
+}
+
+// 更新授权码请求
+export interface UpdateAuthorizationRequest {
+  appToken?: string;
+  tableName?: string;
+  isActive?: boolean;
+}
+
 // 模板相关类型
 export interface Template {
   id: number;
@@ -35,7 +75,6 @@ export interface CreateTemplateRequest {
   description?: string;
   thumbnail?: string;
   data: any;
-  userId: number;
 }
 
 export interface UpdateTemplateRequest {
@@ -46,18 +85,6 @@ export interface UpdateTemplateRequest {
   isPublic?: boolean;
 }
 
-// 用户相关类型
-export interface User {
-  id: number;
-  feishuUserId: string;
-  feishuUnionId?: string;
-  name?: string;
-  avatar?: string;
-  email?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 // 飞书相关类型
 export interface FeishuUserInfo {
   sub: string;
@@ -65,4 +92,19 @@ export interface FeishuUserInfo {
   picture: string;
   email: string;
   union_id?: string;
+}
+
+// 登录响应
+export interface LoginResponse {
+  success: boolean;
+  token: string;
+  user: User;
+  hasAuthorizations: boolean;
+}
+
+// 获取当前用户响应
+export interface MeResponse {
+  success: boolean;
+  user: User;
+  authorizations: UserTableAuthorization[];
 }
