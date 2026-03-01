@@ -11,8 +11,7 @@ import { EditorPage } from '@/components/editor/EditorPage';
 import { TemplatePreview } from '@/components/editor/TemplatePreview';
 import { PresetTemplate } from '@/types/editor';
 import { UserTemplate } from '@/store/templateStore';
-import { Button } from '@/components/ui/button';
-import { Loader2, LogOut, User, Key } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 type AppView = 'home' | 'editor' | 'preview';
 
@@ -134,33 +133,6 @@ export default function PrintPluginApp() {
 
   return (
     <div className="min-h-screen">
-      {/* 顶部用户信息栏 - 只在 home 和 editor 视图显示 */}
-      {(view === 'home' || view === 'editor') && (
-        <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
-              <User className="h-4 w-4 text-white" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-900">{user?.name}</p>
-              <p className="text-xs text-gray-500 flex items-center gap-1">
-                <Key className="h-3 w-3" />
-                授权码已绑定
-              </p>
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleLogout}
-            className="text-gray-600 hover:text-red-600"
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            退出登录
-          </Button>
-        </div>
-      )}
-
       {/* 主应用内容 */}
       {view === 'home' && (
         <HomePage
