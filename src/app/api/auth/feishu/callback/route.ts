@@ -7,9 +7,25 @@ export const dynamic = 'force-dynamic';
 
 // 从请求头获取正确的基础 URL
 function getBaseUrl(request: Request): string {
+  // 优先使用环境变量配置的域名
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL;
+  }
+  
   const headers = new Headers(request.headers);
   const host = headers.get('host') || 'localhost:5000';
   const proto = headers.get('x-forwarded-proto') || 'http';
+  
+  // 如果是 localhost，尝试使用飞书重定向 URI 中的域名
+  if (host === 'localhost:5000' && process.env.FEISHU_REDIRECT_URI) {
+    try {
+      const redirectUrl = new URL(process.env.FEISHU_REDIRECT_URI);
+      return `${redirectUrl.protocol}//${redirectUrl.host}`;
+    } catch {
+      // 忽略错误，继续使用默认
+    }
+  }
+  
   return `${proto}://${host}`;
 }
 

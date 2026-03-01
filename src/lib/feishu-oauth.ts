@@ -72,9 +72,16 @@ export async function getAppAccessToken(): Promise<string> {
 
   const result: FeishuApiResponse<{ app_access_token: string; expire: number }> = await response.json();
 
+  console.log('[Feishu OAuth] 飞书 API 响应:', result);
+
   if (result.code !== 0) {
     console.error('[Feishu OAuth] 获取 app_access_token 失败:', result);
     throw new Error(`获取飞书访问令牌失败: ${result.msg}`);
+  }
+
+  if (!result.data || !result.data.app_access_token) {
+    console.error('[Feishu OAuth] 飞书 API 返回数据格式错误:', result);
+    throw new Error('飞书 API 返回数据格式错误');
   }
 
   // 缓存 token，expire 单位是秒，转换为毫秒
