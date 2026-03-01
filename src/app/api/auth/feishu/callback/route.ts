@@ -76,10 +76,19 @@ export async function GET(request: Request) {
 
     if (!dbUser) {
       console.log('[Feishu OAuth Callback API] 新用户，自动注册');
+      
+      // 使用 union_id 作为 feishu_user_id 的备选（因为飞书 user_info API 可能不返回 user_id）
+      const feishuUserId = feishuUserInfo.user_id || feishuUserInfo.union_id || feishuUserInfo.open_id;
+      
+      if (!feishuUserId) {
+        console.error('[Feishu OAuth Callback API] 无法获取用户ID，飞书响应:', feishuUserInfo);
+        throw new Error('无法获取用户唯一标识');
+      }
+      
       const { data: newUser, error: insertError } = await client
         .from('users')
         .insert({
-          feishu_user_id: feishuUserInfo.user_id,
+          feishu_user_id: feishuUserId,
           feishu_union_id: feishuUserInfo.union_id,
           name: feishuUserInfo.name,
           avatar: feishuUserInfo.avatar_thumb || feishuUserInfo.avatar_middle || feishuUserInfo.avatar_big || feishuUserInfo.avatar_url || '',
@@ -115,10 +124,11 @@ export async function GET(request: Request) {
     console.log('[Feishu OAuth Callback API] 生成 JWT token');
     const jwtToken = generateToken({
       userId: dbUser.id,
-      unionId: feishuUserInfo.union_id,
+      feishuUserId: feishuUserInfo.union_id,
       name: feishuUserInfo.name,
     });
-    console.log('[Feishu OAuth Callback API] JWT token 生成成功');
+    console.log('[Feishu OAuth Callback API] JWT token 生成成功，长度:', jwtToken?.length);
+    console.log('[Feishu OAuth Callback API] JWT token 前50字符:', jwtToken?.substring(0, 50));
 
     // 5. 检查用户是否已有保存的授权码
     console.log('[Feishu OAuth Callback API] 检查授权码');
@@ -136,11 +146,20 @@ export async function GET(request: Request) {
     console.log('[Feishu OAuth Callback API] 用户授权码数量:', hasAuthorizations ? authorizations.length : 0);
 
     console.log('[Feishu OAuth Callback API] 登录完成，重定向到前端');
+    console.log('[Feishu OAuth Callback API] baseUrl:', baseUrl);
+    console.log('[Feishu OAuth Callback API] dbUser.id:', dbUser.id);
+    console.log('[Feishu OAuth Callback API] dbUser.name:', dbUser.name);
+    console.log('[Feishu OAuth Callback API] hasAuthorizations:', hasAuthorizations);
 
     // 6. 重定向到前端回调页面，通过 URL 参数传递 token
-    const callbackUrl = `/auth/callback?token=${jwtToken}&userId=${dbUser.id}&name=${encodeURIComponent(dbUser.name || '')}&hasAuthorizations=${hasAuthorizations}`;
+    const callbackUrl = `/auth/callback?token=${encodeURIComponent(jwtToken)}&userId=${dbUser.id}&name=${encodeURIComponent(dbUser.name || '')}&hasAuthorizations=${hasAuthorizations}`;
     
-    return NextResponse.redirect(new URL(callbackUrl, baseUrl));
+    console.log('[Feishu OAuth Callback API] 回调URL:', callbackUrl);
+    
+    const fullUrl = new URL(callbackUrl, baseUrl);
+    console.log('[Feishu OAuth Callback API] 完整重定向URL:', fullUrl.toString());
+    
+    return NextResponse.redirect(fullUrl);
   } catch (error) {
     console.error('[Feishu OAuth Callback API] 飞书 OAuth 回调错误:', error);
     // 重定向到错误页面
