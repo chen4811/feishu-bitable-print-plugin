@@ -249,6 +249,20 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   const rowMenuTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const colMenuTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // 调试：跟踪 cellSelection 状态变化
+  useEffect(() => {
+    console.log('[表格选择] cellSelection 状态变化', cellSelection);
+  }, [cellSelection]);
+
+  // 调试：跟踪 tableEditing 状态变化
+  useEffect(() => {
+    console.log('[表格选择] tableEditing 状态变化', {
+      isEditing: tableEditing.isEditing,
+      tableId: tableEditing.tableId,
+      selectedCells: tableEditing.selectedCells,
+    });
+  }, [tableEditing]);
+
   // 拖动调整行高列宽的状态
   const [resizingRow, setResizingRow] = useState<{ rowIndex: number; startY: number; startHeight: number } | null>(null);
   const [resizingCol, setResizingCol] = useState<{ colIndex: number; startX: number; startWidth: number } | null>(null);
@@ -314,12 +328,17 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
 
   // 处理单元格鼠标按下
   const handleCellMouseDown = (rowIndex: number, colIndex: number, e: React.MouseEvent) => {
+    console.log('[表格选择] handleCellMouseDown 被触发', { rowIndex, colIndex, isCurrentTableEditing });
     e.stopPropagation();
-    if (!isCurrentTableEditing) return;
+    if (!isCurrentTableEditing) {
+      console.log('[表格选择] 不在表格编辑模式，忽略');
+      return;
+    }
     
     const tableComp = component as any;
     tableDataRef.current = { tableComp };
     
+    console.log('[表格选择] 开始选择', { startRow: rowIndex, startCol: colIndex });
     setCellSelection({
       startRow: rowIndex,
       startCol: colIndex,
@@ -332,8 +351,11 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   // 处理单元格鼠标移动
   const handleCellMouseMove = (rowIndex: number, colIndex: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isCurrentTableEditing || !cellSelection.isSelecting) return;
+    if (!isCurrentTableEditing || !cellSelection.isSelecting) {
+      return;
+    }
     
+    console.log('[表格选择] handleCellMouseMove', { rowIndex, colIndex });
     setCellSelection(prev => ({
       ...prev,
       endRow: rowIndex,
@@ -343,14 +365,26 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
 
   // 全局鼠标移动监听 - 处理拖拽选择到单元格外部的情况
   useEffect(() => {
+    console.log('[表格选择] useEffect 触发', { isCurrentTableEditing, isSelecting: cellSelection.isSelecting, hasTableDataRef: !!tableDataRef.current });
+    
     if (!isCurrentTableEditing || !cellSelection.isSelecting || !tableDataRef.current) {
+      console.log('[表格选择] 条件不满足，不添加全局监听');
       return;
     }
 
+    console.log('[表格选择] 添加全局鼠标监听');
+
     const handleGlobalMouseMove = (e: MouseEvent) => {
+      console.log('[表格选择] handleGlobalMouseMove 触发', { clientX: e.clientX, clientY: e.clientY });
+      
       // 通过 elementFromPoint 找到当前鼠标位置的单元格
       const elem = document.elementFromPoint(e.clientX, e.clientY);
-      if (!elem) return;
+      if (!elem) {
+        console.log('[表格选择] 未找到元素');
+        return;
+      }
+      
+      console.log('[表格选择] 找到元素', { tagName: elem.tagName, className: elem.className });
       
       // 查找有 data-row 和 data-col 属性的元素
       const cellElem = elem.closest('[data-row][data-col]');
@@ -358,16 +392,24 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         const row = parseInt(cellElem.getAttribute('data-row') || '0', 10);
         const col = parseInt(cellElem.getAttribute('data-col') || '0', 10);
         
+        console.log('[表格选择] 找到单元格元素', { row, col });
+        
         setCellSelection(prev => ({
           ...prev,
           endRow: row,
           endCol: col,
         }));
+      } else {
+        console.log('[表格选择] 未找到带有 data-row/data-col 的元素');
       }
     };
 
     const handleGlobalMouseUp = () => {
+      console.log('[表格选择] handleGlobalMouseUp 触发');
+      
       if (cellSelection.isSelecting && tableDataRef.current) {
+        console.log('[表格选择] 结束选择，更新选中状态');
+        
         setCellSelection(prev => ({
           ...prev,
           isSelecting: false,
@@ -375,6 +417,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         
         // 更新 store 中的选中单元格
         const selectedIds = getSelectedCellIds(tableDataRef.current.tableComp);
+        console.log('[表格选择] 选中的单元格ID', selectedIds);
+        
         if (selectedIds.length > 0) {
           setTableEditing({
             selectedCells: selectedIds,
@@ -388,6 +432,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     document.addEventListener('mouseup', handleGlobalMouseUp);
 
     return () => {
+      console.log('[表格选择] 清理全局鼠标监听');
       document.removeEventListener('mousemove', handleGlobalMouseMove);
       document.removeEventListener('mouseup', handleGlobalMouseUp);
     };
@@ -1054,6 +1099,18 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   
                   const isCellInRange = isCellInSelection(rowIndex, colIndex);
                   const isCellSelected = tableEditing.selectedCells.includes(cellId) || isCellInRange;
+                  
+                  // 调试日志：只在选中状态变化时输出
+                  if (isCellSelected && Math.random() < 0.01) { // 避免日志过多
+                    console.log('[表格选择] 单元格选中状态', { 
+                      rowIndex, 
+                      colIndex, 
+                      cellId, 
+                      isCellInRange, 
+                      isCellSelected,
+                      selectedCells: tableEditing.selectedCells 
+                    });
+                  }
                   const cellBorder = cell?.border;
                   const borderWidth = cellBorder?.width || tableComp.tableConfig?.borderWidth || 2;
                   const borderColor = cellBorder?.color || tableComp.tableConfig?.borderColor || '#6b7280';
@@ -1116,9 +1173,11 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       onMouseDown={(e) => handleCellMouseDown(rowIndex, colIndex, e)}
                       onMouseEnter={(e) => handleCellMouseMove(rowIndex, colIndex, e)}
                       onClick={(e) => {
+                        console.log('[表格选择] 单元格点击', { rowIndex, colIndex, cellId, isCurrentTableEditing, isSelecting: cellSelection.isSelecting });
                         e.stopPropagation();
                         if (isCurrentTableEditing) {
                           // 先选中单元格
+                          console.log('[表格选择] 设置选中单元格', { cellId });
                           setTableEditing({
                             selectedCells: [cellId],
                           });
@@ -1131,6 +1190,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                             colIndex,
                           });
                           // 重置选择状态，避免干扰
+                          console.log('[表格选择] 重置选择状态');
                           setCellSelection({
                             startRow: null,
                             startCol: null,
