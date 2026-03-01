@@ -35,26 +35,30 @@ export default function AdminLayout({
 
   // 如果是登录页面，不检查登录状态（支持结尾带斜杠的情况）
   const isLoginPage = pathname === '/admins/login' || pathname === '/admins/login/';
+
+  // 使用 useEffect 处理路由跳转（必须在所有条件判断之前）
+  useEffect(() => {
+    console.log('[AdminLayout] useEffect 触发');
+    console.log('[AdminLayout] isLoggedIn:', isLoggedIn);
+    console.log('[AdminLayout] isLoginPage:', isLoginPage);
+    
+    if (!isLoginPage && !isLoggedIn) {
+      console.log('[AdminLayout] 未登录，跳转到 /admins/login');
+      router.push('/admins/login');
+    } else if (isLoginPage && isLoggedIn) {
+      console.log('[AdminLayout] 已登录但在登录页面，跳转到 /admins/dashboard');
+      router.push('/admins/dashboard');
+    } else {
+      console.log('[AdminLayout] 状态正常，不跳转');
+    }
+  }, [isLoggedIn, router, isLoginPage]);
+
   if (isLoginPage) {
     console.log('[AdminLayout] 是登录页面，直接返回 children');
     return <>{children}</>;
   }
 
   console.log('[AdminLayout] 不是登录页面，检查登录状态');
-
-  // 使用 useEffect 处理路由跳转
-  useEffect(() => {
-    console.log('[AdminLayout] useEffect 触发');
-    console.log('[AdminLayout] isLoggedIn:', isLoggedIn);
-    console.log('[AdminLayout] isLoginPage:', isLoginPage);
-    
-    if (!isLoggedIn) {
-      console.log('[AdminLayout] 未登录，跳转到 /admins/login');
-      router.push('/admins/login');
-    } else {
-      console.log('[AdminLayout] 已登录，显示管理界面');
-    }
-  }, [isLoggedIn, router, isLoginPage]);
 
   // 如果未登录，显示加载状态
   if (!isLoggedIn) {
