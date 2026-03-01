@@ -5,6 +5,57 @@
 
 import { Field } from '@/types/editor';
 
+/**
+ * 检测是否为时间戳
+ * @param value 要检测的值
+ * @returns 是否为时间戳
+ */
+function isTimestamp(value: unknown): boolean {
+  if (typeof value !== 'number') return false;
+  
+  // 时间戳范围检测：2000-01-01 到 2100-01-01
+  const minTimestamp = 946684800000; // 2000-01-01
+  const maxTimestamp = 4102444800000; // 2100-01-01
+  
+  return value >= minTimestamp && value <= maxTimestamp;
+}
+
+/**
+ * 格式化时间戳为日期时间字符串
+ * @param timestamp 时间戳（毫秒）
+ * @param format 格式，可选 'date' | 'datetime' | 'time'
+ * @returns 格式化后的日期时间字符串
+ */
+function formatTimestamp(timestamp: number, format: 'date' | 'datetime' | 'time' = 'datetime'): string {
+  try {
+    const date = new Date(timestamp);
+    
+    // 检查日期是否有效
+    if (isNaN(date.getTime())) {
+      return String(timestamp);
+    }
+    
+    // 使用 Intl.DateTimeFormat 进行本地化格式化
+    const options: Intl.DateTimeFormatOptions = {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    };
+    
+    if (format === 'datetime' || format === 'time') {
+      options.hour = '2-digit';
+      options.minute = '2-digit';
+      options.second = '2-digit';
+      options.hour12 = false;
+    }
+    
+    return new Intl.DateTimeFormat('zh-CN', options).format(date);
+  } catch (error) {
+    // 如果格式化失败，返回原始值的字符串形式
+    return String(timestamp);
+  }
+}
+
 // 变量匹配正则：{{字段名}} 或 {{字段名:格式}}
 const VARIABLE_REGEX = /\{\{([^}]+)\}\}/g;
 
@@ -119,13 +170,26 @@ export function getFieldValue(
     return '[空]';
   }
   
+  // 处理时间戳类型
+  if (isTimestamp(value)) {
+    return formatTimestamp(value as number, 'datetime');
+  }
+  
   // 处理数组类型（多选、人员等）
   if (Array.isArray(value)) {
     if (value.length === 0) return '[空]';
     return value
       .map((item: any) => {
         if (typeof item === 'object' && item !== null) {
+          // 如果是数组中的对象，也检查是否包含时间戳
+          if (item.text !== undefined && isTimestamp(item.text)) {
+            return formatTimestamp(item.text as number, 'datetime');
+          }
           return item.name || item.text || item.label || item.value || String(item);
+        }
+        // 如果数组项是数字，也检查是否是时间戳
+        if (typeof item === 'number' && isTimestamp(item)) {
+          return formatTimestamp(item, 'datetime');
         }
         return String(item);
       })
@@ -135,6 +199,10 @@ export function getFieldValue(
   // 处理对象类型
   if (typeof value === 'object') {
     const obj = value as Record<string, unknown>;
+    // 检查对象中的文本字段是否是时间戳
+    if (obj.text !== undefined && isTimestamp(obj.text)) {
+      return formatTimestamp(obj.text as number, 'datetime');
+    }
     return String(obj.text || obj.name || obj.label || obj.value || JSON.stringify(value));
   }
   
