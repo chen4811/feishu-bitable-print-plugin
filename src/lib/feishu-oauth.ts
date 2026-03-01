@@ -97,7 +97,9 @@ export async function getAppAccessToken(): Promise<string> {
     throw new Error('飞书 API 返回数据格式错误');
   }
 
-  console.log('[Feishu OAuth] app_access_token 获取成功，有效期:', result.data.expire, '秒');
+  // 根据实际格式获取 expire 值
+  const expireValue = result.expire || (result.data && result.data.expire);
+  console.log('[Feishu OAuth] app_access_token 获取成功，有效期:', expireValue, '秒');
   return appAccessTokenCache.token;
 }
 
