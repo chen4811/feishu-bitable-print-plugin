@@ -79,16 +79,23 @@ export async function getAppAccessToken(): Promise<string> {
     throw new Error(`获取飞书访问令牌失败: ${result.msg}`);
   }
 
-  if (!result.data || !result.data.app_access_token) {
+  // 飞书 API 响应格式：app_access_token 直接在根级别
+  if (result.app_access_token) {
+    // 缓存 token，expire 单位是秒，转换为毫秒
+    appAccessTokenCache = {
+      token: result.app_access_token,
+      expireAt: now + result.expire * 1000,
+    };
+  } else if (result.data && result.data.app_access_token) {
+    // 兼容旧格式
+    appAccessTokenCache = {
+      token: result.data.app_access_token,
+      expireAt: now + result.data.expire * 1000,
+    };
+  } else {
     console.error('[Feishu OAuth] 飞书 API 返回数据格式错误:', result);
     throw new Error('飞书 API 返回数据格式错误');
   }
-
-  // 缓存 token，expire 单位是秒，转换为毫秒
-  appAccessTokenCache = {
-    token: result.data.app_access_token,
-    expireAt: now + result.data.expire * 1000,
-  };
 
   console.log('[Feishu OAuth] app_access_token 获取成功，有效期:', result.data.expire, '秒');
   return appAccessTokenCache.token;
@@ -137,13 +144,24 @@ export async function getUserAccessToken(code: string): Promise<UserAccessTokenR
 
   const result: FeishuApiResponse<UserAccessTokenResponse> = await response.json();
 
+  console.log('[Feishu OAuth] 用户访问令牌 API 响应:', result);
+
   if (result.code !== 0) {
     console.error('[Feishu OAuth] 获取用户访问令牌失败:', result);
     throw new Error(`获取用户访问令牌失败: ${result.msg}`);
   }
 
+  // 处理可能的响应格式
+  let userTokenData: UserAccessTokenResponse;
+  if (result.data) {
+    userTokenData = result.data;
+  } else {
+    // 如果没有 data 字段，直接使用根级别数据
+    userTokenData = result as unknown as UserAccessTokenResponse;
+  }
+
   console.log('[Feishu OAuth] 获取用户访问令牌成功');
-  return result.data;
+  return userTokenData;
 }
 
 /**
@@ -161,15 +179,26 @@ export async function getUserInfo(userAccessToken: string): Promise<UserInfo> {
 
   const result: FeishuApiResponse<UserInfo> = await response.json();
 
+  console.log('[Feishu OAuth] 用户信息 API 响应:', result);
+
   if (result.code !== 0) {
     console.error('[Feishu OAuth] 获取用户信息失败:', result);
     throw new Error(`获取用户信息失败: ${result.msg}`);
   }
 
+  // 处理可能的响应格式
+  let userInfo: UserInfo;
+  if (result.data) {
+    userInfo = result.data;
+  } else {
+    // 如果没有 data 字段，直接使用根级别数据
+    userInfo = result as unknown as UserInfo;
+  }
+
   console.log('[Feishu OAuth] 获取用户信息成功:', {
-    union_id: result.data.union_id,
-    name: result.data.name,
+    union_id: userInfo.union_id,
+    name: userInfo.name,
   });
 
-  return result.data;
+  return userInfo;
 }
