@@ -18,6 +18,14 @@ export async function GET(request: Request) {
 
     const token = authHeader.substring(7);
     const decoded = verifyToken(token);
+    
+    if (!decoded) {
+      return NextResponse.json(
+        { error: 'Token 无效' },
+        { status: 401 }
+      );
+    }
+    
     const client = getSupabaseClient();
 
     const { data: authorizations, error } = await client

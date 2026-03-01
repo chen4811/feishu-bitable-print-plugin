@@ -161,6 +161,140 @@ type RecordSelectChangeEvent = {
 const onRecordSelectChangeCallbacks = new Set<(event: RecordSelectChangeEvent) => void>();
 let recordSelectUnsubscribe: (() => void) | null = null;
 
+// ============================================
+// 新增：调试和环境检查
+// ============================================
+
+async function debugEnvironment() {
+  debugLog('🔍 ======== 环境调试开始 ========');
+  
+  try {
+    // 测试1: 检查基础对象
+    debugLog('bitable 对象:', typeof bitable);
+    debugLog('bitable.ui 对象:', typeof (bitable as any).ui);
+    debugLog('base 对象:', typeof base);
+    
+    // 测试2: 检查方法是否存在
+    debugLog('onRecordSelectChange 方法:', typeof (bitable as any).ui?.onRecordSelectChange);
+    debugLog('getSelectRecordIds 方法:', typeof (bitable as any).ui?.getSelectRecordIds);
+    debugLog('getSelection 方法:', typeof base.getSelection);
+    
+    // 测试3: 检查当前选择状态
+    try {
+      const selection = await base.getSelection();
+      debugLog('当前选择状态:', selection);
+    } catch (error) {
+      debugLog('获取选择状态失败:', error instanceof Error ? error.message : error);
+    }
+    
+    // 测试4: 尝试手动获取选中状态
+    try {
+      if ((bitable as any).ui && typeof (bitable as any).ui.getSelectRecordIds === 'function') {
+        const selectState = await (bitable as any).ui.getSelectRecordIds();
+        debugLog('当前选中ID列表:', selectState);
+      }
+    } catch (error) {
+      debugLog('手动获取选中状态失败:', error instanceof Error ? error.message : error);
+    }
+    
+  } catch (error) {
+    debugLog('环境测试失败:', error);
+  }
+  
+  debugLog('🔍 ======== 环境调试结束 ========');
+}
+
+function checkEnvironment() {
+  debugLog('🌐 ======== 环境检查 ========');
+  debugLog('URL:', typeof window !== 'undefined' ? window.location.href : 'unknown');
+  debugLog('UserAgent:', typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown');
+  debugLog('是否在iframe中:', typeof window !== 'undefined' && window.self !== window.top);
+  
+  // 检查飞书环境特征
+  const isFeishuEnv = typeof navigator !== 'undefined' && /lark|feishu/i.test(navigator.userAgent);
+  debugLog('飞书环境:', isFeishuEnv);
+  
+  if (!isFeishuEnv) {
+    debugLog('⚠️  可能不在飞书环境中运行');
+  }
+  
+  debugLog('🌐 ======== 环境检查结束 ========');
+}
+
+// ============================================
+// 新增：轮询检查作为备用方案
+// ============================================
+
+let pollingInterval: NodeJS.Timeout | null = null;
+let lastPolledSelection: string[] = [];
+
+function startPolling(interval = 2000) {
+  if (pollingInterval) {
+    debugLog('轮询已在运行，跳过');
+    return;
+  }
+  
+  debugLog(`🔁 启动轮询检查，间隔: ${interval}ms`);
+  
+  pollingInterval = setInterval(async () => {
+    try {
+      // 尝试获取当前选中的记录 IDs
+      let currentSelection: string[] = [];
+      
+      if ((bitable as any).ui && typeof (bitable as any).ui.getSelectRecordIds === 'function') {
+        currentSelection = await (bitable as any).ui.getSelectRecordIds();
+      }
+      
+      // 检查是否有变化
+      const hasChanged = JSON.stringify(currentSelection) !== JSON.stringify(lastPolledSelection);
+      
+      if (hasChanged) {
+        debugLog('🔄 轮询检测到选择状态变化:', currentSelection);
+        
+        // 获取当前 tableId
+        let tableId = '';
+        try {
+          const selection = await base.getSelection();
+          tableId = selection?.tableId || '';
+        } catch (e) {
+          debugLog('轮询获取 tableId 失败:', e);
+        }
+        
+        // 构造事件对象
+        const event: RecordSelectChangeEvent = {
+          data: {
+            tableId,
+            recordIds: currentSelection,
+            isSelectAll: false, // 轮询方式无法准确判断全选
+          },
+        };
+        
+        // 通知所有回调
+        onRecordSelectChangeCallbacks.forEach(cb => {
+          try {
+            cb(event);
+          } catch (e) {
+            console.error('[FeishuEnv] 轮询回调执行失败:', e);
+          }
+        });
+        
+        lastPolledSelection = currentSelection;
+      }
+      
+    } catch (error) {
+      debugLog('轮询检查失败:', error instanceof Error ? error.message : error);
+    }
+  }, interval);
+}
+
+function stopPolling() {
+  if (pollingInterval) {
+    clearInterval(pollingInterval);
+    pollingInterval = null;
+    debugLog('🛑 轮询检查已停止');
+  }
+}
+
 export function onRecordSelectChange(callback: (event: RecordSelectChangeEvent) => void): () => void {
   debugLog('注册复选框勾选变化监听器');
   onRecordSelectChangeCallbacks.add(callback);
@@ -183,34 +317,61 @@ function setupRecordSelectListener() {
   }
   
   try {
-    debugLog('======== 设置复选框勾选变化监听器 ========');
+    debugLog('🔄 ======== 设置复选框勾选变化监听器 ========');
+    
+    // 先进行环境检查和调试
+    checkEnvironment();
+    debugEnvironment();
     
     // 检查 bitable.ui 是否存在
     if ((bitable as any).ui && typeof (bitable as any).ui.onRecordSelectChange === 'function') {
+      debugLog('✅ 找到 onRecordSelectChange 方法，设置事件监听器');
+      
       recordSelectUnsubscribe = (bitable as any).ui.onRecordSelectChange((event: RecordSelectChangeEvent) => {
-        debugLog('✅ 复选框勾选事件触发!');
+        debugLog('🎯 ======== 复选框勾选事件触发! ========');
         debugLog('事件数据:', event);
         debugLog('选中记录 IDs:', event.data.recordIds);
+        debugLog('选中记录数量:', event.data.recordIds.length);
         debugLog('是否全选:', event.data.isSelectAll);
         debugLog('表格 ID:', event.data.tableId);
+        debugLog('时间:', new Date().toISOString());
         
         // 通知所有注册的回调
         onRecordSelectChangeCallbacks.forEach(cb => {
           try {
             cb(event);
           } catch (e) {
-            console.error('[FeishuEnv] 复选框勾选回调执行失败:', e);
+            console.error('[FeishuEnv] 选中变化回调执行失败:', e);
           }
         });
+        
+        debugLog('🎯 ======== 事件处理完成 ========');
       });
       
-      debugLog('✅ 复选框勾选监听器设置成功');
+      debugLog('✅ 事件监听器设置成功');
+      
+      // 同时启动轮询作为备用方案
+      debugLog('🔁 同时启动轮询作为备用方案');
+      startPolling(3000);
+      
     } else {
-      debugLog('⚠️  bitable.ui.onRecordSelectChange 不可用');
-      debugLog('bitable.ui:', (bitable as any).ui);
+      debugLog('⚠️  不支持 onRecordSelectChange，仅使用轮询方案');
+      debugLog('bitable.ui:', typeof (bitable as any).ui);
+      debugLog('onRecordSelectChange:', typeof (bitable as any).ui?.onRecordSelectChange);
+      
+      // 启动轮询作为主要方案
+      startPolling(2000);
     }
+    
+    debugLog('🔄 ======== 监听器设置流程完成 ========');
+    
   } catch (error) {
-    debugLog('❌ 设置复选框勾选监听器失败:', error);
+    debugLog('❌ 设置选中监听器失败:', error);
+    debugLog('错误堆栈:', error instanceof Error ? error.stack : error);
+    
+    // 出错时也尝试启动轮询
+    debugLog('🔁 出错时尝试启动轮询作为备用方案');
+    startPolling(2000);
   }
 }
 
@@ -358,6 +519,10 @@ export async function initFeishuEnv(): Promise<boolean> {
       // 立即设置两种监听器
       setupSelectionListener();      // 点击行选择
       setupRecordSelectListener();   // 复选框勾选
+      
+      // 初始化完成后进行一次完整的环境调试
+      debugLog('初始化完成，执行环境调试...');
+      await debugEnvironment();
       
       onReadyCallbacks.forEach(cb => cb());
       return true;
