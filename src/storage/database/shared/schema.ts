@@ -4,11 +4,13 @@ import { sql } from "drizzle-orm"
 // 用户表
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
-  feishuUserId: text('feishu_user_id').unique().notNull(),
-  feishuUnionId: text('feishu_union_id'),
+  feishuUserId: text('feishu_user_id').unique(),
+  feishuUnionId: text('feishu_union_id').unique().notNull(), // 使用 union_id 作为唯一标识
+  feishuOpenId: text('feishu_open_id'),
   name: text('name'),
   avatar: text('avatar'),
   email: text('email'),
+  tenantKey: text('tenant_key'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
