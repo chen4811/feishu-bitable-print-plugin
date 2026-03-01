@@ -5,10 +5,10 @@ export const dynamic = 'force-dynamic';
 // 获取单个模板
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const templateId = params.id;
+    const { id: templateId } = await params;
 
     // TODO: 从数据库查询单个模板
     // const template = await db.query.templates.findFirst({...});
@@ -29,10 +29,10 @@ export async function GET(
 // 更新模板
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const templateId = params.id;
+    const { id: templateId } = await params;
     const body = await request.json();
 
     // TODO: 更新模板
@@ -54,10 +54,10 @@ export async function PUT(
 // 删除模板
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const templateId = params.id;
+    const { id: templateId } = await params;
 
     // TODO: 删除模板
     // await db.delete(templates).where(...);

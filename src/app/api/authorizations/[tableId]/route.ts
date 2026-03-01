@@ -5,10 +5,10 @@ export const dynamic = 'force-dynamic';
 // 获取单个授权码
 export async function GET(
   request: NextRequest,
-  { params }: { params: { tableId: string } }
+  { params }: { params: Promise<{ tableId: string }> }
 ) {
   try {
-    const tableId = params.tableId;
+    const { tableId } = await params;
 
     // TODO: 验证用户身份
     // const userId = getUserIdFromToken(request);
@@ -32,10 +32,10 @@ export async function GET(
 // 更新授权码
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { tableId: string } }
+  { params }: { params: Promise<{ tableId: string }> }
 ) {
   try {
-    const tableId = params.tableId;
+    const { tableId } = await params;
     const body = await request.json();
     const { appToken, tableName, isActive } = body;
 
@@ -64,10 +64,10 @@ export async function PUT(
 // 删除授权码
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { tableId: string } }
+  { params }: { params: Promise<{ tableId: string }> }
 ) {
   try {
-    const tableId = params.tableId;
+    const { tableId } = await params;
 
     // TODO: 验证用户身份
     // const userId = getUserIdFromToken(request);
@@ -91,10 +91,10 @@ export async function DELETE(
 // 激活授权码（设置为当前使用）
 export async function POST(
   request: NextRequest,
-  { params }: { params: { tableId: string } }
+  { params }: { params: Promise<{ tableId: string }> }
 ) {
   try {
-    const tableId = params.tableId;
+    const { tableId } = await params;
 
     // TODO: 验证用户身份
     // const userId = getUserIdFromToken(request);
