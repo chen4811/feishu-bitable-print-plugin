@@ -11,8 +11,6 @@ import { useUserStore } from '@/store/userStore';
 export default function BindAuthPage() {
   const router = useRouter();
   const { user, token, setHasAuthorizations } = useUserStore();
-  const [tableId, setTableId] = useState('');
-  const [tableName, setTableName] = useState('');
   const [appToken, setAppToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -37,8 +35,8 @@ export default function BindAuthPage() {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          tableId,
-          tableName: tableName || '未命名表格',
+          tableId: 'default', // 使用默认值
+          tableName: '默认表格', // 使用默认值
           appToken,
         }),
       });
@@ -71,32 +69,11 @@ export default function BindAuthPage() {
         <CardHeader>
           <CardTitle>绑定飞书多维表格</CardTitle>
           <CardDescription>
-            请输入您的飞书多维表格信息以继续使用
+            请输入您的飞书多维表格授权码以继续使用
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="tableId">表格 ID</Label>
-              <Input
-                id="tableId"
-                placeholder="请输入表格 ID"
-                value={tableId}
-                onChange={(e) => setTableId(e.target.value)}
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="tableName">表格名称（可选）</Label>
-              <Input
-                id="tableName"
-                placeholder="请输入表格名称"
-                value={tableName}
-                onChange={(e) => setTableName(e.target.value)}
-              />
-            </div>
-            
             <div className="space-y-2">
               <Label htmlFor="appToken">授权码 (App Token)</Label>
               <Input
