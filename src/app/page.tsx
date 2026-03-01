@@ -4,12 +4,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useEditorStore } from '@/store/editorStore';
 import { useUserStore } from '@/store/userStore';
-import { useTemplateStore, UserTemplate } from '@/store/templateStore';
+import { useTemplateStore } from '@/store/templateStore';
 import { mockBitableData } from '@/data/mockData';
 import { Field } from '@/types/editor';
 import { HomePage } from '@/components/editor/HomePage';
 import { EditorPage } from '@/components/editor/EditorPage';
-import { TemplatePreview } from '@/components/editor/TemplatePreview';
+import TemplatePreview from '@/components/editor/TemplatePreview';
 import { PresetTemplate } from '@/types/editor';
 import { Loader2 } from 'lucide-react';
 
@@ -18,7 +18,6 @@ type AppView = 'home' | 'editor' | 'preview';
 export default function PrintPluginApp() {
   const router = useRouter();
   const [view, setView] = useState<AppView>('home');
-  const [selectedTemplate, setSelectedTemplate] = useState<UserTemplate | null>(null);
   const { setFields, setSystemFields } = useEditorStore();
   const { user, token, hasAuthorizations, logout } = useUserStore();
   const { fetchTemplates } = useTemplateStore();
@@ -97,23 +96,9 @@ export default function PrintPluginApp() {
   };
 
   // 处理选择用户模板（进入预览）
-  const handleSelectUserTemplate = (template: UserTemplate) => {
-    console.log('[PrintPluginApp] 选择用户模板进入预览:', template);
-    setSelectedTemplate(template);
+  const handleSelectUserTemplate = () => {
+    console.log('[PrintPluginApp] 选择用户模板进入预览');
     setView('preview');
-  };
-
-  // 处理从预览进入编辑
-  const handleEditTemplateFromPreview = () => {
-    console.log('[PrintPluginApp] 从预览进入编辑');
-    setView('editor');
-  };
-
-  // 处理退出预览
-  const handleExitPreview = () => {
-    console.log('[PrintPluginApp] 退出预览');
-    setSelectedTemplate(null);
-    setView('home');
   };
 
   // 处理退出编辑器
@@ -172,7 +157,6 @@ export default function PrintPluginApp() {
 
   console.log('[PrintPluginApp] 显示主应用');
   console.log('[PrintPluginApp] 当前视图:', view);
-  console.log('[PrintPluginApp] 选中的模板:', selectedTemplate);
 
   return (
     <div className="min-h-screen">
@@ -186,12 +170,23 @@ export default function PrintPluginApp() {
           onDeleteAccount={handleDeleteAccount}
         />
       )}
-      {view === 'preview' && selectedTemplate && (
-        <TemplatePreview
-          template={selectedTemplate}
-          onBack={handleExitPreview}
-          onEdit={handleEditTemplateFromPreview}
-        />
+      {view === 'preview' && (
+        <div className="h-screen flex flex-col">
+          {/* 顶部返回按钮 */}
+          <div className="bg-white border-b px-4 py-2 flex items-center justify-between">
+            <button
+              onClick={() => setView('home')}
+              className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
+            >
+              ← 返回首页
+            </button>
+            <span className="text-sm text-gray-500">打印预览模式</span>
+          </div>
+          {/* 预览内容 */}
+          <div className="flex-1 overflow-hidden">
+            <TemplatePreview />
+          </div>
+        </div>
       )}
       {view === 'editor' && (
         <EditorPage onExit={handleExitEditor} />

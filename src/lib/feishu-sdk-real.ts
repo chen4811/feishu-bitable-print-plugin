@@ -442,6 +442,151 @@ export const feishuSDK = {
       return false;
     }
   },
+
+  /**
+   * 监听选中区域变化
+   * @param callback 选中变化时的回调函数
+   * @returns 取消监听的函数
+   */
+  onSelectionChange(callback: (event: {
+    selections: Array<{
+      startRow: number;
+      endRow: number;
+      startColumn: number;
+      endColumn: number;
+    }>;
+    sheetId: string;
+    viewId: string;
+  }) => void): () => void {
+    console.log('[FeishuSDK] 注册选中变化监听...');
+    
+    // 存储回调引用以便后续移除
+    const handler = callback;
+    
+    // 尝试获取 bitable 并监听
+    const setupListener = async () => {
+      try {
+        const bitable = await getBitable();
+        if (!bitable) {
+          console.warn('[FeishuSDK] bitable 未初始化，无法监听选中变化');
+          return;
+        }
+        
+        // 检查是否有 onSelectionChange 方法
+        if (bitable.base && typeof bitable.base.onSelectionChange === 'function') {
+          bitable.base.onSelectionChange(handler);
+          console.log('[FeishuSDK] 已注册 base.onSelectionChange 监听');
+        } else if (typeof bitable.onSelectionChange === 'function') {
+          bitable.onSelectionChange(handler);
+          console.log('[FeishuSDK] 已注册 bitable.onSelectionChange 监听');
+        } else {
+          console.warn('[FeishuSDK] 当前环境不支持 onSelectionChange');
+        }
+      } catch (error) {
+        console.error('[FeishuSDK] 设置选中监听失败:', error);
+      }
+    };
+    
+    setupListener();
+    
+    // 返回取消监听的函数
+    return () => {
+      console.log('[FeishuSDK] 取消选中变化监听');
+      // 注意：实际取消监听需要 SDK 支持，这里仅作占位
+    };
+  },
+
+  /**
+   * 获取选中单元格的数据
+   */
+  async getSelectedData(event: {
+    selections: Array<{
+      startRow: number;
+      endRow: number;
+      startColumn: number;
+      endColumn: number;
+    }>;
+    sheetId: string;
+    viewId: string;
+  }): Promise<Array<Record<string, any>>> {
+    console.log('[FeishuSDK] 获取选中数据:', event);
+    
+    try {
+      const bitable = await getBitable();
+      if (!bitable) {
+        console.error('[FeishuSDK] bitable 未初始化');
+        return [];
+      }
+      
+      const range = event.selections[0];
+      if (!range) return [];
+      
+      // 获取字段信息
+      const fields: Array<{ id: string; name: string; index: number }> = [];
+      for (let col = range.startColumn; col <= range.endColumn; col++) {
+        try {
+          // 尝试获取字段信息
+          let fieldInfo: any = null;
+          
+          if (bitable.base && typeof bitable.base.getField === 'function') {
+            fieldInfo = await bitable.base.getField({
+              sheetId: event.sheetId,
+              fieldId: String(col)
+            });
+          }
+          
+          fields.push({
+            id: fieldInfo?.id || `field_${col}`,
+            name: fieldInfo?.name || `列${col + 1}`,
+            index: col
+          });
+        } catch (err) {
+          fields.push({
+            id: `field_${col}`,
+            name: `列${col + 1}`,
+            index: col
+          });
+        }
+      }
+      
+      // 获取单元格数据
+      const result: Array<Record<string, any>> = [];
+      
+      for (let row = range.startRow; row <= range.endRow; row++) {
+        const rowData: Record<string, any> = {
+          _rowIndex: row,
+          _sheetId: event.sheetId
+        };
+        
+        for (const field of fields) {
+          try {
+            let cellValue: any = null;
+            
+            // 尝试获取单元格值
+            if (bitable.base && typeof bitable.base.getCellValue === 'function') {
+              cellValue = await bitable.base.getCellValue({
+                sheetId: event.sheetId,
+                rowIndex: row,
+                columnIndex: field.index
+              });
+            }
+            
+            rowData[field.name] = cellValue;
+          } catch (err) {
+            rowData[field.name] = null;
+          }
+        }
+        
+        result.push(rowData);
+      }
+      
+      console.log('[FeishuSDK] 获取到的选中数据:', result);
+      return result;
+    } catch (error) {
+      console.error('[FeishuSDK] 获取选中数据失败:', error);
+      return [];
+    }
+  },
 };
 
 export default feishuSDK;
