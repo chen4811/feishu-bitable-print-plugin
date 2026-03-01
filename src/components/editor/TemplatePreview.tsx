@@ -8,11 +8,21 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { useTemplateStore, type Template } from '@/store/templateStore';
 import { useSelectedDataStore } from '@/store/selectedDataStore';
 import { useEditorStore } from '@/store/editorStore';
-import feishuSDK from '@/lib/feishu-sdk-real';
+import { useFeishuSDK } from '@/hooks/useFeishuSDK';
 
 interface TemplatePreviewProps {
   baseId?: string;
@@ -289,7 +299,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
   const { templates, fetchTemplates, setCurrentTemplate } = useTemplateStore();
   const {
-    records,
+    records: storeRecords,
     currentIndex,
     setRecords,
     setCurrentIndex,
@@ -302,11 +312,23 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     getCurrentRecord,
   } = useSelectedDataStore();
 
+  // 使用飞书SDK
+  const {
+    isFeishuEnvironment,
+    records: feishuRecords,
+    fields: feishuFields,
+    selectedRecordIds,
+    onSelectionChange: registerSelectionChange,
+    getRecordsByIds,
+  } = useFeishuSDK();
+
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showVariableMapping, setShowVariableMapping] = useState(true);
   const [debugInfo, setDebugInfo] = useState<string>('');
   const [showDebugInfo, setShowDebugInfo] = useState(false);
+  const [showBatchModeConfirm, setShowBatchModeConfirm] = useState(false);
+  const [pendingBatchRecordIds, setPendingBatchRecordIds] = useState<string[]>([]);
 
   // 加载模板列表
   useEffect(() => {
@@ -318,79 +340,116 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     });
   }, [fetchTemplates]);
 
-  // 监听模板变化
+  // 初始化：设置飞书环境状态
   useEffect(() => {
-    console.log('[TemplatePreview] 模板列表变化:', templates.map(t => ({ id: t.id, name: t.name })));
-  }, [templates]);
+    console.log('[TemplatePreview] 飞书环境状态:', isFeishuEnvironment);
+    setIsFromFeishu(isFeishuEnvironment);
+    
+    // 如果在飞书环境，默认开启监听
+    if (isFeishuEnvironment && !isListening) {
+      setIsListening(true);
+    }
+  }, [isFeishuEnvironment, setIsFromFeishu, isListening, setIsListening]);
 
-  // 设置飞书选中监听
+  // 处理飞书记录数据，转换格式并设置到 store
   useEffect(() => {
-    console.log('[TemplatePreview] useEffect - 飞书监听状态变化:', isListening);
+    if (feishuRecords && feishuRecords.length > 0) {
+      console.log('[TemplatePreview] 飞书记录数据更新:', feishuRecords);
+      // 直接使用 feishuRecords
+      setRecords(feishuRecords);
+    }
+  }, [feishuRecords, setRecords]);
 
-    if (!isListening) {
-      console.log('[TemplatePreview] 监听已关闭');
-      setIsFromFeishu(false);
+  // 注册选中变化监听
+  useEffect(() => {
+    if (!isListening || !isFeishuEnvironment) {
       return;
     }
 
-    // 检查是否在飞书环境中
-    const isInFeishu = typeof window !== 'undefined' && (
-      window.location.href.includes('larksuite.com') ||
-      window.location.href.includes('feishu.cn') ||
-      // @ts-ignore
-      (window.bitable !== undefined)
-    );
+    console.log('[TemplatePreview] 注册飞书选中变化监听');
 
-    console.log('[TemplatePreview] 飞书环境检测:', { isInFeishu, href: window.location.href });
+    const unsubscribe = registerSelectionChange(async (newRecordIds) => {
+      console.log('[TemplatePreview] 监听到选中变化，记录ID:', newRecordIds);
 
-    if (!isInFeishu) {
-      toast.info('当前不在飞书环境中，无法监听选中变化');
-      setIsListening(false);
-      return;
-    }
-
-    setIsFromFeishu(true);
-    console.log('[TemplatePreview] 开始在飞书环境中监听选中变化');
-
-    // 注册选中变化监听
-    const unsubscribe = feishuSDK.onSelectionChange(async (event) => {
-      console.log('[TemplatePreview] 检测到选中变化:', JSON.stringify(event, null, 2));
-      setDebugInfo(`选中事件: ${JSON.stringify(event, null, 2)}`);
-
-      try {
-        // 获取选中数据
-        console.log('[TemplatePreview] 正在获取选中数据...');
-        const selectedData = await feishuSDK.getSelectedData(event);
-        console.log('[TemplatePreview] 获取到的选中数据:', selectedData);
-
-        if (selectedData && selectedData.length > 0) {
-          // 转换为记录格式
-          const records = selectedData.map((data, index) => ({
-            id: `row_${data._rowIndex || index}`,
-            ...data,
-          }));
-
-          console.log('[TemplatePreview] 设置记录数据:', records);
-          setRecords(records);
-          toast.success(`已获取 ${records.length} 条选中数据`);
-        } else {
-          console.log('[TemplatePreview] 未获取到数据');
-          setRecords([]);
-          toast.info('未检测到选中的数据');
-        }
-      } catch (error) {
-        console.error('[TemplatePreview] 获取选中数据失败:', error);
-        toast.error('获取选中数据失败');
+      if (showDebugInfo) {
+        setDebugInfo(`选中记录ID: ${JSON.stringify(newRecordIds, null, 2)}`);
       }
+
+      // 检查数量变化
+      const previousCount = selectedRecordIds?.length || 0;
+      const newCount = newRecordIds.length;
+
+      if (newCount > 1 && previousCount <= 1) {
+        // 从单条变成多条，询问是否进入批量模式
+        console.log('[TemplatePreview] 检测到多选，显示批量模式确认');
+        setPendingBatchRecordIds(newRecordIds);
+        setShowBatchModeConfirm(true);
+        return;
+      }
+
+      // 正常处理选中变化
+      await handleSelectedRecordsChange(newRecordIds);
     });
 
-    toast.success('已开始监听飞书选中变化');
+    return unsubscribe;
+  }, [isListening, isFeishuEnvironment, registerSelectionChange, showDebugInfo, selectedRecordIds]);
 
-    return () => {
-      console.log('[TemplatePreview] 取消飞书监听');
-      unsubscribe?.();
-    };
-  }, [isListening, setRecords, setIsFromFeishu]);
+  // 处理选中记录变化
+  const handleSelectedRecordsChange = useCallback(async (recordIds: string[]) => {
+    console.log('[TemplatePreview] 处理选中记录变化:', recordIds);
+
+    if (!recordIds || recordIds.length === 0) {
+      setRecords([]);
+      setCurrentIndex(0);
+      toast.info('未选中任何记录');
+      return;
+    }
+
+    try {
+      // 获取完整的记录数据
+      const selectedRecords = await getRecordsByIds(recordIds);
+      console.log('[TemplatePreview] 获取到选中记录详情:', selectedRecords);
+
+      if (selectedRecords.length > 0) {
+        // 转换格式
+        const formattedRecords = selectedRecords.map((record, index) => ({
+          id: record.id,
+          ...record.fields,
+          _rowIndex: index,
+        }));
+
+        console.log('[TemplatePreview] 格式化后的记录:', formattedRecords);
+        setRecords(formattedRecords);
+        setCurrentIndex(0);
+        toast.success(`已选中 ${formattedRecords.length} 条记录`);
+      } else {
+        setRecords([]);
+        setCurrentIndex(0);
+      }
+    } catch (error) {
+      console.error('[TemplatePreview] 获取选中记录失败:', error);
+      toast.error('获取记录数据失败');
+    }
+  }, [getRecordsByIds, setRecords, setCurrentIndex]);
+
+  // 处理批量模式确认
+  const handleBatchModeConfirm = useCallback((enterBatchMode: boolean) => {
+    setShowBatchModeConfirm(false);
+    
+    if (enterBatchMode) {
+      // 进入批量模式
+      console.log('[TemplatePreview] 用户确认进入批量模式');
+      handleSelectedRecordsChange(pendingBatchRecordIds);
+    } else {
+      // 不进入批量模式，只选中第一条
+      console.log('[TemplatePreview] 用户选择不进入批量模式，只选中第一条');
+      if (pendingBatchRecordIds.length > 0) {
+        handleSelectedRecordsChange([pendingBatchRecordIds[0]]);
+      }
+    }
+    
+    setPendingBatchRecordIds([]);
+  }, [pendingBatchRecordIds, handleSelectedRecordsChange]);
 
   // 处理模板选择
   const handleSelectTemplate = useCallback((template: Template) => {
@@ -404,7 +463,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     });
     setSelectedTemplate(template);
     
-    // 详细的调试信息（仅在显示调试模式时设置）
+    // 详细的调试信息
     if (showDebugInfo) {
       const dataStr = template.data ? JSON.stringify(template.data).slice(0, 800) : '(empty)';
       const debugText = `选中模板: ${template.name}\n` +
@@ -430,6 +489,9 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   // 获取当前选中的模板
   const currentRecord = getCurrentRecord();
   console.log('[TemplatePreview] 当前记录:', currentRecord);
+
+  // 使用 storeRecords 作为主要的 records 变量
+  const records = storeRecords;
 
   // 提取模板中的变量
   const templateVariables = useMemo(() => {
@@ -494,7 +556,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     }
 
     // 生成批量打印内容
-    const printContent = records.map((record, index) => {
+    const printContent = records.map((record: any, index: number) => {
       console.log(`[TemplatePreview] 生成打印页 ${index + 1}/${records.length}`);
       return `
       <div class="print-page" style="
@@ -894,6 +956,31 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           </ScrollArea>
         </CardContent>
       </Card>
+
+      {/* 批量模式确认对话框 */}
+      <AlertDialog open={showBatchModeConfirm} onOpenChange={setShowBatchModeConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>检测到多选</AlertDialogTitle>
+            <AlertDialogDescription>
+              你已经勾选了 <strong>{pendingBatchRecordIds.length}</strong> 条记录，是否进入批量模式？
+              <br />
+              <br />
+              • 进入批量模式：可以一次性预览和打印所有选中的记录
+              <br />
+              • 仅选中第一条：只预览和打印第一条记录
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => handleBatchModeConfirm(false)}>
+              仅选中第一条
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleBatchModeConfirm(true)}>
+              进入批量模式
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* 打印样式 */}
       <style jsx global>{`
