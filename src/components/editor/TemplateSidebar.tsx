@@ -4,7 +4,17 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -36,6 +46,7 @@ interface TemplateSidebarProps {
   onSelectTemplate?: (template: UserTemplate) => void;
   onCreateNew?: () => void;
   onLogout?: () => void;
+  onDeleteAccount?: () => Promise<void>;
 }
 
 // 模板项组件
@@ -147,7 +158,7 @@ function TemplateItem({
   );
 }
 
-export function TemplateSidebar({ onSelectTemplate, onCreateNew, onLogout }: TemplateSidebarProps) {
+export function TemplateSidebar({ onSelectTemplate, onCreateNew, onLogout, onDeleteAccount }: TemplateSidebarProps) {
   const { 
     templates, 
     currentTemplate,
@@ -165,6 +176,8 @@ export function TemplateSidebar({ onSelectTemplate, onCreateNew, onLogout }: Tem
   const [editingTemplate, setEditingTemplate] = useState<UserTemplate | null>(null);
   const [newTemplateName, setNewTemplateName] = useState('');
   const [newTemplateDesc, setNewTemplateDesc] = useState('');
+  const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   console.log('[TemplateSidebar] 渲染');
   console.log('[TemplateSidebar] templates:', templates);
@@ -332,9 +345,16 @@ export function TemplateSidebar({ onSelectTemplate, onCreateNew, onLogout }: Tem
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={onLogout} className="text-red-600 cursor-pointer">
+                <DropdownMenuItem onClick={onLogout} className="cursor-pointer">
                   <LogOut className="w-4 h-4 mr-2" />
                   退出登录
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setShowDeleteAccountDialog(true)} 
+                  className="text-red-600 cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  删除账号
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -425,6 +445,62 @@ export function TemplateSidebar({ onSelectTemplate, onCreateNew, onLogout }: Tem
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* 删除账号确认对话框 */}
+      <AlertDialog open={showDeleteAccountDialog} onOpenChange={setShowDeleteAccountDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-600 flex items-center gap-2">
+              <Trash2 className="w-5 h-5" />
+              警告：删除账号
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p className="text-gray-700 font-medium">
+                此操作将永久删除您的账号信息，包括：
+              </p>
+              <ul className="list-disc list-inside text-gray-600 space-y-1 ml-2">
+                <li>飞书登录信息</li>
+                <li>所有授权码绑定记录</li>
+                <li>个人设置和偏好</li>
+              </ul>
+              <p className="text-red-500 text-sm mt-2">
+                删除后，您需要重新登录并绑定授权码才能继续使用。
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingAccount}>
+              暂不删除
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (onDeleteAccount) {
+                  setIsDeletingAccount(true);
+                  try {
+                    await onDeleteAccount();
+                  } finally {
+                    setIsDeletingAccount(false);
+                    setShowDeleteAccountDialog(false);
+                  }
+                }
+              }}
+              disabled={isDeletingAccount}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeletingAccount ? (
+                <>
+                  <Clock className="w-4 h-4 mr-2 animate-spin" />
+                  删除中...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  同意删除
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

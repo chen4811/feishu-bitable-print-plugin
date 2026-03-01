@@ -114,6 +114,35 @@ export default function PrintPluginApp() {
     router.push('/login');
   };
 
+  // 处理删除账号
+  const handleDeleteAccount = async () => {
+    console.log('[PrintPluginApp] 删除账号');
+    try {
+      const response = await fetch('/api/user/account', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log('[PrintPluginApp] 账号已删除');
+        // 清除本地登录状态
+        logout();
+        // 跳转到登录页面
+        router.push('/login');
+      } else {
+        console.error('[PrintPluginApp] 删除账号失败:', result.error);
+        alert('删除账号失败: ' + result.error);
+      }
+    } catch (error) {
+      console.error('[PrintPluginApp] 删除账号请求失败:', error);
+      alert('删除账号失败，请稍后重试');
+    }
+  };
+
   // 如果未登录或未绑定授权码，显示加载状态
   if (!isLoggedIn || !hasAuthorizations) {
     console.log('[PrintPluginApp] 状态不满足，显示加载状态');
@@ -140,6 +169,7 @@ export default function PrintPluginApp() {
           onSelectTemplate={handleSelectTemplate}
           onSelectUserTemplate={handleSelectUserTemplate}
           onLogout={handleLogout}
+          onDeleteAccount={handleDeleteAccount}
         />
       )}
       {view === 'preview' && selectedTemplate && (

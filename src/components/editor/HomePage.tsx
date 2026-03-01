@@ -37,6 +37,7 @@ interface HomePageProps {
   onSelectTemplate: (template: PresetTemplate) => void;
   onSelectUserTemplate?: (template: UserTemplate) => void;
   onLogout?: () => void;
+  onDeleteAccount?: () => Promise<void>;
 }
 
 // 创建方式卡片
@@ -85,7 +86,7 @@ function EnvStatusBadge({ status, isFeishuEnvironment }: { status: FeishuEnvStat
   }
 }
 
-export function HomePage({ onCreateNew, onSelectTemplate, onSelectUserTemplate, onLogout }: HomePageProps) {
+export function HomePage({ onCreateNew, onSelectTemplate, onSelectUserTemplate, onLogout, onDeleteAccount }: HomePageProps) {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showDebug, setShowDebug] = useState(false);
@@ -125,6 +126,7 @@ export function HomePage({ onCreateNew, onSelectTemplate, onSelectUserTemplate, 
         onSelectTemplate={onSelectUserTemplate}
         onCreateNew={onCreateNew}
         onLogout={onLogout}
+        onDeleteAccount={onDeleteAccount}
       />
 
       {/* 主内容区域 */}
