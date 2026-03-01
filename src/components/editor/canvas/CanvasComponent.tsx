@@ -177,14 +177,30 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   // 🔥 获取预览用的记录（优先使用第一条记录）
   const previewRecord = (() => {
     if (records && records.length > 0) {
-      const firstRecord = records[0];
+      const firstRecord = records[0] as any;
       // 将 BitableRecord 格式转换为普通对象
       const recordData: Record<string, unknown> = {};
       
-      // 处理 fields 格式
-      if (firstRecord.fields) {
-        Object.entries(firstRecord.fields).forEach(([key, value]) => {
+      console.log('[CanvasComponent] 原始第一条记录:', firstRecord);
+      console.log('[CanvasComponent] fields列表:', fields);
+      
+      // 处理 fields 格式（飞书SDK返回的格式）
+      if (firstRecord.fields && typeof firstRecord.fields === 'object') {
+        Object.entries(firstRecord.fields as Record<string, unknown>).forEach(([key, value]) => {
           recordData[key] = value;
+          console.log(`[CanvasComponent] 添加字段ID映射: ${key} =`, value);
+        });
+      }
+      
+      // 🔥 关键：同时添加字段名到值的映射（支持通过字段名查找）
+      if (firstRecord.fields && typeof firstRecord.fields === 'object' && fields && fields.length > 0) {
+        fields.forEach(field => {
+          const fieldsObj = firstRecord.fields as Record<string, unknown>;
+          const value = fieldsObj[field.id];
+          if (value !== undefined) {
+            recordData[field.name] = value;
+            console.log(`[CanvasComponent] 添加字段名映射: ${field.name} =`, value);
+          }
         });
       }
       
@@ -195,8 +211,10 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         }
       });
       
+      console.log('[CanvasComponent] 最终previewRecord:', recordData);
       return recordData;
     }
+    console.log('[CanvasComponent] 没有records数据');
     return {};
   })();
   

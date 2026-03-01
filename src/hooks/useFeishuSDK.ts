@@ -13,7 +13,9 @@ interface UseFeishuSDKResult {
   error: string | null;
   isFeishuEnvironment: boolean;
   records: AppBitableRecord[];
+  fields: any[];
   fetchRecords: () => Promise<void>;
+  fetchFields: () => Promise<void>;
   addRecord: (fields: Record<string, any>) => Promise<void>;
   updateRecord: (recordId: string, fields: Record<string, any>) => Promise<void>;
   deleteRecord: (recordId: string) => Promise<void>;
@@ -23,6 +25,7 @@ export function useFeishuSDK(): UseFeishuSDKResult {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [records, setRecords] = useState<AppBitableRecord[]>([]);
+  const [fields, setFields] = useState<any[]>([]);
   const [isFeishuEnvironment, setIsFeishuEnvironment] = useState(false);
 
   // 初始化
@@ -40,7 +43,11 @@ export function useFeishuSDK(): UseFeishuSDKResult {
           // 初始化飞书 SDK
           const initialized = await feishuSDK.init();
           if (initialized) {
-            await fetchRecords();
+            // 🔥 同时获取字段和记录
+            await Promise.all([
+              fetchFields(),
+              fetchRecords()
+            ]);
           } else {
             setError('飞书 SDK 初始化失败');
           }
@@ -48,6 +55,7 @@ export function useFeishuSDK(): UseFeishuSDKResult {
           // 使用模拟数据
           console.log('不在飞书环境中，使用模拟数据');
           setRecords(mockBitableData.records);
+          setFields(mockBitableData.fields);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : '未知错误');
@@ -59,6 +67,17 @@ export function useFeishuSDK(): UseFeishuSDKResult {
     init();
   }, []);
 
+  // 获取字段列表
+  const fetchFields = useCallback(async () => {
+    try {
+      const result = await feishuSDK.getFields();
+      console.log('[useFeishuSDK] 获取到字段列表:', result);
+      setFields(result);
+    } catch (err) {
+      console.error('[useFeishuSDK] 获取字段失败:', err);
+    }
+  }, []);
+
   // 获取记录
   const fetchRecords = useCallback(async () => {
     setIsLoading(true);
@@ -66,6 +85,7 @@ export function useFeishuSDK(): UseFeishuSDKResult {
 
     try {
       const result = await feishuSDK.getRecords();
+      console.log('[useFeishuSDK] 获取到记录列表:', result);
       setRecords(result.records);
     } catch (err) {
       setError(err instanceof Error ? err.message : '获取记录失败');
@@ -135,7 +155,9 @@ export function useFeishuSDK(): UseFeishuSDKResult {
     error,
     isFeishuEnvironment,
     records,
+    fields,
     fetchRecords,
+    fetchFields,
     addRecord,
     updateRecord,
     deleteRecord,

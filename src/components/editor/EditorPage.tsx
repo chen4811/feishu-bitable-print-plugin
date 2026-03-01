@@ -50,6 +50,7 @@ import { CanvasArea } from './canvas/CanvasArea';
 import { PageSettingsDialog } from './dialogs/PageSettingsDialog';
 import { PrintPreviewDialog } from './dialogs/PrintPreviewDialog';
 import { usePrintSDK } from '@/hooks/usePrintSDK';
+import { useFeishuSDK } from '@/hooks/useFeishuSDK';
 
 interface EditorPageProps {
   onExit: () => void;
@@ -64,6 +65,16 @@ export function EditorPage({ onExit }: EditorPageProps) {
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [draggedItem, setDraggedItem] = useState<{ type: string; data?: unknown } | null>(null);
+
+  // 🔥 使用飞书SDK获取数据
+  const { 
+    records: feishuRecords, 
+    fields: feishuFields,
+    isLoading: feishuLoading, 
+    isFeishuEnvironment: feishuEnvFlag,
+    fetchRecords,
+    fetchFields
+  } = useFeishuSDK();
 
   const {
     templateName,
@@ -83,7 +94,44 @@ export function EditorPage({ onExit }: EditorPageProps) {
     setTableEditing,
     tableCellEditing,
     setTableCellEditing,
+    setRecords,
+    setFeishuEnvironment,
+    fields: storeFields,
+    setFields,
   } = useEditorStore();
+
+  // 🔥 同步飞书SDK数据到store
+  useEffect(() => {
+    console.log('[EditorPage] 飞书SDK数据更新:', { 
+      recordsCount: feishuRecords?.length, 
+      fieldsCount: feishuFields?.length,
+      isFeishuEnvironment: feishuEnvFlag,
+      feishuLoading 
+    });
+    
+    // 设置是否在飞书环境
+    setFeishuEnvironment(feishuEnvFlag);
+    
+    // 同步records到store（类型转换）
+    if (feishuRecords && feishuRecords.length > 0) {
+      console.log('[EditorPage] 同步records到store:', feishuRecords);
+      setRecords(feishuRecords as unknown as Record<string, unknown>[]);
+    }
+    
+    // 🔥 同步fields到store（需要转换格式）
+    if (feishuFields && feishuFields.length > 0) {
+      console.log('[EditorPage] 同步fields到store:', feishuFields);
+      // 转换飞书字段格式为应用字段格式
+      const appFields = feishuFields.map((field: any) => ({
+        id: field.field_id || field.id,
+        name: field.field_name || field.name,
+        type: field.type_name || field.type || 'text',
+        placeholder: `[${field.field_name || field.name}]`,
+        isSystem: false,
+      }));
+      setFields(appFields);
+    }
+  }, [feishuRecords, feishuFields, feishuEnvFlag, setRecords, setFields, setFeishuEnvironment]);
 
   // 获取当前正在编辑的表格
   const currentEditingTable = tableEditing.tableId 
