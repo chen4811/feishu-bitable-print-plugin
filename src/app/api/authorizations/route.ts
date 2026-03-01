@@ -1,144 +1,145 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { eq, and } from 'drizzle-orm';
-import { db } from '@/lib/db';
-import { userTableAuthorizations } from '@/lib/db/schema';
-import { getUserIdFromRequest } from '@/lib/auth';
+import { NextResponse } from 'next/server';
+import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { verifyToken } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-// 获取用户的所有授权码
-export async function GET(request: NextRequest) {
+// 获取用户的授权码列表
+export async function GET(request: Request) {
   try {
-    console.log('[API Authorizations] GET 请求');
-
-    // 验证用户身份
-    const userId = getUserIdFromRequest(request);
-    console.log('[API Authorizations] 用户ID:', userId);
-
-    if (!userId) {
+    // 获取 Authorization header
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
-        { success: false, error: 'User authentication required' },
+        { error: '未授权' },
         { status: 401 }
       );
     }
 
-    // 从数据库查询该用户的所有授权码
-    const authorizations = await db.query.userTableAuthorizations.findMany({
-      where: eq(userTableAuthorizations.userId, userId),
-      orderBy: (table, { desc }) => [desc(table.updatedAt)],
-    });
+    const token = authHeader.substring(7);
+    const decoded = verifyToken(token);
+    const client = getSupabaseClient();
 
-    console.log('[API Authorizations] 查询到授权码数量:', authorizations.length);
+    const { data: authorizations, error } = await client
+      .from('user_table_authorizations')
+      .select('*')
+      .eq('user_id', decoded.userId)
+      .eq('is_active', true)
+      .order('updated_at', { ascending: false });
 
-    // 转换数据格式，不返回敏感的 appToken
-    const formattedAuthorizations = authorizations.map((auth) => ({
-      id: auth.id.toString(),
-      tableId: auth.tableId,
-      tableName: auth.tableName,
-      isActive: auth.isActive,
-      lastUsedAt: auth.lastUsedAt?.toISOString() || null,
-      createdAt: auth.createdAt.toISOString(),
-      updatedAt: auth.updatedAt.toISOString(),
-    }));
+    if (error) {
+      console.error('[Authorizations API] 查询授权码失败:', error);
+      return NextResponse.json(
+        { error: '查询授权码失败' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      data: formattedAuthorizations,
+      data: authorizations || [],
     });
   } catch (error) {
-    console.error('[API Authorizations] GET 错误:', error);
+    console.error('[Authorizations API] 获取授权码列表错误:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to get authorizations' },
+      { error: error instanceof Error ? error.message : '获取授权码列表失败' },
       { status: 500 }
     );
   }
 }
 
-// 保存新授权码
-export async function POST(request: NextRequest) {
+// 新增授权码
+export async function POST(request: Request) {
   try {
-    console.log('[API Authorizations] POST 请求');
-
-    const body = await request.json();
-    const { tableId, tableName, appToken } = body;
-
-    console.log('[API Authorizations] 请求参数:', { tableId, tableName });
-
-    if (!tableId || !appToken) {
+    // 获取 Authorization header
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
-        { success: false, error: 'tableId and appToken are required' },
-        { status: 400 }
-      );
-    }
-
-    // 验证用户身份
-    const userId = getUserIdFromRequest(request);
-    console.log('[API Authorizations] 用户ID:', userId);
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'User authentication required' },
+        { error: '未授权' },
         { status: 401 }
       );
     }
 
-    // 检查是否已存在相同的授权
-    const existingAuth = await db.query.userTableAuthorizations.findFirst({
-      where: and(
-        eq(userTableAuthorizations.userId, userId),
-        eq(userTableAuthorizations.tableId, tableId)
-      ),
-    });
+    const token = authHeader.substring(7);
+    const decoded = verifyToken(token);
+    const body = await request.json();
+    const { tableId, tableName, appToken } = body;
 
-    if (existingAuth) {
-      console.log('[API Authorizations] 更新现有授权码');
-      // 更新现有授权
-      await db.update(userTableAuthorizations).set({
-        tableName: tableName || existingAuth.tableName,
-        appToken: appToken, // 注意：实际应用中应该加密存储
-        isActive: true,
-        updatedAt: new Date(),
-      }).where(eq(userTableAuthorizations.id, existingAuth.id));
-
-      return NextResponse.json({
-        success: true,
-        message: 'Authorization updated successfully',
-        data: {
-          id: existingAuth.id.toString(),
-          tableId,
-          tableName: tableName || existingAuth.tableName,
-          isActive: true,
-        },
-      }, { status: 200 });
+    if (!tableId || !appToken) {
+      return NextResponse.json(
+        { error: '表格ID和授权码不能为空' },
+        { status: 400 }
+      );
     }
 
-    console.log('[API Authorizations] 创建新授权码');
-    // 保存到数据库
-    const result = await db.insert(userTableAuthorizations).values({
-      userId,
-      tableId,
-      tableName: tableName || null,
-      appToken: appToken, // 注意：实际应用中应该加密存储
-      isActive: true,
-    }).returning();
+    const client = getSupabaseClient();
 
-    const newAuthorization = result[0];
-    console.log('[API Authorizations] 授权码保存成功，ID:', newAuthorization.id);
+    // 先检查是否已存在相同的记录
+    const { data: existing, error: findError } = await client
+      .from('user_table_authorizations')
+      .select('*')
+      .eq('user_id', decoded.userId)
+      .eq('table_id', tableId);
+
+    if (findError) {
+      console.error('[Authorizations API] 检查授权码失败:', findError);
+      return NextResponse.json(
+        { error: '检查授权码失败' },
+        { status: 500 }
+      );
+    }
+
+    let result;
+    if (existing && existing.length > 0) {
+      // 更新现有记录
+      const { data, error } = await client
+        .from('user_table_authorizations')
+        .update({
+          table_name: tableName,
+          app_token: appToken,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existing[0].id)
+        .select();
+
+      if (error) {
+        console.error('[Authorizations API] 更新授权码失败:', error);
+        return NextResponse.json(
+          { error: '更新授权码失败' },
+          { status: 500 }
+        );
+      }
+      result = data[0];
+    } else {
+      // 创建新记录
+      const { data, error } = await client
+        .from('user_table_authorizations')
+        .insert({
+          user_id: decoded.userId,
+          table_id: tableId,
+          table_name: tableName,
+          app_token: appToken,
+        })
+        .select();
+
+      if (error) {
+        console.error('[Authorizations API] 保存授权码失败:', error);
+        return NextResponse.json(
+          { error: '保存授权码失败' },
+          { status: 500 }
+        );
+      }
+      result = data[0];
+    }
 
     return NextResponse.json({
       success: true,
-      message: 'Authorization saved successfully',
-      data: {
-        id: newAuthorization.id.toString(),
-        tableId,
-        tableName,
-        isActive: true,
-      },
-    }, { status: 201 });
+      data: result,
+    });
   } catch (error) {
-    console.error('[API Authorizations] POST 错误:', error);
+    console.error('[Authorizations API] 保存授权码错误:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to save authorization' },
+      { error: error instanceof Error ? error.message : '保存授权码失败' },
       { status: 500 }
     );
   }

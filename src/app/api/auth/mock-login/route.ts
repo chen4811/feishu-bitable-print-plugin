@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
-import { db } from '@/lib/db';
-import { users, userTableAuthorizations } from '@/lib/db/schema';
+import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { generateToken } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -10,6 +8,7 @@ export const dynamic = 'force-dynamic';
 export async function POST() {
   try {
     console.log('[Mock Login API] 模拟登录请求');
+    const client = getSupabaseClient();
 
     // 模拟用户信息
     const mockUserInfo = {
@@ -23,32 +22,55 @@ export async function POST() {
     console.log('[Mock Login API] 模拟用户信息:', mockUserInfo);
 
     // 在数据库中查找或创建用户
-    console.log('[Mock Login API] 查找或创建用户');
-    let dbUser = await db.query.users.findFirst({
-      where: eq(users.feishuUserId, mockUserInfo.user_id),
-    });
+    console.log('[Mock Login API] 查找用户');
+    let { data: existingUsers, error: findError } = await client
+      .from('users')
+      .select('*')
+      .eq('feishu_user_id', mockUserInfo.user_id);
+
+    if (findError) {
+      console.error('[Mock Login API] 查找用户失败:', findError);
+      throw findError;
+    }
+
+    let dbUser = existingUsers && existingUsers.length > 0 ? existingUsers[0] : null;
 
     if (!dbUser) {
       console.log('[Mock Login API] 用户不存在，创建新用户');
-      const newUserResult = await db.insert(users).values({
-        feishuUserId: mockUserInfo.user_id,
-        feishuUnionId: mockUserInfo.union_id,
-        name: mockUserInfo.name,
-        avatar: mockUserInfo.avatar_url,
-        email: mockUserInfo.email,
-      }).returning();
+      const { data: newUser, error: insertError } = await client
+        .from('users')
+        .insert({
+          feishu_user_id: mockUserInfo.user_id,
+          feishu_union_id: mockUserInfo.union_id,
+          name: mockUserInfo.name,
+          avatar: mockUserInfo.avatar_url,
+          email: mockUserInfo.email,
+        })
+        .select();
+
+      if (insertError) {
+        console.error('[Mock Login API] 创建用户失败:', insertError);
+        throw insertError;
+      }
       
-      dbUser = newUserResult[0];
+      dbUser = newUser[0];
       console.log('[Mock Login API] 新用户创建成功，ID:', dbUser.id);
     } else {
       console.log('[Mock Login API] 用户已存在，ID:', dbUser.id);
       // 更新用户信息
-      await db.update(users).set({
-        name: mockUserInfo.name,
-        avatar: mockUserInfo.avatar_url,
-        email: mockUserInfo.email,
-        updatedAt: new Date(),
-      }).where(eq(users.id, dbUser.id));
+      const { error: updateError } = await client
+        .from('users')
+        .update({
+          name: mockUserInfo.name,
+          avatar: mockUserInfo.avatar_url,
+          email: mockUserInfo.email,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', dbUser.id);
+
+      if (updateError) {
+        console.error('[Mock Login API] 更新用户失败:', updateError);
+      }
     }
 
     // 生成 JWT token
@@ -62,11 +84,17 @@ export async function POST() {
 
     // 检查用户是否已有保存的授权码
     console.log('[Mock Login API] 检查授权码');
-    const authorizations = await db.query.userTableAuthorizations.findMany({
-      where: eq(userTableAuthorizations.userId, dbUser.id),
-    });
-    const hasAuthorizations = authorizations.length > 0;
-    console.log('[Mock Login API] 用户授权码数量:', authorizations.length);
+    const { data: authorizations, error: authError } = await client
+      .from('user_table_authorizations')
+      .select('*')
+      .eq('user_id', dbUser.id);
+
+    if (authError) {
+      console.error('[Mock Login API] 检查授权码失败:', authError);
+    }
+
+    const hasAuthorizations = authorizations && authorizations.length > 0;
+    console.log('[Mock Login API] 用户授权码数量:', hasAuthorizations ? authorizations.length : 0);
 
     console.log('[Mock Login API] 模拟登录完成');
 
@@ -81,7 +109,7 @@ export async function POST() {
           name: dbUser.name,
           email: dbUser.email,
           avatar: dbUser.avatar,
-          feishuUserId: dbUser.feishuUserId,
+          feishuUserId: dbUser.feishu_user_id,
         },
         hasAuthorizations,
       },
