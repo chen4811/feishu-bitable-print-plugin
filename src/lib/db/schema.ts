@@ -54,3 +54,18 @@ export const templateShares = pgTable('template_shares', {
   expiresAt: timestamp('expires_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+// ========== 管理员表 ==========
+export const admins = pgTable('admins', {
+  id: serial('id').primaryKey(),
+  username: varchar('username', { length: 50 }).unique().notNull(),
+  // 密码哈希存储（bcrypt）
+  passwordHash: text('password_hash').notNull(),
+  name: text('name'),
+  email: text('email'),
+  avatar: text('avatar'),
+  isActive: boolean('is_active').default(true),
+  lastLoginAt: timestamp('last_login_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});

@@ -108,3 +108,48 @@ export interface MeResponse {
   user: User;
   authorizations: UserTableAuthorization[];
 }
+
+// ========== 管理员相关类型 ==========
+
+// 管理员类型
+export interface Admin {
+  id: number;
+  username: string;
+  name?: string;
+  email?: string;
+  avatar?: string;
+  isActive: boolean;
+  lastLoginAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 管理员登录请求
+export interface AdminLoginRequest {
+  username: string;
+  password: string;
+}
+
+// 管理员登录响应
+export interface AdminLoginResponse {
+  success: boolean;
+  token: string;
+  admin: Admin;
+}
+
+// 管理员创建请求
+export interface CreateAdminRequest {
+  username: string;
+  password: string;
+  name?: string;
+  email?: string;
+}
+
+// 管理员更新请求
+export interface UpdateAdminRequest {
+  name?: string;
+  email?: string;
+  avatar?: string;
+  password?: string;
+  isActive?: boolean;
+}
