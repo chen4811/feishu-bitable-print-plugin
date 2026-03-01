@@ -90,6 +90,28 @@ export function EditorPage({ onExit }: EditorPageProps) {
     ? components.find(comp => comp.id === tableEditing.tableId) as any 
     : null;
 
+  // 检查当前选中的单元格中是否有合并的单元格
+  const hasMergedCell = (() => {
+    if (!currentEditingTable) return false;
+    
+    const tableConfig = currentEditingTable.tableConfig;
+    const cells = tableConfig?.cells || [];
+    
+    for (let row = 0; row < cells.length; row++) {
+      for (let col = 0; col < cells[row].length; col++) {
+        const cellId = cells[row][col]?.id || `cell-${row}-${col}`;
+        if (tableEditing.selectedCells.includes(cellId)) {
+          const rowSpan = cells[row][col]?.rowSpan || 1;
+          const colSpan = cells[row][col]?.colSpan || 1;
+          if (rowSpan > 1 || colSpan > 1) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  })();
+
   // 获取所有选中单元格的位置
   const getSelectedCellPositions = (): { row: number; col: number }[] => {
     if (!currentEditingTable) return [];
@@ -277,6 +299,75 @@ export function EditorPage({ onExit }: EditorPageProps) {
       selectedCells: [mergedCellId],
     });
   }, [currentEditingTable, tableEditing.selectedCells, updateComponent, setTableEditing]);
+
+  // 取消合并单元格
+  const handleUnmergeCells = useCallback(() => {
+    if (!currentEditingTable) {
+      return;
+    }
+
+    const tableConfig = currentEditingTable.tableConfig;
+    const cells = tableConfig?.cells || [];
+    
+    // 获取所有选中单元格的位置
+    const selectedPositions: { row: number; col: number; cell: any }[] = [];
+    
+    cells.forEach((row: any[], rowIndex: number) => {
+      row.forEach((cell: any, colIndex: number) => {
+        const cellId = cell?.id || `cell-${rowIndex}-${colIndex}`;
+        if (tableEditing.selectedCells.includes(cellId)) {
+          selectedPositions.push({ row: rowIndex, col: colIndex, cell });
+        }
+      });
+    });
+
+    if (selectedPositions.length === 0) return;
+
+    // 创建新的单元格数据
+    const newCells = cells.map((row: any[]) => 
+      row.map((cell: any) => ({ ...cell }))
+    );
+
+    // 对每个选中的合并单元格进行取消合并
+    selectedPositions.forEach(({ row, col, cell }) => {
+      const rowSpan = cell?.rowSpan || 1;
+      const colSpan = cell?.colSpan || 1;
+      
+      // 只有当是合并单元格时才处理
+      if (rowSpan > 1 || colSpan > 1) {
+        // 恢复当前单元格为普通单元格
+        newCells[row][col] = {
+          ...newCells[row][col],
+          rowSpan: 1,
+          colSpan: 1,
+        };
+
+        // 恢复被合并的其他单元格
+        for (let r = row; r < row + rowSpan; r++) {
+          for (let c = col; c < col + colSpan; c++) {
+            if (r !== row || c !== col) {
+              // 确保这个位置的单元格存在并且被标记为合并
+              if (newCells[r] && newCells[r][c]) {
+                newCells[r][c] = {
+                  ...newCells[r][c],
+                  rowSpan: 1,
+                  colSpan: 1,
+                  content: '', // 清空内容，避免重复
+                };
+              }
+            }
+          }
+        }
+      }
+    });
+
+    updateComponent(currentEditingTable.id, {
+      tableConfig: {
+        ...tableConfig,
+        cells: newCells,
+      },
+    });
+  }, [currentEditingTable, tableEditing.selectedCells, updateComponent]);
 
   // 表格字体大小增减
   const increaseTableCellFontSize = () => {
@@ -905,7 +996,9 @@ export function EditorPage({ onExit }: EditorPageProps) {
               <div className="bg-background border-b px-4 py-2">
                 <AdvancedToolbar
                   onMergeCells={handleMergeCells}
+                  onUnmergeCells={handleUnmergeCells}
                   selectedCellCount={tableEditing.selectedCells.length}
+                  hasMergedCell={hasMergedCell}
                   onOpenHeaderFooterDialog={handleOpenHeaderFooterDialog}
                   onBorderChange={handleBorderChange}
                   onBorderWidthChange={handleBorderWidthChange}

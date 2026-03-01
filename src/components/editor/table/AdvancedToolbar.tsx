@@ -6,6 +6,7 @@ import {
   Check as CheckIcon,
   Square,
   Merge,
+  Split,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BorderSettingsPanel } from './BorderSettingsPanel';
@@ -13,7 +14,9 @@ import { AlignmentSettingsPanel } from './AlignmentSettingsPanel';
 
 interface AdvancedToolbarProps {
   onMergeCells: () => void;
+  onUnmergeCells: () => void;
   selectedCellCount: number;
+  hasMergedCell: boolean;
   onOpenHeaderFooterDialog: () => void;
   onBorderChange: (borderType: string) => void;
   onBorderWidthChange: (width: number) => void;
@@ -26,7 +29,9 @@ interface AdvancedToolbarProps {
 
 export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
   onMergeCells,
+  onUnmergeCells,
   selectedCellCount,
+  hasMergedCell,
   onOpenHeaderFooterDialog,
   onBorderChange,
   onBorderWidthChange,
@@ -63,6 +68,18 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
           title="合并单元格"
         >
           <Merge className="w-4 h-4" />
+        </Button>
+        
+        {/* 取消合并单元格 */}
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={onUnmergeCells}
+          disabled={!hasMergedCell}
+          className="h-8 w-8 disabled:opacity-50"
+          title="取消合并单元格"
+        >
+          <Split className="w-4 h-4" />
         </Button>
         
         <div className="w-px h-5 bg-gray-200 mx-1" />

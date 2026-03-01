@@ -240,6 +240,10 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   // 行/列操作菜单的悬停状态
   const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
   const [hoveredColIndex, setHoveredColIndex] = useState<number | null>(null);
+
+  // 拖动调整行高列宽的状态
+  const [resizingRow, setResizingRow] = useState<{ rowIndex: number; startY: number; startHeight: number } | null>(null);
+  const [resizingCol, setResizingCol] = useState<{ colIndex: number; startX: number; startWidth: number } | null>(null);
   
   // 判断当前是否在编辑这个表格
   const isCurrentTableEditing = tableEditing.isEditing && tableEditing.tableId === component.id;
@@ -574,6 +578,90 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     });
   }, [component, tableEditData, updateComponent]);
 
+  // 🔥 拖动调整行高
+  const handleRowResizeMouseDown = useCallback((rowIndex: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const tableComp = component as any;
+    const rowHeights = tableComp.tableConfig?.rowHeights || [];
+    const startHeight = rowHeights[rowIndex] || 40; // 默认高度
+    
+    setResizingRow({
+      rowIndex,
+      startY: e.clientY,
+      startHeight,
+    });
+  }, [component]);
+
+  // 🔥 拖动调整列宽
+  const handleColResizeMouseDown = useCallback((colIndex: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const tableComp = component as any;
+    const colWidths = tableComp.tableConfig?.colWidths || [];
+    const startWidth = colWidths[colIndex] || 100; // 默认宽度
+    
+    setResizingCol({
+      colIndex,
+      startX: e.clientX,
+      startWidth,
+    });
+  }, [component]);
+
+  // 🔥 处理全局鼠标移动（用于拖动调整）
+  useEffect(() => {
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (resizingRow) {
+        const deltaY = e.clientY - resizingRow.startY;
+        const newHeight = Math.max(20, resizingRow.startHeight + deltaY); // 最小高度20px
+        
+        const tableComp = component as any;
+        const rowHeights = [...(tableComp.tableConfig?.rowHeights || [])];
+        rowHeights[resizingRow.rowIndex] = newHeight;
+        
+        updateComponent(component.id, {
+          tableConfig: {
+            ...tableComp.tableConfig,
+            rowHeights,
+          },
+        });
+      }
+      
+      if (resizingCol) {
+        const deltaX = e.clientX - resizingCol.startX;
+        const newWidth = Math.max(50, resizingCol.startWidth + deltaX); // 最小宽度50px
+        
+        const tableComp = component as any;
+        const colWidths = [...(tableComp.tableConfig?.colWidths || [])];
+        colWidths[resizingCol.colIndex] = newWidth;
+        
+        updateComponent(component.id, {
+          tableConfig: {
+            ...tableComp.tableConfig,
+            colWidths,
+          },
+        });
+      }
+    };
+
+    const handleGlobalMouseUp = () => {
+      setResizingRow(null);
+      setResizingCol(null);
+    };
+
+    if (resizingRow || resizingCol) {
+      document.addEventListener('mousemove', handleGlobalMouseMove);
+      document.addEventListener('mouseup', handleGlobalMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMouseMove);
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [resizingRow, resizingCol, component, updateComponent]);
+
   // 自动聚焦到编辑框
   useEffect(() => {
     if (isEditing && textareaRef.current) {
@@ -683,6 +771,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
 
     const colCount = tableEditData[0]?.length || 0;
+    const colWidths = tableComp.tableConfig?.colWidths || [];
+    const rowHeights = tableComp.tableConfig?.rowHeights || [];
 
     return (
       <div 
@@ -709,6 +799,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   if (!isColumnVisible(tableComp, colIndex)) {
                     return null;
                   }
+                  const colWidth = colWidths[colIndex];
                   return (
                     <td
                       key={`col-header-${colIndex}`}
@@ -722,6 +813,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                         fontWeight: 500,
                         fontSize: '12px',
                         color: '#374151',
+                        width: colWidth ? `${colWidth}px` : undefined,
+                        minWidth: colWidth ? `${colWidth}px` : undefined,
                       }}
                       onMouseEnter={() => setHoveredColIndex(colIndex)}
                       onMouseLeave={() => setHoveredColIndex(null)}
@@ -736,6 +829,14 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                           onAddRight={() => addColumnRight(colIndex)}
                           onDelete={() => deleteColumn(colIndex)}
                           position="bottom"
+                        />
+                      )}
+                      {/* 🔥 列宽调整手柄 - 仅在编辑模式下显示 */}
+                      {isCurrentTableEditing && (
+                        <div
+                          className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500"
+                          style={{ zIndex: 10 }}
+                          onMouseDown={(e) => handleColResizeMouseDown(colIndex, e)}
                         />
                       )}
                     </td>
@@ -772,6 +873,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       fontWeight: 500,
                       fontSize: '12px',
                       color: '#374151',
+                      height: rowHeights[rowIndex] ? `${rowHeights[rowIndex]}px` : undefined,
                     }}
                     onMouseEnter={() => setHoveredRowIndex(rowIndex)}
                     onMouseLeave={() => setHoveredRowIndex(null)}
@@ -788,6 +890,12 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                         position="right"
                       />
                     )}
+                    {/* 🔥 行高调整手柄 - 仅在编辑模式下显示 */}
+                    <div
+                      className="absolute bottom-0 left-0 right-0 h-1 cursor-row-resize hover:bg-blue-500"
+                      style={{ zIndex: 10 }}
+                      onMouseDown={(e) => handleRowResizeMouseDown(rowIndex, e)}
+                    />
                   </td>
                 )}
                 
@@ -810,6 +918,10 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   const cellBorder = cell?.border;
                   const borderWidth = cellBorder?.width || tableComp.tableConfig?.borderWidth || 1;
                   const borderColor = cellBorder?.color || tableComp.tableConfig?.borderColor || '#000000';
+                  
+                  // 🔥 获取列宽和行高
+                  const colWidth = colWidths[colIndex];
+                  const rowHeight = rowHeights[rowIndex];
                   
                   // 构建边框样式
                   const borderStyles: any = {};
@@ -853,6 +965,9 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                         })(),
                         userSelect: 'none',
                         verticalAlign: cell?.verticalAlign || 'middle',
+                        width: colWidth ? `${colWidth}px` : undefined,
+                        minWidth: colWidth ? `${colWidth}px` : undefined,
+                        height: rowHeight ? `${rowHeight}px` : undefined,
                         ...borderStyles,
                       }}
                       onMouseDown={(e) => handleCellMouseDown(rowIndex, colIndex, e)}
