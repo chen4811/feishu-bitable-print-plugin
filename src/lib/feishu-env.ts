@@ -419,15 +419,32 @@ export async function getSelectedRecords(): Promise<BitableRecord[]> {
   try {
     debugLog('第一步：获取选中信息...');
     const selection = await base.getSelection();
-    debugLog('选中信息:', selection);
     
-    if (!selection?.tableId || !selection?.recordId) {
-      debugLog('⚠️  没有 tableId 或 recordId，返回空数组');
+    // 打印完整的 selection 对象，包括所有字段
+    debugLog('选中信息 (完整):', JSON.stringify(selection, null, 2));
+    debugLog('选中信息 (摘要):', {
+      hasTableId: !!selection?.tableId,
+      hasRecordId: !!selection?.recordId,
+      tableId: selection?.tableId,
+      recordId: selection?.recordId,
+      baseId: selection?.baseId,
+      viewId: selection?.viewId,
+      fieldId: selection?.fieldId,
+    });
+    
+    // 至少需要 tableId
+    if (!selection?.tableId) {
+      debugLog('⚠️  没有 tableId，返回空数组');
       return [];
     }
     
     const { tableId, recordId } = selection;
-    debugLog('✅ 获取到 tableId 和 recordId:', { tableId, recordId });
+    debugLog('✅ 获取到 tableId:', tableId);
+    if (recordId) {
+      debugLog('✅ 获取到 recordId:', recordId);
+    } else {
+      debugLog('⚠️  没有 recordId，将获取第一条记录');
+    }
     
     debugLog('第二步：通过 tableId 获取表格...');
     let table: any = null;
@@ -445,15 +462,42 @@ export async function getSelectedRecords(): Promise<BitableRecord[]> {
       return [];
     }
     
-    debugLog('第三步：通过 recordId 获取记录...');
+    debugLog('第三步：获取记录...');
     let recordData: any = null;
     
-    if (typeof table.getRecordById === 'function') {
-      debugLog('使用 table.getRecordById()');
-      recordData = await table.getRecordById(recordId);
+    if (recordId) {
+      // 有 recordId，直接获取选中的记录
+      debugLog('有 recordId，通过 recordId 获取记录...');
+      if (typeof table.getRecordById === 'function') {
+        debugLog('使用 table.getRecordById()');
+        recordData = await table.getRecordById(recordId);
+      } else {
+        debugLog('回退到 table.getRecord()');
+        recordData = await table.getRecord(recordId);
+      }
     } else {
-      debugLog('回退到 table.getRecord()');
-      recordData = await table.getRecord(recordId);
+      // 没有 recordId，获取第一条记录
+      debugLog('没有 recordId，获取表格第一条记录...');
+      try {
+        const recordIdList = await table.getRecordIdList();
+        debugLog('获取到记录 ID 列表:', recordIdList?.length);
+        
+        if (Array.isArray(recordIdList) && recordIdList.length > 0) {
+          const firstRecordId = recordIdList[0];
+          debugLog('第一条记录 ID:', firstRecordId);
+          
+          if (typeof table.getRecordById === 'function') {
+            recordData = await table.getRecordById(firstRecordId);
+          } else {
+            recordData = await table.getRecord(firstRecordId);
+          }
+          debugLog('✅ 成功获取第一条记录');
+        } else {
+          debugLog('⚠️  表格没有记录');
+        }
+      } catch (e) {
+        debugLog('⚠️  获取第一条记录失败:', e);
+      }
     }
     
     if (!recordData) {
@@ -480,6 +524,7 @@ export async function getSelectedRecords(): Promise<BitableRecord[]> {
     return [result];
   } catch (error) {
     debugLog('❌ getSelectedRecords() 失败:', error);
+    debugLog('错误堆栈:', error instanceof Error ? error.stack : error);
     debugLog('======== getSelectedRecords() 结束 ========');
     return [];
   }
