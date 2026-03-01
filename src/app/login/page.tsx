@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useUserStore } from '@/store/userStore';
-import { Loader2, LogIn, User } from 'lucide-react';
+import { Loader2, LogIn, User, AlertCircle } from 'lucide-react';
 
 export default function FeishuLoginPage() {
   const router = useRouter();
-  const { isLoggedIn, isAuthCodeBound, feishuLogin } = useUserStore();
+  const { isLoggedIn, isAuthCodeBound } = useUserStore();
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string>('');
 
   console.log('[FeishuLoginPage] 渲染，isLoggedIn:', isLoggedIn);
   console.log('[FeishuLoginPage] isAuthCodeBound:', isAuthCodeBound);
@@ -34,27 +35,33 @@ export default function FeishuLoginPage() {
   const handleFeishuLogin = async () => {
     console.log('[FeishuLoginPage] handleFeishuLogin 被调用');
     setIsLoading(true);
+    setError('');
 
     try {
-      // 模拟飞书登录流程
-      console.log('[FeishuLoginPage] 模拟飞书登录...');
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // 调用后端 API 获取飞书登录 URL
+      console.log('[FeishuLoginPage] 获取飞书登录 URL...');
+      const response = await fetch('/api/auth/feishu/login');
+      const result = await response.json();
 
-      // 模拟从飞书获取用户信息
-      const mockUserInfo = {
-        id: 'feishu_user_' + Date.now(),
-        name: '飞书用户',
-        email: 'user@feishu.com',
-        avatar: '',
-        feishuUserId: 'ou_1234567890abcdef',
-      };
+      console.log('[FeishuLoginPage] 获取登录 URL 响应:', result);
 
-      console.log('[FeishuLoginPage] 获取到飞书用户信息:', mockUserInfo);
-      feishuLogin(mockUserInfo);
-      console.log('[FeishuLoginPage] 飞书登录成功');
+      if (!result.success) {
+        throw new Error(result.error || '获取登录链接失败');
+      }
+
+      // 保存 state 到 localStorage 用于验证
+      if (result.state) {
+        localStorage.setItem('feishu_login_state', result.state);
+      }
+
+      console.log('[FeishuLoginPage] 跳转到飞书登录页面:', result.loginUrl);
+      
+      // 跳转到飞书登录页面
+      window.location.href = result.loginUrl;
 
     } catch (error) {
       console.error('[FeishuLoginPage] 飞书登录失败:', error);
+      setError(error instanceof Error ? error.message : '登录失败，请重试');
     } finally {
       setIsLoading(false);
     }
@@ -87,15 +94,22 @@ export default function FeishuLoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
+
           <Button
-            className="w-full h-12 text-base"
+            className="w-full h-12 text-base bg-blue-500 hover:bg-blue-600"
             onClick={handleFeishuLogin}
             disabled={isLoading}
           >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                登录中...
+                准备登录...
               </>
             ) : (
               <>
