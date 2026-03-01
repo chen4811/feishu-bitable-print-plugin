@@ -245,11 +245,26 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   // 菜单自身的悬停状态
   const [isRowMenuHovered, setIsRowMenuHovered] = useState(false);
   const [isColMenuHovered, setIsColMenuHovered] = useState(false);
+  // 定时器引用，用于延迟关闭菜单
+  const rowMenuTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const colMenuTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // 拖动调整行高列宽的状态
   const [resizingRow, setResizingRow] = useState<{ rowIndex: number; startY: number; startHeight: number } | null>(null);
   const [resizingCol, setResizingCol] = useState<{ colIndex: number; startX: number; startWidth: number } | null>(null);
   
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (rowMenuTimeoutRef.current) {
+        clearTimeout(rowMenuTimeoutRef.current);
+      }
+      if (colMenuTimeoutRef.current) {
+        clearTimeout(colMenuTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // 判断当前是否在编辑这个表格
   const isCurrentTableEditing = tableEditing.isEditing && tableEditing.tableId === component.id;
 
@@ -824,12 +839,20 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                         minWidth: colWidth ? `${colWidth}px` : undefined,
                       }}
                       onMouseEnter={() => {
+                        // 清除之前的定时器
+                        if (colMenuTimeoutRef.current) {
+                          clearTimeout(colMenuTimeoutRef.current);
+                          colMenuTimeoutRef.current = null;
+                        }
                         setHoveredColIndex(colIndex);
                       }}
                       onMouseLeave={() => {
-                        if (!isColMenuHovered) {
-                          setHoveredColIndex(null);
-                        }
+                        // 延迟 300ms 关闭，给用户时间移动鼠标到菜单上
+                        colMenuTimeoutRef.current = setTimeout(() => {
+                          if (!isColMenuHovered) {
+                            setHoveredColIndex(null);
+                          }
+                        }, 300);
                       }}
                       onMouseDown={(e) => e.stopPropagation()}
                       onClick={(e) => e.stopPropagation()}
@@ -841,11 +864,20 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                           onAddLeft={() => addColumnLeft(colIndex)}
                           onAddRight={() => addColumnRight(colIndex)}
                           onDelete={() => deleteColumn(colIndex)}
-                          position="bottom"
-                          onMouseEnter={() => setIsColMenuHovered(true)}
+                          position="top"
+                          onMouseEnter={() => {
+                            if (colMenuTimeoutRef.current) {
+                              clearTimeout(colMenuTimeoutRef.current);
+                              colMenuTimeoutRef.current = null;
+                            }
+                            setIsColMenuHovered(true);
+                          }}
                           onMouseLeave={() => {
                             setIsColMenuHovered(false);
-                            setHoveredColIndex(null);
+                            // 延迟 300ms 关闭
+                            colMenuTimeoutRef.current = setTimeout(() => {
+                              setHoveredColIndex(null);
+                            }, 300);
                           }}
                         />
                       )}
@@ -894,12 +926,20 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       height: rowHeights[rowIndex] ? `${rowHeights[rowIndex]}px` : undefined,
                     }}
                     onMouseEnter={() => {
+                      // 清除之前的定时器
+                      if (rowMenuTimeoutRef.current) {
+                        clearTimeout(rowMenuTimeoutRef.current);
+                        rowMenuTimeoutRef.current = null;
+                      }
                       setHoveredRowIndex(rowIndex);
                     }}
                     onMouseLeave={() => {
-                      if (!isRowMenuHovered) {
-                        setHoveredRowIndex(null);
-                      }
+                      // 延迟 300ms 关闭，给用户时间移动鼠标到菜单上
+                      rowMenuTimeoutRef.current = setTimeout(() => {
+                        if (!isRowMenuHovered) {
+                          setHoveredRowIndex(null);
+                        }
+                      }, 300);
                     }}
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
@@ -911,11 +951,20 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                         onAddAbove={() => addRowAbove(rowIndex)}
                         onAddBelow={() => addRowBelow(rowIndex)}
                         onDelete={() => deleteRow(rowIndex)}
-                        position="right"
-                        onMouseEnter={() => setIsRowMenuHovered(true)}
+                        position="left"
+                        onMouseEnter={() => {
+                          if (rowMenuTimeoutRef.current) {
+                            clearTimeout(rowMenuTimeoutRef.current);
+                            rowMenuTimeoutRef.current = null;
+                          }
+                          setIsRowMenuHovered(true);
+                        }}
                         onMouseLeave={() => {
                           setIsRowMenuHovered(false);
-                          setHoveredRowIndex(null);
+                          // 延迟 300ms 关闭
+                          rowMenuTimeoutRef.current = setTimeout(() => {
+                            setHoveredRowIndex(null);
+                          }, 300);
                         }}
                       />
                     )}
