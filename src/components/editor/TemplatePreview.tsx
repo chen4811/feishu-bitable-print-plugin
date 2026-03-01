@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { useTemplateStore, type Template } from '@/store/templateStore';
 import { useSelectedDataStore } from '@/store/selectedDataStore';
 import { useEditorStore } from '@/store/editorStore';
-import { useFeishuSDK } from '@/hooks/useFeishuSDK';
+import { feishuEnv } from '@/lib/feishu-env';
 
 interface TemplatePreviewProps {
   baseId?: string;
@@ -303,15 +303,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     getCurrentRecord,
   } = useSelectedDataStore();
 
-  // 使用飞书SDK
-  const {
-    isFeishuEnvironment,
-    records: feishuRecords,
-    fields: feishuFields,
-    selectedRecords,
-    fetchSelectedRecords,
-    onSelectionChange: registerSelectionChange,
-  } = useFeishuSDK();
+  // 使用飞书SDK（使用 feishu-env）
+  const isFeishuEnvironment = feishuEnv.isFeishuEnvironment();
 
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -344,42 +337,39 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     // 主动获取一次选中记录
     if (isFeishuEnvironment) {
       console.log('[TemplatePreview] 初始化时主动获取选中记录...');
-      fetchSelectedRecords();
+      fetchSelectedRecordsFromEnv();
     }
-  }, [isFeishuEnvironment, setIsFromFeishu, isListening, setIsListening, fetchSelectedRecords]);
+  }, [isFeishuEnvironment, setIsFromFeishu, isListening, setIsListening]);
 
-  // 处理飞书记录数据，转换格式并设置到 store
-  useEffect(() => {
-    if (feishuRecords && feishuRecords.length > 0) {
-      console.log('[TemplatePreview] 飞书记录数据更新:', feishuRecords);
-      // 直接使用 feishuRecords
-      setRecords(feishuRecords);
-    }
-  }, [feishuRecords, setRecords]);
-
-  // 监听 selectedRecords 的变化，更新 store
-  useEffect(() => {
-    if (selectedRecords && selectedRecords.length > 0) {
-      console.log('[TemplatePreview] selectedRecords 更新:', selectedRecords);
+  // 从 feishu-env 获取选中记录
+  const fetchSelectedRecordsFromEnv = useCallback(async () => {
+    try {
+      console.log('[TemplatePreview] 调用 feishuEnv.getSelectedRecords()...');
+      const selRecords = await feishuEnv.getSelectedRecords();
+      console.log('[TemplatePreview] 获取到选中记录:', selRecords);
       
-      // 转换格式
-      const formattedRecords = selectedRecords.map((record, index) => ({
-        id: record.id,
-        ...record.fields,
-        _rowIndex: index,
-      }));
+      if (selRecords.length > 0) {
+        // 转换格式
+        const formattedRecords = selRecords.map((record, index) => ({
+          id: record.id,
+          ...record.fields,
+          _rowIndex: index,
+        }));
 
-      console.log('[TemplatePreview] 格式化后的记录:', formattedRecords);
-      setRecords(formattedRecords);
-      setCurrentIndex(0);
-      
-      if (showDebugInfo) {
-        setDebugInfo(`选中记录: ${JSON.stringify(selectedRecords.map(r => ({ id: r.id, fields: r.fields })), null, 2)}`);
+        console.log('[TemplatePreview] 格式化后的记录:', formattedRecords);
+        setRecords(formattedRecords);
+        setCurrentIndex(0);
+        
+        if (showDebugInfo) {
+          setDebugInfo(`选中记录: ${JSON.stringify(selRecords.map(r => ({ id: r.id, fields: r.fields })), null, 2)}`);
+        }
       }
+    } catch (err) {
+      console.error('[TemplatePreview] 获取选中记录失败:', err);
     }
-  }, [selectedRecords, setRecords, setCurrentIndex, showDebugInfo]);
+  }, [setRecords, setCurrentIndex, showDebugInfo]);
 
-  // 注册选中变化监听
+  // 注册选中变化监听（使用 feishu-env）
   useEffect(() => {
     if (!isListening || !isFeishuEnvironment) {
       console.log('[TemplatePreview] 不满足监听条件，跳过注册:', { isListening, isFeishuEnvironment });
@@ -388,7 +378,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
     console.log('[TemplatePreview] ======== 注册飞书选中变化监听 ========');
 
-    const unsubscribe = registerSelectionChange(async (event) => {
+    const unsubscribe = feishuEnv.onSelectionChange(async (event) => {
       console.log('[TemplatePreview] ======== 收到选中变化事件 ========');
       console.log('[TemplatePreview] 完整事件:', event);
       console.log('[TemplatePreview] event.data:', event?.data);
@@ -398,16 +388,15 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         setDebugInfo(`选中事件: ${JSON.stringify(event, null, 2)}`);
       }
 
-      console.log('[TemplatePreview] 准备调用 fetchSelectedRecords()...');
-      // 无论有没有 recordId，都尝试获取一次选中记录
-      await fetchSelectedRecords();
-      console.log('[TemplatePreview] fetchSelectedRecords() 调用完成');
+      console.log('[TemplatePreview] 准备调用 fetchSelectedRecordsFromEnv()...');
+      await fetchSelectedRecordsFromEnv();
+      console.log('[TemplatePreview] fetchSelectedRecordsFromEnv() 调用完成');
       console.log('[TemplatePreview] ===========================================');
     });
 
     console.log('[TemplatePreview] ======== 监听注册完成 ========');
     return unsubscribe;
-  }, [isListening, isFeishuEnvironment, registerSelectionChange, fetchSelectedRecords, showDebugInfo]);
+  }, [isListening, isFeishuEnvironment, fetchSelectedRecordsFromEnv, showDebugInfo]);
 
   // 处理模板选择
   const handleSelectTemplate = useCallback((template: Template) => {
