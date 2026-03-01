@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,9 +18,19 @@ export default function AdminLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   // 如果已经登录，跳转到管理仪表板
+  useEffect(() => {
+    if (isLoggedIn) {
+      router.push('/admins/dashboard');
+    }
+  }, [isLoggedIn, router]);
+
+  // 如果已经登录，显示加载状态
   if (isLoggedIn) {
-    router.push('/admins/dashboard');
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

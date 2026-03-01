@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAdminStore } from '@/store/adminStore';
 import { Button } from '@/components/ui/button';
@@ -33,10 +34,20 @@ export default function AdminLayout({
     return <>{children}</>;
   }
 
-  // 如果未登录，跳转到登录页
+  // 使用 useEffect 处理路由跳转
+  useEffect(() => {
+    if (!isLoggedIn) {
+      router.push('/admins/login');
+    }
+  }, [isLoggedIn, router]);
+
+  // 如果未登录，显示加载状态
   if (!isLoggedIn) {
-    router.push('/admins/login');
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
   }
 
   const handleLogout = () => {
