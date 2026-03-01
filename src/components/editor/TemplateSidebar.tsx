@@ -185,8 +185,8 @@ export function TemplateSidebar({ onSelectTemplate, onCreateNew, onLogout, onDel
   const [isDeletingTemplate, setIsDeletingTemplate] = useState(false);
 
   console.log('[TemplateSidebar] 渲染');
-  console.log('[TemplateSidebar] templates:', templates);
-  console.log('[TemplateSidebar] currentTemplate:', currentTemplate);
+  console.log('[TemplateSidebar] templates:', templates?.map(t => ({ id: t.id, name: t.name, user_id: t.userId })));
+  console.log('[TemplateSidebar] currentTemplate:', currentTemplate ? { id: currentTemplate.id, name: currentTemplate.name } : null);
 
   // 过滤模板
   const filteredTemplates = templates.filter((template) => {
@@ -249,11 +249,14 @@ export function TemplateSidebar({ onSelectTemplate, onCreateNew, onLogout, onDel
     
     setIsDeletingTemplate(true);
     try {
+      console.log('[TemplateSidebar] 确认删除模板:', deleteTemplateId);
       await deleteTemplate(deleteTemplateId);
       setShowDeleteTemplateDialog(false);
       setDeleteTemplateId(null);
     } catch (error) {
       console.error('[TemplateSidebar] 删除模板失败:', error);
+      // 显示更友好的错误提示
+      alert(error instanceof Error ? error.message : '删除模板失败，请刷新页面重试');
     } finally {
       setIsDeletingTemplate(false);
     }

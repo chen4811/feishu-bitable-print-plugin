@@ -7,10 +7,11 @@ export const dynamic = 'force-dynamic';
 // 获取单个模板
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id);
+    const { id } = await context.params;
+    const templateId = parseInt(id);
     
     // 获取 Authorization header
     const authHeader = request.headers.get('Authorization');
@@ -36,7 +37,7 @@ export async function GET(
     const { data: template, error } = await client
       .from('templates')
       .select('*')
-      .eq('id', id)
+      .eq('id', templateId)
       .single();
 
     if (error) {
@@ -78,10 +79,11 @@ export async function GET(
 // 更新模板
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id);
+    const { id } = await context.params;
+    const templateId = parseInt(id);
     
     // 获取 Authorization header
     const authHeader = request.headers.get('Authorization');
@@ -111,11 +113,11 @@ export async function PUT(
     const { data: existingTemplate, error: findError } = await client
       .from('templates')
       .select('*')
-      .eq('id', id)
+      .eq('id', templateId)
       .single();
 
     if (findError || !existingTemplate) {
-      console.error('[Template API] 查找模板失败:', { id, findError, existingTemplate });
+      console.error('[Template API] 查找模板失败:', { id: templateId, findError, existingTemplate });
       return NextResponse.json(
         { error: '模板不存在' },
         { status: 404 }
@@ -139,7 +141,7 @@ export async function PUT(
         is_public: isPublic !== undefined ? isPublic : existingTemplate.is_public,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', id)
+      .eq('id', templateId)
       .select();
 
     if (error) {
@@ -166,10 +168,12 @@ export async function PUT(
 // 删除模板
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id);
+    const { id } = await context.params;
+    const templateId = parseInt(id);
+    console.log('[Template API] 删除模板请求:', { id: templateId, params: { id } });
     
     // 获取 Authorization header
     const authHeader = request.headers.get('Authorization');
@@ -193,20 +197,34 @@ export async function DELETE(
     const client = getSupabaseClient();
 
     // 先检查模板是否存在且属于当前用户
+    console.log('[Template API] 查找模板:', { id: templateId, userId: decoded.userId });
     const { data: existingTemplate, error: findError } = await client
       .from('templates')
       .select('*')
-      .eq('id', id)
+      .eq('id', templateId)
       .single();
 
     if (findError || !existingTemplate) {
+      console.error('[Template API] 模板未找到:', { id: templateId, findError, existingTemplate });
+      
+      // 列出该用户的所有模板，帮助调试
+      const { data: userTemplates } = await client
+        .from('templates')
+        .select('id, name, user_id')
+        .eq('user_id', decoded.userId);
+      
+      console.log('[Template API] 用户的所有模板:', userTemplates);
+      
       return NextResponse.json(
-        { error: '模板不存在' },
+        { error: '模板不存在', availableTemplates: userTemplates },
         { status: 404 }
       );
     }
 
+    console.log('[Template API] 找到模板:', { id: existingTemplate.id, name: existingTemplate.name, userId: existingTemplate.user_id });
+    
     if (existingTemplate.user_id !== decoded.userId) {
+      console.error('[Template API] 权限不匹配:', { templateUserId: existingTemplate.user_id, currentUserId: decoded.userId });
       return NextResponse.json(
         { error: '无权删除此模板' },
         { status: 403 }
@@ -216,7 +234,7 @@ export async function DELETE(
     const { error } = await client
       .from('templates')
       .delete()
-      .eq('id', id);
+      .eq('id', templateId);
 
     if (error) {
       console.error('[Template API] 删除模板失败:', error);

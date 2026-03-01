@@ -208,6 +208,14 @@ export const useTemplateStore = create<TemplateStore>()((set) => ({
 
       deleteTemplate: async (id) => {
         const token = useUserStore.getState().token;
+        const state = useTemplateStore.getState();
+        
+        console.log('[TemplateStore] 删除模板:', { 
+          id, 
+          可用模板: state.templates.map(t => ({ id: t.id, name: t.name })),
+          当前模板ID: state.currentTemplate?.id
+        });
+        
         if (!token) {
           throw new Error('未登录');
         }
@@ -229,6 +237,12 @@ export const useTemplateStore = create<TemplateStore>()((set) => ({
               isLoading: false 
             }));
           } else {
+            // 如果是404错误，自动刷新模板列表
+            if (response.status === 404) {
+              console.warn('[TemplateStore] 模板不存在，刷新模板列表');
+              // 异步刷新模板列表
+              useTemplateStore.getState().fetchTemplates();
+            }
             throw new Error(result.error || '删除模板失败');
           }
         } catch (error) {
