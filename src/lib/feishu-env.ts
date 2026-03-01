@@ -227,7 +227,7 @@ function checkEnvironment() {
 // ============================================
 
 let pollingInterval: NodeJS.Timeout | null = null;
-let lastPolledSelection: string[] = [];
+let lastPolledRecordId: string | null = null;
 
 function startPolling(interval = 2000) {
   if (pollingInterval) {
@@ -239,34 +239,27 @@ function startPolling(interval = 2000) {
   
   pollingInterval = setInterval(async () => {
     try {
-      // 尝试获取当前选中的记录 IDs
-      let currentSelection: string[] = [];
-      
-      if ((bitable as any).ui && typeof (bitable as any).ui.getSelectRecordIds === 'function') {
-        currentSelection = await (bitable as any).ui.getSelectRecordIds();
-      }
+      // 使用 base.getSelection() 获取当前选中状态
+      const selection = await base.getSelection();
+      const currentRecordId = selection?.recordId || null;
+      const tableId = selection?.tableId || '';
       
       // 检查是否有变化
-      const hasChanged = JSON.stringify(currentSelection) !== JSON.stringify(lastPolledSelection);
+      const hasChanged = currentRecordId !== lastPolledRecordId;
       
-      if (hasChanged) {
-        debugLog('🔄 轮询检测到选择状态变化:', currentSelection);
+      if (hasChanged && currentRecordId) {
+        debugLog('🔄 轮询检测到选择状态变化:', {
+          recordId: currentRecordId,
+          tableId,
+          fieldId: selection?.fieldId,
+        });
         
-        // 获取当前 tableId
-        let tableId = '';
-        try {
-          const selection = await base.getSelection();
-          tableId = selection?.tableId || '';
-        } catch (e) {
-          debugLog('轮询获取 tableId 失败:', e);
-        }
-        
-        // 构造事件对象
+        // 构造事件对象（模拟复选框勾选事件格式）
         const event: RecordSelectChangeEvent = {
           data: {
             tableId,
-            recordIds: currentSelection,
-            isSelectAll: false, // 轮询方式无法准确判断全选
+            recordIds: currentRecordId ? [currentRecordId] : [],
+            isSelectAll: false,
           },
         };
         
@@ -279,19 +272,22 @@ function startPolling(interval = 2000) {
           }
         });
         
-        lastPolledSelection = currentSelection;
+        lastPolledRecordId = currentRecordId;
       }
       
     } catch (error) {
       debugLog('轮询检查失败:', error instanceof Error ? error.message : error);
     }
   }, interval);
+  
+  debugLog('✅ 轮询已启动');
 }
 
 function stopPolling() {
   if (pollingInterval) {
     clearInterval(pollingInterval);
     pollingInterval = null;
+    lastPolledRecordId = null;
     debugLog('🛑 轮询检查已停止');
   }
 }
@@ -1111,12 +1107,16 @@ export class CheckboxSelectionManager {
   // 获取当前选中状态
   async refreshSelection(): Promise<void> {
     try {
-      this.selectedIds = await (bitable.ui as any).getSelectRecordIds();
+      // 使用 base.getSelection() 获取当前选中状态
       const selection = await base.getSelection();
+      const recordId = selection?.recordId || null;
       this.tableId = selection?.tableId || null;
+      
+      // 将单条记录转换为数组格式
+      this.selectedIds = recordId ? [recordId] : [];
 
       debugLog('📊 当前选中状态:', {
-        记录IDs: this.selectedIds,
+        记录ID: recordId,
         数量: this.selectedIds.length,
         表ID: this.tableId,
       });
@@ -1193,40 +1193,36 @@ export class CheckboxSelectionManager {
 }
 
 // ============================================
-// 便捷函数：快速获取复选框选中记录
+// 便捷函数：快速获取当前选中记录（基于 base.getSelection）
 // ============================================
 
 export async function getCheckboxSelectedRecords(): Promise<BitableRecord[]> {
-  debugLog('📋 快速获取复选框选中记录');
+  debugLog('📋 快速获取当前选中记录');
 
   try {
-    // 获取当前复选框选中的记录ID列表
-    const selectedRecordIds = await (bitable.ui as any).getSelectRecordIds();
-
-    debugLog('复选框选中记录IDs:', selectedRecordIds);
-    debugLog('选中数量:', selectedRecordIds.length);
-
-    if (selectedRecordIds.length === 0) {
-      debugLog('⚠️ 没有选中任何记录');
-      return [];
-    }
-
-    // 获取当前表格ID
+    // 使用 base.getSelection() 获取当前选中状态
     const selection = await base.getSelection();
+    const recordId = selection?.recordId;
     const tableId = selection?.tableId;
 
-    if (!tableId) {
-      debugLog('⚠️ 未选中表格');
+    debugLog('当前选择状态:', {
+      recordId,
+      tableId,
+      fieldId: selection?.fieldId,
+    });
+
+    if (!recordId || !tableId) {
+      debugLog('⚠️ 没有选中的记录');
       return [];
     }
 
     // 获取选中记录的数据
-    const records = await getRecordsByCheckboxIds(tableId, selectedRecordIds);
+    const records = await getRecordsByCheckboxIds(tableId, [recordId]);
 
     debugLog(`✅ 获取到选中记录数据: ${records.length} 条`);
     return records;
   } catch (error) {
-    debugLog('❌ 获取复选框选中数据失败:', error);
+    debugLog('❌ 获取选中数据失败:', error);
     return [];
   }
 }
