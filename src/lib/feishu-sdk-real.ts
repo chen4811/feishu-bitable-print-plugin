@@ -40,6 +40,9 @@ let bitableInstance: BitableSDK = null;
 let isInitializing = false;
 let initPromise: Promise<boolean> | null = null;
 
+// 开发模式强制使用真实 SDK（便于调试）
+const FORCE_REAL_SDK = false;
+
 /**
  * 安全获取 bitable 实例
  */
@@ -84,6 +87,15 @@ export const feishuSDK = {
       return false;
     }
     
+    // 检查 URL 参数：?feishu_debug=true 强制使用真实 SDK
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlForceDebug = urlParams.get('feishu_debug') === 'true';
+    
+    if (urlForceDebug || FORCE_REAL_SDK) {
+      console.log('[FeishuSDK] 调试模式开启，强制使用真实 SDK');
+      return true;
+    }
+    
     // 检查是否在 iframe 中
     const inIframe = window.self !== window.top;
     
@@ -92,13 +104,24 @@ export const feishuSDK = {
                           !!(window as any).Lark ||
                           !!(window as any).__LARK_BASE__;
     
-    // 检查 URL 参数
+    // 检查 URL 是否包含飞书域名
     const urlHasFeishu = window.location.href.includes('feishu') ||
                          window.location.href.includes('lark') ||
                          window.location.href.includes('bytedance');
     
-    const result = inIframe && (hasLarkGlobal || urlHasFeishu);
-    console.log('[FeishuSDK] 环境检测:', { inIframe, hasLarkGlobal, urlHasFeishu, result });
+    // 检查是否有 bitable 全局变量（关键判断）
+    const hasBitableGlobal = !!(window as any).bitable;
+    
+    const result = hasBitableGlobal || (inIframe && (hasLarkGlobal || urlHasFeishu));
+    console.log('[FeishuSDK] 环境检测:', { 
+      urlForceDebug,
+      FORCE_REAL_SDK,
+      inIframe, 
+      hasLarkGlobal, 
+      hasBitableGlobal,
+      urlHasFeishu, 
+      result 
+    });
     
     return result;
   },

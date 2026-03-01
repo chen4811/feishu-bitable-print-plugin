@@ -63,9 +63,12 @@ export function useFeishuSDK(): UseFeishuSDKResult {
           setFields(mockBitableData.fields);
           // 默认选中第一条记录
           if (mockBitableData.records.length > 0) {
+            const record = mockBitableData.records[0];
+            const { id, ...fields } = record as any;
+            delete fields._rowIndex;
             setSelectedRecords([{
-              id: mockBitableData.records[0].id,
-              fields: mockBitableData.records[0] as unknown as Record<string, unknown>,
+              id: id,
+              fields: fields as Record<string, unknown>,
               createdTime: new Date().toISOString(),
               lastModifiedTime: new Date().toISOString(),
             }]);
