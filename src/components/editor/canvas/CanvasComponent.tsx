@@ -1128,51 +1128,47 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               }}
               onDoubleClick={(e) => e.stopPropagation()}
             >
-              <span>
-                <textarea
-                  ref={textareaRef}
-                  className="border-0 outline-none resize-none bg-transparent"
-                  style={{
-                    all: 'unset', // 🔥 清除所有默认样式
-                    fontSize: '1em',
-                    fontWeight: 'inherit',
-                    fontStyle: 'inherit',
-                    color: 'inherit',
-                    textAlign: 'inherit',
-                    lineHeight: 'inherit',
-                    whiteSpace: 'pre-wrap',
-                    backgroundColor: 'transparent',
-                    minHeight: '1.5em',
-                    padding: '0',
-                    margin: '0',
-                    textIndent: '0',
-                    boxSizing: 'content-box',
-                    border: 'none',
-                    outline: 'none',
-                    display: 'inline',
-                    verticalAlign: 'baseline',
-                    width: 'auto',
-                    maxWidth: '100%',
-                    fontFamily: 'inherit',
-                    cursor: 'text',
-                    overflow: 'visible',
-                    resize: 'none',
-                  }}
-                  value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
-                  onBlur={handleTextBlur}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleTextBlur();
-                    }
-                    if (e.key === 'Escape') {
-                      setIsEditing(false);
-                    }
-                  }}
-                  placeholder="输入文本..."
-                />
-              </span>
+              <textarea
+                ref={textareaRef}
+                className="w-full border-0 outline-none resize-none bg-transparent"
+                style={{
+                  all: 'unset', // 🔥 清除所有默认样式
+                  fontSize: '1em',
+                  fontWeight: 'inherit',
+                  fontStyle: 'inherit',
+                  color: 'inherit',
+                  textAlign: 'inherit',
+                  lineHeight: 'inherit',
+                  whiteSpace: 'pre-wrap',
+                  backgroundColor: 'transparent',
+                  minHeight: '1.5em',
+                  padding: '0',
+                  margin: '0',
+                  textIndent: '0',
+                  boxSizing: 'border-box',
+                  border: 'none',
+                  outline: 'none',
+                  display: 'block', // 🔥 块级元素，整行显示
+                  width: '100%', // 🔥 宽度100%，整行可用
+                  fontFamily: 'inherit',
+                  cursor: 'text',
+                  overflow: 'visible',
+                  resize: 'none',
+                }}
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                onBlur={handleTextBlur}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleTextBlur();
+                  }
+                  if (e.key === 'Escape') {
+                    setIsEditing(false);
+                  }
+                }}
+                placeholder="输入文本..."
+              />
             </div>
           );
         }
