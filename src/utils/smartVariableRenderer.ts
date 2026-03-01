@@ -1,6 +1,6 @@
 /**
  * 智能变量解析与渲染引擎
- * 支持 {{字段名}} 格式的自动识别、数据映射和样式渲染
+ * 支持两种格式：[字段名]（推荐）和 {{字段名}}（兼容）
  */
 
 import { Field } from '@/types/editor';
@@ -56,8 +56,9 @@ function formatTimestamp(timestamp: number, format: 'date' | 'datetime' | 'time'
   }
 }
 
-// 变量匹配正则：{{字段名}} 或 {{字段名:格式}}
-const VARIABLE_REGEX = /\{\{([^}]+)\}\}/g;
+// 变量匹配正则：支持 [字段名]、[字段名:格式]、{{字段名}}、{{字段名:格式}}
+// 优先匹配 [字段名] 格式
+const VARIABLE_REGEX = /\[([^\]]+)(?::([^\]]+))?\]|\{\{([^}]+)(?::([^}]+))?\}\}/g;
 
 // 变量芯片 CSS 类名
 export const VARIABLE_CHIP_CLASS = 'dynamic-variable-chip';
@@ -87,16 +88,22 @@ export function parseVariables(text: string): VariableMatch[] {
   
   while ((match = VARIABLE_REGEX.exec(text)) !== null) {
     const fullMatch = match[0];
-    const content = match[1];
     
-    // 检查是否有格式说明符
-    const [fieldName, format] = content.split(':');
+    // 匹配 [字段名] 或 [字段名:格式] 格式
+    // match[1] = 字段名, match[2] = 格式
+    // 或匹配 {{字段名}} 或 {{字段名:格式}} 格式
+    // match[3] = 字段名, match[4] = 格式
     
-    matches.push({
-      original: fullMatch,
-      fieldName: fieldName.trim(),
-      format: format?.trim(),
-    });
+    const fieldName = match[1] || match[3];
+    const format = match[2] || match[4];
+    
+    if (fieldName) {
+      matches.push({
+        original: fullMatch,
+        fieldName: fieldName.trim(),
+        format: format?.trim(),
+      });
+    }
   }
   
   return matches;

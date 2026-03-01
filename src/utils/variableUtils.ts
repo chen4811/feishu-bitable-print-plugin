@@ -1,11 +1,13 @@
 /**
  * 变量解析和自动渲染工具函数
+ * 支持两种格式：[字段名]（推荐）和 {{字段名}}（兼容）
  */
 
 import { FeishuContext } from '@/types/editor';
 
-// 变量匹配正则表达式: {{字段名}}
-const VARIABLE_REGEX = /\{\{([^}]+)\}\}/g;
+// 变量匹配正则表达式：支持 [字段名] 或 {{字段名}}
+// 优先匹配 [字段名] 格式
+const VARIABLE_REGEX = /\[([^\]]+)\]|\{\{([^}]+)\}\}/g;
 
 /**
  * 判断是否是时间戳
@@ -157,7 +159,12 @@ export function extractVariableNames(text: string): string[] {
   VARIABLE_REGEX.lastIndex = 0;
   
   while ((match = VARIABLE_REGEX.exec(text)) !== null) {
-    variables.push(match[1]);
+    // match[1] 是 [字段名] 格式的字段名
+    // match[2] 是 {{字段名}} 格式的字段名
+    const fieldName = match[1] || match[2];
+    if (fieldName) {
+      variables.push(fieldName);
+    }
   }
   
   return variables;
@@ -173,7 +180,10 @@ export function replaceVariablesInText(
   text: string,
   context: FeishuContext | null
 ): string {
-  return text.replace(VARIABLE_REGEX, (_, fieldName) => {
+  return text.replace(VARIABLE_REGEX, (_, fieldName1, fieldName2) => {
+    // fieldName1 是 [字段名] 格式的字段名
+    // fieldName2 是 {{字段名}} 格式的字段名
+    const fieldName = fieldName1 || fieldName2;
     return resolveVariableValue(fieldName, context);
   });
 }

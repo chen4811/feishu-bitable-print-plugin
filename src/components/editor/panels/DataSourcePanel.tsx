@@ -98,11 +98,11 @@ export function DataSourcePanel({ onAddField }: DataSourcePanelProps) {
 
   /**
    * 处理字段点击 - 复制变量字符串到剪贴板
-   * 格式: {{字段名}}
+   * 格式: [字段名]
    */
   const handleFieldClick = (field: Field) => {
-    // 构造变量字符串
-    const variableToken = field.placeholder || `{{${field.name}}}`;
+    // 构造变量字符串 - 统一使用 [字段名] 格式
+    const variableToken = `[${field.name}]`;
     
     const success = copyToClipboardLegacy(variableToken);
     
@@ -129,7 +129,7 @@ export function DataSourcePanel({ onAddField }: DataSourcePanelProps) {
   const handleCopyOnly = (e: React.MouseEvent, field: Field) => {
     e.stopPropagation();
     
-    const variableToken = field.placeholder || `{{${field.name}}}`;
+    const variableToken = `[${field.name}]`;
     const success = copyToClipboardLegacy(variableToken);
     
     if (success) {
@@ -211,7 +211,7 @@ export function DataSourcePanel({ onAddField }: DataSourcePanelProps) {
                 ${isCopied ? 'bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800' : ''}
               `}
               onClick={() => handleFieldClick(field)}
-              title={`点击复制: ${field.placeholder || `{{${field.name}}}`}`}
+              title={`点击复制: [${field.name}]`}
             >
               {/* 字段类型图标 */}
               <div className="w-6 h-6 rounded bg-muted flex items-center justify-center shrink-0">
@@ -222,7 +222,7 @@ export function DataSourcePanel({ onAddField }: DataSourcePanelProps) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{field.name}</p>
                 <p className="text-xs text-muted-foreground truncate">
-                  {field.placeholder || `{{${field.name}}}`}
+                  [{field.name}]
                 </p>
               </div>
               
@@ -263,7 +263,7 @@ export function DataSourcePanel({ onAddField }: DataSourcePanelProps) {
       <div className="pt-2 border-t">
         <p className="text-xs text-muted-foreground mb-2">变量使用说明</p>
         <div className="text-xs text-muted-foreground space-y-1">
-          <p>1. 点击字段复制变量（如 <code className="bg-muted px-1 rounded">{'{{字段名}}'}</code>）</p>
+          <p>1. 点击字段复制变量（如 <code className="bg-muted px-1 rounded">[字段名]</code>）</p>
           <p>2. 在文本组件中粘贴变量</p>
           <p>3. 打印时变量将被替换为实际数据</p>
         </div>
