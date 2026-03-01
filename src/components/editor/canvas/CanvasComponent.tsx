@@ -1129,7 +1129,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
             >
               <textarea
                 ref={textareaRef}
-                className="w-full border-0 outline-none p-0 resize-none whitespace-pre-wrap bg-transparent"
+                className="w-full border-0 outline-none resize-none whitespace-pre-wrap bg-transparent"
                 style={{
                   fontSize: 'inherit',
                   fontWeight: 'inherit',
@@ -1141,6 +1141,9 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   backgroundColor: 'transparent',
                   minHeight: '24px',
                   width: '100%',
+                  padding: '0', // 🔥 确保没有内边距
+                  margin: '0', // 🔥 确保没有外边距
+                  textIndent: '0', // 🔥 确保没有文本缩进
                 }}
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
