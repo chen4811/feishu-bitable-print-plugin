@@ -23,6 +23,18 @@ export interface FeishuBitableField {
   property?: any;
 }
 
+export interface SelectionInfo {
+  baseId: string | null;
+  fieldId: string | null;
+  recordId: string | null;
+  tableId: string | null;
+  viewId: string | null;
+}
+
+export interface SelectionChangeEvent {
+  data: SelectionInfo;
+}
+
 // SDK 实例缓存
 let bitableInstance: BitableSDK = null;
 let isInitializing = false;
@@ -110,6 +122,36 @@ export const feishuSDK = {
     } catch (error) {
       console.error('[FeishuSDK] 初始化失败:', error);
       return false;
+    }
+  },
+
+  /**
+   * 获取当前选中信息
+   */
+  async getSelection(): Promise<SelectionInfo | null> {
+    console.log('[FeishuSDK] 获取当前选中信息...');
+    
+    try {
+      const bitable = await getBitable();
+      
+      if (!bitable) {
+        console.error('[FeishuSDK] bitable 为空');
+        return null;
+      }
+
+      let selection: SelectionInfo | null = null;
+      
+      if (bitable.base && typeof bitable.base.getSelection === 'function') {
+        selection = await bitable.base.getSelection();
+      } else if (typeof bitable.getSelection === 'function') {
+        selection = await bitable.getSelection();
+      }
+      
+      console.log('[FeishuSDK] 获取到的选中信息:', selection);
+      return selection;
+    } catch (error) {
+      console.error('[FeishuSDK] 获取选中信息失败:', error);
+      return null;
     }
   },
 
@@ -255,11 +297,88 @@ export const feishuSDK = {
   },
 
   /**
-   * 监听选中记录变化
-   * @param callback 选中变化时的回调函数，返回选中的记录ID列表
+   * 获取视图中选中的记录
+   */
+  async getSelectedRecords(): Promise<BitableRecord[]> {
+    console.log('[FeishuSDK] 获取视图选中记录...');
+    
+    try {
+      const bitable = await getBitable();
+      
+      if (!bitable) {
+        return [];
+      }
+      
+      let table: any = null;
+      
+      try {
+        if (bitable.base && typeof bitable.base.getActiveTable === 'function') {
+          table = await bitable.base.getActiveTable();
+        } else if (typeof bitable.getActiveTable === 'function') {
+          table = await bitable.getActiveTable();
+        }
+      } catch (err) {
+        console.warn('[FeishuSDK] 获取表格失败:', err);
+      }
+      
+      if (!table) {
+        return [];
+      }
+
+      let selectedRecords: any[] = [];
+      
+      try {
+        if (typeof table.getActiveView === 'function') {
+          const view = await table.getActiveView();
+          if (view && typeof view.getSelectedRecords === 'function') {
+            selectedRecords = await view.getSelectedRecords();
+            console.log('[FeishuSDK] 从视图获取到选中记录:', selectedRecords);
+          }
+        }
+      } catch (err) {
+        console.warn('[FeishuSDK] 获取视图选中记录失败:', err);
+      }
+
+      // 如果视图方法没有获取到，尝试获取当前选中的单个 recordId
+      if (selectedRecords.length === 0) {
+        const selection = await this.getSelection();
+        if (selection?.recordId) {
+          try {
+            if (typeof table.getRecord === 'function') {
+              const singleRecord = await table.getRecord(selection.recordId);
+              if (singleRecord) {
+                selectedRecords = [singleRecord];
+                console.log('[FeishuSDK] 从选中 recordId 获取记录:', singleRecord);
+              }
+            }
+          } catch (err) {
+            console.warn('[FeishuSDK] 获取单条记录失败:', err);
+          }
+        }
+      }
+
+      if (!Array.isArray(selectedRecords)) {
+        return [];
+      }
+
+      return selectedRecords.map((record: any) => ({
+        id: record.id || record.recordId || record.record_id || '',
+        fields: record.fields || {},
+        createdTime: record.createdTime || record.created_time || new Date().toISOString(),
+        lastModifiedTime: record.modifiedTime || record.last_modified_time || new Date().toISOString(),
+      }));
+    } catch (error) {
+      console.error('[FeishuSDK] 获取选中记录失败:', error);
+      return [];
+    }
+  },
+
+  /**
+   * 监听选中变化事件
+   * @param callback 选中变化时的回调函数
    * @returns 取消监听的函数
    */
-  onSelectionChange(callback: (recordIds: string[]) => void): () => void {
+  onSelectionChange(callback: (event: SelectionChangeEvent) => void): () => void {
     console.log('[FeishuSDK] 注册选中变化监听...');
 
     // 标记是否已清理
@@ -290,25 +409,22 @@ export const feishuSDK = {
         let unsubscribe: (() => void) | null = null;
 
         if (bitable.base && typeof bitable.base.onSelectionChange === 'function') {
-          unsubscribe = bitable.base.onSelectionChange(async () => {
+          unsubscribe = bitable.base.onSelectionChange((event: SelectionChangeEvent) => {
             if (isUnsubscribed) return;
-            console.log('[FeishuSDK] 监听到选中变化');
-            await fetchSelectedRecords(callback);
+            console.log('[FeishuSDK] 监听到选中变化:', event);
+            callback(event);
           });
           console.log('[FeishuSDK] 已注册 base.onSelectionChange 监听');
         } else if (typeof bitable.onSelectionChange === 'function') {
-          unsubscribe = bitable.onSelectionChange(async () => {
+          unsubscribe = bitable.onSelectionChange((event: SelectionChangeEvent) => {
             if (isUnsubscribed) return;
-            console.log('[FeishuSDK] 监听到选中变化');
-            await fetchSelectedRecords(callback);
+            console.log('[FeishuSDK] 监听到选中变化:', event);
+            callback(event);
           });
           console.log('[FeishuSDK] 已注册 bitable.onSelectionChange 监听');
         } else {
           console.warn('[FeishuSDK] 不支持 onSelectionChange');
         }
-
-        // 初始获取一次选中
-        await fetchSelectedRecords(callback);
 
         // 返回清理函数
         return () => {
@@ -326,61 +442,6 @@ export const feishuSDK = {
       }
     };
 
-    // 获取选中的记录
-    const fetchSelectedRecords = async (cb: (recordIds: string[]) => void) => {
-      try {
-        const bitable = await getBitable();
-        if (!bitable) return;
-
-        let table: any = null;
-        
-        try {
-          if (bitable.base && typeof bitable.base.getActiveTable === 'function') {
-            table = await bitable.base.getActiveTable();
-          } else if (typeof bitable.getActiveTable === 'function') {
-            table = await bitable.getActiveTable();
-          }
-        } catch (err) {
-          console.warn('[FeishuSDK] 获取表格失败:', err);
-        }
-
-        if (!table) return;
-
-        // 尝试获取选中的记录
-        let selectedRecordIds: string[] = [];
-
-        try {
-          // 方法1: 通过 getSelection 获取
-          if (typeof bitable.getSelection === 'function') {
-            const selection = await bitable.getSelection();
-            console.log('[FeishuSDK] getSelection 结果:', selection);
-            
-            if (selection && selection.recordIds && Array.isArray(selection.recordIds)) {
-              selectedRecordIds = selection.recordIds;
-            }
-          }
-          
-          // 方法2: 通过 view.getSelectedRecords 获取
-          if (selectedRecordIds.length === 0 && typeof table.getActiveView === 'function') {
-            const view = await table.getActiveView();
-            if (view && typeof view.getSelectedRecords === 'function') {
-              const selectedRecords = await view.getSelectedRecords();
-              if (Array.isArray(selectedRecords)) {
-                selectedRecordIds = selectedRecords.map((r: any) => r.id || r.recordId);
-              }
-            }
-          }
-        } catch (err) {
-          console.warn('[FeishuSDK] 获取选中记录失败:', err);
-        }
-
-        console.log('[FeishuSDK] 选中的记录ID:', selectedRecordIds);
-        cb(selectedRecordIds);
-      } catch (error) {
-        console.error('[FeishuSDK] 获取选中记录失败:', error);
-      }
-    };
-
     let cleanupFn: (() => void) | null = null;
     setupListener().then((cleanup) => {
       cleanupFn = cleanup || null;
@@ -393,71 +454,6 @@ export const feishuSDK = {
         cleanupFn();
       }
     };
-  },
-
-  /**
-   * 根据记录ID列表获取完整的记录数据
-   */
-  async getRecordsByIds(recordIds: string[]): Promise<BitableRecord[]> {
-    console.log('[FeishuSDK] 根据ID获取记录:', recordIds);
-    
-    if (!recordIds || recordIds.length === 0) {
-      return [];
-    }
-
-    try {
-      const bitable = await getBitable();
-      
-      if (!bitable) {
-        return [];
-      }
-      
-      let table: any = null;
-      
-      try {
-        if (bitable.base && typeof bitable.base.getActiveTable === 'function') {
-          table = await bitable.base.getActiveTable();
-        } else if (typeof bitable.getActiveTable === 'function') {
-          table = await bitable.getActiveTable();
-        }
-      } catch (err) {
-        console.warn('[FeishuSDK] 获取表格失败:', err);
-      }
-      
-      if (!table) {
-        return [];
-      }
-
-      const records: BitableRecord[] = [];
-
-      // 逐个获取记录
-      for (const recordId of recordIds) {
-        try {
-          let record: any = null;
-          
-          if (typeof table.getRecord === 'function') {
-            record = await table.getRecord(recordId);
-          }
-          
-          if (record) {
-            records.push({
-              id: record.id || record.recordId || recordId,
-              fields: record.fields || {},
-              createdTime: record.createdTime || record.created_time || new Date().toISOString(),
-              lastModifiedTime: record.modifiedTime || record.last_modified_time || new Date().toISOString(),
-            });
-          }
-        } catch (err) {
-          console.warn('[FeishuSDK] 获取记录失败:', recordId, err);
-        }
-      }
-
-      console.log('[FeishuSDK] 成功获取记录数:', records.length);
-      return records;
-    } catch (error) {
-      console.error('[FeishuSDK] 获取记录失败:', error);
-      return [];
-    }
   },
 };
 

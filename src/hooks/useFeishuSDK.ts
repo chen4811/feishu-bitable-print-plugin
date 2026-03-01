@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { feishuSDK, BitableRecord } from '@/lib/feishu-sdk-real';
+import { feishuSDK, BitableRecord, SelectionChangeEvent } from '@/lib/feishu-sdk-real';
 import { mockBitableData } from '@/data/mockData';
 import { BitableRecord as AppBitableRecord } from '@/types/bitable';
 
@@ -14,14 +14,14 @@ interface UseFeishuSDKResult {
   isFeishuEnvironment: boolean;
   records: AppBitableRecord[];
   fields: any[];
-  selectedRecordIds: string[];
+  selectedRecords: BitableRecord[];
   fetchRecords: () => Promise<void>;
   fetchFields: () => Promise<void>;
+  fetchSelectedRecords: () => Promise<void>;
   addRecord: (fields: Record<string, any>) => Promise<void>;
   updateRecord: (recordId: string, fields: Record<string, any>) => Promise<void>;
   deleteRecord: (recordId: string) => Promise<void>;
-  onSelectionChange: (callback: (recordIds: string[]) => void) => (() => void);
-  getRecordsByIds: (recordIds: string[]) => Promise<BitableRecord[]>;
+  onSelectionChange: (callback: (event: SelectionChangeEvent) => void) => (() => void);
 }
 
 export function useFeishuSDK(): UseFeishuSDKResult {
@@ -29,7 +29,7 @@ export function useFeishuSDK(): UseFeishuSDKResult {
   const [error, setError] = useState<string | null>(null);
   const [records, setRecords] = useState<AppBitableRecord[]>([]);
   const [fields, setFields] = useState<any[]>([]);
-  const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
+  const [selectedRecords, setSelectedRecords] = useState<BitableRecord[]>([]);
   const [isFeishuEnvironment, setIsFeishuEnvironment] = useState(false);
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
@@ -51,7 +51,7 @@ export function useFeishuSDK(): UseFeishuSDKResult {
             // 获取字段和所有记录
             await Promise.all([
               fetchFields(),
-              fetchAllRecordsAndSetFirstAsDefault()
+              fetchAllRecordsAndSetFirstAsSelected()
             ]);
           } else {
             setError('飞书 SDK 初始化失败');
@@ -63,7 +63,12 @@ export function useFeishuSDK(): UseFeishuSDKResult {
           setFields(mockBitableData.fields);
           // 默认选中第一条记录
           if (mockBitableData.records.length > 0) {
-            setSelectedRecordIds([mockBitableData.records[0].id]);
+            setSelectedRecords([{
+              id: mockBitableData.records[0].id,
+              fields: mockBitableData.records[0] as unknown as Record<string, unknown>,
+              createdTime: new Date().toISOString(),
+              lastModifiedTime: new Date().toISOString(),
+            }]);
           }
         }
       } catch (err) {
@@ -85,24 +90,24 @@ export function useFeishuSDK(): UseFeishuSDKResult {
   }, []);
 
   // 获取所有记录并默认选中第一条
-  const fetchAllRecordsAndSetFirstAsDefault = useCallback(async () => {
+  const fetchAllRecordsAndSetFirstAsSelected = useCallback(async () => {
     try {
       const allRecords = await feishuSDK.getAllRecords();
       console.log('[useFeishuSDK] 获取到所有记录:', allRecords);
       
       // 转换为应用格式
-      const appRecords: AppBitableRecord[] = allRecords.map((record, index) => ({
+      const appRecords = allRecords.map((record, index) => ({
         id: record.id,
         ...record.fields,
         _rowIndex: index,
       }));
       
-      setRecords(appRecords as unknown as any);
+      setRecords(appRecords as any);
       
       // 默认选中第一条记录
-      if (appRecords.length > 0) {
-        console.log('[useFeishuSDK] 默认选中第一条记录:', appRecords[0].id);
-        setSelectedRecordIds([appRecords[0].id]);
+      if (allRecords.length > 0) {
+        console.log('[useFeishuSDK] 默认选中第一条记录:', allRecords[0].id);
+        setSelectedRecords([allRecords[0]]);
       }
     } catch (err) {
       console.error('[useFeishuSDK] 获取记录失败:', err);
@@ -126,16 +131,39 @@ export function useFeishuSDK(): UseFeishuSDKResult {
     setError(null);
 
     try {
-      await fetchAllRecordsAndSetFirstAsDefault();
+      await fetchAllRecordsAndSetFirstAsSelected();
     } catch (err) {
       setError(err instanceof Error ? err.message : '获取记录失败');
     } finally {
       setIsLoading(false);
     }
-  }, [fetchAllRecordsAndSetFirstAsDefault]);
+  }, [fetchAllRecordsAndSetFirstAsSelected]);
+
+  // 获取选中的记录
+  const fetchSelectedRecords = useCallback(async () => {
+    try {
+      console.log('[useFeishuSDK] 主动获取选中记录...');
+      const selRecords = await feishuSDK.getSelectedRecords();
+      console.log('[useFeishuSDK] 获取到选中记录:', selRecords);
+      
+      if (selRecords.length > 0) {
+        setSelectedRecords(selRecords);
+        
+        // 同时更新 records（如果需要）
+        const appRecords = selRecords.map((record, index) => ({
+          id: record.id,
+          ...record.fields,
+          _rowIndex: index,
+        }));
+        setRecords(appRecords as any);
+      }
+    } catch (err) {
+      console.error('[useFeishuSDK] 获取选中记录失败:', err);
+    }
+  }, []);
 
   // 监听选中变化
-  const onSelectionChange = useCallback((callback: (recordIds: string[]) => void) => {
+  const onSelectionChange = useCallback((callback: (event: SelectionChangeEvent) => void) => {
     if (!isFeishuEnvironment) {
       console.log('[useFeishuSDK] 不在飞书环境，不注册监听');
       return () => {};
@@ -143,32 +171,19 @@ export function useFeishuSDK(): UseFeishuSDKResult {
 
     console.log('[useFeishuSDK] 注册选中变化监听');
     
-    const unsubscribe = feishuSDK.onSelectionChange((newRecordIds) => {
-      console.log('[useFeishuSDK] 监听到选中变化:', newRecordIds);
-      setSelectedRecordIds(newRecordIds);
-      callback(newRecordIds);
+    const unsubscribe = feishuSDK.onSelectionChange(async (event) => {
+      console.log('[useFeishuSDK] 监听到选中变化事件:', event);
+      
+      // 先调用用户回调
+      callback(event);
+      
+      // 然后获取新的选中记录
+      await fetchSelectedRecords();
     });
 
     unsubscribeRef.current = unsubscribe;
     return unsubscribe;
-  }, [isFeishuEnvironment]);
-
-  // 根据ID获取记录
-  const getRecordsByIds = useCallback(async (recordIds: string[]): Promise<BitableRecord[]> => {
-    if (!isFeishuEnvironment) {
-      // 在非飞书环境中，从本地记录中查找
-      return records
-        .filter(r => recordIds.includes(r.id))
-        .map(r => ({
-          id: r.id,
-          fields: r as unknown as Record<string, unknown>,
-          createdTime: new Date().toISOString(),
-          lastModifiedTime: new Date().toISOString(),
-        }));
-    }
-
-    return await feishuSDK.getRecordsByIds(recordIds);
-  }, [isFeishuEnvironment, records]);
+  }, [isFeishuEnvironment, fetchSelectedRecords]);
 
   // 占位函数（保持接口兼容）
   const addRecord = useCallback(async () => {}, []);
@@ -181,13 +196,13 @@ export function useFeishuSDK(): UseFeishuSDKResult {
     isFeishuEnvironment,
     records,
     fields,
-    selectedRecordIds,
+    selectedRecords,
     fetchRecords,
     fetchFields,
+    fetchSelectedRecords,
     addRecord,
     updateRecord,
     deleteRecord,
     onSelectionChange,
-    getRecordsByIds,
   };
 }
