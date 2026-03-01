@@ -12,10 +12,12 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get('code');
   const state = searchParams.get('state');
+  const isMock = searchParams.get('mock') === 'true';
 
   console.log('[Feishu Callback] 收到回调请求');
   console.log('[Feishu Callback] code:', code ? '已获取' : '缺失');
   console.log('[Feishu Callback] state:', state);
+  console.log('[Feishu Callback] isMock:', isMock);
 
   if (!code) {
     console.error('[Feishu Callback] 缺少 code 参数');
@@ -26,24 +28,42 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    console.log('[Feishu Callback] 开始飞书 OAuth 流程');
+    let userInfo: any;
+    let dbUser: any;
 
-    // 1. 使用 code 换取用户 access_token
-    console.log('[Feishu Callback] 步骤1: 使用 code 换取 access_token');
-    const tokenData = await getFeishuUserAccessToken(code);
-    console.log('[Feishu Callback] 获取 access_token 成功');
+    if (isMock) {
+      console.log('[Feishu Callback] 使用模拟登录流程');
+      
+      // 模拟用户信息
+      userInfo = {
+        user_id: 'mock_user_' + Date.now(),
+        union_id: 'mock_union_' + Date.now(),
+        name: '测试用户',
+        avatar_url: '',
+        email: 'test@example.com',
+      };
 
-    // 2. 使用 access_token 获取用户信息
-    console.log('[Feishu Callback] 步骤2: 获取用户信息');
-    const userInfo = await getFeishuUserInfo(tokenData.access_token);
-    console.log('[Feishu Callback] 获取用户信息成功:', {
-      name: userInfo.name,
-      feishuUserId: userInfo.user_id,
-    });
+      console.log('[Feishu Callback] 模拟用户信息:', userInfo);
+    } else {
+      console.log('[Feishu Callback] 开始真实飞书 OAuth 流程');
+
+      // 1. 使用 code 换取用户 access_token
+      console.log('[Feishu Callback] 步骤1: 使用 code 换取 access_token');
+      const tokenData = await getFeishuUserAccessToken(code);
+      console.log('[Feishu Callback] 获取 access_token 成功');
+
+      // 2. 使用 access_token 获取用户信息
+      console.log('[Feishu Callback] 步骤2: 获取用户信息');
+      userInfo = await getFeishuUserInfo(tokenData.access_token);
+      console.log('[Feishu Callback] 获取用户信息成功:', {
+        name: userInfo.name,
+        feishuUserId: userInfo.user_id,
+      });
+    }
 
     // 3. 在数据库中查找或创建用户
     console.log('[Feishu Callback] 步骤3: 查找或创建用户');
-    let dbUser = await db.query.users.findFirst({
+    dbUser = await db.query.users.findFirst({
       where: eq(users.feishuUserId, userInfo.user_id),
     });
 
@@ -87,12 +107,12 @@ export async function GET(request: NextRequest) {
     const hasAuthorizations = authorizations.length > 0;
     console.log('[Feishu Callback] 用户授权码数量:', authorizations.length);
 
-    console.log('[Feishu Callback] 飞书登录流程完成');
+    console.log('[Feishu Callback] 登录流程完成');
 
     // 返回结果给前端
     return NextResponse.json({
       success: true,
-      message: 'Feishu login successful',
+      message: 'Login successful',
       data: {
         token: jwtToken,
         user: {
@@ -106,7 +126,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('[Feishu Callback] 飞书认证错误:', error);
+    console.error('[Feishu Callback] 认证错误:', error);
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : 'Authentication failed' },
       { status: 500 }

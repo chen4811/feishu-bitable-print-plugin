@@ -49,6 +49,17 @@ export default function FeishuLoginPage() {
         throw new Error(result.error || '获取登录链接失败');
       }
 
+      // 检查是否是模拟模式
+      if (result.isMock) {
+        console.log('[FeishuLoginPage] 检测到模拟模式，直接跳转到回调页面');
+        // 模拟模式下，直接跳转到回调页面
+        window.location.href = result.loginUrl;
+        return;
+      }
+
+      // 真实飞书登录流程
+      console.log('[FeishuLoginPage] 真实飞书登录流程');
+      
       // 保存 state 到 localStorage 用于验证
       if (result.state) {
         localStorage.setItem('feishu_login_state', result.state);

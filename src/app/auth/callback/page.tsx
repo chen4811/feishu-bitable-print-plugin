@@ -15,12 +15,65 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        console.log('[AuthCallback] 开始处理飞书登录回调');
+        console.log('[AuthCallback] 开始处理登录回调');
 
         const code = searchParams.get('code');
         const state = searchParams.get('state');
+        const isMock = searchParams.get('mock') === 'true';
 
-        console.log('[AuthCallback] URL 参数:', { code: code ? '已获取' : '缺失', state });
+        console.log('[AuthCallback] URL 参数:', { 
+          code: code ? '已获取' : '缺失', 
+          state, 
+          isMock 
+        });
+
+        if (isMock) {
+          console.log('[AuthCallback] 检测到模拟登录，直接处理');
+          
+          // 模拟调用后端 API
+          const mockResponse = await fetch('/api/auth/feishu/callback?code=' + code + '&mock=true');
+          const result = await mockResponse.json();
+
+          console.log('[AuthCallback] 模拟 API 响应:', result);
+
+          if (!result.success) {
+            throw new Error(result.error || '登录失败');
+          }
+
+          // 保存 token 和用户信息
+          const { token, user, hasAuthorizations } = result.data;
+
+          console.log('[AuthCallback] 模拟登录成功:', {
+            userName: user.name,
+            hasAuthorizations,
+          });
+
+          // 设置 authToken
+          setAuthToken(token);
+
+          // 调用 feishuLogin 保存用户信息
+          feishuLogin({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            avatar: user.avatar,
+            feishuUserId: user.feishuUserId,
+          });
+
+          setStatus('success');
+
+          // 根据是否有授权码决定跳转目标
+          setTimeout(() => {
+            if (hasAuthorizations) {
+              console.log('[AuthCallback] 用户已有授权码，跳转到首页');
+              router.push('/');
+            } else {
+              console.log('[AuthCallback] 用户没有授权码，跳转到绑定页面');
+              router.push('/bind-auth');
+            }
+          }, 1000);
+          return;
+        }
 
         if (!code) {
           throw new Error('缺少授权码参数');
