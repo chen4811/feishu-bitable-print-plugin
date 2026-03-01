@@ -315,7 +315,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   // 处理单元格鼠标按下
   const handleCellMouseDown = (rowIndex: number, colIndex: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    e.preventDefault(); // 防止文本选择
     if (!isCurrentTableEditing) return;
     
     const tableComp = component as any;
@@ -1118,18 +1117,26 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       onMouseEnter={(e) => handleCellMouseMove(rowIndex, colIndex, e)}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (isCurrentTableEditing && !cellSelection.isSelecting) {
-                          // 只有在没有拖动选择时才处理单击
+                        if (isCurrentTableEditing) {
+                          // 先选中单元格
                           setTableEditing({
                             selectedCells: [cellId],
                           });
-                          // 同时设置单元格编辑状态
+                          // 设置单元格编辑状态
                           setTableCellEditing({
                             isEditing: true,
                             tableId: component.id,
                             cellId,
                             rowIndex,
                             colIndex,
+                          });
+                          // 重置选择状态，避免干扰
+                          setCellSelection({
+                            startRow: null,
+                            startCol: null,
+                            endRow: null,
+                            endCol: null,
+                            isSelecting: false,
                           });
                         }
                       }}
