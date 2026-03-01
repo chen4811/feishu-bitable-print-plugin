@@ -178,6 +178,9 @@ export function TemplateSidebar({ onSelectTemplate, onCreateNew, onLogout, onDel
   const [newTemplateDesc, setNewTemplateDesc] = useState('');
   const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteTemplateId, setDeleteTemplateId] = useState<number | null>(null);
+  const [showDeleteTemplateDialog, setShowDeleteTemplateDialog] = useState(false);
+  const [isDeletingTemplate, setIsDeletingTemplate] = useState(false);
 
   console.log('[TemplateSidebar] 渲染');
   console.log('[TemplateSidebar] templates:', templates);
@@ -226,8 +229,23 @@ export function TemplateSidebar({ onSelectTemplate, onCreateNew, onLogout, onDel
 
   // 处理删除模板
   const handleDeleteTemplate = (id: number) => {
-    if (confirm('确定要删除这个模板吗？')) {
-      deleteTemplate(id);
+    setDeleteTemplateId(id);
+    setShowDeleteTemplateDialog(true);
+  };
+
+  // 确认删除模板
+  const confirmDeleteTemplate = async () => {
+    if (!deleteTemplateId) return;
+    
+    setIsDeletingTemplate(true);
+    try {
+      await deleteTemplate(deleteTemplateId);
+      setShowDeleteTemplateDialog(false);
+      setDeleteTemplateId(null);
+    } catch (error) {
+      console.error('[TemplateSidebar] 删除模板失败:', error);
+    } finally {
+      setIsDeletingTemplate(false);
     }
   };
 
@@ -495,6 +513,42 @@ export function TemplateSidebar({ onSelectTemplate, onCreateNew, onLogout, onDel
                 <>
                   <Trash2 className="w-4 h-4 mr-2" />
                   同意删除
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {/* 删除模板确认对话框 */}
+      <AlertDialog open={showDeleteTemplateDialog} onOpenChange={setShowDeleteTemplateDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-red-600" />
+              确认删除模板
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要删除这个模板吗？此操作不可恢复。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingTemplate}>
+              取消
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteTemplate}
+              disabled={isDeletingTemplate}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeletingTemplate ? (
+                <>
+                  <Clock className="w-4 h-4 mr-2 animate-spin" />
+                  删除中...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  确认删除
                 </>
               )}
             </AlertDialogAction>

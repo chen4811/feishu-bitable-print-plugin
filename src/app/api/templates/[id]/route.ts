@@ -23,6 +23,14 @@ export async function GET(
 
     const token = authHeader.substring(7);
     const decoded = verifyToken(token);
+    
+    if (!decoded) {
+      return NextResponse.json(
+        { error: '登录已过期' },
+        { status: 401 }
+      );
+    }
+    
     const client = getSupabaseClient();
 
     const { data: template, error } = await client
@@ -86,6 +94,14 @@ export async function PUT(
 
     const token = authHeader.substring(7);
     const decoded = verifyToken(token);
+    
+    if (!decoded) {
+      return NextResponse.json(
+        { error: '登录已过期' },
+        { status: 401 }
+      );
+    }
+    
     const body = await request.json();
     const { name, description, thumbnail, data, isPublic } = body;
 

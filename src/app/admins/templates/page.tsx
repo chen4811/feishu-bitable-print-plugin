@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Plus,
   Edit,
@@ -157,6 +158,7 @@ export default function TemplatesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>模板名称</TableHead>
+                <TableHead>创建者</TableHead>
                 <TableHead>描述</TableHead>
                 <TableHead>公开</TableHead>
                 <TableHead>创建时间</TableHead>
@@ -171,6 +173,20 @@ export default function TemplatesPage() {
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4 text-muted-foreground" />
                       {template.name}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={template.userAvatar} alt={template.userName} />
+                        <AvatarFallback>{template.userName?.charAt(0) || 'U'}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-medium">{template.userName || '未知用户'}</p>
+                        <p className="text-xs text-muted-foreground font-mono">
+                          {template.feishuUserId?.slice(0, 12)}...
+                        </p>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">

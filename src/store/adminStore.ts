@@ -31,11 +31,14 @@ interface Authorization {
 // 模板类型
 interface Template {
   id: number;
+  userId: number;
+  userName: string;
+  userAvatar: string;
+  feishuUserId: string;
   name: string;
   description: string;
   config: Record<string, unknown>;
   isPublic: boolean;
-  createdBy: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -210,25 +213,93 @@ export const useAdminStore = create<AdminState>()(
         }
       },
 
-      // 模板管理（保持 mock 实现，如需真实数据可后续添加）
+      // 模板管理
       fetchTemplates: async () => {
-        console.log('[adminStore] fetchTemplates 被调用');
-        // TODO: 从真实 API 获取
+        const { token } = get();
+        if (!token) {
+          console.error('[adminStore] 未登录，无法获取模板');
+          return;
+        }
+
+        try {
+          console.log('[adminStore] 获取模板列表...');
+          const response = await fetch('/api/admin/templates', {
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+
+          const result = await response.json();
+
+          if (result.success && result.data) {
+            console.log('[adminStore] 获取到', result.data.length, '条模板');
+            set({ templates: result.data });
+          } else {
+            console.error('[adminStore] 获取模板失败:', result.error);
+          }
+        } catch (error) {
+          console.error('[adminStore] 获取模板请求失败:', error);
+        }
       },
 
       addTemplate: async (data: { name: string; description: string; config: Record<string, unknown> }) => {
         console.log('[adminStore] addTemplate 被调用', data);
-        // TODO: 调用真实 API
+        // TODO: 管理员后台不直接添加模板，由用户在前端创建
       },
 
-      updateTemplate: async (id: number, data: { name?: string; description?: string; config?: Record<string, unknown> }) => {
-        console.log('[adminStore] updateTemplate 被调用', id, data);
-        // TODO: 调用真实 API
+      updateTemplate: async (id: number, data: { name?: string; description?: string; config?: Record<string, unknown>; isPublic?: boolean }) => {
+        const { token, templates } = get();
+        if (!token) return;
+
+        try {
+          const response = await fetch('/api/admin/templates', {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ id, ...data }),
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            // 更新本地状态
+            set({
+              templates: templates.map(t =>
+                t.id === id ? { ...t, ...data } : t
+              ),
+            });
+          } else {
+            console.error('[adminStore] 更新模板失败:', result.error);
+          }
+        } catch (error) {
+          console.error('[adminStore] 更新模板请求失败:', error);
+        }
       },
 
       deleteTemplate: async (id: number) => {
-        console.log('[adminStore] deleteTemplate 被调用', id);
-        // TODO: 调用真实 API
+        const { token, templates } = get();
+        if (!token) return;
+
+        try {
+          const response = await fetch(`/api/admin/templates?id=${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            // 从本地状态中移除
+            set({
+              templates: templates.filter(t => t.id !== id),
+            });
+            console.log('[adminStore] 模板已删除');
+          } else {
+            console.error('[adminStore] 删除模板失败:', result.error);
+          }
+        } catch (error) {
+          console.error('[adminStore] 删除模板请求失败:', error);
+        }
       },
     }),
     {
