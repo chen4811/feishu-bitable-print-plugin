@@ -5,10 +5,21 @@ import { getUserAccessToken, getUserInfo } from '@/lib/feishu-oauth';
 
 export const dynamic = 'force-dynamic';
 
+// 从请求头获取正确的基础 URL
+function getBaseUrl(request: Request): string {
+  const headers = new Headers(request.headers);
+  const host = headers.get('host') || 'localhost:5000';
+  const proto = headers.get('x-forwarded-proto') || 'http';
+  return `${proto}://${host}`;
+}
+
 // 飞书 OAuth 回调处理
 export async function GET(request: Request) {
   try {
     console.log('[Feishu OAuth Callback API] 收到回调请求');
+    
+    const baseUrl = getBaseUrl(request);
+    console.log('[Feishu OAuth Callback API] Base URL:', baseUrl);
     
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
@@ -16,7 +27,7 @@ export async function GET(request: Request) {
 
     if (!code) {
       console.error('[Feishu OAuth Callback API] 缺少 code 参数');
-      return NextResponse.redirect(new URL('/login?error=missing_code', request.url));
+      return NextResponse.redirect(new URL('/login?error=missing_code', baseUrl));
     }
 
     console.log('[Feishu OAuth Callback API] Code:', code ? '***' : 'missing');
@@ -119,10 +130,10 @@ export async function GET(request: Request) {
     // 6. 重定向到前端回调页面，通过 URL 参数传递 token
     const callbackUrl = `/auth/callback?token=${jwtToken}&userId=${dbUser.id}&name=${encodeURIComponent(dbUser.name || '')}&hasAuthorizations=${hasAuthorizations}`;
     
-    return NextResponse.redirect(new URL(callbackUrl, request.url));
+    return NextResponse.redirect(new URL(callbackUrl, baseUrl));
   } catch (error) {
     console.error('[Feishu OAuth Callback API] 飞书 OAuth 回调错误:', error);
     // 重定向到错误页面
-    return NextResponse.redirect(new URL('/login?error=auth_failed', request.url));
+    return NextResponse.redirect(new URL('/login?error=auth_failed', baseUrl));
   }
 }

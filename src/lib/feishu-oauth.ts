@@ -59,7 +59,7 @@ export async function getAppAccessToken(): Promise<string> {
     throw new Error('FEISHU_APP_ID 或 FEISHU_APP_SECRET 未配置');
   }
 
-  const response = await fetch('https://open.feishu.com/open-apis/auth/v3/app_access_token/internal', {
+  const response = await fetch('https://open.feishu.cn/open-apis/auth/v3/app_access_token/internal', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -116,7 +116,7 @@ export async function getUserAccessToken(code: string): Promise<UserAccessTokenR
   
   const appAccessToken = await getAppAccessToken();
 
-  const response = await fetch('https://open.feishu.com/open-apis/authen/v1/access_token', {
+  const response = await fetch('https://open.feishu.cn/open-apis/authen/v1/access_token', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -145,7 +145,7 @@ export async function getUserAccessToken(code: string): Promise<UserAccessTokenR
 export async function getUserInfo(userAccessToken: string): Promise<UserInfo> {
   console.log('[Feishu OAuth] 获取用户信息');
 
-  const response = await fetch('https://open.feishu.com/open-apis/authen/v1/user_info', {
+  const response = await fetch('https://open.feishu.cn/open-apis/authen/v1/user_info', {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${userAccessToken}`,
