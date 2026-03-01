@@ -170,32 +170,42 @@ async function debugEnvironment() {
   debugLog('🔍 ======== 环境调试开始 ========');
   
   try {
+    // 检查SDK版本
+    debugLog('SDK版本信息:', (bitable as any).version);
+    
     // 测试1: 检查基础对象
     debugLog('bitable 对象:', typeof bitable);
     debugLog('bitable.ui 对象:', typeof (bitable as any).ui);
     debugLog('base 对象:', typeof base);
     
-    // 测试2: 检查方法是否存在
+    // 测试2: 检查 bitable.ui 的所有方法
+    if ((bitable as any).ui) {
+      debugLog('bitable.ui 所有方法:', Object.keys((bitable as any).ui));
+    }
+    
+    // 测试3: 检查方法是否存在（可能在初始化后才可用）
     debugLog('onRecordSelectChange 方法:', typeof (bitable as any).ui?.onRecordSelectChange);
     debugLog('getSelectRecordIds 方法:', typeof (bitable as any).ui?.getSelectRecordIds);
     debugLog('getSelection 方法:', typeof base.getSelection);
     
-    // 测试3: 检查当前选择状态
-    try {
-      const selection = await base.getSelection();
-      debugLog('当前选择状态:', selection);
-    } catch (error) {
-      debugLog('获取选择状态失败:', error instanceof Error ? error.message : error);
+    // 测试4: 尝试直接调用 getSelectRecordIds（如果存在）
+    if ((bitable as any).ui && typeof (bitable as any).ui.getSelectRecordIds === 'function') {
+      try {
+        const selectState = await (bitable as any).ui.getSelectRecordIds();
+        debugLog('✅ 当前选中ID列表:', selectState);
+      } catch (error) {
+        debugLog('❌ 调用 getSelectRecordIds 失败:', error instanceof Error ? error.message : error);
+      }
+    } else {
+      debugLog('⚠️ getSelectRecordIds 方法不存在');
     }
     
-    // 测试4: 尝试手动获取选中状态
+    // 测试5: 检查当前选择状态
     try {
-      if ((bitable as any).ui && typeof (bitable as any).ui.getSelectRecordIds === 'function') {
-        const selectState = await (bitable as any).ui.getSelectRecordIds();
-        debugLog('当前选中ID列表:', selectState);
-      }
+      const selection = await base.getSelection();
+      debugLog('当前 base.getSelection() 状态:', selection);
     } catch (error) {
-      debugLog('手动获取选中状态失败:', error instanceof Error ? error.message : error);
+      debugLog('获取 base.getSelection() 失败:', error instanceof Error ? error.message : error);
     }
     
   } catch (error) {
@@ -227,7 +237,7 @@ function checkEnvironment() {
 // ============================================
 
 let pollingInterval: NodeJS.Timeout | null = null;
-let lastPolledRecordId: string | null = null;
+let lastPolledSelection: string[] = [];
 
 function startPolling(interval = 2000) {
   if (pollingInterval) {
@@ -239,26 +249,48 @@ function startPolling(interval = 2000) {
   
   pollingInterval = setInterval(async () => {
     try {
-      // 使用 base.getSelection() 获取当前选中状态
-      const selection = await base.getSelection();
-      const currentRecordId = selection?.recordId || null;
-      const tableId = selection?.tableId || '';
+      let currentSelection: string[] = [];
+      let tableId = '';
+      
+      // ✅ 优先尝试使用 bitable.ui.getSelectRecordIds()
+      if ((bitable as any).ui && typeof (bitable as any).ui.getSelectRecordIds === 'function') {
+        try {
+          currentSelection = await (bitable as any).ui.getSelectRecordIds();
+          debugLog('✅ 使用 bitable.ui.getSelectRecordIds() 获取:', currentSelection);
+        } catch (e) {
+          debugLog('❌ bitable.ui.getSelectRecordIds() 调用失败:', e);
+        }
+      }
+      
+      // 如果上面的方法不可用或返回空，尝试使用 base.getSelection()
+      if (currentSelection.length === 0) {
+        const selection = await base.getSelection();
+        if (selection?.recordId) {
+          currentSelection = [selection.recordId];
+          debugLog('⚠️ 使用 base.getSelection() 获取单条记录:', selection.recordId);
+        }
+        tableId = selection?.tableId || '';
+      } else {
+        // 如果从 ui.getSelectRecordIds 获取到数据，也要获取 tableId
+        const selection = await base.getSelection();
+        tableId = selection?.tableId || '';
+      }
       
       // 检查是否有变化
-      const hasChanged = currentRecordId !== lastPolledRecordId;
+      const hasChanged = JSON.stringify(currentSelection) !== JSON.stringify(lastPolledSelection);
       
-      if (hasChanged && currentRecordId) {
+      if (hasChanged) {
         debugLog('🔄 轮询检测到选择状态变化:', {
-          recordId: currentRecordId,
+          recordIds: currentSelection,
+          count: currentSelection.length,
           tableId,
-          fieldId: selection?.fieldId,
         });
         
-        // 构造事件对象（模拟复选框勾选事件格式）
+        // 构造事件对象
         const event: RecordSelectChangeEvent = {
           data: {
             tableId,
-            recordIds: currentRecordId ? [currentRecordId] : [],
+            recordIds: currentSelection,
             isSelectAll: false,
           },
         };
@@ -272,7 +304,7 @@ function startPolling(interval = 2000) {
           }
         });
         
-        lastPolledRecordId = currentRecordId;
+        lastPolledSelection = currentSelection;
       }
       
     } catch (error) {
@@ -287,7 +319,7 @@ function stopPolling() {
   if (pollingInterval) {
     clearInterval(pollingInterval);
     pollingInterval = null;
-    lastPolledRecordId = null;
+    lastPolledSelection = [];
     debugLog('🛑 轮询检查已停止');
   }
 }
@@ -1107,16 +1139,32 @@ export class CheckboxSelectionManager {
   // 获取当前选中状态
   async refreshSelection(): Promise<void> {
     try {
-      // 使用 base.getSelection() 获取当前选中状态
+      let recordIds: string[] = [];
+      
+      // ✅ 优先尝试使用 bitable.ui.getSelectRecordIds()
+      if ((bitable as any).ui && typeof (bitable as any).ui.getSelectRecordIds === 'function') {
+        try {
+          recordIds = await (bitable as any).ui.getSelectRecordIds();
+          debugLog('✅ 使用 bitable.ui.getSelectRecordIds() 获取:', recordIds);
+        } catch (e) {
+          debugLog('❌ bitable.ui.getSelectRecordIds() 调用失败:', e);
+        }
+      }
+      
+      // 获取选择状态（用于获取 tableId）
       const selection = await base.getSelection();
-      const recordId = selection?.recordId || null;
       this.tableId = selection?.tableId || null;
       
-      // 将单条记录转换为数组格式
-      this.selectedIds = recordId ? [recordId] : [];
+      // 如果上面的方法不可用或返回空，尝试使用 base.getSelection()
+      if (recordIds.length === 0 && selection?.recordId) {
+        recordIds = [selection.recordId];
+        debugLog('⚠️ 使用 base.getSelection() 获取单条记录:', selection.recordId);
+      }
+      
+      this.selectedIds = recordIds;
 
       debugLog('📊 当前选中状态:', {
-        记录ID: recordId,
+        记录IDs: this.selectedIds,
         数量: this.selectedIds.length,
         表ID: this.tableId,
       });
@@ -1193,36 +1241,50 @@ export class CheckboxSelectionManager {
 }
 
 // ============================================
-// 便捷函数：快速获取当前选中记录（基于 base.getSelection）
+// 便捷函数：快速获取复选框选中记录
 // ============================================
 
 export async function getCheckboxSelectedRecords(): Promise<BitableRecord[]> {
-  debugLog('📋 快速获取当前选中记录');
+  debugLog('📋 快速获取复选框选中记录');
 
   try {
-    // 使用 base.getSelection() 获取当前选中状态
+    let selectedRecordIds: string[] = [];
+    let tableId = '';
+
+    // ✅ 优先尝试使用 bitable.ui.getSelectRecordIds()
+    if ((bitable as any).ui && typeof (bitable as any).ui.getSelectRecordIds === 'function') {
+      try {
+        selectedRecordIds = await (bitable as any).ui.getSelectRecordIds();
+        debugLog('✅ 使用 bitable.ui.getSelectRecordIds() 获取:', selectedRecordIds);
+      } catch (e) {
+        debugLog('❌ bitable.ui.getSelectRecordIds() 调用失败:', e);
+      }
+    }
+
+    // 获取 tableId
     const selection = await base.getSelection();
-    const recordId = selection?.recordId;
-    const tableId = selection?.tableId;
+    tableId = selection?.tableId || '';
 
-    debugLog('当前选择状态:', {
-      recordId,
-      tableId,
-      fieldId: selection?.fieldId,
-    });
+    // 如果上面的方法不可用或返回空，尝试使用 base.getSelection()
+    if (selectedRecordIds.length === 0 && selection?.recordId) {
+      selectedRecordIds = [selection.recordId];
+      debugLog('⚠️ 使用 base.getSelection() 获取单条记录:', selection.recordId);
+    }
 
-    if (!recordId || !tableId) {
+    if (selectedRecordIds.length === 0 || !tableId) {
       debugLog('⚠️ 没有选中的记录');
       return [];
     }
 
+    debugLog('选中记录数量:', selectedRecordIds.length);
+
     // 获取选中记录的数据
-    const records = await getRecordsByCheckboxIds(tableId, [recordId]);
+    const records = await getRecordsByCheckboxIds(tableId, selectedRecordIds);
 
     debugLog(`✅ 获取到选中记录数据: ${records.length} 条`);
     return records;
   } catch (error) {
-    debugLog('❌ 获取选中数据失败:', error);
+    debugLog('❌ 获取复选框选中数据失败:', error);
     return [];
   }
 }
