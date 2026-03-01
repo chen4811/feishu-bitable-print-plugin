@@ -149,6 +149,8 @@ import { useEditorStore } from '@/store/editorStore';
 import { Button } from '@/components/ui/button';
 import { Copy, Pencil, Trash2 } from 'lucide-react';
 import { parseVariables } from '@/utils/variableParser';
+import { VariableTextRenderer } from '@/components/VariableTextRenderer';
+import { VARIABLE_CHIP_STYLES } from '@/utils/smartVariableRenderer';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { HoverToolbar } from '../table/HoverToolbar';
@@ -1354,18 +1356,25 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               marginBottom: textComp.textStyle?.paragraphSpacing ? `${textComp.textStyle.paragraphSpacing}px` : 0,
               textDecoration: textComp.textStyle?.underline ? 'underline' : textComp.textStyle?.textDecoration || 'none',
               textTransform: textComp.textStyle?.textTransform || 'none',
-              whiteSpace: 'pre-wrap', // 🔥 关键：确保空格和换行都被保留
+              whiteSpace: 'pre-wrap',
             }}
             onDoubleClick={handleDoubleClickText}
           >
+            {/* 注入变量芯片样式 */}
+            <style dangerouslySetInnerHTML={{ __html: VARIABLE_CHIP_STYLES }} />
+            
             {textComp.textStyle?.headingLevel === 1 && (
               <h1 style={{ 
                 fontSize: '24px', 
                 fontWeight: 'bold', 
                 marginBottom: '0.5rem' 
               }}>
-                {/* 🔥 使用变量替换后的内容 */}
-                {parseVariables(textComp.content || '显示', previewRecord, fields)}
+                <VariableTextRenderer
+                  text={textComp.content || '显示'}
+                  records={records || []}
+                  fields={fields || []}
+                  tagName="span"
+                />
               </h1>
             )}
             {textComp.textStyle?.headingLevel === 2 && (
@@ -1374,20 +1383,36 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 fontWeight: 'bold', 
                 marginBottom: '0.5rem' 
               }}>
-                {/* 🔥 使用变量替换后的内容 */}
-                {parseVariables(textComp.content || '显示', previewRecord, fields)}
+                <VariableTextRenderer
+                  text={textComp.content || '显示'}
+                  records={records || []}
+                  fields={fields || []}
+                  tagName="span"
+                />
               </h2>
             )}
             {textComp.textStyle?.listType === 'unordered' && !textComp.textStyle?.headingLevel && (
               <ul style={{ marginLeft: '1.5rem', paddingLeft: 0 }}>
-                {/* 🔥 使用变量替换后的内容 */}
-                <li>{parseVariables(textComp.content || '显示', previewRecord, fields)}</li>
+                <li>
+                  <VariableTextRenderer
+                    text={textComp.content || '显示'}
+                    records={records || []}
+                    fields={fields || []}
+                    tagName="span"
+                  />
+                </li>
               </ul>
             )}
             {textComp.textStyle?.listType === 'ordered' && !textComp.textStyle?.headingLevel && (
               <ol style={{ marginLeft: '1.5rem', paddingLeft: 0 }}>
-                {/* 🔥 使用变量替换后的内容 */}
-                <li>{parseVariables(textComp.content || '显示', previewRecord, fields)}</li>
+                <li>
+                  <VariableTextRenderer
+                    text={textComp.content || '显示'}
+                    records={records || []}
+                    fields={fields || []}
+                    tagName="span"
+                  />
+                </li>
               </ol>
             )}
             {!textComp.textStyle?.headingLevel && !textComp.textStyle?.listType && (
@@ -1400,12 +1425,20 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     style={{ color: '#3b82f6', textDecoration: 'underline' }}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {/* 🔥 使用变量替换后的内容 */}
-                    {parseVariables(textComp.content || '显示', previewRecord, fields)}
+                    <VariableTextRenderer
+                      text={textComp.content || '显示'}
+                      records={records || []}
+                      fields={fields || []}
+                      tagName="span"
+                    />
                   </a>
                 ) : (
-                  // 🔥 使用变量替换后的内容
-                  parseVariables(textComp.content || '显示', previewRecord, fields)
+                  <VariableTextRenderer
+                    text={textComp.content || '显示'}
+                    records={records || []}
+                    fields={fields || []}
+                    tagName="span"
+                  />
                 )}
               </span>
             )}
