@@ -33,8 +33,9 @@ export default function AdminLayout({
   console.log('[AdminLayout] pathname:', pathname);
   console.log('[AdminLayout] isLoggedIn:', isLoggedIn);
 
-  // 如果是登录页面，不检查登录状态
-  if (pathname === '/admins/login') {
+  // 如果是登录页面，不检查登录状态（支持结尾带斜杠的情况）
+  const isLoginPage = pathname === '/admins/login' || pathname === '/admins/login/';
+  if (isLoginPage) {
     console.log('[AdminLayout] 是登录页面，直接返回 children');
     return <>{children}</>;
   }
@@ -45,13 +46,15 @@ export default function AdminLayout({
   useEffect(() => {
     console.log('[AdminLayout] useEffect 触发');
     console.log('[AdminLayout] isLoggedIn:', isLoggedIn);
+    console.log('[AdminLayout] isLoginPage:', isLoginPage);
+    
     if (!isLoggedIn) {
       console.log('[AdminLayout] 未登录，跳转到 /admins/login');
       router.push('/admins/login');
     } else {
       console.log('[AdminLayout] 已登录，显示管理界面');
     }
-  }, [isLoggedIn, router]);
+  }, [isLoggedIn, router, isLoginPage]);
 
   // 如果未登录，显示加载状态
   if (!isLoggedIn) {
