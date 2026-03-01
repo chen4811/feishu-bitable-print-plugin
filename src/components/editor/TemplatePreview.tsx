@@ -392,15 +392,16 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       console.log('[TemplatePreview] ======== 收到选中变化事件 ========');
       console.log('[TemplatePreview] 完整事件:', event);
       console.log('[TemplatePreview] event.data:', event?.data);
+      console.log('[TemplatePreview] event.data.recordId:', event?.data?.recordId);
 
       if (showDebugInfo) {
         setDebugInfo(`选中事件: ${JSON.stringify(event, null, 2)}`);
       }
 
-      console.log('[TemplatePreview] 事件通知：选中发生变化，正在获取选中记录...');
-      // 事件只是通知"选中发生了变化"，需要主动获取选中的记录
+      console.log('[TemplatePreview] 准备调用 fetchSelectedRecords()...');
+      // 无论有没有 recordId，都尝试获取一次选中记录
       await fetchSelectedRecords();
-      console.log('[TemplatePreview] 获取选中记录完成');
+      console.log('[TemplatePreview] fetchSelectedRecords() 调用完成');
       console.log('[TemplatePreview] ===========================================');
     });
 
