@@ -1110,12 +1110,37 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         
         if (isEditing) {
           return (
-            <div className="w-full p-2">
+            <div
+              className="w-full cursor-text whitespace-pre-wrap"
+              style={{
+                padding: '0.5rem',
+                fontSize: `${textComp.textStyle?.fontSize || styleConfig.fontSize}px`,
+                fontWeight: textComp.textStyle?.bold ? 'bold' : 'normal',
+                fontStyle: textComp.textStyle?.italic ? 'italic' : 'normal',
+                color: textComp.textStyle?.color || '#000000',
+                backgroundColor: textComp.textStyle?.backgroundColor || 'transparent',
+                textAlign: textComp.textStyle?.align || 'left',
+                lineHeight: textComp.textStyle?.lineHeight || styleConfig.lineHeight,
+                marginBottom: textComp.textStyle?.paragraphSpacing ? `${textComp.textStyle.paragraphSpacing}px` : 0,
+                textDecoration: textComp.textStyle?.underline ? 'underline' : textComp.textStyle?.textDecoration || 'none',
+                textTransform: textComp.textStyle?.textTransform || 'none',
+                whiteSpace: 'pre-wrap',
+              }}
+            >
               <textarea
                 ref={textareaRef}
-                className="w-full min-h-[60px] p-2 border border-primary rounded focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none whitespace-pre-wrap"
+                className="w-full border-0 outline-none p-0 resize-none whitespace-pre-wrap bg-transparent"
                 style={{
-                  whiteSpace: 'pre-wrap', // 🔥 确保编辑时也保留空格和换行
+                  fontSize: 'inherit',
+                  fontWeight: 'inherit',
+                  fontStyle: 'inherit',
+                  color: 'inherit',
+                  textAlign: 'inherit',
+                  lineHeight: 'inherit',
+                  whiteSpace: 'pre-wrap',
+                  backgroundColor: 'transparent',
+                  minHeight: '24px',
+                  width: '100%',
                 }}
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
