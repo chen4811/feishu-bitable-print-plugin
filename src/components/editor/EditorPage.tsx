@@ -966,6 +966,44 @@ export function EditorPage({ onExit }: EditorPageProps) {
                 )}
               </div>
 
+              {/* 手动保存按钮 */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  if (!currentTemplate?.id) {
+                    alert('请先选择模板');
+                    return;
+                  }
+                  try {
+                    setIsSaving(true);
+                    const editorData = {
+                      templateName,
+                      pageConfig,
+                      styleConfig,
+                      components,
+                      history,
+                      historyIndex,
+                    };
+                    await updateTemplate(currentTemplate.id, {
+                      name: templateName,
+                      data: editorData,
+                    });
+                    setLastSavedAt(new Date());
+                    console.log('[EditorPage] 手动保存成功');
+                  } catch (error) {
+                    console.error('[EditorPage] 手动保存失败:', error);
+                    alert('保存失败: ' + (error instanceof Error ? error.message : '未知错误'));
+                  } finally {
+                    setIsSaving(false);
+                  }
+                }}
+                disabled={isSaving || !currentTemplate?.id}
+              >
+                <Save className="w-4 h-4 mr-1" />
+                保存
+              </Button>
+
               {/* 纸张设置 */}
               <Button
                 variant="outline"
