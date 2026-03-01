@@ -781,6 +781,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         onMouseUp={handleCellMouseUp}
         onMouseLeave={handleTableMouseLeave}
       >
+        {/* 注入变量芯片样式 */}
+        <style dangerouslySetInnerHTML={{ __html: VARIABLE_CHIP_STYLES }} />
         <table className="w-full border-collapse">
           <tbody>
             {/* 列标行 */}
@@ -1098,7 +1100,12 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                               fontSize: cellStyle.fontSize ? `${cellStyle.fontSize}px` : '24px',
                               fontWeight: 'bold',
                             }}>
-                              {cellContent || ''}
+                              <VariableTextRenderer
+                                text={cellContent || ''}
+                                records={records || []}
+                                fields={fields || []}
+                                tagName="span"
+                              />
                             </h1>
                           );
                         }
@@ -1109,7 +1116,12 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                               fontSize: cellStyle.fontSize ? `${cellStyle.fontSize}px` : '18px',
                               fontWeight: 'bold',
                             }}>
-                              {cellContent || ''}
+                              <VariableTextRenderer
+                                text={cellContent || ''}
+                                records={records || []}
+                                fields={fields || []}
+                                tagName="span"
+                              />
                             </h2>
                           );
                         }
@@ -1129,7 +1141,12 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                 color: baseTextStyle.color,
                                 textDecoration: baseTextStyle.textDecoration,
                               }}>
-                                {cellContent || ''}
+                                <VariableTextRenderer
+                                  text={cellContent || ''}
+                                  records={records || []}
+                                  fields={fields || []}
+                                  tagName="span"
+                                />
                               </li>
                             </ul>
                           );
@@ -1149,7 +1166,12 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                 color: baseTextStyle.color,
                                 textDecoration: baseTextStyle.textDecoration,
                               }}>
-                                {cellContent || ''}
+                                <VariableTextRenderer
+                                  text={cellContent || ''}
+                                  records={records || []}
+                                  fields={fields || []}
+                                  tagName="span"
+                                />
                               </li>
                             </ol>
                           );
@@ -1169,14 +1191,24 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                               }}
                               onClick={(e) => e.stopPropagation()}
                             >
-                              {cellContent || ''}
+                              <VariableTextRenderer
+                                text={cellContent || ''}
+                                records={records || []}
+                                fields={fields || []}
+                                tagName="span"
+                              />
                             </a>
                           );
                         }
                         // 默认文本样式
                         return (
                           <span style={baseTextStyle}>
-                            {cellContent || ''}
+                            <VariableTextRenderer
+                              text={cellContent || ''}
+                              records={records || []}
+                              fields={fields || []}
+                              tagName="span"
+                            />
                           </span>
                         );
                       };
