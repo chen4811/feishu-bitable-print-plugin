@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -16,6 +16,7 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { useEditorStore } from '@/store/editorStore';
+import { useTemplateStore, UserTemplate } from '@/store/templateStore';
 import { ComponentType, PAGE_SIZES, TextComponent } from '@/types/editor';
 import {
   Database,
@@ -32,6 +33,7 @@ import {
   Eye,
   CheckCircle2,
   Loader2,
+  Clock,
 } from 'lucide-react';
 import { TextToolbar } from './TextToolbar';
 import { AdvancedToolbar } from './table/AdvancedToolbar';
@@ -65,6 +67,17 @@ export function EditorPage({ onExit }: EditorPageProps) {
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [draggedItem, setDraggedItem] = useState<{ type: string; data?: unknown } | null>(null);
+  const [currentTemplate, setCurrentTemplate] = useState<UserTemplate | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { 
+    templates, 
+    activeTemplateId, 
+    autoSaveTemplate,
+    isSaving: isStoreSaving 
+  } = useTemplateStore();
 
   // 🔥 使用飞书SDK获取数据
   const { 
@@ -123,6 +136,74 @@ export function EditorPage({ onExit }: EditorPageProps) {
       setFields(appFields);
     }
   }, [feishuRecords, feishuFields, feishuEnvFlag, setRecords, setFields, setFeishuEnvironment]);
+
+  // 初始化当前编辑的模板
+  useEffect(() => {
+    if (activeTemplateId) {
+      const template = templates.find(t => t.id === activeTemplateId);
+      if (template) {
+        console.log('[EditorPage] 设置当前编辑模板:', template);
+        setCurrentTemplate(template);
+        setTemplateName(template.name);
+      }
+    }
+  }, [activeTemplateId, templates, setTemplateName]);
+
+  // 自动保存逻辑 - 防抖
+  useEffect(() => {
+    if (!currentTemplate || !currentTemplate.id || currentTemplate.id.startsWith('template-')) {
+      return; // 没有模板或本地模板，不自动保存
+    }
+
+    console.log('[EditorPage] 编辑器内容变化，计划自动保存');
+    
+    // 清除之前的定时器
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // 设置新的防抖定时器（2秒后保存）
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        setIsSaving(true);
+        console.log('[EditorPage] 执行自动保存');
+        
+        // 收集编辑器状态数据
+        const editorData = {
+          templateName,
+          pageConfig,
+          styleConfig,
+          components,
+          history,
+          historyIndex,
+        };
+        
+        await autoSaveTemplate(currentTemplate.id, editorData);
+        setLastSavedAt(new Date());
+        console.log('[EditorPage] 自动保存成功');
+      } catch (error) {
+        console.error('[EditorPage] 自动保存失败:', error);
+      } finally {
+        setIsSaving(false);
+      }
+    }, 2000);
+
+    // 清理函数
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [
+    currentTemplate,
+    templateName,
+    pageConfig,
+    styleConfig,
+    components,
+    history,
+    historyIndex,
+    autoSaveTemplate,
+  ]);
 
   // 获取当前正在编辑的表格
   const currentEditingTable = tableEditing.tableId 
@@ -854,6 +935,26 @@ export function EditorPage({ onExit }: EditorPageProps) {
 
             {/* 右侧 */}
             <div className="flex items-center gap-2">
+              {/* 保存状态 */}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                {isSaving || isStoreSaving ? (
+                  <span className="flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    保存中...
+                  </span>
+                ) : lastSavedAt ? (
+                  <span className="flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-green-500" />
+                    已保存 {lastSavedAt.toLocaleTimeString('zh-CN')}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    等待保存...
+                  </span>
+                )}
+              </div>
+
               {/* 纸张设置 */}
               <Button
                 variant="outline"
@@ -1078,7 +1179,12 @@ export function EditorPage({ onExit }: EditorPageProps) {
         {/* 底部状态栏 */}
         <footer className="border-t px-4 py-2 bg-background text-xs text-muted-foreground flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <span>* 改动将自动保存</span>
+            <span>
+              {currentTemplate && !currentTemplate.id.startsWith('template-') 
+                ? '✓ 改动将自动保存到云端' 
+                : '⚠ 本地模板，点击创建后可保存到云端'
+              }
+            </span>
           </div>
           <div className="flex items-center gap-4">
             <span>组件: {components.length}</span>
