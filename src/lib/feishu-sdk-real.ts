@@ -1,5 +1,5 @@
 /**
- * 飞书多维表格 SDK - 真实实现
+ * 飞书多维表格 SDK - 真实实现（方案A）
  * 使用 @lark-base-open/js-sdk
  * 
  * 文档: https://lark-base-team.github.io/js-sdk-docs/zh/
@@ -129,7 +129,7 @@ export const feishuSDK = {
       const initialSelection = await this.getSelection();
       console.log('[FeishuSDK] 初始化时的选中信息:', initialSelection);
 
-      if (initialSelection?.recordId) {
+      if (initialSelection?.tableId && initialSelection?.recordId) {
         console.log('[FeishuSDK] 初始化时发现已选中记录，获取记录数据...');
         const initialRecords = await this.getSelectedRecords();
         console.log('[FeishuSDK] 初始化时获取到的记录:', initialRecords);
@@ -327,7 +327,7 @@ export const feishuSDK = {
   },
 
   /**
-   * 获取视图中选中的记录
+   * 获取选中记录（方案A实现）
    */
   async getSelectedRecords(): Promise<BitableRecord[]> {
     console.log('[FeishuSDK] ======== getSelectedRecords() 开始 ========');
@@ -339,98 +339,81 @@ export const feishuSDK = {
         console.error('[FeishuSDK] ❌ bitable 为空');
         return [];
       }
-      
-      console.log('[FeishuSDK] 获取当前表格...');
+
+      console.log('[FeishuSDK] 第一步：获取选中信息...');
+      const selection = await this.getSelection();
+      console.log('[FeishuSDK] 选中信息:', selection);
+
+      if (!selection?.tableId || !selection?.recordId) {
+        console.warn('[FeishuSDK] ⚠️  没有 tableId 或 recordId，返回空数组');
+        return [];
+      }
+
+      const { tableId, recordId } = selection;
+      console.log('[FeishuSDK] ✅ 获取到 tableId 和 recordId:', { tableId, recordId });
+
+      console.log('[FeishuSDK] 第二步：通过 tableId 获取表格...');
       let table: any = null;
-      
-      try {
+
+      if (bitable.base && typeof bitable.base.getTableById === 'function') {
+        console.log('[FeishuSDK] ✅ 使用 bitable.base.getTableById()');
+        table = await bitable.base.getTableById(tableId);
+        console.log('[FeishuSDK] 表格获取成功:', !!table);
+      } else if (typeof bitable.getTableById === 'function') {
+        console.log('[FeishuSDK] ✅ 使用 bitable.getTableById()');
+        table = await bitable.getTableById(tableId);
+        console.log('[FeishuSDK] 表格获取成功:', !!table);
+      } else {
+        console.warn('[FeishuSDK] ⚠️  没有 getTableById 方法，回退到 getActiveTable()');
         if (bitable.base && typeof bitable.base.getActiveTable === 'function') {
-          console.log('[FeishuSDK] ✅ 使用 bitable.base.getActiveTable()');
           table = await bitable.base.getActiveTable();
         } else if (typeof bitable.getActiveTable === 'function') {
-          console.log('[FeishuSDK] ✅ 使用 bitable.getActiveTable()');
           table = await bitable.getActiveTable();
-        } else {
-          console.warn('[FeishuSDK] ⚠️  没有找到 getActiveTable() 方法');
         }
-      } catch (err) {
-        console.error('[FeishuSDK] ❌ 获取表格失败:', err);
       }
-      
+
       if (!table) {
-        console.error('[FeishuSDK] ❌ table 为空');
-        return [];
-      }
-      
-      console.log('[FeishuSDK] ✅ 表格获取成功，table 可用方法:', Object.keys(table).filter(k => typeof table[k] === 'function'));
-
-      console.log('[FeishuSDK] 尝试获取视图选中记录...');
-      let selectedRecords: any[] = [];
-      
-      try {
-        if (typeof table.getActiveView === 'function') {
-          console.log('[FeishuSDK] ✅ 使用 table.getActiveView()');
-          const view = await table.getActiveView();
-          console.log('[FeishuSDK] 视图获取成功，view 可用方法:', Object.keys(view).filter(k => typeof view[k] === 'function'));
-          
-          if (view && typeof view.getSelectedRecords === 'function') {
-            console.log('[FeishuSDK] ✅ 调用 view.getSelectedRecords()');
-            selectedRecords = await view.getSelectedRecords();
-            console.log('[FeishuSDK] ✅ 从视图获取到选中记录:', selectedRecords);
-          } else {
-            console.warn('[FeishuSDK] ⚠️  没有 view.getSelectedRecords() 方法');
-          }
-        }
-      } catch (err) {
-        console.error('[FeishuSDK] ❌ 获取视图选中记录失败:', err);
-      }
-
-      // 如果视图方法没有获取到，尝试获取当前选中的单个 recordId
-      if (selectedRecords.length === 0) {
-        console.log('[FeishuSDK] 视图方法没有获取到记录，尝试通过 getSelection() 获取...');
-        const selection = await this.getSelection();
-        console.log('[FeishuSDK] 通过 getSelection() 获取到:', selection);
-        
-        if (selection?.recordId) {
-          console.log('[FeishuSDK] 发现 recordId，尝试获取单条记录:', selection.recordId);
-          try {
-            if (typeof table.getRecord === 'function') {
-              console.log('[FeishuSDK] ✅ 调用 table.getRecord()');
-              const singleRecord = await table.getRecord(selection.recordId);
-              if (singleRecord) {
-                selectedRecords = [singleRecord];
-                console.log('[FeishuSDK] ✅ 从选中 recordId 获取记录:', singleRecord);
-              } else {
-                console.warn('[FeishuSDK] ⚠️  table.getRecord() 返回空');
-              }
-            } else {
-              console.warn('[FeishuSDK] ⚠️  没有 table.getRecord() 方法');
-            }
-          } catch (err) {
-            console.error('[FeishuSDK] ❌ 获取单条记录失败:', err);
-          }
-        } else {
-          console.warn('[FeishuSDK] ⚠️  selection 中没有 recordId');
-        }
-      }
-
-      console.log('[FeishuSDK] 最终获取到的 selectedRecords:', selectedRecords);
-      
-      if (!Array.isArray(selectedRecords)) {
-        console.error('[FeishuSDK] ❌ selectedRecords 不是数组');
+        console.error('[FeishuSDK] ❌ 无法获取表格实例');
         return [];
       }
 
-      const result = selectedRecords.map((record: any) => ({
-        id: record.id || record.recordId || record.record_id || '',
-        fields: record.fields || {},
-        createdTime: record.createdTime || record.created_time || new Date().toISOString(),
-        lastModifiedTime: record.modifiedTime || record.last_modified_time || new Date().toISOString(),
-      }));
-      
-      console.log('[FeishuSDK] ✅ 格式化后的结果:', result);
+      console.log('[FeishuSDK] 第三步：通过 recordId 获取记录...');
+      let recordData: any = null;
+
+      if (typeof table.getRecordById === 'function') {
+        console.log('[FeishuSDK] ✅ 使用 table.getRecordById()');
+        recordData = await table.getRecordById(recordId);
+        console.log('[FeishuSDK] 记录获取成功:', !!recordData);
+      } else {
+        console.warn('[FeishuSDK] ⚠️  没有 getRecordById 方法，回退到 getRecord()');
+        if (typeof table.getRecord === 'function') {
+          recordData = await table.getRecord(recordId);
+        }
+      }
+
+      if (!recordData) {
+        console.error('[FeishuSDK] ❌ 无法获取记录数据');
+        return [];
+      }
+
+      console.log('[FeishuSDK] 第四步：获取字段元信息...');
+      let fieldMetaList: any[] = [];
+
+      if (typeof table.getFieldMetaList === 'function') {
+        console.log('[FeishuSDK] ✅ 使用 table.getFieldMetaList()');
+        fieldMetaList = await table.getFieldMetaList();
+        console.log('[FeishuSDK] 字段元信息获取成功，数量:', fieldMetaList.length);
+      } else if (typeof table.getFieldList === 'function') {
+        console.log('[FeishuSDK] ⚠️  回退到 getFieldList()');
+        fieldMetaList = await table.getFieldList();
+      }
+
+      console.log('[FeishuSDK] 第五步：处理数据...');
+      const result = processRecordData(recordData, fieldMetaList);
+      console.log('[FeishuSDK] ✅ 数据处理完成:', result);
       console.log('[FeishuSDK] ======== getSelectedRecords() 结束 ========');
-      return result;
+
+      return [result];
     } catch (error) {
       console.error('[FeishuSDK] ❌ getSelectedRecords() 失败:', error);
       console.error('[FeishuSDK] 错误堆栈:', error instanceof Error ? error.stack : error);
@@ -549,5 +532,70 @@ export const feishuSDK = {
     };
   },
 };
+
+/**
+ * 处理并显示数据（方案A实现）
+ */
+function processRecordData(recordData: any, fieldMetaList: any[]): BitableRecord {
+  console.log('[FeishuSDK] processRecordData 被调用', { recordData, fieldMetaList });
+  
+  const { fields } = recordData;
+  
+  // 创建字段名称映射
+  const fieldMap: Record<string, string> = {};
+  fieldMetaList.forEach(field => {
+    fieldMap[field.id] = field.name;
+  });
+  
+  // 转换数据格式
+  const formattedData: Record<string, unknown> = {};
+  
+  Object.keys(fields).forEach(fieldId => {
+    const fieldName = fieldMap[fieldId] || fieldId;
+    const fieldValue = fields[fieldId];
+    
+    // 根据字段类型处理值
+    formattedData[fieldName] = formatFieldValue(fieldValue);
+  });
+  
+  console.log('[FeishuSDK] processRecordData 处理完成:', formattedData);
+  
+  return {
+    id: recordData.id || recordData.recordId || '',
+    fields: formattedData,
+    createdTime: recordData.createdTime || new Date().toISOString(),
+    lastModifiedTime: recordData.modifiedTime || new Date().toISOString(),
+  };
+}
+
+/**
+ * 字段值格式化处理（方案A实现）
+ */
+function formatFieldValue(fieldValue: any): string {
+  if (!fieldValue) return '';
+  
+  // 如果不是数组，直接转字符串
+  if (!Array.isArray(fieldValue)) {
+    return String(fieldValue);
+  }
+  
+  // 多行文本、数字等简单类型
+  if (fieldValue[0] && fieldValue[0].text) {
+    return fieldValue[0].text;
+  }
+  
+  // 人员字段
+  if (fieldValue[0] && fieldValue[0].id) {
+    return fieldValue.map(item => item.id || item.name || '').filter(Boolean).join(', ');
+  }
+  
+  // 人员字段（name格式）
+  if (fieldValue[0] && fieldValue[0].name) {
+    return fieldValue.map(item => item.name || item.id || '').filter(Boolean).join(', ');
+  }
+  
+  // 其他复杂类型
+  return JSON.stringify(fieldValue);
+}
 
 export default feishuSDK;
