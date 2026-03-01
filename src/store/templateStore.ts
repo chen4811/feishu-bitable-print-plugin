@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import { useUserStore } from './userStore';
 
 // 模板数据类型
@@ -43,9 +42,7 @@ interface TemplateStore {
   clearError: () => void;
 }
 
-export const useTemplateStore = create<TemplateStore>()(
-  persist(
-    (set, get) => ({
+export const useTemplateStore = create<TemplateStore>()((set) => ({
       templates: [],
       currentTemplate: null,
       isLoading: false,
@@ -219,15 +216,5 @@ export const useTemplateStore = create<TemplateStore>()(
       clearError: () => {
         set({ error: null });
       },
-    }),
-    {
-      name: 'template-storage',
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({
-        // 只持久化模板列表，不持久化 loading 和 error 状态
-        templates: state.templates,
-        currentTemplate: state.currentTemplate,
-      }),
-    }
-  )
-);
+    })
+  );

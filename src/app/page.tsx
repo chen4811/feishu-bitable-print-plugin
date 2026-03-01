@@ -45,10 +45,18 @@ export default function PrintPluginApp() {
     }
   }, [isLoggedIn, hasAuthorizations, router]);
 
-  // 初始化字段数据
+  // 初始化字段数据并清理旧的 localStorage 数据
   useEffect(() => {
     if (!isLoggedIn || !hasAuthorizations) {
       return;
+    }
+
+    // 清理旧的 localStorage 模板数据（已改为数据库存储）
+    try {
+      localStorage.removeItem('template-storage');
+      console.log('[PrintPluginApp] 已清理本地模板缓存');
+    } catch {
+      // 忽略清理错误
     }
 
     // 从模拟数据或真实数据中获取字段
