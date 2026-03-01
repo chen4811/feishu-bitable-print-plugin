@@ -24,10 +24,31 @@ const AutoResizingTextarea = ({
   // 自动调整高度
   const adjustHeight = useCallback(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.max(textareaRef.current.scrollHeight, 24)}px`;
+      console.log(`[AutoResizingTextarea] adjustHeight 触发`, {
+        scrollHeight: textareaRef.current.scrollHeight,
+        clientHeight: textareaRef.current.clientHeight,
+        offsetHeight: textareaRef.current.offsetHeight,
+        valueLength: value?.length || 0,
+        value: value?.substring(0, 50),
+      });
+      
+      // 关键修复：先重置高度，然后精确计算
+      textareaRef.current.style.height = '0px'; // 强制重置为0，确保scrollHeight计算准确
+      
+      // 获取真实的内容高度
+      const contentHeight = textareaRef.current.scrollHeight;
+      
+      // 设置最小高度为24px，最大高度不做限制（让表格自然扩展）
+      const newHeight = Math.max(contentHeight, 24);
+      
+      textareaRef.current.style.height = `${newHeight}px`;
+      
+      console.log(`[AutoResizingTextarea] 高度调整完成`, {
+        contentHeight,
+        newHeight,
+      });
     }
-  }, []);
+  }, [value]);
 
   // 处理点击事件，确保阻止冒泡
   const handleClick = useCallback((e: React.MouseEvent) => {
@@ -78,23 +99,28 @@ const AutoResizingTextarea = ({
 
   // 内容变化时调整高度
   useEffect(() => {
+    console.log(`[AutoResizingTextarea] useEffect 触发 - value 变化`, { value: value?.substring(0, 30) });
     adjustHeight();
-  }, [value, adjustHeight]);
+  }, [value]); // 移除 adjustHeight 依赖，避免循环调用
 
   // 组件挂载时调整高度
   useEffect(() => {
+    console.log(`[AutoResizingTextarea] useEffect 触发 - 组件挂载`);
     adjustHeight();
-  }, [adjustHeight]);
+  }, []); // 只在挂载时执行一次
 
   // 监听输入事件，实时调整高度
   useEffect(() => {
     const textarea = textareaRef.current;
     if (textarea) {
-      const handleInputEvent = () => adjustHeight();
+      const handleInputEvent = () => {
+        console.log(`[AutoResizingTextarea] input 事件触发`);
+        adjustHeight();
+      };
       textarea.addEventListener('input', handleInputEvent);
       return () => textarea.removeEventListener('input', handleInputEvent);
     }
-  }, [adjustHeight]);
+  }, []); // 只在挂载时设置一次监听器
 
   return (
     <textarea
@@ -105,11 +131,14 @@ const AutoResizingTextarea = ({
       onKeyDown={handleKeyDown}
       onKeyUp={handleKeyUp}
       onKeyPress={handleKeyPress}
-      className="w-full border-0 outline-none p-1 resize-none overflow-hidden"
+      className="w-full border-0 outline-none resize-none overflow-hidden"
       style={{ 
-        height: 'auto',
+        height: '24px', // 初始高度设为24px，由 adjustHeight 动态调整
         minHeight: '24px',
         backgroundColor: 'transparent',
+        padding: '4px', // 稍微增加一点 padding，避免文本紧贴边缘
+        boxSizing: 'border-box', // 确保 padding 包含在高度计算中
+        lineHeight: '1.5', // 确保行高稳定
         ...style,
       }}
     />
@@ -870,14 +899,33 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                           textTransform: textStyles.textTransform,
                         };
                         
-                        // 移除 minHeight 和 h-full，让容器能根据内容自由调整高度
+                        // 关键修复：容器 div 只做样式传递，不干扰高度计算
                         const containerStyles = {
-                          ...textStyles,
+                          // 只传递影响文本显示的样式，不传递可能影响高度的样式
+                          fontSize: textStyles.fontSize,
+                          fontWeight: textStyles.fontWeight,
+                          fontStyle: textStyles.fontStyle,
+                          color: textStyles.color,
+                          textAlign: textStyles.textAlign,
+                          lineHeight: textStyles.lineHeight,
+                          textDecoration: textStyles.textDecoration,
+                          textTransform: textStyles.textTransform,
+                          backgroundColor: textStyles.backgroundColor,
+                          // 确保容器不会限制高度
                           minHeight: undefined,
+                          height: undefined,
+                          overflow: 'visible',
                         };
                         
                         return (
-                          <div className="w-full" style={containerStyles}>
+                          <div 
+                            className="w-full" 
+                            style={containerStyles}
+                            // 关键：防止容器 div 干扰键盘事件
+                            onKeyDown={(e) => e.stopPropagation()}
+                            onKeyUp={(e) => e.stopPropagation()}
+                            onKeyPress={(e) => e.stopPropagation()}
+                          >
                             <AutoResizingTextarea
                               value={cellContent || ''}
                               onChange={(value) => handleTableCellChange(rowIndex, colIndex, value)}
