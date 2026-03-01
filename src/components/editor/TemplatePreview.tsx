@@ -80,6 +80,82 @@ const replaceVariables = (text: string, data: Record<string, any>): string => {
   });
 };
 
+// 渲染表格组件
+const renderTableComponent = (component: any, data: Record<string, any>): React.ReactNode => {
+  const { id, tableConfig, style = {} } = component;
+  
+  if (!tableConfig) {
+    return null;
+  }
+
+  const { cells = [], borderWidth = 1, borderColor = '#000000', showOuterBorder = true, showInnerBorder = true } = tableConfig;
+
+  return (
+    <div 
+      key={id}
+      style={{
+        position: 'absolute',
+        left: style.x || 0,
+        top: style.y || 0,
+        width: style.width || 'auto',
+        ...style,
+      }}
+    >
+      <table 
+        style={{
+          borderCollapse: 'collapse',
+          width: '100%',
+          border: showOuterBorder ? `${borderWidth}px solid ${borderColor}` : 'none',
+        }}
+      >
+        <tbody>
+          {cells.map((row: any[], rowIndex: number) => {
+            // 过滤掉 rowSpan 或 colSpan 为 0 的单元格（被合并的单元格）
+            const visibleCells = row.filter((cell: any) => {
+              const rowSpan = cell?.rowSpan ?? 1;
+              const colSpan = cell?.colSpan ?? 1;
+              return rowSpan > 0 && colSpan > 0;
+            });
+            
+            if (visibleCells.length === 0) return null;
+
+            return (
+              <tr key={rowIndex}>
+                {visibleCells.map((cell: any, colIndex: number) => {
+                  if (!cell) return null;
+                  
+                  const rowSpan = cell.rowSpan ?? 1;
+                  const colSpan = cell.colSpan ?? 1;
+                  const content = cell.content || '';
+                  const processedContent = replaceVariables(content, data);
+                  
+                  return (
+                    <td
+                      key={`${rowIndex}-${colIndex}`}
+                      rowSpan={rowSpan > 1 ? rowSpan : undefined}
+                      colSpan={colSpan > 1 ? colSpan : undefined}
+                      style={{
+                        border: showInnerBorder ? `${borderWidth}px solid ${borderColor}` : 'none',
+                        padding: '8px',
+                        verticalAlign: 'top',
+                        whiteSpace: 'pre-wrap',
+                        wordWrap: 'break-word',
+                        ...cell.style,
+                      }}
+                    >
+                      {processedContent}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
 // 渲染单个组件（带变量替换）
 const renderComponent = (component: any, data: Record<string, any>): React.ReactNode => {
   if (!component) {
@@ -97,6 +173,12 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
   } = component;
 
   console.log(`[renderComponent] 渲染组件: id=${id}, type=${type}`);
+
+  // 表格组件特殊处理
+  if (type === 'table') {
+    console.log('[renderComponent] 渲染表格组件:', component);
+    return renderTableComponent(component, data);
+  }
 
   // 替换变量
   const processedText = text ? replaceVariables(text, data) : undefined;
@@ -224,6 +306,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   const [isLoading, setIsLoading] = useState(false);
   const [showVariableMapping, setShowVariableMapping] = useState(true);
   const [debugInfo, setDebugInfo] = useState<string>('');
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
 
   // 加载模板列表
   useEffect(() => {
@@ -321,15 +404,17 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     });
     setSelectedTemplate(template);
     
-    // 详细的调试信息
-    const dataStr = template.data ? JSON.stringify(template.data).slice(0, 800) : '(empty)';
-    const debugText = `选中模板: ${template.name}\n` +
-      `模板ID: ${template.id}\n` +
-      `有数据: ${!!template.data}\n` +
-      `数据类型: ${typeof template.data}\n` +
-      `数据内容: ${dataStr}`;
-    setDebugInfo(debugText);
-  }, []);
+    // 详细的调试信息（仅在显示调试模式时设置）
+    if (showDebugInfo) {
+      const dataStr = template.data ? JSON.stringify(template.data).slice(0, 800) : '(empty)';
+      const debugText = `选中模板: ${template.name}\n` +
+        `模板ID: ${template.id}\n` +
+        `有数据: ${!!template.data}\n` +
+        `数据类型: ${typeof template.data}\n` +
+        `数据内容: ${dataStr}`;
+      setDebugInfo(debugText);
+    }
+  }, [showDebugInfo]);
 
   // 处理编辑模板
   const handleEdit = useCallback(() => {
@@ -628,9 +713,21 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
               </div>
             </div>
 
+            {/* 调试信息开关 */}
+            <div className="mt-2 flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 text-xs"
+                onClick={() => setShowDebugInfo(!showDebugInfo)}
+              >
+                {showDebugInfo ? '隐藏调试' : '显示调试'}
+              </Button>
+            </div>
+
             {/* 调试信息 */}
-            {debugInfo && (
-              <div className="mt-4 p-3 bg-gray-100 rounded text-xs font-mono max-h-32 overflow-auto">
+            {showDebugInfo && debugInfo && (
+              <div className="mt-2 p-3 bg-gray-100 rounded text-xs font-mono max-h-32 overflow-auto">
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-bold">调试信息:</span>
                   <Button

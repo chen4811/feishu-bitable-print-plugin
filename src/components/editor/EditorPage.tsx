@@ -45,6 +45,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { DataSourcePanel } from './panels/DataSourcePanel';
 import { ComponentPanel } from './panels/ComponentPanel';
 import { SettingsPanel } from './panels/SettingsPanel';
@@ -70,6 +80,9 @@ export function EditorPage({ onExit }: EditorPageProps) {
   const [currentTemplate, setCurrentTemplate] = useState<UserTemplate | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [initialEditorState, setInitialEditorState] = useState<string | null>(null);
   
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { 
@@ -153,8 +166,52 @@ export function EditorPage({ onExit }: EditorPageProps) {
         // 没有数据，只设置模板名称
         setTemplateName(storeCurrentTemplate.name);
       }
+
+      // 延迟记录初始状态，等待编辑器完全加载
+      setTimeout(() => {
+        const initialState = JSON.stringify({
+          templateName,
+          pageConfig,
+          styleConfig,
+          components,
+        });
+        console.log('[EditorPage] 记录初始编辑状态');
+        setInitialEditorState(initialState);
+        setHasUnsavedChanges(false);
+      }, 500);
     }
-  }, [storeCurrentTemplate, setTemplateName, loadTemplateFromData]);
+  }, [storeCurrentTemplate]); // 不依赖其他状态，避免重复触发
+
+  // 检测是否有未保存的修改
+  useEffect(() => {
+    if (!initialEditorState) return;
+
+    const currentState = JSON.stringify({
+      templateName,
+      pageConfig,
+      styleConfig,
+      components,
+    });
+
+    const hasChanges = currentState !== initialEditorState;
+    console.log('[EditorPage] 检测编辑状态变化:', { hasChanges });
+    setHasUnsavedChanges(hasChanges);
+  }, [templateName, pageConfig, styleConfig, components, initialEditorState]);
+
+  // 保存成功后更新初始状态
+  useEffect(() => {
+    if (lastSavedAt && initialEditorState) {
+      const currentState = JSON.stringify({
+        templateName,
+        pageConfig,
+        styleConfig,
+        components,
+      });
+      console.log('[EditorPage] 保存成功，更新初始状态');
+      setInitialEditorState(currentState);
+      setHasUnsavedChanges(false);
+    }
+  }, [lastSavedAt]);
 
   // 自动保存逻辑 - 防抖
   useEffect(() => {
@@ -197,8 +254,10 @@ export function EditorPage({ onExit }: EditorPageProps) {
           name: templateName,
           data: editorData,
         });
-        setLastSavedAt(new Date());
-        console.log('[EditorPage] 自动保存成功:', updatedTemplate);
+        // 强制触发状态更新
+        const now = new Date();
+        setLastSavedAt(now);
+        console.log('[EditorPage] 自动保存成功:', updatedTemplate, now);
       } catch (error) {
         console.error('[EditorPage] 自动保存失败:', error);
         // 如果保存失败，尝试降级保存到 localStorage
@@ -922,8 +981,23 @@ export function EditorPage({ onExit }: EditorPageProps) {
           <div className="flex items-center justify-between px-4 py-3">
             {/* 左侧 */}
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={onExit}>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => {
+                  if (hasUnsavedChanges) {
+                    console.log('[EditorPage] 检测到未保存的修改，显示确认对话框');
+                    setShowExitConfirm(true);
+                  } else {
+                    console.log('[EditorPage] 没有未保存的修改，直接退出');
+                    onExit();
+                  }
+                }}
+              >
                 ← 退出
+                {hasUnsavedChanges && (
+                  <span className="ml-1 text-orange-500">●</span>
+                )}
               </Button>
               
               {/* 模板名称 */}
@@ -1274,6 +1348,65 @@ export function EditorPage({ onExit }: EditorPageProps) {
         open={isPrintPreviewOpen}
         onOpenChange={setIsPrintPreviewOpen}
       />
+
+      {/* 退出确认对话框 */}
+      <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>有未保存的修改</AlertDialogTitle>
+            <AlertDialogDescription>
+              当前模板还有未保存的修改，退出后这些修改将丢失。
+              {isSaving ? '\n注意：当前正在保存中...' : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>继续编辑</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                console.log('[EditorPage] 用户确认退出，忽略未保存的修改');
+                setShowExitConfirm(false);
+                onExit();
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              放弃修改并退出
+            </AlertDialogAction>
+            {!isSaving && (
+              <AlertDialogAction
+                onClick={async () => {
+                  console.log('[EditorPage] 用户选择保存后退出');
+                  try {
+                    setIsSaving(true);
+                    const editorData = {
+                      templateName,
+                      pageConfig,
+                      styleConfig,
+                      components,
+                      history,
+                      historyIndex,
+                    };
+                    await updateTemplate(currentTemplate!.id, {
+                      name: templateName,
+                      data: editorData,
+                    });
+                    setLastSavedAt(new Date());
+                    console.log('[EditorPage] 保存成功，退出');
+                    setShowExitConfirm(false);
+                    onExit();
+                  } catch (error) {
+                    console.error('[EditorPage] 保存失败:', error);
+                    alert('保存失败，请重试或选择放弃修改');
+                  } finally {
+                    setIsSaving(false);
+                  }
+                }}
+              >
+                保存并退出
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* 拖拽预览 */}
       <DragOverlay>
