@@ -311,15 +311,24 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
   // 处理模板选择
   const handleSelectTemplate = useCallback((template: Template) => {
-    console.log('[TemplatePreview] 选择模板:', {
+    console.log('[TemplatePreview] 选择模板，模板详情:', {
       id: template.id,
       name: template.name,
       hasData: !!template.data,
       dataKeys: template.data ? Object.keys(template.data) : [],
+      data: template.data,
       componentsCount: template.data?.components?.length || 0,
     });
     setSelectedTemplate(template);
-    setDebugInfo(`选中模板: ${template.name}\n数据: ${JSON.stringify(template.data, null, 2).slice(0, 500)}...`);
+    
+    // 详细的调试信息
+    const dataStr = template.data ? JSON.stringify(template.data).slice(0, 800) : '(empty)';
+    const debugText = `选中模板: ${template.name}\n` +
+      `模板ID: ${template.id}\n` +
+      `有数据: ${!!template.data}\n` +
+      `数据类型: ${typeof template.data}\n` +
+      `数据内容: ${dataStr}`;
+    setDebugInfo(debugText);
   }, []);
 
   // 处理编辑模板
@@ -653,24 +662,38 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                   position: 'relative',
                 }}
               >
-                {records.length > 0 && currentRecord ? (
-                  selectedTemplate.data?.components?.map((component: any, idx: number) => {
-                    console.log(`[TemplatePreview] 渲染组件 ${idx}:`, component.id, component.type);
-                    return renderComponent(component, currentRecord);
-                  })
-                ) : (
-                  <div className="h-full flex items-center justify-center text-gray-400">
-                    <div className="text-center">
-                      <Eye className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p>暂无数据</p>
-                      <p className="text-sm mt-1">
-                        {isListening
-                          ? '请在飞书多维表格中选中数据'
-                          : '请开启飞书监听并选中数据'}
-                      </p>
-                    </div>
-                  </div>
-                )}
+                {(() => {
+                  console.log('[TemplatePreview] 渲染预览', {
+                    hasTemplate: !!selectedTemplate,
+                    hasData: !!selectedTemplate.data,
+                    hasComponents: selectedTemplate.data?.components?.length || 0,
+                    hasRecords: records.length > 0,
+                    hasCurrentRecord: !!currentRecord
+                  });
+
+                  // 有组件时，显示它们
+                  if (selectedTemplate.data?.components?.length > 0) {
+                    // 如果有数据，替换变量；否则原样显示
+                    const dataToUse = records.length > 0 && currentRecord ? currentRecord : {};
+                    return selectedTemplate.data.components.map((component: any, idx: number) => {
+                      console.log(`[TemplatePreview] 渲染组件 ${idx}:`, component.id, component.type);
+                      return renderComponent(component, dataToUse);
+                    });
+                  }
+                  
+                  // 没有组件时
+                  else {
+                    return (
+                      <div className="h-full flex items-center justify-center text-gray-400">
+                        <div className="text-center">
+                          <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                          <p className="font-medium">模板数据为空</p>
+                          <p className="text-sm mt-1">请先在编辑器中添加组件</p>
+                        </div>
+                      </div>
+                    );
+                  }
+                })()}
               </div>
             ) : (
               <div className="h-96 flex items-center justify-center text-gray-400">
