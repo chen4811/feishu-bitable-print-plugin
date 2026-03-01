@@ -150,30 +150,37 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       // 将 BitableRecord 格式转换为普通对象
       const recordData: Record<string, unknown> = {};
       
-      // 处理 fields 格式（飞书SDK返回的格式）
+      // 优先处理直接在记录对象上的字段（飞书SDK返回的格式）
+      Object.entries(firstRecord).forEach(([key, value]) => {
+        if (key !== 'fields' && key !== 'id' && key !== 'createdTime' && key !== 'lastModifiedTime' && key !== '__tableName__') {
+          recordData[key] = value;
+        }
+      });
+      
+      // 同时处理 fields 格式（兼容性处理）
       if (firstRecord.fields && typeof firstRecord.fields === 'object') {
         Object.entries(firstRecord.fields as Record<string, unknown>).forEach(([key, value]) => {
-          recordData[key] = value;
+          if (recordData[key] === undefined) {
+            recordData[key] = value;
+          }
         });
       }
       
       // 关键：同时添加字段名到值的映射（支持通过字段名查找）
-      if (firstRecord.fields && typeof firstRecord.fields === 'object' && fields && fields.length > 0) {
+      if (fields && fields.length > 0) {
         fields.forEach(field => {
-          const fieldsObj = firstRecord.fields as Record<string, unknown>;
-          const value = fieldsObj[field.id];
+          // 优先从直接字段中获取
+          let value = recordData[field.id];
+          // 如果没有，尝试从 fields 对象中获取
+          if (value === undefined && firstRecord.fields) {
+            const fieldsObj = firstRecord.fields as Record<string, unknown>;
+            value = fieldsObj[field.id];
+          }
           if (value !== undefined) {
             recordData[field.name] = value;
           }
         });
       }
-      
-      // 同时也支持直接的键值对格式
-      Object.entries(firstRecord).forEach(([key, value]) => {
-        if (key !== 'fields' && key !== 'id' && key !== 'createdTime' && key !== 'lastModifiedTime') {
-          recordData[key] = value;
-        }
-      });
       
       return recordData;
     }

@@ -79,7 +79,6 @@ export function getFieldValue(
   }
   
   const firstRecord = records[0] as any;
-  console.log('[SmartVariable] 查找字段值:', { fieldName, firstRecord, fields });
   
   // 构建字段名到字段ID的映射
   const fieldNameToIdMap: Record<string, string> = {};
@@ -87,25 +86,32 @@ export function getFieldValue(
     fieldNameToIdMap[field.name] = field.id;
   });
   
-  console.log('[SmartVariable] 字段映射表:', fieldNameToIdMap);
-  
   // 首先尝试通过字段名查找映射的字段ID
   const fieldId = fieldNameToIdMap[fieldName];
   
   let value: unknown;
   
-  if (fieldId && firstRecord.fields) {
-    // 优先使用字段ID从 fields 对象中获取
-    value = firstRecord.fields[fieldId];
-    console.log('[SmartVariable] 通过字段ID获取值:', { fieldId, value });
-  } else if (firstRecord.fields) {
-    // 尝试直接用字段名从 fields 对象中获取
-    value = firstRecord.fields[fieldName];
-    console.log('[SmartVariable] 直接通过字段名获取值:', { fieldName, value });
-  } else {
+  if (fieldId) {
+    // 优先使用字段ID从记录对象直接获取（飞书SDK格式）
+    if (firstRecord[fieldId] !== undefined) {
+      value = firstRecord[fieldId];
+    } 
+    // 其次尝试从 fields 对象中获取
+    else if (firstRecord.fields && firstRecord.fields[fieldId] !== undefined) {
+      value = firstRecord.fields[fieldId];
+    }
+  }
+  
+  // 如果通过字段ID没找到，尝试直接用字段名
+  if (value === undefined || value === null) {
     // 尝试直接从记录对象获取
-    value = firstRecord[fieldName];
-    console.log('[SmartVariable] 从记录根对象获取值:', { fieldName, value });
+    if (firstRecord[fieldName] !== undefined) {
+      value = firstRecord[fieldName];
+    }
+    // 尝试从 fields 对象中获取
+    else if (firstRecord.fields && firstRecord.fields[fieldName] !== undefined) {
+      value = firstRecord.fields[fieldName];
+    }
   }
   
   // 处理空值
