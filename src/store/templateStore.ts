@@ -64,14 +64,26 @@ export const useTemplateStore = create<TemplateStore>()((set) => ({
 
           const result = await response.json();
           if (result.success) {
-            // 转换日期字符串为 Date 对象
-            const templates = result.data.map((t: any) => ({
-              ...t,
-              createdAt: new Date(t.created_at),
-              updatedAt: new Date(t.updated_at),
-              userId: t.user_id,
-              isPublic: t.is_public,
-            }));
+            // 转换日期字符串为 Date 对象，并解析 data 字段
+            const templates = result.data.map((t: any) => {
+              let parsedData = t.data;
+              // 如果 data 是字符串，尝试解析为 JSON
+              if (typeof t.data === 'string') {
+                try {
+                  parsedData = JSON.parse(t.data);
+                } catch {
+                  parsedData = {};
+                }
+              }
+              return {
+                ...t,
+                data: parsedData,
+                createdAt: new Date(t.created_at),
+                updatedAt: new Date(t.updated_at),
+                userId: t.user_id,
+                isPublic: t.is_public,
+              };
+            });
             set({ templates, isLoading: false });
           } else {
             throw new Error(result.error || '获取模板失败');
@@ -104,8 +116,18 @@ export const useTemplateStore = create<TemplateStore>()((set) => ({
 
           const result = await response.json();
           if (result.success) {
+            let parsedData = result.data.data;
+            // 如果 data 是字符串，尝试解析为 JSON
+            if (typeof result.data.data === 'string') {
+              try {
+                parsedData = JSON.parse(result.data.data);
+              } catch {
+                parsedData = {};
+              }
+            }
             const newTemplate = {
               ...result.data,
+              data: parsedData,
               createdAt: new Date(result.data.created_at),
               updatedAt: new Date(result.data.updated_at),
               userId: result.data.user_id,
@@ -148,8 +170,18 @@ export const useTemplateStore = create<TemplateStore>()((set) => ({
 
           const result = await response.json();
           if (result.success) {
+            let parsedData = result.data.data;
+            // 如果 data 是字符串，尝试解析为 JSON
+            if (typeof result.data.data === 'string') {
+              try {
+                parsedData = JSON.parse(result.data.data);
+              } catch {
+                parsedData = {};
+              }
+            }
             const updatedTemplate = {
               ...result.data,
+              data: parsedData,
               createdAt: new Date(result.data.created_at),
               updatedAt: new Date(result.data.updated_at),
               userId: result.data.user_id,

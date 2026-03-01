@@ -113,6 +113,7 @@ interface EditorState {
   
   // 模板操作
   loadTemplate: (template: PrintTemplate) => void;
+  loadTemplateFromData: (data: any) => void;
   saveTemplate: () => void;
   deleteTemplate: (id: string) => void;
   clearCanvas: () => void;
@@ -440,6 +441,24 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       pageConfig: { ...template.pageConfig },
       styleConfig: { ...template.styleConfig },
       history: [convertedComponents],
+      historyIndex: 0,
+    });
+  },
+  
+  // 从数据库模板数据加载
+  loadTemplateFromData: (data) => {
+    if (!data) return;
+    
+    const components = data.components || [];
+    const pageConfig = data.pageConfig || get().pageConfig;
+    const styleConfig = data.styleConfig || get().styleConfig;
+    
+    set({
+      templateName: data.templateName || '未命名模板',
+      components: components,
+      pageConfig: { ...pageConfig },
+      styleConfig: { ...styleConfig },
+      history: components.length > 0 ? [components] : [],
       historyIndex: 0,
     });
   },

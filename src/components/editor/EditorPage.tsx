@@ -112,6 +112,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
     setFeishuEnvironment,
     fields: storeFields,
     setFields,
+    loadTemplateFromData,
   } = useEditorStore();
 
   // 同步飞书SDK数据到store
@@ -143,9 +144,17 @@ export function EditorPage({ onExit }: EditorPageProps) {
     if (storeCurrentTemplate) {
       console.log('[EditorPage] 设置当前编辑模板:', storeCurrentTemplate);
       setCurrentTemplate(storeCurrentTemplate);
-      setTemplateName(storeCurrentTemplate.name);
+      
+      // 从模板数据中恢复编辑器状态
+      if (storeCurrentTemplate.data) {
+        console.log('[EditorPage] 从模板数据恢复编辑器状态:', storeCurrentTemplate.data);
+        loadTemplateFromData(storeCurrentTemplate.data);
+      } else {
+        // 没有数据，只设置模板名称
+        setTemplateName(storeCurrentTemplate.name);
+      }
     }
-  }, [storeCurrentTemplate, setTemplateName]);
+  }, [storeCurrentTemplate, setTemplateName, loadTemplateFromData]);
 
   // 自动保存逻辑 - 防抖
   useEffect(() => {
