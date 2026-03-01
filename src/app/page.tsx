@@ -25,22 +25,13 @@ export default function PrintPluginApp() {
   // 计算登录状态
   const isLoggedIn = !!token && !!user;
 
-  console.log('[PrintPluginApp] 渲染');
-  console.log('[PrintPluginApp] isLoggedIn:', isLoggedIn);
-  console.log('[PrintPluginApp] hasAuthorizations:', hasAuthorizations);
-  console.log('[PrintPluginApp] user:', user);
+  // 移除了频繁的 console.log，避免性能问题
 
   // 检查登录状态
   useEffect(() => {
-    console.log('[PrintPluginApp] 检查登录状态 useEffect 触发');
-    console.log('[PrintPluginApp] isLoggedIn:', isLoggedIn);
-    console.log('[PrintPluginApp] hasAuthorizations:', hasAuthorizations);
-    
     if (!isLoggedIn) {
-      console.log('[PrintPluginApp] 未登录，跳转到登录页面');
       router.push('/login');
     } else if (!hasAuthorizations) {
-      console.log('[PrintPluginApp] 已登录但未绑定授权码，跳转到绑定页面');
       router.push('/bind-auth');
     }
   }, [isLoggedIn, hasAuthorizations, router]);
@@ -54,7 +45,6 @@ export default function PrintPluginApp() {
     // 清理旧的 localStorage 模板数据（已改为数据库存储）
     try {
       localStorage.removeItem('template-storage');
-      console.log('[PrintPluginApp] 已清理本地模板缓存');
     } catch {
       // 忽略清理错误
     }
@@ -86,7 +76,6 @@ export default function PrintPluginApp() {
 
   // 处理创建新排版
   const handleCreateNew = async () => {
-    console.log('[PrintPluginApp] 创建新模板');
     try {
       // 先创建一个空模板到数据库
       const newTemplate = await saveTemplate({
@@ -95,7 +84,6 @@ export default function PrintPluginApp() {
         data: {},
         isPublic: false,
       });
-      console.log('[PrintPluginApp] 新模板已创建:', newTemplate);
       setCurrentTemplate(newTemplate);
       setTemplateName(newTemplate.name);
       setView('editor');
@@ -113,13 +101,11 @@ export default function PrintPluginApp() {
 
   // 处理选择用户模板（进入预览）
   const handleSelectUserTemplate = () => {
-    console.log('[PrintPluginApp] 选择用户模板进入预览');
     setView('preview');
   };
 
   // 处理从预览进入编辑
   const handleEditTemplate = (template: any) => {
-    console.log('[PrintPluginApp] 从预览进入编辑，模板:', template.id);
     setCurrentTemplate(template);
     setTemplateName(template.name);
     setView('editor');
@@ -132,14 +118,12 @@ export default function PrintPluginApp() {
 
   // 处理退出登录
   const handleLogout = () => {
-    console.log('[PrintPluginApp] 退出登录');
     logout();
     router.push('/login');
   };
 
   // 处理删除账号
   const handleDeleteAccount = async () => {
-    console.log('[PrintPluginApp] 删除账号');
     try {
       const response = await fetch('/api/user/account', {
         method: 'DELETE',
@@ -151,7 +135,6 @@ export default function PrintPluginApp() {
       const result = await response.json();
 
       if (result.success) {
-        console.log('[PrintPluginApp] 账号已删除');
         // 清除本地登录状态
         logout();
         // 跳转到登录页面
@@ -168,7 +151,6 @@ export default function PrintPluginApp() {
 
   // 如果未登录或未绑定授权码，显示加载状态
   if (!isLoggedIn || !hasAuthorizations) {
-    console.log('[PrintPluginApp] 状态不满足，显示加载状态');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="text-center">
@@ -178,9 +160,6 @@ export default function PrintPluginApp() {
       </div>
     );
   }
-
-  console.log('[PrintPluginApp] 显示主应用');
-  console.log('[PrintPluginApp] 当前视图:', view);
 
   return (
     <div className="min-h-screen">

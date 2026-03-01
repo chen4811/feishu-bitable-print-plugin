@@ -225,9 +225,14 @@ export function EditorPage({ onExit }: EditorPageProps) {
         // 没有数据，只设置模板名称
         setTemplateName(storeCurrentTemplate.name);
       }
+    }
+  }, [storeCurrentTemplate, loadTemplateFromData, setTemplateName]);
 
+  // 记录初始编辑状态 - 只在模板加载完成后执行一次
+  useEffect(() => {
+    if (storeCurrentTemplate && !initialEditorState) {
       // 延迟记录初始状态，等待编辑器完全加载
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         const initialState = JSON.stringify({
           templateName,
           pageConfig,
@@ -237,11 +242,13 @@ export function EditorPage({ onExit }: EditorPageProps) {
         console.log('[EditorPage] 记录初始编辑状态');
         setInitialEditorState(initialState);
         setHasUnsavedChanges(false);
-      }, 500);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
     }
-  }, [storeCurrentTemplate]); // 不依赖其他状态，避免重复触发
+  }, [storeCurrentTemplate, initialEditorState]); // 只依赖 storeCurrentTemplate 和 initialEditorState
 
-  // 检测是否有未保存的修改
+  // 检测是否有未保存的修改 - 移除 initialEditorState 依赖，避免循环
   useEffect(() => {
     if (!initialEditorState) return;
 
@@ -253,33 +260,20 @@ export function EditorPage({ onExit }: EditorPageProps) {
     });
 
     const hasChanges = currentState !== initialEditorState;
-    console.log('[EditorPage] 检测编辑状态变化:', { hasChanges });
-    setHasUnsavedChanges(hasChanges);
-  }, [templateName, pageConfig, styleConfig, components, initialEditorState]);
-
-  // 保存成功后更新初始状态
-  useEffect(() => {
-    if (lastSavedAt && initialEditorState) {
-      const currentState = JSON.stringify({
-        templateName,
-        pageConfig,
-        styleConfig,
-        components,
-      });
-      console.log('[EditorPage] 保存成功，更新初始状态');
-      setInitialEditorState(currentState);
-      setHasUnsavedChanges(false);
+    // 只在真正有变化时才更新状态，避免频繁日志
+    if (hasChanges !== hasUnsavedChanges) {
+      console.log('[EditorPage] 检测编辑状态变化:', { hasChanges });
+      setHasUnsavedChanges(hasChanges);
     }
-  }, [lastSavedAt]);
+  }, [templateName, pageConfig, styleConfig, components]); // 移除 initialEditorState 依赖
 
-  // 自动保存逻辑 - 防抖
+  // 自动保存逻辑 - 防抖，只在有未保存修改时触发
   useEffect(() => {
-    if (!currentTemplate?.id) {
-      console.log('[EditorPage] 没有当前模板，跳过自动保存');
-      return; // 没有模板，不自动保存
+    if (!currentTemplate?.id || !hasUnsavedChanges) {
+      return; // 没有模板或没有修改，不自动保存
     }
 
-    console.log('[EditorPage] 编辑器内容变化，计划自动保存', { 
+    console.log('[EditorPage] 检测到未保存修改，计划自动保存', { 
       templateId: currentTemplate.id,
       templateName,
       componentsCount: components.length 
@@ -290,7 +284,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
       clearTimeout(saveTimeoutRef.current);
     }
 
-    // 设置新的防抖定时器（2秒后保存）
+    // 设置新的防抖定时器（3秒后保存，增加间隔减少频繁保存）
     saveTimeoutRef.current = setTimeout(async () => {
       try {
         setIsSaving(true);
@@ -306,17 +300,25 @@ export function EditorPage({ onExit }: EditorPageProps) {
           historyIndex,
         };
         
-        console.log('[EditorPage] 准备保存的数据:', editorData);
-        
         // 使用 updateTemplate 更新现有模板
         const updatedTemplate = await updateTemplate(currentTemplate.id, {
           name: templateName,
           data: editorData,
         });
-        // 强制触发状态更新
+        
+        // 保存成功后直接更新初始状态，避免额外的 useEffect
+        const currentState = JSON.stringify({
+          templateName,
+          pageConfig,
+          styleConfig,
+          components,
+        });
+        setInitialEditorState(currentState);
+        setHasUnsavedChanges(false);
+        
         const now = new Date();
         setLastSavedAt(now);
-        console.log('[EditorPage] 自动保存成功:', updatedTemplate, now);
+        console.log('[EditorPage] 自动保存成功:', now);
       } catch (error) {
         console.error('[EditorPage] 自动保存失败:', error);
         // 如果保存失败，尝试降级保存到 localStorage
@@ -337,7 +339,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
       } finally {
         setIsSaving(false);
       }
-    }, 2000);
+    }, 3000); // 增加到3秒
 
     // 清理函数
     return () => {
@@ -347,13 +349,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
     };
   }, [
     currentTemplate,
-    templateName,
-    pageConfig,
-    styleConfig,
-    components,
-    history,
-    historyIndex,
-    updateTemplate,
+    hasUnsavedChanges, // 只依赖 hasUnsavedChanges，避免频繁触发
   ]);
 
   // 获取当前正在编辑的表格

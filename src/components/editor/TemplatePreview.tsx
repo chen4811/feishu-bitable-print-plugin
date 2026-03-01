@@ -23,7 +23,6 @@ interface TemplatePreviewProps {
 
 // 检测模板中的变量
 const extractVariables = (components: any[]): string[] => {
-  console.log('[extractVariables] 开始提取变量，组件数量:', components?.length);
   const variables: string[] = [];
 
   const traverse = (comp: any, depth: number = 0) => {
@@ -37,7 +36,6 @@ const extractVariables = (components: any[]): string[] => {
           const varName = match.slice(1, -1);
           if (!variables.includes(varName)) {
             variables.push(varName);
-            console.log(`[extractVariables] 发现变量: [${varName}]`);
           }
         });
       }
@@ -51,7 +49,6 @@ const extractVariables = (components: any[]): string[] => {
           const varName = match.slice(1, -1);
           if (!variables.includes(varName)) {
             variables.push(varName);
-            console.log(`[extractVariables] 发现变量: [${varName}]`);
           }
         });
       }
@@ -64,7 +61,6 @@ const extractVariables = (components: any[]): string[] => {
   };
 
   components.forEach((comp, idx) => traverse(comp, 0));
-  console.log('[extractVariables] 提取完成，变量列表:', variables);
   return variables;
 };
 
@@ -160,7 +156,6 @@ const renderTableComponent = (component: any, data: Record<string, any>): React.
 // 渲染单个组件（带变量替换）
 const renderComponent = (component: any, data: Record<string, any>): React.ReactNode => {
   if (!component) {
-    console.log('[renderComponent] 组件为空');
     return null;
   }
 
@@ -173,11 +168,8 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
     children = [],
   } = component;
 
-  console.log(`[renderComponent] 渲染组件: id=${id}, type=${type}`);
-
   // 表格组件特殊处理
   if (type === 'table') {
-    console.log('[renderComponent] 渲染表格组件:', component);
     return renderTableComponent(component, data);
   }
 
@@ -286,8 +278,6 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
 };
 
 export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePreviewProps) {
-  console.log('[TemplatePreview] 组件渲染，props:', { baseId, tableId });
-
   const { templates, fetchTemplates, setCurrentTemplate } = useTemplateStore();
   const {
     records: storeRecords,
@@ -312,23 +302,17 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
   // 加载模板列表
   useEffect(() => {
-    console.log('[TemplatePreview] useEffect - 加载模板列表');
-    fetchTemplates().then(() => {
-      console.log('[TemplatePreview] 模板列表加载完成，数量:', templates.length);
-    }).catch(err => {
+    fetchTemplates().catch(err => {
       console.error('[TemplatePreview] 加载模板列表失败:', err);
     });
   }, [fetchTemplates]);
 
   // 初始化：设置飞书环境状态
   useEffect(() => {
-    console.log('[TemplatePreview] ======== 组件初始化 ========');
-    console.log('[TemplatePreview] 飞书环境状态:', isFeishuEnvironment);
     setIsFromFeishu(isFeishuEnvironment);
     
     // 主动获取一次记录（默认获取第一条
     if (isFeishuEnvironment) {
-      console.log('[TemplatePreview] 初始化时主动获取第一条记录...');
       fetchSelectedRecordsFromEnv();
     }
   }, [isFeishuEnvironment, setIsFromFeishu]);
@@ -336,9 +320,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   // 从 feishu-env 获取选中记录
   const fetchSelectedRecordsFromEnv = useCallback(async () => {
     try {
-      console.log('[TemplatePreview] 调用 feishuEnv.getSelectedRecords()...');
       const selRecords = await feishuEnv.getSelectedRecords();
-      console.log('[TemplatePreview] 获取到选中记录:', selRecords);
       
       if (selRecords.length > 0) {
         // 转换格式
@@ -348,7 +330,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           _rowIndex: index,
         }));
 
-        console.log('[TemplatePreview] 格式化后的记录:', formattedRecords);
         setRecords(formattedRecords);
         setCurrentIndex(0);
         
@@ -364,21 +345,11 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   // 注册复选框勾选监听（使用 feishu-env）
   useEffect(() => {
     if (!isFeishuEnvironment) {
-      console.log('[TemplatePreview] 不在飞书环境，跳过注册');
       return;
     }
 
-    console.log('[TemplatePreview] ======== 注册飞书复选框勾选监听 ========');
-
     // 监听器: 复选框勾选（打印预览模式只监听复选框
     const unsubscribe = feishuEnv.onRecordSelectChange(async (event) => {
-      console.log('[TemplatePreview] ======== 收到复选框勾选事件 ========');
-      console.log('[TemplatePreview] 完整事件:', event);
-      console.log('[TemplatePreview] event.data:', event?.data);
-      console.log('[TemplatePreview] event.data.recordIds:', event?.data?.recordIds);
-      console.log('[TemplatePreview] event.data.tableId:', event?.data?.tableId);
-      console.log('[TemplatePreview] event.data.isSelectAll:', event?.data?.isSelectAll);
-
       if (showDebugInfo) {
         setDebugInfo(`复选框勾选事件: ${JSON.stringify(event, null, 2)}`);
       }
@@ -386,9 +357,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       const { tableId, recordIds } = event.data;
       
       if (recordIds.length > 0) {
-        console.log('[TemplatePreview] 准备调用 getRecordsByCheckboxIds()...');
         const records = await feishuEnv.getRecordsByCheckboxIds(tableId, recordIds);
-        console.log('[TemplatePreview] 获取到复选框选中记录:', records);
         
         if (records.length > 0) {
           // 转换格式（与 fetchSelectedRecordsFromEnv 中同样的逻辑
@@ -398,7 +367,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
             _rowIndex: index,
           }));
           
-          console.log('[TemplatePreview] 格式化后的记录:', formattedRecords);
           setRecords(formattedRecords);
           setCurrentIndex(0);
           
@@ -407,15 +375,10 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           }
         }
       } else {
-        console.log('[TemplatePreview] 没有勾选的记录，清空');
         setRecords([]);
         setCurrentIndex(0);
       }
-      
-      console.log('[TemplatePreview] ===========================================');
     });
-
-    console.log('[TemplatePreview] ======== 监听注册完成 ========');
     
     // 返回清理函数
     return unsubscribe;
@@ -423,14 +386,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
   // 处理模板选择
   const handleSelectTemplate = useCallback((template: Template) => {
-    console.log('[TemplatePreview] 选择模板，模板详情:', {
-      id: template.id,
-      name: template.name,
-      hasData: !!template.data,
-      dataKeys: template.data ? Object.keys(template.data) : [],
-      data: template.data,
-      componentsCount: template.data?.components?.length || 0,
-    });
     setSelectedTemplate(template);
     
     // 详细的调试信息
@@ -451,23 +406,19 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       toast.error('请先选择一个模板');
       return;
     }
-    console.log('[TemplatePreview] 编辑模板:', selectedTemplate.id);
     setCurrentTemplate(selectedTemplate);
     onEditTemplate?.(selectedTemplate);
   }, [selectedTemplate, setCurrentTemplate, onEditTemplate]);
 
   // 获取当前选中的模板
   const currentRecord = getCurrentRecord();
-  console.log('[TemplatePreview] 当前记录:', currentRecord);
 
   // 使用 storeRecords 作为主要的 records 变量
   const records = storeRecords;
 
   // 提取模板中的变量
   const templateVariables = useMemo(() => {
-    console.log('[TemplatePreview] 计算模板变量，selectedTemplate:', selectedTemplate?.id);
     if (!selectedTemplate || !selectedTemplate.data?.components) {
-      console.log('[TemplatePreview] 没有模板数据或组件');
       return [];
     }
     return extractVariables(selectedTemplate.data.components);
@@ -491,7 +442,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
   // 处理打印
   const handlePrint = useCallback(() => {
-    console.log('[TemplatePreview] 打印当前页');
     if (!selectedTemplate) {
       toast.error('请先选择一个模板');
       return;
@@ -507,7 +457,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
   // 处理批量打印（所有记录）
   const handleBatchPrint = useCallback(() => {
-    console.log('[TemplatePreview] 批量打印，记录数:', records.length);
     if (!selectedTemplate) {
       toast.error('请先选择一个模板');
       return;
@@ -527,7 +476,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
     // 生成批量打印内容
     const printContent = records.map((record: any, index: number) => {
-      console.log(`[TemplatePreview] 生成打印页 ${index + 1}/${records.length}`);
       return `
       <div class="print-page" style="
         width: 210mm;
@@ -596,14 +544,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
     toast.success(`已打开批量打印窗口，共 ${records.length} 条记录`);
   }, [selectedTemplate, records]);
-
-  console.log('[TemplatePreview] 渲染，状态:', {
-    templatesCount: templates.length,
-    selectedTemplateId: selectedTemplate?.id,
-    recordsCount: records.length,
-    currentIndex,
-    isFromFeishu,
-  });
 
   return (
     <div className="flex h-full gap-4 p-4">
@@ -780,20 +720,11 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                 }}
               >
                 {(() => {
-                  console.log('[TemplatePreview] 渲染预览', {
-                    hasTemplate: !!selectedTemplate,
-                    hasData: !!selectedTemplate.data,
-                    hasComponents: selectedTemplate.data?.components?.length || 0,
-                    hasRecords: records.length > 0,
-                    hasCurrentRecord: !!currentRecord
-                  });
-
                   // 有组件时，显示它们
                   if (selectedTemplate.data?.components?.length > 0) {
                     // 如果有数据，替换变量；否则原样显示
                     const dataToUse = records.length > 0 && currentRecord ? currentRecord : {};
                     return selectedTemplate.data.components.map((component: any, idx: number) => {
-                      console.log(`[TemplatePreview] 渲染组件 ${idx}:`, component.id, component.type);
                       return renderComponent(component, dataToUse);
                     });
                   }

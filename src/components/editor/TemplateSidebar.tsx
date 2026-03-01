@@ -184,9 +184,7 @@ export function TemplateSidebar({ onSelectTemplate, onCreateNew, onLogout, onDel
   const [showDeleteTemplateDialog, setShowDeleteTemplateDialog] = useState(false);
   const [isDeletingTemplate, setIsDeletingTemplate] = useState(false);
 
-  console.log('[TemplateSidebar] 渲染');
-  console.log('[TemplateSidebar] templates:', templates?.map(t => ({ id: t.id, name: t.name, user_id: t.userId })));
-  console.log('[TemplateSidebar] currentTemplate:', currentTemplate ? { id: currentTemplate.id, name: currentTemplate.name } : null);
+  // 移除了频繁的 console.log，避免性能问题
 
   // 过滤模板
   const filteredTemplates = templates.filter((template) => {
