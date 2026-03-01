@@ -378,14 +378,15 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
     console.log('[TemplatePreview] ======== 注册飞书选中变化监听 ========');
 
-    const unsubscribe = feishuEnv.onSelectionChange(async (event) => {
-      console.log('[TemplatePreview] ======== 收到选中变化事件 ========');
+    // 监听器1: 点击行选择
+    const unsubscribe1 = feishuEnv.onSelectionChange(async (event) => {
+      console.log('[TemplatePreview] ======== 收到点击行选中事件 ========');
       console.log('[TemplatePreview] 完整事件:', event);
       console.log('[TemplatePreview] event.data:', event?.data);
       console.log('[TemplatePreview] event.data.recordId:', event?.data?.recordId);
 
       if (showDebugInfo) {
-        setDebugInfo(`选中事件: ${JSON.stringify(event, null, 2)}`);
+        setDebugInfo(`点击行选中事件: ${JSON.stringify(event, null, 2)}`);
       }
 
       console.log('[TemplatePreview] 准备调用 fetchSelectedRecordsFromEnv()...');
@@ -394,8 +395,58 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       console.log('[TemplatePreview] ===========================================');
     });
 
+    // 监听器2: 复选框勾选
+    const unsubscribe2 = feishuEnv.onRecordSelectChange(async (event) => {
+      console.log('[TemplatePreview] ======== 收到复选框勾选事件 ========');
+      console.log('[TemplatePreview] 完整事件:', event);
+      console.log('[TemplatePreview] event.data:', event?.data);
+      console.log('[TemplatePreview] event.data.recordIds:', event?.data?.recordIds);
+      console.log('[TemplatePreview] event.data.tableId:', event?.data?.tableId);
+      console.log('[TemplatePreview] event.data.isSelectAll:', event?.data?.isSelectAll);
+
+      if (showDebugInfo) {
+        setDebugInfo(`复选框勾选事件: ${JSON.stringify(event, null, 2)}`);
+      }
+
+      const { tableId, recordIds } = event.data;
+      
+      if (recordIds.length > 0) {
+        console.log('[TemplatePreview] 准备调用 getRecordsByCheckboxIds()...');
+        const records = await feishuEnv.getRecordsByCheckboxIds(tableId, recordIds);
+        console.log('[TemplatePreview] 获取到复选框选中记录:', records);
+        
+        if (records.length > 0) {
+          // 转换格式（与 fetchSelectedRecordsFromEnv 中同样的逻辑
+          const formattedRecords = records.map((record, index) => ({
+            id: record.id,
+            ...record.fields,
+            _rowIndex: index,
+          }));
+          
+          console.log('[TemplatePreview] 格式化后的记录:', formattedRecords);
+          setRecords(formattedRecords);
+          setCurrentIndex(0);
+          
+          if (showDebugInfo) {
+            setDebugInfo(prev => prev + `\n\n格式化记录: ${JSON.stringify(formattedRecords, null, 2)}`);
+          }
+        }
+      } else {
+        console.log('[TemplatePreview] 没有勾选的记录，清空');
+        setRecords([]);
+        setCurrentIndex(0);
+      }
+      
+      console.log('[TemplatePreview] ===========================================');
+    });
+
     console.log('[TemplatePreview] ======== 监听注册完成 ========');
-    return unsubscribe;
+    
+    // 返回清理函数
+    return () => {
+      unsubscribe1();
+      unsubscribe2();
+    };
   }, [isListening, isFeishuEnvironment, fetchSelectedRecordsFromEnv, showDebugInfo]);
 
   // 处理模板选择

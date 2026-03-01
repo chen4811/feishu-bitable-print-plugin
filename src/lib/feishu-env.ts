@@ -147,7 +147,75 @@ export function offNotFeishu(callback: () => void): void {
 }
 
 // ============================================
-// 新增：选中变化监听
+// 新增：复选框勾选变化监听
+// ============================================
+
+type RecordSelectChangeEvent = {
+  data: {
+    tableId: string;
+    recordIds: string[];
+    isSelectAll: boolean;
+  };
+};
+
+const onRecordSelectChangeCallbacks = new Set<(event: RecordSelectChangeEvent) => void>();
+let recordSelectUnsubscribe: (() => void) | null = null;
+
+export function onRecordSelectChange(callback: (event: RecordSelectChangeEvent) => void): () => void {
+  debugLog('注册复选框勾选变化监听器');
+  onRecordSelectChangeCallbacks.add(callback);
+  
+  // 如果还没设置监听器，现在设置
+  if (!recordSelectUnsubscribe && envStatus === 'ready') {
+    setupRecordSelectListener();
+  }
+  
+  return () => {
+    debugLog('移除复选框勾选变化监听器');
+    onRecordSelectChangeCallbacks.delete(callback);
+  };
+}
+
+function setupRecordSelectListener() {
+  if (recordSelectUnsubscribe) {
+    debugLog('复选框勾选监听器已存在，跳过');
+    return;
+  }
+  
+  try {
+    debugLog('======== 设置复选框勾选变化监听器 ========');
+    
+    // 检查 bitable.ui 是否存在
+    if ((bitable as any).ui && typeof (bitable as any).ui.onRecordSelectChange === 'function') {
+      recordSelectUnsubscribe = (bitable as any).ui.onRecordSelectChange((event: RecordSelectChangeEvent) => {
+        debugLog('✅ 复选框勾选事件触发!');
+        debugLog('事件数据:', event);
+        debugLog('选中记录 IDs:', event.data.recordIds);
+        debugLog('是否全选:', event.data.isSelectAll);
+        debugLog('表格 ID:', event.data.tableId);
+        
+        // 通知所有注册的回调
+        onRecordSelectChangeCallbacks.forEach(cb => {
+          try {
+            cb(event);
+          } catch (e) {
+            console.error('[FeishuEnv] 复选框勾选回调执行失败:', e);
+          }
+        });
+      });
+      
+      debugLog('✅ 复选框勾选监听器设置成功');
+    } else {
+      debugLog('⚠️  bitable.ui.onRecordSelectChange 不可用');
+      debugLog('bitable.ui:', (bitable as any).ui);
+    }
+  } catch (error) {
+    debugLog('❌ 设置复选框勾选监听器失败:', error);
+  }
+}
+
+// ============================================
+// 新增：选中变化监听（点击行）
 // ============================================
 
 export function onSelectionChange(callback: (event: SelectionChangeEvent) => void): () => void {
@@ -165,6 +233,34 @@ export function onSelectionChange(callback: (event: SelectionChangeEvent) => voi
   };
 }
 
+// 新增：探索所有可用事件
+function exploreAllEvents() {
+  debugLog('======== 探索飞书 SDK 所有可用事件 ========');
+  
+  try {
+    // 探索 bitable.base
+    if (bitable.base) {
+      debugLog('bitable.base 可用方法:', Object.keys(bitable.base));
+      
+      // 查找所有 on 开头的方法
+      const allMethods = Object.keys(bitable.base);
+      const eventMethods = allMethods.filter(key => key.startsWith('on'));
+      debugLog('bitable.base 事件方法:', eventMethods);
+    }
+    
+    // 探索 bitable
+    if (bitable) {
+      debugLog('bitable 可用方法:', Object.keys(bitable));
+      
+      const allMethods = Object.keys(bitable);
+      const eventMethods = allMethods.filter(key => key.startsWith('on'));
+      debugLog('bitable 事件方法:', eventMethods);
+    }
+  } catch (e) {
+    debugLog('探索事件失败:', e);
+  }
+}
+
 function setupSelectionListener() {
   if (selectionUnsubscribe) {
     debugLog('选中监听器已存在，跳过');
@@ -173,6 +269,9 @@ function setupSelectionListener() {
   
   try {
     debugLog('======== 设置选中变化监听器 ========');
+    
+    // 先探索所有可用事件
+    exploreAllEvents();
     
     if (typeof (bitable.base as any).onSelectionChange === 'function') {
       selectionUnsubscribe = (bitable.base as any).onSelectionChange((event: SelectionChangeEvent) => {
@@ -256,8 +355,9 @@ export async function initFeishuEnv(): Promise<boolean> {
       envStatus = 'ready';
       debugLog('✅ SDK 初始化成功，飞书环境已就绪');
       
-      // 立即设置选中监听器
-      setupSelectionListener();
+      // 立即设置两种监听器
+      setupSelectionListener();      // 点击行选择
+      setupRecordSelectListener();   // 复选框勾选
       
       onReadyCallbacks.forEach(cb => cb());
       return true;
@@ -408,6 +508,115 @@ export async function fetchRecords(): Promise<Array<{
 // 新增：获取选中记录（方案A实现）
 // ============================================
 
+// ============================================
+// 新增：通过复选框勾选的记录 IDs 获取数据
+// ============================================
+
+export async function getRecordsByCheckboxIds(tableId: string, recordIds: string[]): Promise<BitableRecord[]> {
+  debugLog('======== getRecordsByCheckboxIds() 开始 ========');
+  debugLog('tableId:', tableId);
+  debugLog('recordIds:', recordIds);
+  
+  if (envStatus !== 'ready') {
+    debugLog('环境未就绪，返回空数组');
+    return [];
+  }
+
+  if (!tableId || !Array.isArray(recordIds) || recordIds.length === 0) {
+    debugLog('参数无效，返回空数组');
+    return [];
+  }
+
+  try {
+    debugLog('第一步：通过 tableId 获取表格...');
+    let table: any = null;
+    
+    if (typeof base.getTableById === 'function') {
+      debugLog('使用 base.getTableById()');
+      table = await base.getTableById(tableId);
+    } else {
+      debugLog('回退到 base.getTable()');
+      table = await base.getTable(tableId);
+    }
+    
+    if (!table) {
+      debugLog('❌ 无法获取表格实例');
+      return [];
+    }
+    
+    debugLog('✅ 表格获取成功');
+    
+    // 第二步：获取字段元信息（只获取一次）
+    debugLog('第二步：获取字段元信息...');
+    let fieldMetaList: any[] = [];
+    
+    if (typeof table.getFieldMetaList === 'function') {
+      fieldMetaList = await table.getFieldMetaList();
+    } else if (typeof table.getFieldList === 'function') {
+      fieldMetaList = await table.getFieldList();
+    }
+    
+    // 第三步：批量获取记录
+    debugLog('第三步：批量获取记录...');
+    let recordsData: any[] = [];
+    
+    // 尝试使用 getRecordsByIds 批量获取
+    if (typeof table.getRecordsByIds === 'function') {
+      debugLog('使用 table.getRecordsByIds() 批量获取');
+      try {
+        recordsData = await table.getRecordsByIds(recordIds);
+        debugLog(`✅ 批量获取到 ${recordsData.length} 条记录`);
+      } catch (e) {
+        debugLog('⚠️  getRecordsByIds 失败，回退到逐个获取:', e);
+      }
+    }
+    
+    // 如果批量获取失败或不可用，逐个获取
+    if (recordsData.length === 0) {
+      debugLog('逐个获取记录...');
+      for (const recId of recordIds) {
+        try {
+          let recData: any = null;
+          if (typeof table.getRecordById === 'function') {
+            recData = await table.getRecordById(recId);
+          } else {
+            recData = await table.getRecord(recId);
+          }
+          
+          if (recData) {
+            recordsData.push(recData);
+          }
+        } catch (e) {
+          debugLog(`获取记录 ${recId} 失败:`, e);
+        }
+      }
+    }
+    
+    // 第四步：处理数据
+    debugLog('第四步：处理数据...');
+    const records: BitableRecord[] = [];
+    
+    for (const recData of recordsData) {
+      const processedRecord = processRecordData(recData, fieldMetaList);
+      records.push(processedRecord);
+    }
+    
+    debugLog(`✅ 数据处理完成，共 ${records.length} 条记录`);
+    debugLog('======== getRecordsByCheckboxIds() 结束 ========');
+    
+    return records;
+  } catch (error) {
+    debugLog('❌ getRecordsByCheckboxIds() 失败:', error);
+    debugLog('错误堆栈:', error instanceof Error ? error.stack : error);
+    debugLog('======== getRecordsByCheckboxIds() 结束 ========');
+    return [];
+  }
+}
+
+// ============================================
+// 获取选中记录（点击行选择）
+// ============================================
+
 export async function getSelectedRecords(): Promise<BitableRecord[]> {
   debugLog('======== getSelectedRecords() 开始 ========');
   
@@ -420,17 +629,7 @@ export async function getSelectedRecords(): Promise<BitableRecord[]> {
     debugLog('第一步：获取选中信息...');
     const selection = await base.getSelection();
     
-    // 打印完整的 selection 对象，包括所有字段
-    debugLog('选中信息 (完整):', JSON.stringify(selection, null, 2));
-    debugLog('选中信息 (摘要):', {
-      hasTableId: !!selection?.tableId,
-      hasRecordId: !!selection?.recordId,
-      tableId: selection?.tableId,
-      recordId: selection?.recordId,
-      baseId: selection?.baseId,
-      viewId: selection?.viewId,
-      fieldId: selection?.fieldId,
-    });
+    debugLog('选中信息:', selection);
     
     // 至少需要 tableId
     if (!selection?.tableId) {
@@ -440,85 +639,46 @@ export async function getSelectedRecords(): Promise<BitableRecord[]> {
     
     const { tableId, recordId } = selection;
     debugLog('✅ 获取到 tableId:', tableId);
-    if (recordId) {
-      debugLog('✅ 获取到 recordId:', recordId);
-    } else {
-      debugLog('⚠️  没有 recordId，将获取第一条记录');
-    }
     
     debugLog('第二步：通过 tableId 获取表格...');
     let table: any = null;
     
-    try {
-      if (typeof base.getTableById === 'function') {
-        debugLog('使用 base.getTableById()');
-        table = await base.getTableById(tableId);
-        debugLog('✅ getTableById 调用完成');
-      } else {
-        debugLog('回退到 base.getTable()');
-        table = await base.getTable(tableId);
-        debugLog('✅ getTable 调用完成');
-      }
-    } catch (tableError) {
-      debugLog('❌ 获取表格时出错:', tableError);
-      debugLog('错误详情:', JSON.stringify(tableError, null, 2));
-      return [];
+    if (typeof base.getTableById === 'function') {
+      table = await base.getTableById(tableId);
+    } else {
+      table = await base.getTable(tableId);
     }
     
     if (!table) {
-      debugLog('❌ 无法获取表格实例（返回 null）');
+      debugLog('❌ 无法获取表格实例');
       return [];
     }
     
-    debugLog('✅ 表格获取成功，table:', typeof table);
-    
     debugLog('第三步：获取记录...');
+    let targetRecordId: string | null = recordId;
+    
+    // 如果没有 recordId，获取第一条记录
+    if (!targetRecordId) {
+      debugLog('没有 recordId，获取第一条记录...');
+      const recordIdList = await table.getRecordIdList();
+      
+      if (Array.isArray(recordIdList) && recordIdList.length > 0) {
+        targetRecordId = recordIdList[0];
+        debugLog('第一条记录 ID:', targetRecordId);
+      } else {
+        debugLog('⚠️  表格没有记录');
+        return [];
+      }
+    }
+    
+    // 获取记录数据
+    debugLog('获取记录数据，recordId:', targetRecordId);
     let recordData: any = null;
     
-    try {
-      if (recordId) {
-        // 有 recordId，直接获取选中的记录
-        debugLog('有 recordId，通过 recordId 获取记录...');
-        if (typeof table.getRecordById === 'function') {
-          debugLog('使用 table.getRecordById()');
-          recordData = await table.getRecordById(recordId);
-          debugLog('✅ getRecordById 调用完成');
-        } else {
-          debugLog('回退到 table.getRecord()');
-          recordData = await table.getRecord(recordId);
-          debugLog('✅ getRecord 调用完成');
-        }
-      } else {
-        // 没有 recordId，获取第一条记录
-        debugLog('没有 recordId，获取表格第一条记录...');
-        
-        debugLog('3.1 调用 getRecordIdList...');
-        const recordIdList = await table.getRecordIdList();
-        debugLog('3.2 getRecordIdList 返回:', recordIdList);
-        debugLog('获取到记录 ID 列表，长度:', recordIdList?.length);
-        
-        if (Array.isArray(recordIdList) && recordIdList.length > 0) {
-          const firstRecordId = recordIdList[0];
-          debugLog('第一条记录 ID:', firstRecordId);
-          
-          if (typeof table.getRecordById === 'function') {
-            debugLog('3.3 调用 getRecordById...');
-            recordData = await table.getRecordById(firstRecordId);
-            debugLog('✅ getRecordById 调用完成');
-          } else {
-            debugLog('3.3 调用 getRecord...');
-            recordData = await table.getRecord(firstRecordId);
-            debugLog('✅ getRecord 调用完成');
-          }
-          debugLog('✅ 成功获取第一条记录');
-        } else {
-          debugLog('⚠️  表格没有记录');
-        }
-      }
-    } catch (recordError) {
-      debugLog('❌ 获取记录时出错:', recordError);
-      debugLog('错误详情:', JSON.stringify(recordError, null, 2));
-      return [];
+    if (typeof table.getRecordById === 'function') {
+      recordData = await table.getRecordById(targetRecordId);
+    } else {
+      recordData = await table.getRecord(targetRecordId);
     }
     
     if (!recordData) {
@@ -530,16 +690,14 @@ export async function getSelectedRecords(): Promise<BitableRecord[]> {
     let fieldMetaList: any[] = [];
     
     if (typeof table.getFieldMetaList === 'function') {
-      debugLog('使用 table.getFieldMetaList()');
       fieldMetaList = await table.getFieldMetaList();
     } else if (typeof table.getFieldList === 'function') {
-      debugLog('回退到 getFieldList()');
       fieldMetaList = await table.getFieldList();
     }
     
     debugLog('第五步：处理数据...');
     const result = processRecordData(recordData, fieldMetaList);
-    debugLog('✅ 数据处理完成:', result);
+    debugLog('✅ 数据处理完成');
     debugLog('======== getSelectedRecords() 结束 ========');
     
     return [result];
@@ -763,9 +921,12 @@ export const feishuEnv = {
   fetchFirstRecord,
   initFeishuContext,
   getDebugInfo,
-  // 新增
+  // 选中变化（点击行）
   onSelectionChange,
   getSelectedRecords,
+  // 复选框勾选
+  onRecordSelectChange,
+  getRecordsByCheckboxIds,
 };
 
 export default feishuEnv;
