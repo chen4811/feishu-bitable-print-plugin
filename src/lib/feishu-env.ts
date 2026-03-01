@@ -449,55 +449,76 @@ export async function getSelectedRecords(): Promise<BitableRecord[]> {
     debugLog('第二步：通过 tableId 获取表格...');
     let table: any = null;
     
-    if (typeof base.getTableById === 'function') {
-      debugLog('使用 base.getTableById()');
-      table = await base.getTableById(tableId);
-    } else {
-      debugLog('回退到 base.getTable()');
-      table = await base.getTable(tableId);
+    try {
+      if (typeof base.getTableById === 'function') {
+        debugLog('使用 base.getTableById()');
+        table = await base.getTableById(tableId);
+        debugLog('✅ getTableById 调用完成');
+      } else {
+        debugLog('回退到 base.getTable()');
+        table = await base.getTable(tableId);
+        debugLog('✅ getTable 调用完成');
+      }
+    } catch (tableError) {
+      debugLog('❌ 获取表格时出错:', tableError);
+      debugLog('错误详情:', JSON.stringify(tableError, null, 2));
+      return [];
     }
     
     if (!table) {
-      debugLog('❌ 无法获取表格实例');
+      debugLog('❌ 无法获取表格实例（返回 null）');
       return [];
     }
+    
+    debugLog('✅ 表格获取成功，table:', typeof table);
     
     debugLog('第三步：获取记录...');
     let recordData: any = null;
     
-    if (recordId) {
-      // 有 recordId，直接获取选中的记录
-      debugLog('有 recordId，通过 recordId 获取记录...');
-      if (typeof table.getRecordById === 'function') {
-        debugLog('使用 table.getRecordById()');
-        recordData = await table.getRecordById(recordId);
+    try {
+      if (recordId) {
+        // 有 recordId，直接获取选中的记录
+        debugLog('有 recordId，通过 recordId 获取记录...');
+        if (typeof table.getRecordById === 'function') {
+          debugLog('使用 table.getRecordById()');
+          recordData = await table.getRecordById(recordId);
+          debugLog('✅ getRecordById 调用完成');
+        } else {
+          debugLog('回退到 table.getRecord()');
+          recordData = await table.getRecord(recordId);
+          debugLog('✅ getRecord 调用完成');
+        }
       } else {
-        debugLog('回退到 table.getRecord()');
-        recordData = await table.getRecord(recordId);
-      }
-    } else {
-      // 没有 recordId，获取第一条记录
-      debugLog('没有 recordId，获取表格第一条记录...');
-      try {
+        // 没有 recordId，获取第一条记录
+        debugLog('没有 recordId，获取表格第一条记录...');
+        
+        debugLog('3.1 调用 getRecordIdList...');
         const recordIdList = await table.getRecordIdList();
-        debugLog('获取到记录 ID 列表:', recordIdList?.length);
+        debugLog('3.2 getRecordIdList 返回:', recordIdList);
+        debugLog('获取到记录 ID 列表，长度:', recordIdList?.length);
         
         if (Array.isArray(recordIdList) && recordIdList.length > 0) {
           const firstRecordId = recordIdList[0];
           debugLog('第一条记录 ID:', firstRecordId);
           
           if (typeof table.getRecordById === 'function') {
+            debugLog('3.3 调用 getRecordById...');
             recordData = await table.getRecordById(firstRecordId);
+            debugLog('✅ getRecordById 调用完成');
           } else {
+            debugLog('3.3 调用 getRecord...');
             recordData = await table.getRecord(firstRecordId);
+            debugLog('✅ getRecord 调用完成');
           }
           debugLog('✅ 成功获取第一条记录');
         } else {
           debugLog('⚠️  表格没有记录');
         }
-      } catch (e) {
-        debugLog('⚠️  获取第一条记录失败:', e);
       }
+    } catch (recordError) {
+      debugLog('❌ 获取记录时出错:', recordError);
+      debugLog('错误详情:', JSON.stringify(recordError, null, 2));
+      return [];
     }
     
     if (!recordData) {
