@@ -159,10 +159,15 @@ export function EditorPage({ onExit }: EditorPageProps) {
   // 自动保存逻辑 - 防抖
   useEffect(() => {
     if (!currentTemplate?.id) {
+      console.log('[EditorPage] 没有当前模板，跳过自动保存');
       return; // 没有模板，不自动保存
     }
 
-    console.log('[EditorPage] 编辑器内容变化，计划自动保存');
+    console.log('[EditorPage] 编辑器内容变化，计划自动保存', { 
+      templateId: currentTemplate.id,
+      templateName,
+      componentsCount: components.length 
+    });
     
     // 清除之前的定时器
     if (saveTimeoutRef.current) {
@@ -185,15 +190,32 @@ export function EditorPage({ onExit }: EditorPageProps) {
           historyIndex,
         };
         
+        console.log('[EditorPage] 准备保存的数据:', editorData);
+        
         // 使用 updateTemplate 更新现有模板
-        await updateTemplate(currentTemplate.id, {
+        const updatedTemplate = await updateTemplate(currentTemplate.id, {
           name: templateName,
           data: editorData,
         });
         setLastSavedAt(new Date());
-        console.log('[EditorPage] 自动保存成功');
+        console.log('[EditorPage] 自动保存成功:', updatedTemplate);
       } catch (error) {
         console.error('[EditorPage] 自动保存失败:', error);
+        // 如果保存失败，尝试降级保存到 localStorage
+        try {
+          const editorData = {
+            templateName,
+            pageConfig,
+            styleConfig,
+            components,
+            history,
+            historyIndex,
+          };
+          localStorage.setItem(`draft_template_${currentTemplate.id}`, JSON.stringify(editorData));
+          console.log('[EditorPage] 已保存到本地草稿');
+        } catch (localError) {
+          console.error('[EditorPage] 本地草稿保存也失败:', localError);
+        }
       } finally {
         setIsSaving(false);
       }

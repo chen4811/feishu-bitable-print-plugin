@@ -20,7 +20,7 @@ export default function PrintPluginApp() {
   const [view, setView] = useState<AppView>('home');
   const { setFields, setSystemFields, setTemplateName } = useEditorStore();
   const { user, token, hasAuthorizations, logout } = useUserStore();
-  const { fetchTemplates, setCurrentTemplate } = useTemplateStore();
+  const { fetchTemplates, setCurrentTemplate, saveTemplate } = useTemplateStore();
 
   // 计算登录状态
   const isLoggedIn = !!token && !!user;
@@ -85,8 +85,24 @@ export default function PrintPluginApp() {
   }, [setFields, setSystemFields, isLoggedIn, hasAuthorizations, fetchTemplates]);
 
   // 处理创建新排版
-  const handleCreateNew = () => {
-    setView('editor');
+  const handleCreateNew = async () => {
+    console.log('[PrintPluginApp] 创建新模板');
+    try {
+      // 先创建一个空模板到数据库
+      const newTemplate = await saveTemplate({
+        name: '未命名排版',
+        description: '',
+        data: {},
+        isPublic: false,
+      });
+      console.log('[PrintPluginApp] 新模板已创建:', newTemplate);
+      setCurrentTemplate(newTemplate);
+      setTemplateName(newTemplate.name);
+      setView('editor');
+    } catch (error) {
+      console.error('[PrintPluginApp] 创建新模板失败:', error);
+      alert('创建模板失败，请重试');
+    }
   };
 
   // 处理选择预设模板
