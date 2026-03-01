@@ -28,18 +28,10 @@ export async function GET(request: NextRequest) {
 
     const client = getSupabaseClient();
 
-    // 查询所有模板，并关联用户信息
+    // 查询所有模板
     const { data: templates, error } = await client
       .from('templates')
-      .select(`
-        *,
-        users:user_id (
-          id,
-          name,
-          feishu_user_id,
-          avatar
-        )
-      `)
+      .select('*')
       .order('updated_at', { ascending: false });
 
     if (error) {
@@ -50,19 +42,41 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // 获取所有相关的用户ID
+    const userIds = [...new Set((templates || []).map((t: any) => t.user_id).filter(Boolean))];
+    
+    // 查询用户信息
+    let usersMap: Record<number, any> = {};
+    if (userIds.length > 0) {
+      const { data: users, error: usersError } = await client
+        .from('users')
+        .select('id, name, feishu_user_id, avatar')
+        .in('id', userIds);
+      
+      if (!usersError && users) {
+        usersMap = users.reduce((acc: Record<number, any>, user: any) => {
+          acc[user.id] = user;
+          return acc;
+        }, {});
+      }
+    }
+
     // 格式化数据
-    const formattedData = (templates || []).map((template: any) => ({
-      id: template.id,
-      userId: template.user_id,
-      userName: template.users?.name || '未知用户',
-      userAvatar: template.users?.avatar || '',
-      feishuUserId: template.users?.feishu_user_id || '',
-      name: template.name,
-      description: template.description,
-      isPublic: template.is_public,
-      createdAt: template.created_at,
-      updatedAt: template.updated_at,
-    }));
+    const formattedData = (templates || []).map((template: any) => {
+      const user = usersMap[template.user_id];
+      return {
+        id: template.id,
+        userId: template.user_id,
+        userName: user?.name || '未知用户',
+        userAvatar: user?.avatar || '',
+        feishuUserId: user?.feishu_user_id || '',
+        name: template.name,
+        description: template.description,
+        isPublic: template.is_public,
+        createdAt: template.created_at,
+        updatedAt: template.updated_at,
+      };
+    });
 
     return NextResponse.json({
       success: true,

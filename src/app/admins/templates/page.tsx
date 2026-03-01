@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAdminStore } from '@/store/adminStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +24,7 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 export default function TemplatesPage() {
-  const { templates, addTemplate, updateTemplate, deleteTemplate } = useAdminStore();
+  const { templates, fetchTemplates, addTemplate, updateTemplate, deleteTemplate } = useAdminStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -33,6 +33,11 @@ export default function TemplatesPage() {
     name: '',
     description: '',
   });
+
+  // 加载模板列表
+  useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
 
   // 过滤模板
   const filteredTemplates = templates.filter((template) =>

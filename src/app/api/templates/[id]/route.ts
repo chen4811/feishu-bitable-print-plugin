@@ -115,6 +115,7 @@ export async function PUT(
       .single();
 
     if (findError || !existingTemplate) {
+      console.error('[Template API] 查找模板失败:', { id, findError, existingTemplate });
       return NextResponse.json(
         { error: '模板不存在' },
         { status: 404 }
@@ -181,6 +182,14 @@ export async function DELETE(
 
     const token = authHeader.substring(7);
     const decoded = verifyToken(token);
+    
+    if (!decoded) {
+      return NextResponse.json(
+        { error: '登录已过期' },
+        { status: 401 }
+      );
+    }
+    
     const client = getSupabaseClient();
 
     // 先检查模板是否存在且属于当前用户
