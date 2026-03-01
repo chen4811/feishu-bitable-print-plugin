@@ -364,9 +364,10 @@ export const feishuSDK = {
       
       console.log('[FeishuSDK] ✅ 表格获取成功，table 可用方法:', Object.keys(table).filter(k => typeof table[k] === 'function'));
 
-      console.log('[FeishuSDK] 尝试获取视图选中记录...');
       let selectedRecords: any[] = [];
       
+      // 方法1: 尝试视图的 getSelectedRecords
+      console.log('[FeishuSDK] 【方法1】尝试视图的 getSelectedRecords...');
       try {
         if (typeof table.getActiveView === 'function') {
           console.log('[FeishuSDK] ✅ 使用 table.getActiveView()');
@@ -376,45 +377,78 @@ export const feishuSDK = {
           if (view && typeof view.getSelectedRecords === 'function') {
             console.log('[FeishuSDK] ✅ 调用 view.getSelectedRecords()');
             selectedRecords = await view.getSelectedRecords();
-            console.log('[FeishuSDK] ✅ 从视图获取到选中记录:', selectedRecords);
+            console.log('[FeishuSDK] ✅ view.getSelectedRecords() 返回:', selectedRecords);
+            
+            if (selectedRecords && selectedRecords.length > 0) {
+              console.log('[FeishuSDK] ✅ 【方法1】成功获取到选中记录');
+            }
           } else {
             console.warn('[FeishuSDK] ⚠️  没有 view.getSelectedRecords() 方法');
           }
         }
       } catch (err) {
-        console.error('[FeishuSDK] ❌ 获取视图选中记录失败:', err);
+        console.error('[FeishuSDK] ❌ 【方法1】失败:', err);
       }
 
-      // 如果视图方法没有获取到，尝试获取当前选中的单个 recordId
+      // 方法2: 如果方法1没获取到，尝试获取所有记录
       if (selectedRecords.length === 0) {
-        console.log('[FeishuSDK] 视图方法没有获取到记录，尝试通过 getSelection() 获取...');
-        const selection = await this.getSelection();
-        console.log('[FeishuSDK] 通过 getSelection() 获取到:', selection);
-        
-        if (selection?.recordId) {
-          console.log('[FeishuSDK] 发现 recordId，尝试获取单条记录:', selection.recordId);
-          try {
-            if (typeof table.getRecord === 'function') {
-              console.log('[FeishuSDK] ✅ 调用 table.getRecord()');
-              const singleRecord = await table.getRecord(selection.recordId);
-              if (singleRecord) {
-                selectedRecords = [singleRecord];
-                console.log('[FeishuSDK] ✅ 从选中 recordId 获取记录:', singleRecord);
-              } else {
-                console.warn('[FeishuSDK] ⚠️  table.getRecord() 返回空');
+        console.log('[FeishuSDK] 【方法2】方法1失败，尝试获取所有记录...');
+        try {
+          let allRecords: any[] = [];
+          
+          if (typeof table.getActiveView === 'function') {
+            const view = await table.getActiveView();
+            if (view) {
+              if (typeof view.getRecords === 'function') {
+                allRecords = await view.getRecords();
+              } else if (typeof view.getAllRecords === 'function') {
+                allRecords = await view.getAllRecords();
               }
-            } else {
-              console.warn('[FeishuSDK] ⚠️  没有 table.getRecord() 方法');
             }
-          } catch (err) {
-            console.error('[FeishuSDK] ❌ 获取单条记录失败:', err);
           }
-        } else {
-          console.warn('[FeishuSDK] ⚠️  selection 中没有 recordId');
+          
+          if (!allRecords || allRecords.length === 0) {
+            if (typeof table.getRecords === 'function') {
+              allRecords = await table.getRecords();
+            } else if (typeof table.getAllRecords === 'function') {
+              allRecords = await table.getAllRecords();
+            }
+          }
+          
+          if (allRecords && allRecords.length > 0) {
+            console.log('[FeishuSDK] ✅ 【方法2】获取到所有记录，共', allRecords.length, '条，默认使用第一条');
+            selectedRecords = [allRecords[0]];
+          } else {
+            console.warn('[FeishuSDK] ⚠️  【方法2】也没有获取到记录');
+          }
+        } catch (err) {
+          console.error('[FeishuSDK] ❌ 【方法2】失败:', err);
         }
       }
 
-      console.log('[FeishuSDK] 最终获取到的 selectedRecords:', selectedRecords);
+      // 方法3: 如果还没有，尝试通过 getSelection + getRecord
+      if (selectedRecords.length === 0) {
+        console.log('[FeishuSDK] 【方法3】尝试 getSelection + getRecord...');
+        const selection = await this.getSelection();
+        console.log('[FeishuSDK] getSelection() 返回:', selection);
+        
+        if (selection?.recordId) {
+          console.log('[FeishuSDK] 发现 recordId:', selection.recordId);
+          try {
+            if (typeof table.getRecord === 'function') {
+              const singleRecord = await table.getRecord(selection.recordId);
+              if (singleRecord) {
+                selectedRecords = [singleRecord];
+                console.log('[FeishuSDK] ✅ 【方法3】成功获取单条记录');
+              }
+            }
+          } catch (err) {
+            console.error('[FeishuSDK] ❌ 【方法3】失败:', err);
+          }
+        }
+      }
+
+      console.log('[FeishuSDK] 最终 selectedRecords:', selectedRecords);
       
       if (!Array.isArray(selectedRecords)) {
         console.error('[FeishuSDK] ❌ selectedRecords 不是数组');
