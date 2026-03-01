@@ -151,15 +151,30 @@ export async function GET(request: Request) {
     console.log('[Feishu OAuth Callback API] dbUser.name:', dbUser.name);
     console.log('[Feishu OAuth Callback API] hasAuthorizations:', hasAuthorizations);
 
-    // 6. 重定向到前端回调页面，通过 URL 参数传递 token
-    const callbackUrl = `/auth/callback?token=${encodeURIComponent(jwtToken)}&userId=${dbUser.id}&name=${encodeURIComponent(dbUser.name || '')}&hasAuthorizations=${hasAuthorizations}`;
+    // 6. 创建响应，设置 Cookie 并重定向到前端回调页面
+    // 将 token 存储在 httpOnly cookie 中（更安全）
+    const callbackUrl = `/auth/callback?userId=${dbUser.id}&name=${encodeURIComponent(dbUser.name || '')}&hasAuthorizations=${hasAuthorizations}`;
     
     console.log('[Feishu OAuth Callback API] 回调URL:', callbackUrl);
     
     const fullUrl = new URL(callbackUrl, baseUrl);
     console.log('[Feishu OAuth Callback API] 完整重定向URL:', fullUrl.toString());
     
-    return NextResponse.redirect(fullUrl);
+    // 创建重定向响应并设置 Cookie
+    const response = NextResponse.redirect(fullUrl);
+    
+    // 设置 token cookie (httpOnly 用于安全，但前端需要读取，所以不用 httpOnly)
+    response.cookies.set('auth_token', jwtToken, {
+      httpOnly: false, // 允许前端 JavaScript 读取
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 天
+      path: '/',
+    });
+    
+    console.log('[Feishu OAuth Callback API] Cookie 已设置，准备重定向');
+    
+    return response;
   } catch (error) {
     console.error('[Feishu OAuth Callback API] 飞书 OAuth 回调错误:', error);
     // 重定向到错误页面

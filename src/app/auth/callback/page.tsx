@@ -6,6 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useUserStore } from '@/store/userStore';
 import { useTemplateStore } from '@/store/templateStore';
 
+// 从 cookie 读取 token 的辅助函数
+function getCookie(name: string): string | null {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) {
+    const cookieValue = parts.pop();
+    return cookieValue ? cookieValue.split(';').shift() || null : null;
+  }
+  return null;
+}
+
 export default function AuthCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -19,11 +30,17 @@ export default function AuthCallbackPage() {
       try {
         console.log('[Auth Callback] 开始处理回调');
 
-        const token = searchParams.get('token');
+        // 从 cookie 读取 token
+        const token = getCookie('auth_token');
         const userId = searchParams.get('userId');
         const name = searchParams.get('name');
         const hasAuthorizations = searchParams.get('hasAuthorizations') === 'true';
         const errorParam = searchParams.get('error');
+
+        console.log('[Auth Callback] 从 cookie 获取 token:', token ? '存在' : '不存在');
+        console.log('[Auth Callback] userId:', userId);
+        console.log('[Auth Callback] name:', name);
+        console.log('[Auth Callback] hasAuthorizations:', hasAuthorizations);
 
         if (errorParam) {
           console.error('[Auth Callback] 收到错误:', errorParam);
