@@ -418,6 +418,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
 
   // 表格单元格编辑
   const handleTableCellChange = (row: number, col: number, value: string) => {
+    console.log(`[handleTableCellChange] 触发`, { row, col, value: value?.substring(0, 30) });
+    
     const newData = [...tableEditData];
     newData[row] = [...newData[row]];
     newData[row][col] = value;
@@ -425,22 +427,29 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     
     const tableComp = component as any;
     if (tableComp.tableConfig?.cells) {
-      const newCells = newData.map((rowData, rowIndex) =>
-        rowData.map((cellContent, colIndex) => ({
-          id: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.id || `cell-${rowIndex}-${colIndex}`,
-          content: cellContent,
-          backgroundColor: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.backgroundColor,
-          verticalAlign: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.verticalAlign,
-          border: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.border,
-          style: tableComp.tableConfig.cells[rowIndex]?.[colIndex]?.style,
-        }))
+      // 🔥 关键修复：保留所有原始单元格属性，特别是 rowSpan 和 colSpan！
+      const newCells = tableComp.tableConfig.cells.map((rowData: any[], rowIndex: number) =>
+        rowData.map((originalCell: any, colIndex: number) => {
+          // 如果是当前编辑的单元格，更新 content，其他属性完全保留！
+          if (rowIndex === row && colIndex === col) {
+            return {
+              ...originalCell, // 🔥 保留所有原始属性！包括 rowSpan、colSpan 等！
+              content: value, // 只更新 content 字段
+            };
+          }
+          // 其他单元格完全不变，原样返回
+          return originalCell;
+        })
       );
+      
       updateComponent(component.id, {
         tableConfig: {
           ...tableComp.tableConfig,
           cells: newCells,
         },
       });
+      
+      console.log(`[handleTableCellChange] 完成更新，保留了所有单元格属性`);
     }
   };
 
