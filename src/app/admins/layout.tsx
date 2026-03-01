@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAdminStore } from '@/store/adminStore';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,12 +24,18 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
   const router = useRouter();
   const { isLoggedIn, logout } = useAdminStore();
 
+  // 如果是登录页面，不检查登录状态
+  if (pathname === '/admins/login') {
+    return <>{children}</>;
+  }
+
   // 如果未登录，跳转到登录页
   if (!isLoggedIn) {
-    router.push('/admins');
+    router.push('/admins/login');
     return null;
   }
 
