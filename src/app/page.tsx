@@ -1,21 +1,51 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useEditorStore } from '@/store/editorStore';
+import { useUserStore } from '@/store/userStore';
 import { mockBitableData } from '@/data/mockData';
 import { Field } from '@/types/editor';
 import { HomePage } from '@/components/editor/HomePage';
 import { EditorPage } from '@/components/editor/EditorPage';
 import { PresetTemplate } from '@/types/editor';
+import { Button } from '@/components/ui/button';
+import { Loader2, LogOut, User, Key } from 'lucide-react';
 
 type AppView = 'home' | 'editor' | 'preview';
 
 export default function PrintPluginApp() {
+  const router = useRouter();
   const [view, setView] = useState<AppView>('home');
   const { setFields, setSystemFields } = useEditorStore();
+  const { user, isLoggedIn, isAuthCodeBound, authCode, logout } = useUserStore();
+
+  console.log('[PrintPluginApp] 渲染');
+  console.log('[PrintPluginApp] isLoggedIn:', isLoggedIn);
+  console.log('[PrintPluginApp] isAuthCodeBound:', isAuthCodeBound);
+  console.log('[PrintPluginApp] user:', user);
+
+  // 检查登录状态
+  useEffect(() => {
+    console.log('[PrintPluginApp] 检查登录状态 useEffect 触发');
+    console.log('[PrintPluginApp] isLoggedIn:', isLoggedIn);
+    console.log('[PrintPluginApp] isAuthCodeBound:', isAuthCodeBound);
+    
+    if (!isLoggedIn) {
+      console.log('[PrintPluginApp] 未登录，跳转到登录页面');
+      router.push('/login');
+    } else if (!isAuthCodeBound) {
+      console.log('[PrintPluginApp] 已登录但未绑定授权码，跳转到绑定页面');
+      router.push('/bind-auth');
+    }
+  }, [isLoggedIn, isAuthCodeBound, router]);
 
   // 初始化字段数据
   useEffect(() => {
+    if (!isLoggedIn || !isAuthCodeBound) {
+      return;
+    }
+
     // 从模拟数据或真实数据中获取字段
     const fields: Field[] = mockBitableData.fields.map((field) => ({
       id: field.id,
@@ -34,7 +64,7 @@ export default function PrintPluginApp() {
 
     setFields(fields);
     setSystemFields(systemFields);
-  }, [setFields, setSystemFields]);
+  }, [setFields, setSystemFields, isLoggedIn, isAuthCodeBound]);
 
   // 处理创建新排版
   const handleCreateNew = () => {
@@ -52,8 +82,56 @@ export default function PrintPluginApp() {
     setView('home');
   };
 
+  // 处理退出登录
+  const handleLogout = () => {
+    console.log('[PrintPluginApp] 退出登录');
+    logout();
+    router.push('/login');
+  };
+
+  // 如果未登录或未绑定授权码，显示加载状态
+  if (!isLoggedIn || !isAuthCodeBound) {
+    console.log('[PrintPluginApp] 状态不满足，显示加载状态');
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">正在跳转...</p>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('[PrintPluginApp] 显示主应用');
+
   return (
-    <>
+    <div className="min-h-screen">
+      {/* 顶部用户信息栏 */}
+      <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
+            <User className="h-4 w-4 text-white" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-900">{user?.name}</p>
+            <p className="text-xs text-gray-500 flex items-center gap-1">
+              <Key className="h-3 w-3" />
+              授权码已绑定
+            </p>
+          </div>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleLogout}
+          className="text-gray-600 hover:text-red-600"
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          退出登录
+        </Button>
+      </div>
+
+      {/* 主应用内容 */}
       {view === 'home' && (
         <HomePage
           onCreateNew={handleCreateNew}
@@ -63,6 +141,6 @@ export default function PrintPluginApp() {
       {view === 'editor' && (
         <EditorPage onExit={handleExitEditor} />
       )}
-    </>
+    </div>
   );
 }
