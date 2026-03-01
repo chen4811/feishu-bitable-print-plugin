@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
 // 获取飞书登录链接
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const appId = process.env.FEISHU_APP_ID;
     const redirectUri = process.env.FEISHU_REDIRECT_URI;
@@ -11,6 +11,13 @@ export async function GET() {
     console.log('[Feishu Login API] 检查环境变量');
     console.log('[Feishu Login API] FEISHU_APP_ID:', appId ? '已配置' : '未配置');
     console.log('[Feishu Login API] FEISHU_REDIRECT_URI:', redirectUri ? '已配置' : '未配置');
+    
+    // 获取当前请求的 host
+    const host = request.headers.get('host') || 'localhost:5000';
+    const protocol = request.headers.get('x-forwarded-proto') || 'http';
+    const origin = `${protocol}://${host}`;
+    
+    console.log('[Feishu Login API] 当前 origin:', origin);
     
     // 降级方案：如果没有配置飞书应用，返回模拟登录流程
     if (!appId || !redirectUri) {
@@ -20,10 +27,12 @@ export async function GET() {
       const state = Math.random().toString(36).substring(7);
       
       // 返回一个特殊的登录 URL，指向我们的模拟回调
-      const mockLoginUrl = new URL('/auth/callback', typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000');
+      const mockLoginUrl = new URL('/auth/callback', origin);
       mockLoginUrl.searchParams.set('code', 'mock_code_' + Date.now());
       mockLoginUrl.searchParams.set('state', state);
       mockLoginUrl.searchParams.set('mock', 'true');
+
+      console.log('[Feishu Login API] 模拟登录 URL:', mockLoginUrl.toString());
 
       return NextResponse.json({
         success: true,
