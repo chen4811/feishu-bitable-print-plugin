@@ -148,6 +148,7 @@ import { CanvasComponentNode } from '@/types/editor';
 import { useEditorStore } from '@/store/editorStore';
 import { Button } from '@/components/ui/button';
 import { Copy, Pencil, Trash2 } from 'lucide-react';
+import { parseVariables } from '@/utils/variableParser';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { HoverToolbar } from '../table/HoverToolbar';
@@ -169,7 +170,35 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     tableEditing,
     setTableEditing,
     setTableCellEditing,
+    records,
+    fields,
   } = useEditorStore();
+
+  // 🔥 获取预览用的记录（优先使用第一条记录）
+  const previewRecord = (() => {
+    if (records && records.length > 0) {
+      const firstRecord = records[0];
+      // 将 BitableRecord 格式转换为普通对象
+      const recordData: Record<string, unknown> = {};
+      
+      // 处理 fields 格式
+      if (firstRecord.fields) {
+        Object.entries(firstRecord.fields).forEach(([key, value]) => {
+          recordData[key] = value;
+        });
+      }
+      
+      // 同时也支持直接的键值对格式
+      Object.entries(firstRecord).forEach(([key, value]) => {
+        if (key !== 'fields' && key !== 'id' && key !== 'createdTime' && key !== 'lastModifiedTime') {
+          recordData[key] = value;
+        }
+      });
+      
+      return recordData;
+    }
+    return {};
+  })();
   
   // 添加全局键盘事件监听器来检测事件是否逃逸
   useEffect(() => {
@@ -690,12 +719,14 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   useEffect(() => {
     if (component.type === 'qrcode' && canvasRef.current) {
       const qrcodeComponent = component as any;
-      QRCode.toCanvas(canvasRef.current, qrcodeComponent.content, {
+      // 🔥 使用变量替换后的内容生成二维码
+      const content = parseVariables(qrcodeComponent.content || '', previewRecord, fields);
+      QRCode.toCanvas(canvasRef.current, content, {
         width: Math.min(qrcodeComponent.size || 150, 200),
         margin: 1,
       }).catch(console.error);
     }
-  }, [component]);
+  }, [component, previewRecord, fields]);
 
   // 生成条形码
   useEffect(() => {
@@ -703,7 +734,9 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       const barcodeComponent = component as any;
       try {
         canvasRef.current.innerHTML = '';
-        JsBarcode(canvasRef.current, barcodeComponent.content, {
+        // 🔥 使用变量替换后的内容生成条形码
+        const content = parseVariables(barcodeComponent.content || '', previewRecord, fields);
+        JsBarcode(canvasRef.current, content, {
           format: barcodeComponent.format || 'CODE128',
           width: 2,
           height: 50,
@@ -713,7 +746,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         console.error('Barcode generation error:', e);
       }
     }
-  }, [component]);
+  }, [component, previewRecord, fields]);
 
   // 辅助函数：生成列标（A, B, C... AA, AB...）
   const getColumnLabel = (index: number): string => {
@@ -1313,7 +1346,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 fontWeight: 'bold', 
                 marginBottom: '0.5rem' 
               }}>
-                {textComp.content || '显示'}
+                {/* 🔥 使用变量替换后的内容 */}
+                {parseVariables(textComp.content || '显示', previewRecord, fields)}
               </h1>
             )}
             {textComp.textStyle?.headingLevel === 2 && (
@@ -1322,17 +1356,20 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 fontWeight: 'bold', 
                 marginBottom: '0.5rem' 
               }}>
-                {textComp.content || '显示'}
+                {/* 🔥 使用变量替换后的内容 */}
+                {parseVariables(textComp.content || '显示', previewRecord, fields)}
               </h2>
             )}
             {textComp.textStyle?.listType === 'unordered' && !textComp.textStyle?.headingLevel && (
               <ul style={{ marginLeft: '1.5rem', paddingLeft: 0 }}>
-                <li>{textComp.content || '显示'}</li>
+                {/* 🔥 使用变量替换后的内容 */}
+                <li>{parseVariables(textComp.content || '显示', previewRecord, fields)}</li>
               </ul>
             )}
             {textComp.textStyle?.listType === 'ordered' && !textComp.textStyle?.headingLevel && (
               <ol style={{ marginLeft: '1.5rem', paddingLeft: 0 }}>
-                <li>{textComp.content || '显示'}</li>
+                {/* 🔥 使用变量替换后的内容 */}
+                <li>{parseVariables(textComp.content || '显示', previewRecord, fields)}</li>
               </ol>
             )}
             {!textComp.textStyle?.headingLevel && !textComp.textStyle?.listType && (
@@ -1345,10 +1382,12 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     style={{ color: '#3b82f6', textDecoration: 'underline' }}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {textComp.content || '显示'}
+                    {/* 🔥 使用变量替换后的内容 */}
+                    {parseVariables(textComp.content || '显示', previewRecord, fields)}
                   </a>
                 ) : (
-                  textComp.content || '显示'
+                  // 🔥 使用变量替换后的内容
+                  parseVariables(textComp.content || '显示', previewRecord, fields)
                 )}
               </span>
             )}
@@ -1402,21 +1441,27 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         );
 
       case 'qrcode':
+        const qrcodeComp = component as any;
+        // 🔥 二维码内容也进行变量替换
+        const qrcodeContent = parseVariables(qrcodeComp.content || '二维码内容', previewRecord, fields);
         return (
           <div className="w-full flex flex-col items-center justify-center p-4">
             <canvas ref={canvasRef} />
             <p className="text-xs text-muted-foreground mt-2">
-              {(component as any).content || '二维码内容'}
+              {qrcodeContent}
             </p>
           </div>
         );
 
       case 'barcode':
+        const barcodeComp = component as any;
+        // 🔥 条形码内容也进行变量替换
+        const barcodeContent = parseVariables(barcodeComp.content || '条形码内容', previewRecord, fields);
         return (
           <div className="w-full flex flex-col items-center justify-center p-4">
             <canvas ref={canvasRef} />
             <p className="text-xs text-muted-foreground mt-2">
-              {(component as any).content || '条形码内容'}
+              {barcodeContent}
             </p>
           </div>
         );
