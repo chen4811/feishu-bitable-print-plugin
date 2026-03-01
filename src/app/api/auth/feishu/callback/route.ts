@@ -163,11 +163,11 @@ export async function GET(request: Request) {
     // 创建重定向响应并设置 Cookie
     const response = NextResponse.redirect(fullUrl);
     
-    // 设置 token cookie (httpOnly 用于安全，但前端需要读取，所以不用 httpOnly)
+    // 设置 token cookie - 允许跨域访问
     response.cookies.set('auth_token', jwtToken, {
       httpOnly: false, // 允许前端 JavaScript 读取
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: true,    // 跨域需要 secure
+      sameSite: 'none', // 允许跨域
       maxAge: 60 * 60 * 24 * 7, // 7 天
       path: '/',
     });
