@@ -141,6 +141,13 @@ export function HomePage({ onCreateNew, onSelectTemplate }: HomePageProps) {
             >
               <Bug className="w-3 h-3" />
             </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => window.location.href = '/admin'}
+            >
+              管理后台
+            </Button>
             <Button variant="outline" size="sm">高级版</Button>
             <Button size="sm" onClick={onCreateNew}>
               <Plus className="w-4 h-4 mr-1" />
