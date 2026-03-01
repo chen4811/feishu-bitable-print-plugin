@@ -8,6 +8,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Plus,
   FileText,
   Folder,
@@ -19,14 +25,17 @@ import {
   Clock,
   X,
   Search,
+  LogOut,
 } from 'lucide-react';
 import { useTemplateStore, UserTemplate } from '@/store/templateStore';
+import { useUserStore } from '@/store/userStore';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 
 interface TemplateSidebarProps {
   onSelectTemplate?: (template: UserTemplate) => void;
   onCreateNew?: () => void;
+  onLogout?: () => void;
 }
 
 // 模板项组件
@@ -138,7 +147,7 @@ function TemplateItem({
   );
 }
 
-export function TemplateSidebar({ onSelectTemplate, onCreateNew }: TemplateSidebarProps) {
+export function TemplateSidebar({ onSelectTemplate, onCreateNew, onLogout }: TemplateSidebarProps) {
   const { 
     templates, 
     currentTemplate,
@@ -147,6 +156,8 @@ export function TemplateSidebar({ onSelectTemplate, onCreateNew }: TemplateSideb
     deleteTemplate, 
     setCurrentTemplate 
   } = useTemplateStore();
+  
+  const { user } = useUserStore();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -292,21 +303,41 @@ export function TemplateSidebar({ onSelectTemplate, onCreateNew }: TemplateSideb
           </div>
         </div>
 
-        {/* 底部区域 */}
+        {/* 底部区域 - 显示用户信息 */}
         <div className="p-4 border-t border-gray-200 bg-gray-50">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                <span className="text-white text-xs font-medium">AD</span>
-              </div>
+              {user?.avatar ? (
+                <img 
+                  src={user.avatar} 
+                  alt={user.name}
+                  className="w-8 h-8 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                  <span className="text-white text-xs font-medium">
+                    {user?.name?.charAt(0) || 'U'}
+                  </span>
+                </div>
+              )}
               <div>
-                <p className="text-sm font-medium text-gray-900">高级版</p>
-                <p className="text-xs text-gray-500">徐佳</p>
+                <p className="text-sm font-medium text-gray-900">{user?.name || '用户'}</p>
+                <p className="text-xs text-gray-500">{user?.email || ''}</p>
               </div>
             </div>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Settings className="w-4 h-4 text-gray-500" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Settings className="w-4 h-4 text-gray-500" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={onLogout} className="text-red-600 cursor-pointer">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  退出登录
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>

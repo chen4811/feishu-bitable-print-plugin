@@ -167,6 +167,7 @@ export default function PrintPluginApp() {
           onCreateNew={handleCreateNew}
           onSelectTemplate={handleSelectTemplate}
           onSelectUserTemplate={handleSelectUserTemplate}
+          onLogout={handleLogout}
         />
       )}
       {view === 'preview' && selectedTemplate && (
