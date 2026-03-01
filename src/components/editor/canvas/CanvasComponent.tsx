@@ -1113,7 +1113,10 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
             <div className="w-full p-2">
               <textarea
                 ref={textareaRef}
-                className="w-full min-h-[60px] p-2 border border-primary rounded focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                className="w-full min-h-[60px] p-2 border border-primary rounded focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none whitespace-pre-wrap"
+                style={{
+                  whiteSpace: 'pre-wrap', // 🔥 确保编辑时也保留空格和换行
+                }}
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
                 onBlur={handleTextBlur}
@@ -1134,7 +1137,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
 
         return (
           <div
-            className="w-full cursor-text"
+            className="w-full cursor-text whitespace-pre-wrap"
             style={{
               padding: '0.5rem',
               fontSize: `${textComp.textStyle?.fontSize || styleConfig.fontSize}px`,
@@ -1147,6 +1150,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               marginBottom: textComp.textStyle?.paragraphSpacing ? `${textComp.textStyle.paragraphSpacing}px` : 0,
               textDecoration: textComp.textStyle?.underline ? 'underline' : textComp.textStyle?.textDecoration || 'none',
               textTransform: textComp.textStyle?.textTransform || 'none',
+              whiteSpace: 'pre-wrap', // 🔥 关键：确保空格和换行都被保留
             }}
             onDoubleClick={handleDoubleClickText}
           >
