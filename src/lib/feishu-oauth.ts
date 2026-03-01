@@ -20,10 +20,10 @@ interface UserInfo {
   union_id: string;
   open_id: string;
   name: string;
-  avatar: {
-    avatar_72: string;
-    avatar_200: string;
-  };
+  avatar_url?: string;
+  avatar_thumb?: string;
+  avatar_middle?: string;
+  avatar_big?: string;
   mobile?: string;
   email?: string;
   tenant_key: string;

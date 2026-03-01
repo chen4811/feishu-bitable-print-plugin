@@ -83,7 +83,7 @@ export async function GET(request: Request) {
           feishu_union_id: feishuUserInfo.union_id,
           feishu_open_id: feishuUserInfo.open_id,
           name: feishuUserInfo.name,
-          avatar: feishuUserInfo.avatar.avatar_72,
+          avatar: feishuUserInfo.avatar_thumb || feishuUserInfo.avatar_middle || feishuUserInfo.avatar_big || feishuUserInfo.avatar_url || '',
           email: feishuUserInfo.email,
           tenant_key: feishuUserInfo.tenant_key,
         })
@@ -105,7 +105,7 @@ export async function GET(request: Request) {
           feishu_user_id: feishuUserInfo.user_id,
           feishu_open_id: feishuUserInfo.open_id,
           name: feishuUserInfo.name,
-          avatar: feishuUserInfo.avatar.avatar_72,
+          avatar: feishuUserInfo.avatar_thumb || feishuUserInfo.avatar_middle || feishuUserInfo.avatar_big || feishuUserInfo.avatar_url || '',
           email: feishuUserInfo.email,
           tenant_key: feishuUserInfo.tenant_key,
           updated_at: new Date().toISOString(),
