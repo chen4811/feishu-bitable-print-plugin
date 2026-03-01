@@ -17,35 +17,55 @@ export default function AdminLoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  console.log('[AdminLoginPage] 渲染，isLoggedIn:', isLoggedIn);
+
   // 如果已经登录，跳转到管理仪表板
   useEffect(() => {
+    console.log('[AdminLoginPage] useEffect 触发，isLoggedIn:', isLoggedIn);
     if (isLoggedIn) {
+      console.log('[AdminLoginPage] 已登录，跳转到 /admins/dashboard');
       router.push('/admins/dashboard');
     }
   }, [isLoggedIn, router]);
 
   // 如果已经登录，显示加载状态
   if (isLoggedIn) {
+    console.log('[AdminLoginPage] 已登录，显示加载状态');
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4" />
+          <p className="text-sm text-muted-foreground">登录成功，正在跳转... (isLoggedIn: {String(isLoggedIn)})</p>
+        </div>
       </div>
     );
   }
 
+  console.log('[AdminLoginPage] 显示登录表单');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('[AdminLoginPage] handleSubmit 被调用');
+    console.log('[AdminLoginPage] 用户名:', username);
+    console.log('[AdminLoginPage] 密码:', password ? '***' : '空');
+    
     setError('');
     setIsLoading(true);
 
     try {
+      console.log('[AdminLoginPage] 调用 login 函数...');
       const success = await login(username, password);
+      console.log('[AdminLoginPage] login 返回结果:', success);
+      
       if (success) {
+        console.log('[AdminLoginPage] 登录成功，跳转到 /admins/dashboard');
         router.push('/admins/dashboard');
       } else {
+        console.log('[AdminLoginPage] 登录失败，显示错误');
         setError('用户名或密码错误');
       }
-    } catch {
+    } catch (err) {
+      console.error('[AdminLoginPage] 登录异常:', err);
       setError('登录失败，请重试');
     } finally {
       setIsLoading(false);

@@ -29,26 +29,44 @@ export default function AdminLayout({
   const router = useRouter();
   const { isLoggedIn, logout } = useAdminStore();
 
+  console.log('[AdminLayout] 渲染');
+  console.log('[AdminLayout] pathname:', pathname);
+  console.log('[AdminLayout] isLoggedIn:', isLoggedIn);
+
   // 如果是登录页面，不检查登录状态
   if (pathname === '/admins/login') {
+    console.log('[AdminLayout] 是登录页面，直接返回 children');
     return <>{children}</>;
   }
 
+  console.log('[AdminLayout] 不是登录页面，检查登录状态');
+
   // 使用 useEffect 处理路由跳转
   useEffect(() => {
+    console.log('[AdminLayout] useEffect 触发');
+    console.log('[AdminLayout] isLoggedIn:', isLoggedIn);
     if (!isLoggedIn) {
+      console.log('[AdminLayout] 未登录，跳转到 /admins/login');
       router.push('/admins/login');
+    } else {
+      console.log('[AdminLayout] 已登录，显示管理界面');
     }
   }, [isLoggedIn, router]);
 
   // 如果未登录，显示加载状态
   if (!isLoggedIn) {
+    console.log('[AdminLayout] 未登录，显示加载状态');
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4" />
+          <p className="text-sm text-muted-foreground">检查登录状态... (isLoggedIn: {String(isLoggedIn)})</p>
+        </div>
       </div>
     );
   }
+
+  console.log('[AdminLayout] 已登录，渲染管理界面');
 
   const handleLogout = () => {
     logout();

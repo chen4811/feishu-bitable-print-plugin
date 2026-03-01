@@ -125,7 +125,7 @@ const mockTemplates: Template[] = [
 ];
 
 export const useAdminStore = create<AdminState>()(
-  persist(
+  // persist(
     (set, get) => ({
       // 初始状态
       isLoggedIn: false,
@@ -136,10 +136,17 @@ export const useAdminStore = create<AdminState>()(
 
       // 登录
       login: async (username: string, password: string): Promise<boolean> => {
+        console.log('[adminStore] login 被调用');
+        console.log('[adminStore] 用户名:', username);
+        console.log('[adminStore] 密码:', password ? '***' : '空');
+        
         // 模拟登录验证
+        console.log('[adminStore] 等待 500ms...');
         await new Promise(resolve => setTimeout(resolve, 500));
         
+        console.log('[adminStore] 验证用户名密码...');
         if (username === 'fsadmins' && password === 'Xxy94128866') {
+          console.log('[adminStore] 验证成功，设置状态...');
           set({
             isLoggedIn: true,
             adminUser: mockAdminUser,
@@ -147,13 +154,16 @@ export const useAdminStore = create<AdminState>()(
             authorizations: mockAuthorizations,
             templates: mockTemplates,
           });
+          console.log('[adminStore] 状态已设置，isLoggedIn:', true);
           return true;
         }
+        console.log('[adminStore] 验证失败，返回 false');
         return false;
       },
 
       // 登出
       logout: () => {
+        console.log('[adminStore] logout 被调用');
         set({
           isLoggedIn: false,
           adminUser: null,
@@ -161,6 +171,7 @@ export const useAdminStore = create<AdminState>()(
           authorizations: [],
           templates: [],
         });
+        console.log('[adminStore] 已登出');
       },
 
       // 授权码管理
@@ -257,14 +268,14 @@ export const useAdminStore = create<AdminState>()(
           templates: state.templates.filter(template => template.id !== id),
         }));
       },
-    }),
-    {
-      name: 'admin-storage',
-      partialize: (state) => ({
-        isLoggedIn: state.isLoggedIn,
-        adminUser: state.adminUser,
-        token: state.token,
-      }),
-    }
-  )
+    })
+  // ),
+  // {
+  //   name: 'admin-storage',
+  //   partialize: (state) => ({
+  //     isLoggedIn: state.isLoggedIn,
+  //     adminUser: state.adminUser,
+  //     token: state.token,
+  //   }),
+  // }
 );
