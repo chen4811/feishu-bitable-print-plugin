@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // 静态导出，适合部署到任何静态服务器
-  output: 'export',
+  // 移除静态导出，启用 API routes
+  // output: 'export',
 
   // 禁用图片优化
   images: {
