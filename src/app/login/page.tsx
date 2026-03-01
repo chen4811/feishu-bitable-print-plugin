@@ -1,137 +1,95 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useUserStore } from '@/store/userStore';
-import { Loader2, LogIn, User, AlertCircle } from 'lucide-react';
+import { useTemplateStore } from '@/store/templateStore';
 
-export default function FeishuLoginPage() {
+export default function LoginPage() {
   const router = useRouter();
-  const { isLoggedIn, isAuthCodeBound } = useUserStore();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string>('');
+  const { user, setUser, setToken, setHasAuthorizations } = useUserStore();
+  const { fetchTemplates } = useTemplateStore();
 
-  console.log('[FeishuLoginPage] 渲染，isLoggedIn:', isLoggedIn);
-  console.log('[FeishuLoginPage] isAuthCodeBound:', isAuthCodeBound);
-
+  // 如果用户已登录，直接跳转到主页
   useEffect(() => {
-    console.log('[FeishuLoginPage] useEffect 触发');
-    console.log('[FeishuLoginPage] isLoggedIn:', isLoggedIn);
-    console.log('[FeishuLoginPage] isAuthCodeBound:', isAuthCodeBound);
-    
-    if (isLoggedIn) {
-      if (isAuthCodeBound) {
-        console.log('[FeishuLoginPage] 已登录且已绑定授权码，跳转到首页');
-        router.push('/');
-      } else {
-        console.log('[FeishuLoginPage] 已登录但未绑定授权码，跳转到绑定页面');
-        router.push('/bind-auth');
-      }
+    if (user) {
+      router.push('/');
     }
-  }, [isLoggedIn, isAuthCodeBound, router]);
+  }, [user, router]);
 
-  const handleFeishuLogin = async () => {
-    console.log('[FeishuLoginPage] handleFeishuLogin 被调用');
-    setIsLoading(true);
-    setError('');
+  const handleFeishuLogin = () => {
+    // 直接跳转到飞书登录 API
+    window.location.href = '/api/auth/feishu/login';
+  };
 
+  const handleMockLogin = async () => {
     try {
-      // 调用后端 API 获取飞书登录 URL
-      console.log('[FeishuLoginPage] 获取飞书登录 URL...');
-      const response = await fetch('/api/auth/feishu/login');
+      const response = await fetch('/api/auth/mock-login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
       const result = await response.json();
 
-      console.log('[FeishuLoginPage] 获取登录 URL 响应:', result);
+      if (result.success && result.data) {
+        // 保存 token 和用户信息
+        setToken(result.data.token);
+        setUser(result.data.user);
+        setHasAuthorizations(result.data.hasAuthorizations);
 
-      if (!result.success) {
-        throw new Error(result.error || '获取登录链接失败');
+        // 加载模板
+        await fetchTemplates();
+
+        // 根据是否有授权码跳转到不同页面
+        if (result.data.hasAuthorizations) {
+          router.push('/');
+        } else {
+          router.push('/bind-auth');
+        }
+      } else {
+        alert('登录失败: ' + (result.error || 'Unknown error'));
       }
-
-      // 检查是否是模拟模式
-      if (result.isMock) {
-        console.log('[FeishuLoginPage] 检测到模拟模式，直接跳转到回调页面');
-        // 模拟模式下，直接跳转到回调页面
-        window.location.href = result.loginUrl;
-        return;
-      }
-
-      // 真实飞书登录流程
-      console.log('[FeishuLoginPage] 真实飞书登录流程');
-      
-      // 保存 state 到 localStorage 用于验证
-      if (result.state) {
-        localStorage.setItem('feishu_login_state', result.state);
-      }
-
-      console.log('[FeishuLoginPage] 跳转到飞书登录页面:', result.loginUrl);
-      
-      // 跳转到飞书登录页面
-      window.location.href = result.loginUrl;
-
     } catch (error) {
-      console.error('[FeishuLoginPage] 飞书登录失败:', error);
-      setError(error instanceof Error ? error.message : '登录失败，请重试');
-    } finally {
-      setIsLoading(false);
+      console.error('Mock login error:', error);
+      alert('登录失败，请重试');
     }
   };
 
-  if (isLoggedIn) {
-    console.log('[FeishuLoginPage] 已登录，显示加载状态');
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">正在跳转...</p>
-        </div>
-      </div>
-    );
+  if (user) {
+    return null; // 或者显示加载中
   }
 
-  console.log('[FeishuLoginPage] 显示飞书登录页面');
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <Card className="w-full max-w-md mx-4">
         <CardHeader className="text-center">
-          <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mb-4">
-            <User className="h-8 w-8 text-white" />
-          </div>
-          <CardTitle className="text-2xl">飞书登录</CardTitle>
-          <CardDescription>
-            使用飞书账号登录打印插件
-          </CardDescription>
+          <CardTitle className="text-2xl">打印插件</CardTitle>
+          <CardDescription>登录以继续使用</CardDescription>
         </CardHeader>
         <CardContent>
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
-          )}
-
-          <Button
-            className="w-full h-12 text-base bg-blue-500 hover:bg-blue-600"
-            onClick={handleFeishuLogin}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                准备登录...
-              </>
-            ) : (
-              <>
-                <LogIn className="mr-2 h-4 w-4" />
-                飞书登录
-              </>
-            )}
-          </Button>
-
-          <div className="mt-6 text-center text-sm text-gray-500">
-            <p>登录成功后需要绑定多维表格授权码</p>
+          <div className="flex flex-col gap-3">
+            {/* 真实的飞书登录按钮 */}
+            <Button 
+              onClick={handleFeishuLogin}
+              className="w-full"
+              size="lg"
+            >
+              飞书登录
+            </Button>
+            
+            {/* 模拟登录按钮 - 开发环境使用 */}
+            <Button 
+              onClick={handleMockLogin}
+              className="w-full"
+              size="lg"
+              variant="secondary"
+            >
+              模拟登录（开发环境）
+            </Button>
           </div>
         </CardContent>
       </Card>
