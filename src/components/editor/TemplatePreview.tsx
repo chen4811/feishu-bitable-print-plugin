@@ -2,14 +2,17 @@
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft,
   Edit,
   FileText,
   Eye,
-  Settings,
-  Database,
   LayoutTemplate,
+  Type,
+  Table as TableIcon,
+  Image as ImageIcon,
+  BarChart3,
 } from 'lucide-react';
 import { UserTemplate } from '@/store/templateStore';
 import { formatDistanceToNow } from 'date-fns';
@@ -21,8 +24,48 @@ interface TemplatePreviewProps {
   onEdit: () => void;
 }
 
+// 组件类型图标
+const componentIcons: Record<string, React.ReactNode> = {
+  text: <Type className="w-4 h-4" />,
+  table: <TableIcon className="w-4 h-4" />,
+  image: <ImageIcon className="w-4 h-4" />,
+  chart: <BarChart3 className="w-4 h-4" />,
+};
+
+// 渲染组件内容（显示占位符而非实际值）
+function renderComponentContent(component: any): string {
+  if (!component) return '';
+  
+  // 如果是文本组件
+  if (component.type === 'text' || component.text !== undefined) {
+    const text = component.text || component.content || '';
+    // 返回原始文本（包含占位符），不做替换
+    return text;
+  }
+  
+  // 表格组件
+  if (component.type === 'table' || component.tableConfig) {
+    const rows = component.tableConfig?.rows || component.rows || 0;
+    const cols = component.tableConfig?.cols || component.cols || 0;
+    return `表格 (${rows}x${cols})`;
+  }
+  
+  // 图片组件
+  if (component.type === 'image') {
+    return component.src ? '图片' : '图片占位符';
+  }
+  
+  return '未知组件';
+}
+
 export function TemplatePreview({ template, onBack, onEdit }: TemplatePreviewProps) {
   console.log('[TemplatePreview] 渲染', template);
+
+  // 解析模板数据
+  const templateData = template.data || {};
+  const components = templateData.components || [];
+  const pageConfig = templateData.pageConfig || {};
+  const hasContent = components.length > 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -77,24 +120,68 @@ export function TemplatePreview({ template, onBack, onEdit }: TemplatePreviewPro
               <div className="flex items-center gap-2 mb-4">
                 <Eye className="w-5 h-5 text-gray-500" />
                 <h2 className="text-lg font-semibold text-gray-900">模板预览</h2>
+                {hasContent && (
+                  <Badge variant="secondary" className="ml-2">
+                    {components.length} 个组件
+                  </Badge>
+                )}
               </div>
               
-              {/* 预览内容占位 */}
-              <div className="border-2 border-dashed border-gray-200 rounded-lg p-12 bg-white">
-                <div className="text-center">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-                    <LayoutTemplate className="w-8 h-8 text-gray-400" />
-                  </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">模板预览</h3>
-                  <p className="text-gray-500 mb-4">
-                    {template.description || '这是一个排版打印模板'}
-                  </p>
-                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
-                    <FileText className="w-4 h-4" />
-                    <span className="text-sm font-medium">点击"编辑模板"开始设计</span>
+              {hasContent ? (
+                // 有内容时显示实际预览
+                <div 
+                  className="border border-gray-200 rounded-lg bg-white overflow-auto"
+                  style={{
+                    minHeight: '400px',
+                    maxHeight: '600px',
+                  }}
+                >
+                  {/* 页面容器 */}
+                  <div 
+                    className="mx-auto p-8"
+                    style={{
+                      width: pageConfig.width ? `${pageConfig.width}px` : '210mm',
+                      minHeight: pageConfig.height ? `${pageConfig.height}px` : '297mm',
+                      backgroundColor: pageConfig.backgroundColor || '#ffffff',
+                    }}
+                  >
+                    {/* 组件列表 */}
+                    <div className="space-y-4">
+                      {components.map((component: any, index: number) => (
+                        <div
+                          key={component.id || index}
+                          className="p-4 border border-dashed border-gray-300 rounded-lg hover:border-blue-300 transition-colors"
+                        >
+                          <div className="flex items-center gap-2 mb-2 text-gray-500">
+                            {componentIcons[component.type] || <LayoutTemplate className="w-4 h-4" />}
+                            <span className="text-xs font-medium uppercase">{component.type || '组件'}</span>
+                          </div>
+                          <div className="text-gray-800 whitespace-pre-wrap">
+                            {renderComponentContent(component)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                // 空模板时显示占位
+                <div className="border-2 border-dashed border-gray-200 rounded-lg p-12 bg-white">
+                  <div className="text-center">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                      <LayoutTemplate className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">空模板</h3>
+                    <p className="text-gray-500 mb-4">
+                      {template.description || '这是一个空模板，还没有添加任何内容'}
+                    </p>
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
+                      <FileText className="w-4 h-4" />
+                      <span className="text-sm font-medium">点击"编辑模板"开始设计</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* 模板信息 */}
               <div className="mt-6 grid grid-cols-2 gap-4">
@@ -138,7 +225,65 @@ export function TemplatePreview({ template, onBack, onEdit }: TemplatePreviewPro
               </div>
             </Card>
 
-            {/* 模板设置 */}
+            {/* 模板统计 */}
+            {hasContent && (
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">模板统计</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">组件总数</span>
+                    <span className="text-sm font-medium text-gray-900">{components.length}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">文本组件</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {components.filter((c: any) => c.type === 'text').length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">表格组件</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {components.filter((c: any) => c.type === 'table').length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">图片组件</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {components.filter((c: any) => c.type === 'image').length}
+                    </span>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* 页面配置 */}
+            {pageConfig && (
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">页面配置</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">页面尺寸</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {pageConfig.width ? `${pageConfig.width}x${pageConfig.height}px` : 'A4 (默认)'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">背景颜色</span>
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-4 h-4 rounded border border-gray-200"
+                        style={{ backgroundColor: pageConfig.backgroundColor || '#ffffff' }}
+                      />
+                      <span className="text-sm font-medium text-gray-900">
+                        {pageConfig.backgroundColor || '#ffffff'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* 模板信息 */}
             <Card className="p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">模板信息</h3>
               <div className="space-y-4">
@@ -161,40 +306,14 @@ export function TemplatePreview({ template, onBack, onEdit }: TemplatePreviewPro
                     </span>
                   </div>
                 </div>
-              </div>
-            </Card>
-
-            {/* 编辑步骤提示 */}
-            <Card className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
-              <h3 className="text-lg font-semibold text-blue-900 mb-4">编辑步骤</h3>
-              <div className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
-                    1
-                  </div>
+                {template.isPublic !== undefined && (
                   <div>
-                    <p className="text-sm font-medium text-blue-900">数据源</p>
-                    <p className="text-xs text-blue-700">连接飞书多维表格数据</p>
+                    <p className="text-sm text-gray-500 mb-1">公开状态</p>
+                    <Badge variant={template.isPublic ? "default" : "secondary"}>
+                      {template.isPublic ? '公开' : '私有'}
+                    </Badge>
                   </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
-                    2
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-blue-900">组件</p>
-                    <p className="text-xs text-blue-700">设计排版布局和内容</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
-                    3
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-blue-900">设置</p>
-                    <p className="text-xs text-blue-700">配置打印和导出选项</p>
-                  </div>
-                </div>
+                )}
               </div>
             </Card>
           </div>

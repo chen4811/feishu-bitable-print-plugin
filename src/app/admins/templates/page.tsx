@@ -34,6 +34,9 @@ export default function TemplatesPage() {
     description: '',
   });
 
+  const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
+  const [previewTemplate, setPreviewTemplate] = useState<any>(null);
+
   // 加载模板列表
   useEffect(() => {
     fetchTemplates();
@@ -79,6 +82,11 @@ export default function TemplatesPage() {
       description: template.description,
     });
     setIsEditDialogOpen(true);
+  };
+
+  const openPreviewDialog = (template: any) => {
+    setPreviewTemplate(template);
+    setIsPreviewDialogOpen(true);
   };
 
   return (
@@ -216,7 +224,7 @@ export default function TemplatesPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openPreviewDialog(template)}>
                           <Eye className="h-4 w-4 mr-2" />
                           预览
                         </DropdownMenuItem>
@@ -245,39 +253,89 @@ export default function TemplatesPage() {
         </CardContent>
       </Card>
 
-      {/* 编辑对话框 */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
+      {/* 预览对话框 */}
+      <Dialog open={isPreviewDialogOpen} onOpenChange={setIsPreviewDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>编辑模板</DialogTitle>
+            <DialogTitle>模板预览</DialogTitle>
             <DialogDescription>
-              修改模板信息
+              {previewTemplate?.name}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-name">模板名称</Label>
-              <Input
-                id="edit-name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-description">模板描述</Label>
-              <Textarea
-                id="edit-description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={3}
-              />
-            </div>
+          <div className="py-4">
+            {previewTemplate ? (
+              <div className="space-y-4">
+                {/* 模板信息 */}
+                <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="text-sm text-gray-500">模板名称</p>
+                    <p className="font-medium">{previewTemplate.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">创建者</p>
+                    <p className="font-medium">{previewTemplate.userName || '未知用户'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">创建时间</p>
+                    <p className="font-medium">{new Date(previewTemplate.createdAt).toLocaleString('zh-CN')}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">更新时间</p>
+                    <p className="font-medium">{new Date(previewTemplate.updatedAt).toLocaleString('zh-CN')}</p>
+                  </div>
+                </div>
+
+                {/* 模板内容预览 */}
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-2">模板内容</h4>
+                  {previewTemplate.data ? (
+                    <div className="space-y-2">
+                      <p className="text-sm text-gray-600">
+                        组件数量: {previewTemplate.data.components?.length || 0}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        页面尺寸: {previewTemplate.data.pageConfig?.width || 'A4'} x {previewTemplate.data.pageConfig?.height || 'A4'}
+                      </p>
+                      {/* 显示组件列表 */}
+                      {previewTemplate.data.components && previewTemplate.data.components.length > 0 ? (
+                        <div className="mt-4 space-y-2">
+                          <p className="text-sm font-medium">组件列表:</p>
+                          {previewTemplate.data.components.map((comp: any, idx: number) => (
+                            <div key={comp.id || idx} className="p-2 bg-gray-50 rounded text-sm">
+                              <span className="font-medium">{comp.type || '未知类型'}</span>
+                              {comp.text && (
+                                <span className="text-gray-600 ml-2 truncate">
+                                  : {comp.text.substring(0, 50)}{comp.text.length > 50 ? '...' : ''}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500 italic">空模板（没有组件）</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 italic">没有模板数据</p>
+                  )}
+                </div>
+
+                {/* 原始数据（调试用，可折叠） */}
+                <details className="text-sm">
+                  <summary className="cursor-pointer text-gray-500 hover:text-gray-700">查看原始数据</summary>
+                  <pre className="mt-2 p-4 bg-gray-900 text-gray-100 rounded-lg overflow-x-auto text-xs">
+                    {JSON.stringify(previewTemplate, null, 2)}
+                  </pre>
+                </details>
+              </div>
+            ) : (
+              <p className="text-center text-gray-500">加载中...</p>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsEditDialogOpen(false)}>
-              取消
+            <Button variant="ghost" onClick={() => setIsPreviewDialogOpen(false)}>
+              关闭
             </Button>
-            <Button onClick={handleEdit}>保存</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
