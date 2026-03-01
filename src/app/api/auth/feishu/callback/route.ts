@@ -15,11 +15,11 @@ function getBaseUrl(request: Request): string {
 
 // 飞书 OAuth 回调处理
 export async function GET(request: Request) {
+  const baseUrl = getBaseUrl(request);
+  console.log('[Feishu OAuth Callback API] 收到回调请求');
+  console.log('[Feishu OAuth Callback API] Base URL:', baseUrl);
+  
   try {
-    console.log('[Feishu OAuth Callback API] 收到回调请求');
-    
-    const baseUrl = getBaseUrl(request);
-    console.log('[Feishu OAuth Callback API] Base URL:', baseUrl);
     
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
