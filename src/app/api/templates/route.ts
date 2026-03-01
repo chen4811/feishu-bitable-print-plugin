@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 // 获取模板列表
 export async function GET(request: NextRequest) {
   try {

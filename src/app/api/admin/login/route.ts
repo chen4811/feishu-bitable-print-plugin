@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyPassword } from '@/lib/auth/password';
 import { generateAdminToken } from '@/lib/auth/jwt';
 
+export const dynamic = 'force-dynamic';
+
 // 管理员登录
 export async function POST(request: NextRequest) {
   try {

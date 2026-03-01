@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { extractTokenFromHeader, verifyAdminToken } from '@/lib/auth/jwt';
 import { hashPassword } from '@/lib/auth/password';
 
+export const dynamic = 'force-dynamic';
+
 // 获取管理员列表（需要管理员权限）
 export async function GET(request: NextRequest) {
   try {

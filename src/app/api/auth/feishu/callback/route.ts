@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 // 飞书登录回调处理
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;

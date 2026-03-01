@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { extractTokenFromHeader, verifyAdminToken } from '@/lib/auth/jwt';
 
+export const dynamic = 'force-dynamic';
+
 // 获取当前管理员信息
 export async function GET(request: NextRequest) {
   try {

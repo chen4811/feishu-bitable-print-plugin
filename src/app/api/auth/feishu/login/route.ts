@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 // 获取飞书登录链接
 export async function GET() {
   try {
