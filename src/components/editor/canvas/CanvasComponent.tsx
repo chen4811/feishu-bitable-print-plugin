@@ -1779,10 +1779,12 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 onChange={(e) => setEditContent(e.target.value)}
                 onBlur={handleTextBlur}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
+                  // Ctrl+Enter 或 Cmd+Enter 保存并退出编辑
+                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                     e.preventDefault();
                     handleTextBlur();
                   }
+                  // Escape 退出编辑
                   if (e.key === 'Escape') {
                     setIsEditing(false);
                   }
