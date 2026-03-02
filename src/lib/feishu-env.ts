@@ -1198,6 +1198,222 @@ export class CheckboxSelectionManager {
 }
 
 // ============================================
+// 备选方案：扫描 Checkbox 字段获取勾选记录
+// ============================================
+
+/**
+ * 查找表格中所有的 Checkbox 类型字段
+ * 当 SDK 不提供 getSelectRecordIds() API 时，可以用此方案实现多选
+ */
+export async function findCheckboxFields(tableId?: string): Promise<FieldInfo[]> {
+  debugLog('🔍 查找 Checkbox 字段...');
+  
+  try {
+    if (envStatus !== 'ready') {
+      debugLog('⚠️ 环境未就绪');
+      return [];
+    }
+    
+    // 获取表格 ID
+    let targetTableId = tableId;
+    if (!targetTableId) {
+      const selection = await base.getSelection();
+      targetTableId = selection?.tableId || '';
+    }
+    
+    if (!targetTableId) {
+      debugLog('❌ 无法获取表格 ID');
+      return [];
+    }
+    
+    // 获取表格实例
+    const table = await base.getTable(targetTableId);
+    
+    // 获取所有字段
+    const fieldMetaList = await table.getFieldMetaList();
+    
+    // 筛选 Checkbox 字段（类型码为 18 或字段名称包含"复选框"、"checkbox"等）
+    const checkboxFields: FieldInfo[] = fieldMetaList
+      .filter((field: any) => {
+        const isCheckboxType = field.type === 18 || field.fieldType === 18;
+        const isCheckboxName = /checkbox|复选框|勾选|选择/i.test(field.name || '');
+        return isCheckboxType || isCheckboxName;
+      })
+      .map((field: any) => ({
+        id: field.id,
+        name: field.name,
+        type: String(field.type || field.fieldType),
+      }));
+    
+    debugLog(`✅ 找到 ${checkboxFields.length} 个 Checkbox 字段:`, checkboxFields);
+    return checkboxFields;
+    
+  } catch (error) {
+    debugLog('❌ 查找 Checkbox 字段失败:', error);
+    return [];
+  }
+}
+
+/**
+ * 扫描指定 Checkbox 字段，返回值为 true（勾选）的记录
+ * 
+ * @param tableId 表格 ID（可选，默认使用当前选中表格）
+ * @param fieldId Checkbox 字段 ID（可选，默认使用第一个 Checkbox 字段）
+ * @returns 勾选状态为 true 的记录列表
+ */
+export async function scanRecordsByCheckboxField(
+  tableId?: string,
+  fieldId?: string
+): Promise<BitableRecord[]> {
+  debugLog('======== scanRecordsByCheckboxField() 开始 ========');
+  
+  try {
+    if (envStatus !== 'ready') {
+      debugLog('⚠️ 环境未就绪');
+      return [];
+    }
+    
+    // 获取表格 ID
+    let targetTableId = tableId;
+    if (!targetTableId) {
+      const selection = await base.getSelection();
+      targetTableId = selection?.tableId || '';
+    }
+    
+    if (!targetTableId) {
+      debugLog('❌ 无法获取表格 ID');
+      return [];
+    }
+    debugLog('表格 ID:', targetTableId);
+    
+    // 获取表格实例
+    const table = await base.getTable(targetTableId);
+    
+    // 获取字段元数据
+    const fieldMetaList = await table.getFieldMetaList();
+    
+    // 确定 Checkbox 字段
+    let targetFieldId = fieldId;
+    
+    if (!targetFieldId) {
+      // 自动查找 Checkbox 字段
+      const checkboxFields = fieldMetaList.filter((field: any) => {
+        const isCheckboxType = field.type === 18 || field.fieldType === 18;
+        const isCheckboxName = /checkbox|复选框|勾选|选择/i.test(field.name || '');
+        return isCheckboxType || isCheckboxName;
+      });
+      
+      if (checkboxFields.length === 0) {
+        debugLog('❌ 表格中没有 Checkbox 字段');
+        return [];
+      }
+      
+      // 使用第一个 Checkbox 字段
+      targetFieldId = checkboxFields[0].id;
+      debugLog(`使用自动发现的 Checkbox 字段: ${checkboxFields[0].name} (ID: ${targetFieldId})`);
+    }
+    
+    // 获取所有记录 ID
+    const recordIdList = await table.getRecordIdList();
+    debugLog(`表格共有 ${recordIdList.length} 条记录`);
+    
+    // 批量获取记录数据
+    let recordsData: any[] = [];
+    
+    try {
+      // 尝试批量获取
+      if (typeof table.getRecordsByIds === 'function') {
+        recordsData = await table.getRecordsByIds(recordIdList);
+        debugLog('✅ 批量获取记录成功');
+      } else {
+        throw new Error('getRecordsByIds 不可用');
+      }
+    } catch (e) {
+      // 逐个获取
+      debugLog('逐个获取记录...');
+      recordsData = [];
+      for (const recId of recordIdList) {
+        try {
+          const recData = await table.getRecordById(recId);
+          if (recData) recordsData.push(recData);
+        } catch (err) {
+          debugLog(`获取记录 ${recId} 失败:`, err);
+        }
+      }
+    }
+    
+    // 筛选 Checkbox 值为 true 的记录
+    const checkedRecords: BitableRecord[] = [];
+    
+    for (const recordData of recordsData) {
+      const checkboxValue = recordData.fields?.[targetFieldId!];
+      
+      // Checkbox 值可能是 boolean 或数组
+      const isChecked = checkboxValue === true || 
+                        checkboxValue === 'true' ||
+                        (Array.isArray(checkboxValue) && checkboxValue.length > 0) ||
+                        (typeof checkboxValue === 'object' && checkboxValue !== null);
+      
+      if (isChecked) {
+        const processedRecord = processRecordData(recordData, fieldMetaList);
+        checkedRecords.push(processedRecord);
+      }
+    }
+    
+    debugLog(`✅ 扫描完成，找到 ${checkedRecords.length} 条勾选记录`);
+    debugLog('======== scanRecordsByCheckboxField() 结束 ========');
+    
+    return checkedRecords;
+    
+  } catch (error) {
+    debugLog('❌ scanRecordsByCheckboxField() 失败:', error);
+    debugLog('======== scanRecordsByCheckboxField() 结束 ========');
+    return [];
+  }
+}
+
+/**
+ * 便捷函数：获取 Checkbox 字段勾选的记录（完整流程）
+ * 
+ * 使用场景：当 bitable.ui.getSelectRecordIds() 不可用时，
+ * 通过扫描 Checkbox 字段值来实现"勾选打印"功能
+ * 
+ * @returns Checkbox 勾选状态的记录列表
+ */
+export async function getRecordsByCheckedCheckbox(): Promise<BitableRecord[]> {
+  debugLog('📋 通过 Checkbox 字段扫描获取勾选记录（备选方案）');
+  
+  try {
+    // 首先尝试使用 API 方式获取
+    const selection = await base.getSelection();
+    const tableId = selection?.tableId;
+    
+    if (!tableId) {
+      debugLog('❌ 无法获取表格 ID');
+      return [];
+    }
+    
+    // 查找 Checkbox 字段
+    const checkboxFields = await findCheckboxFields(tableId);
+    
+    if (checkboxFields.length === 0) {
+      debugLog('⚠️ 表格中没有 Checkbox 字段，无法使用此方案');
+      return [];
+    }
+    
+    // 扫描 Checkbox 字段获取勾选记录
+    const records = await scanRecordsByCheckboxField(tableId, checkboxFields[0].id);
+    
+    debugLog(`✅ 获取到 ${records.length} 条 Checkbox 勾选记录`);
+    return records;
+    
+  } catch (error) {
+    debugLog('❌ getRecordsByCheckedCheckbox() 失败:', error);
+    return [];
+  }
+}
+
+// ============================================
 // 便捷函数：快速获取复选框选中记录
 // ============================================
 
@@ -1282,6 +1498,11 @@ export const feishuEnv = {
   onRecordSelectChange,
   getRecordsByCheckboxIds,
   getCheckboxSelectedRecords,
+  
+  // 备选方案：扫描 Checkbox 字段
+  findCheckboxFields,
+  scanRecordsByCheckboxField,
+  getRecordsByCheckedCheckbox,
   
   // 管理器类
   CheckboxSelectionManager,

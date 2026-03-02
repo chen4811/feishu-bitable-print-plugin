@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Printer, ChevronLeft, ChevronRight, Eye, RefreshCw, FileText, Pencil, Download } from 'lucide-react';
+import { Printer, ChevronLeft, ChevronRight, Eye, RefreshCw, FileText, Pencil, Download, ScanSearch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 import { toast } from 'sonner';
 import { useTemplateStore, type Template } from '@/store/templateStore';
@@ -299,6 +300,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   const [showVariableMapping, setShowVariableMapping] = useState(true);
   const [debugInfo, setDebugInfo] = useState<string>('');
   const [showDebugInfo, setShowDebugInfo] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [useScanMode, setUseScanMode] = useState(false);
 
   // 加载模板列表
   useEffect(() => {
@@ -418,6 +421,121 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     setCurrentTemplate(selectedTemplate);
     onEditTemplate?.(selectedTemplate);
   }, [selectedTemplate, setCurrentTemplate, onEditTemplate]);
+
+  // 刷新数据（优先使用 API，失败后自动使用扫描模式）
+  const handleRefreshData = useCallback(async () => {
+    if (!isFeishuEnvironment) {
+      toast.info('当前不在飞书环境中');
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      let records: any[] = [];
+      let mode = '';
+
+      // 如果用户明确选择扫描模式，直接使用
+      if (useScanMode) {
+        mode = '扫描模式';
+        records = await feishuEnv.getRecordsByCheckedCheckbox();
+      } else {
+        // 优先尝试 API 模式
+        records = await feishuEnv.getCheckboxSelectedRecords();
+        
+        if (records.length > 0) {
+          mode = 'API模式';
+        } else {
+          // API 模式没有数据，尝试扫描模式
+          mode = '扫描模式';
+          records = await feishuEnv.getRecordsByCheckedCheckbox();
+          
+          if (records.length > 0) {
+            // 如果扫描模式有数据，提示用户
+            toast.success('检测到 Checkbox 字段勾选记录');
+          }
+        }
+      }
+
+      if (records.length > 0) {
+        // 转换格式
+        const formattedRecords = records.map((record, index) => ({
+          id: record.id,
+          ...record.fields,
+          _rowIndex: index,
+        }));
+
+        setRecords(formattedRecords);
+        setCurrentIndex(0);
+        toast.success(`已加载 ${formattedRecords.length} 条记录 (${mode})`);
+        
+        if (showDebugInfo) {
+          setDebugInfo(`刷新数据成功 (${mode}):\n${JSON.stringify(records.map(r => ({ id: r.id, fields: r.fields })), null, 2)}`);
+        }
+      } else {
+        // 没有获取到任何记录，尝试点击行选择
+        const clickRowRecords = await feishuEnv.getSelectedRecords();
+        
+        if (clickRowRecords.length > 0) {
+          const formattedRecords = clickRowRecords.map((record, index) => ({
+            id: record.id,
+            ...record.fields,
+            _rowIndex: index,
+          }));
+          
+          setRecords(formattedRecords);
+          setCurrentIndex(0);
+          toast.success(`已加载 ${formattedRecords.length} 条记录 (点击行选择)`);
+        } else {
+          toast.info('未获取到任何记录，请勾选复选框或点击选择行');
+          setRecords([]);
+          setCurrentIndex(0);
+        }
+      }
+    } catch (err) {
+      console.error('[TemplatePreview] 刷新数据失败:', err);
+      toast.error('刷新数据失败');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isFeishuEnvironment, useScanMode, setRecords, setCurrentIndex, showDebugInfo]);
+
+  // 专门使用扫描模式获取 Checkbox 勾选记录
+  const handleScanCheckbox = useCallback(async () => {
+    if (!isFeishuEnvironment) {
+      toast.info('当前不在飞书环境中');
+      return;
+    }
+
+    setIsScanning(true);
+    
+    try {
+      const records = await feishuEnv.getRecordsByCheckedCheckbox();
+      
+      if (records.length > 0) {
+        const formattedRecords = records.map((record, index) => ({
+          id: record.id,
+          ...record.fields,
+          _rowIndex: index,
+        }));
+
+        setRecords(formattedRecords);
+        setCurrentIndex(0);
+        toast.success(`扫描完成，找到 ${formattedRecords.length} 条 Checkbox 勾选记录`);
+        
+        if (showDebugInfo) {
+          setDebugInfo(`Checkbox 扫描结果:\n${JSON.stringify(records.map(r => ({ id: r.id, fields: r.fields })), null, 2)}`);
+        }
+      } else {
+        toast.info('未找到 Checkbox 勾选记录，请确保表格有 Checkbox 字段且已勾选');
+      }
+    } catch (err) {
+      console.error('[TemplatePreview] 扫描 Checkbox 失败:', err);
+      toast.error('扫描 Checkbox 失败');
+    } finally {
+      setIsScanning(false);
+    }
+  }, [isFeishuEnvironment, setRecords, setCurrentIndex, showDebugInfo]);
 
   // 获取当前选中的模板
   const currentRecord = getCurrentRecord();
@@ -662,13 +780,55 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
               {/* 右侧：打印按钮 */}
               <div className="flex items-center gap-2">
+                {isFeishuEnvironment && (
+                  <>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleRefreshData}
+                            disabled={isLoading}
+                          >
+                            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                            刷新数据
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>优先使用 API 获取，失败后自动扫描 Checkbox 字段</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleScanCheckbox}
+                            disabled={isScanning}
+                          >
+                            <ScanSearch className={`h-4 w-4 mr-2 ${isScanning ? 'animate-spin' : ''}`} />
+                            扫描 Checkbox
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>扫描表格中 Checkbox 字段，获取所有勾选状态的记录</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </>
+                )}
+                
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleBatchPrint}
                   disabled={!selectedTemplate || records.length === 0}
                 >
-                  <RefreshCw className="h-4 w-4 mr-2" />
+                  <FileText className="h-4 w-4 mr-2" />
                   批量打印 ({records.length})
                 </Button>
                 <Button
@@ -682,8 +842,20 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
               </div>
             </div>
 
-            {/* 调试信息开关 */}
-            <div className="mt-2 flex items-center gap-2">
+            {/* 调试信息和模式开关 */}
+            <div className="mt-2 flex items-center gap-4">
+              {isFeishuEnvironment && (
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="scan-mode"
+                    checked={useScanMode}
+                    onCheckedChange={setUseScanMode}
+                  />
+                  <Label htmlFor="scan-mode" className="text-xs cursor-pointer">
+                    强制扫描模式
+                  </Label>
+                </div>
+              )}
               <Button 
                 variant="ghost" 
                 size="sm" 
