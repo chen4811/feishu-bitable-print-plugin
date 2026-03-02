@@ -976,46 +976,67 @@ export function getDebugInfo(): Record<string, unknown> {
 }
 
 // ============================================
-// 便捷函数：通过 base.getSelection 获取选中记录
+// 便捷函数：通过 table.getSelectedRecordIds() 获取选中记录
 // ============================================
 
 export async function getCheckboxSelectedRecords(): Promise<BitableRecord[]> {
   debugLog('======== getCheckboxSelectedRecords() 开始 ========');
-  debugLog('📋 使用 base.getSelection() 获取选中记录');
+  debugLog('📋 使用 table.getSelectedRecordIds() 获取选中记录');
 
   try {
-    // 使用 base.getSelection() 获取当前选择上下文
-    debugLog('📍 调用 base.getSelection()...');
+    // 1. 获取当前激活的表格 ID (base.getSelection() 是可靠的)
+    debugLog('📍 调用 base.getSelection() 获取 tableId...');
     const selection = await base.getSelection();
     
-    // 🔍 输出完整的返回对象
-    debugLog('📍 base.getSelection() 完整返回:');
+    debugLog('📍 base.getSelection() 返回:');
     debugLog('  - baseId:', selection?.baseId);
     debugLog('  - tableId:', selection?.tableId);
     debugLog('  - viewId:', selection?.viewId);
     debugLog('  - recordId:', selection?.recordId);
     debugLog('  - fieldId:', selection?.fieldId);
-    debugLog('📍 原始对象:', JSON.stringify(selection, null, 2));
 
-    const tableId = selection?.tableId;
-    const recordId = selection?.recordId;
-
-    if (!tableId) {
+    if (!selection?.tableId) {
       debugLog('❌ 无法获取 tableId');
       debugLog('======== getCheckboxSelectedRecords() 结束 ========');
       return [];
     }
 
-    if (!recordId) {
-      debugLog('⚠️ 没有选中的记录（recordId 为空）');
+    const tableId = selection.tableId;
+    debugLog(`✅ 获取到 tableId: ${tableId}`);
+
+    // 2. 获取表格实例
+    debugLog('📍 获取表格实例...');
+    const table = await base.getTable(tableId);
+    debugLog('✅ 表格实例已获取');
+
+    // 3. 【核心】使用 table.getSelectedRecordIds() 获取选中的行 ID 列表
+    debugLog('📍 调用 table.getSelectedRecordIds()...');
+    
+    let selectedRecordIds: string[] = [];
+    
+    // 检查方法是否存在
+    if (typeof (table as any).getSelectedRecordIds === 'function') {
+      try {
+        selectedRecordIds = await (table as any).getSelectedRecordIds();
+        debugLog(`✅ table.getSelectedRecordIds() 返回 ${selectedRecordIds.length} 个 ID`);
+        debugLog('🆔 选中的 Record IDs:', selectedRecordIds);
+      } catch (e) {
+        debugLog('❌ table.getSelectedRecordIds() 调用失败:', e);
+      }
+    } else {
+      debugLog('⚠️ table.getSelectedRecordIds() 方法不存在');
+    }
+
+    if (selectedRecordIds.length === 0) {
+      debugLog('ℹ️ 用户未选中任何行');
+      debugLog('💡 提示：请点击表格最左侧的【行号】或【复选框】来选中多行');
       debugLog('======== getCheckboxSelectedRecords() 结束 ========');
       return [];
     }
 
-    debugLog(`✅ 获取到选中记录: tableId=${tableId}, recordId=${recordId}`);
-
-    // 获取记录数据
-    const records = await getRecordsByCheckboxIds(tableId, [recordId]);
+    // 4. 批量获取这些行的详细数据
+    debugLog('📍 批量获取选中行的详细数据...');
+    const records = await getRecordsByCheckboxIds(tableId, selectedRecordIds);
 
     debugLog(`✅ 获取到记录数据: ${records.length} 条`);
     debugLog('======== getCheckboxSelectedRecords() 结束 ========');
