@@ -763,10 +763,22 @@ export async function getSelectedRecords(): Promise<BitableRecord[]> {
     debugLog('第四步：获取字段元信息...');
     let fieldMetaList: any[] = [];
     
-    if (typeof table.getFieldMetaList === 'function') {
-      fieldMetaList = await table.getFieldMetaList();
-    } else if (typeof table.getFieldList === 'function') {
-      fieldMetaList = await table.getFieldList();
+    try {
+      if (typeof table.getFieldMetaList === 'function') {
+        fieldMetaList = await table.getFieldMetaList();
+        debugLog('通过 getFieldMetaList 获取到字段数:', fieldMetaList.length);
+      } else if (typeof table.getFieldList === 'function') {
+        fieldMetaList = await table.getFieldList();
+        debugLog('通过 getFieldList 获取到字段数:', fieldMetaList.length);
+      }
+      
+      // 打印每个字段的详细信息以便调试
+      debugLog('字段元信息详情:');
+      fieldMetaList.forEach((field, index) => {
+        debugLog(`  [${index}] ID: ${field.id}, Name: ${field.name}, Type: ${field.type}, Typeof: ${typeof field.type}`);
+      });
+    } catch (e) {
+      debugLog('获取字段元信息失败:', e);
     }
     
     debugLog('第五步：处理数据...');
@@ -809,6 +821,7 @@ const FIELD_TYPES = {
 
 function processRecordData(recordData: any, fieldMetaList: any[]): BitableRecord {
   debugLog('processRecordData 被调用');
+  debugLog('fieldMetaList:', JSON.stringify(fieldMetaList.map(f => ({ id: f.id, name: f.name, type: f.type, typeOf: typeof f.type }))));
   
   const { fields } = recordData;
   
@@ -817,8 +830,11 @@ function processRecordData(recordData: any, fieldMetaList: any[]): BitableRecord
   const fieldTypeMap: Record<string, number> = {};
   fieldMetaList.forEach(field => {
     fieldMap[field.id] = field.name;
-    fieldTypeMap[field.id] = field.type;
+    // 确保类型是数字
+    fieldTypeMap[field.id] = typeof field.type === 'string' ? parseInt(field.type, 10) : field.type;
   });
+  
+  debugLog('fieldTypeMap:', JSON.stringify(fieldTypeMap));
   
   const formattedData: Record<string, unknown> = {};
   
@@ -826,7 +842,9 @@ function processRecordData(recordData: any, fieldMetaList: any[]): BitableRecord
     const fieldName = fieldMap[fieldId] || fieldId;
     const fieldValue = fields[fieldId];
     const fieldType = fieldTypeMap[fieldId];
+    debugLog(`处理字段 ${fieldName} (ID: ${fieldId}), 类型: ${fieldType}, 原始值:`, JSON.stringify(fieldValue));
     formattedData[fieldName] = formatFieldValue(fieldValue, fieldType);
+    debugLog(`  -> 格式化后:`, formattedData[fieldName]);
   });
   
   debugLog('processRecordData 处理完成:', formattedData);
@@ -846,59 +864,86 @@ function processRecordData(recordData: any, fieldMetaList: any[]): BitableRecord
  * @returns 格式化后的值
  */
 function formatFieldValue(fieldValue: any, fieldType?: number): any {
+  debugLog(`formatFieldValue 被调用, fieldType=${fieldType}, typeof=${typeof fieldType}`);
+  
   if (!fieldValue) {
+    debugLog('  fieldValue 为空，返回默认值');
     return getDefaultValue(fieldType);
   }
   
   if (!Array.isArray(fieldValue)) {
+    debugLog(`  fieldValue 不是数组，直接转字符串: ${String(fieldValue)}`);
     return String(fieldValue);
   }
   
   if (fieldValue.length === 0) {
+    debugLog('  fieldValue 为空数组，返回默认值');
     return getDefaultValue(fieldType);
   }
   
+  // 确保 fieldType 是数字
+  const numericFieldType = typeof fieldType === 'string' ? parseInt(fieldType, 10) : fieldType;
+  debugLog(`  数值化后的 fieldType: ${numericFieldType}`);
+  
   try {
-    switch (fieldType) {
-      case FIELD_TYPES.TEXT: // 文本
-      case FIELD_TYPES.PHONE: // 电话
-      case FIELD_TYPES.AUTO_NUMBER: // 自动编号
+    switch (numericFieldType) {
+      case FIELD_TYPES.TEXT: // 文本 = 1
+        debugLog('  匹配到 TEXT 类型');
         return formatTextValue(fieldValue);
-      case FIELD_TYPES.NUMBER: // 数字
+      case FIELD_TYPES.NUMBER: // 数字 = 2
+        debugLog('  匹配到 NUMBER 类型');
         return formatNumberValue(fieldValue);
-      case FIELD_TYPES.SINGLE_SELECT: // 单选
+      case FIELD_TYPES.SINGLE_SELECT: // 单选 = 3
+        debugLog('  匹配到 SINGLE_SELECT 类型，调用 formatSingleSelectValue');
         return formatSingleSelectValue(fieldValue);
-      case FIELD_TYPES.MULTI_SELECT: // 多选
+      case FIELD_TYPES.MULTI_SELECT: // 多选 = 4
+        debugLog('  匹配到 MULTI_SELECT 类型');
         return formatMultiSelectValue(fieldValue);
-      case FIELD_TYPES.DATETIME: // 日期
-      case FIELD_TYPES.CREATED_TIME: // 创建时间
-      case FIELD_TYPES.MODIFIED_TIME: // 修改时间
+      case FIELD_TYPES.DATETIME: // 日期 = 5
+      case FIELD_TYPES.CREATED_TIME: // 创建时间 = 1001
+      case FIELD_TYPES.MODIFIED_TIME: // 修改时间 = 1002
+        debugLog('  匹配到 DATETIME 类型');
         return formatDateTimeValue(fieldValue);
-      case FIELD_TYPES.CHECKBOX: // 复选框
+      case FIELD_TYPES.CHECKBOX: // 复选框 = 7
+        debugLog('  匹配到 CHECKBOX 类型');
         return formatCheckboxValue(fieldValue);
-      case FIELD_TYPES.USER: // 人员
-      case FIELD_TYPES.CREATED_USER: // 创建人
-      case FIELD_TYPES.MODIFIED_USER: // 修改人
+      case FIELD_TYPES.USER: // 人员 = 11
+      case FIELD_TYPES.CREATED_USER: // 创建人 = 1003
+      case FIELD_TYPES.MODIFIED_USER: // 修改人 = 1004
+        debugLog('  匹配到 USER 类型');
         return formatUserValue(fieldValue);
-      case FIELD_TYPES.URL: // 超链接
+      case FIELD_TYPES.PHONE: // 电话 = 13
+        debugLog('  匹配到 PHONE 类型');
+        return formatTextValue(fieldValue);
+      case FIELD_TYPES.URL: // 超链接 = 15
+        debugLog('  匹配到 URL 类型');
         return formatUrlValue(fieldValue);
-      case FIELD_TYPES.ATTACHMENT: // 附件
+      case FIELD_TYPES.ATTACHMENT: // 附件 = 17
+        debugLog('  匹配到 ATTACHMENT 类型');
         return formatAttachmentValue(fieldValue);
-      case FIELD_TYPES.SINGLE_LINK: // 单向关联
-      case FIELD_TYPES.DUPLEX_LINK: // 双向关联
+      case FIELD_TYPES.SINGLE_LINK: // 单向关联 = 18
+      case FIELD_TYPES.DUPLEX_LINK: // 双向关联 = 21
+        debugLog('  匹配到 LINK 类型');
         return formatLinkValue(fieldValue);
-      case FIELD_TYPES.FORMULA: // 公式
+      case FIELD_TYPES.FORMULA: // 公式 = 20
+        debugLog('  匹配到 FORMULA 类型');
         return formatFormulaValue(fieldValue);
-      case FIELD_TYPES.LOCATION: // 地理位置
+      case FIELD_TYPES.LOCATION: // 地理位置 = 22
+        debugLog('  匹配到 LOCATION 类型');
         return formatLocationValue(fieldValue);
-      case FIELD_TYPES.GROUP_CHAT: // 群组
+      case FIELD_TYPES.GROUP_CHAT: // 群组 = 23
+        debugLog('  匹配到 GROUP_CHAT 类型');
         return formatGroupChatValue(fieldValue);
+      case FIELD_TYPES.AUTO_NUMBER: // 自动编号 = 1005
+        debugLog('  匹配到 AUTO_NUMBER 类型');
+        return formatTextValue(fieldValue);
       default:
-        // 未知类型，使用通用处理
-        return formatUnknownValue(fieldValue);
+        // 未知类型，尝试智能推断
+        debugLog(`  未知类型 ${numericFieldType}，尝试智能推断...`);
+        return inferAndFormatValue(fieldValue);
     }
   } catch (error) {
-    console.error('[FeishuEnv] 字段值格式化错误:', error, fieldType, fieldValue);
+    console.error('[FeishuEnv] 字段值格式化错误:', error, numericFieldType, fieldValue);
     return fieldValue;
   }
 }
@@ -916,13 +961,44 @@ function formatNumberValue(fieldValue: any[]): number {
 
 // 单选类型处理（3）
 function formatSingleSelectValue(fieldValue: any[]): string {
-  if (fieldValue[0]?.text) {
-    return fieldValue[0].text;
+  debugLog('formatSingleSelectValue 被调用，原始值:', JSON.stringify(fieldValue));
+  
+  if (!fieldValue || !Array.isArray(fieldValue) || fieldValue.length === 0) {
+    debugLog('  空值，返回空字符串');
+    return '';
   }
-  if (fieldValue[0]?.name) {
-    return fieldValue[0].name;
+  
+  // 单选字段的值是数组，第一个元素包含选项信息
+  const selectedOption = fieldValue[0];
+  debugLog('  第一个选项:', JSON.stringify(selectedOption));
+  
+  if (selectedOption && typeof selectedOption === 'object') {
+    if (selectedOption.text) {
+      debugLog(`  返回 text: ${selectedOption.text}`);
+      return String(selectedOption.text);
+    }
+    if (selectedOption.name) {
+      debugLog(`  返回 name: ${selectedOption.name}`);
+      return String(selectedOption.name);
+    }
+    // 如果对象有 id 但没有 text/name，尝试其他常见属性
+    const possibleKeys = ['label', 'title', 'value', 'display', 'content'];
+    for (const key of possibleKeys) {
+      if (selectedOption[key]) {
+        debugLog(`  返回 ${key}: ${selectedOption[key]}`);
+        return String(selectedOption[key]);
+      }
+    }
   }
-  return '';
+  
+  // 如果直接是字符串或数字
+  if (typeof selectedOption === 'string' || typeof selectedOption === 'number') {
+    debugLog(`  返回原始值: ${selectedOption}`);
+    return String(selectedOption);
+  }
+  
+  debugLog('  无法识别的格式，返回 JSON:', JSON.stringify(fieldValue));
+  return JSON.stringify(fieldValue);
 }
 
 // 多选类型处理（4）
@@ -1021,17 +1097,45 @@ function formatGroupChatValue(fieldValue: any[]): string {
 }
 
 // 未知类型处理
-function formatUnknownValue(fieldValue: any[]): string {
+function formatUnknownValue(fieldValue: any[]): any {
+  debugLog('formatUnknownValue 被调用，原始值:', JSON.stringify(fieldValue));
+  
   // 尝试通用的文本提取
-  if (fieldValue[0]?.text) {
-    return fieldValue.map(item => item.text || '').filter(Boolean).join(', ');
+  if (fieldValue[0] && typeof fieldValue[0] === 'object') {
+    if (fieldValue[0].text) {
+      const result = fieldValue.map(item => item.text || '').filter(Boolean).join(', ');
+      debugLog('  提取 text 属性:', result);
+      return result;
+    }
+    if (fieldValue[0].name) {
+      const result = fieldValue.map(item => item.name || '').filter(Boolean).join(', ');
+      debugLog('  提取 name 属性:', result);
+      return result;
+    }
+    // 尝试其他常见属性
+    const possibleKeys = ['label', 'title', 'value', 'display', 'content'];
+    for (const key of possibleKeys) {
+      if (fieldValue[0][key]) {
+        const result = fieldValue.map(item => item[key] || '').filter(Boolean).join(', ');
+        debugLog(`  提取 ${key} 属性:`, result);
+        return result;
+      }
+    }
   }
-  if (fieldValue[0]?.name) {
-    return fieldValue.map(item => item.name || '').filter(Boolean).join(', ');
+  
+  // 如果是基本类型
+  if (typeof fieldValue[0] === 'string' || typeof fieldValue[0] === 'number') {
+    const result = fieldValue.map(item => String(item)).join(', ');
+    debugLog('  基本类型转字符串:', result);
+    return result;
   }
+  
   try {
-    return JSON.stringify(fieldValue);
+    const jsonResult = JSON.stringify(fieldValue);
+    debugLog('  无法识别，返回 JSON:', jsonResult);
+    return jsonResult;
   } catch {
+    debugLog('  JSON 序列化失败，返回错误提示');
     return '无法解析的值';
   }
 }
@@ -1048,6 +1152,104 @@ function getDefaultValue(fieldType?: number): any {
     default:
       return '';
   }
+}
+
+/**
+ * 智能推断字段类型并格式化
+ * 当字段类型未知时，根据值结构自动推断
+ */
+function inferAndFormatValue(fieldValue: any[]): any {
+  debugLog('inferAndFormatValue 被调用，原始值:', JSON.stringify(fieldValue));
+  
+  if (!fieldValue || !Array.isArray(fieldValue) || fieldValue.length === 0) {
+    return '';
+  }
+  
+  const firstItem = fieldValue[0];
+  
+  // 如果是基本类型（字符串、数字）
+  if (typeof firstItem === 'string') {
+    debugLog('  推断为基本字符串类型');
+    return firstItem;
+  }
+  if (typeof firstItem === 'number') {
+    debugLog('  推断为基本数字类型');
+    return firstItem;
+  }
+  if (typeof firstItem === 'boolean') {
+    debugLog('  推断为基本布尔类型');
+    return firstItem;
+  }
+  
+  // 如果是对象
+  if (typeof firstItem === 'object' && firstItem !== null) {
+    // 检查是否包含 text 属性（文本、单选、多选常见结构）
+    if (firstItem.text !== undefined) {
+      debugLog('  推断为含 text 属性的对象');
+      if (fieldValue.length === 1) {
+        // 单值情况
+        return firstItem.text;
+      } else {
+        // 多值情况（多选）
+        return fieldValue.map(item => item.text || '').filter(Boolean).join(', ');
+      }
+    }
+    
+    // 检查是否包含 name 属性（人员、群组常见结构）
+    if (firstItem.name !== undefined) {
+      debugLog('  推断为含 name 属性的对象');
+      return fieldValue.map(item => item.name || '').filter(Boolean).join(', ');
+    }
+    
+    // 检查是否包含 id 和 text 的单选结构
+    if (firstItem.id !== undefined && (firstItem.text !== undefined || firstItem.name !== undefined)) {
+      debugLog('  推断为 ID+Text 结构');
+      return firstItem.text || firstItem.name || String(firstItem.id);
+    }
+    
+    // 检查是否有 value 属性（公式字段）
+    if (firstItem.value !== undefined) {
+      debugLog('  推断为公式字段结构');
+      return formatFormulaValue(fieldValue);
+    }
+    
+    // 检查是否有 link 属性（超链接）
+    if (firstItem.link !== undefined) {
+      debugLog('  推断为超链接结构');
+      return formatUrlValue(fieldValue);
+    }
+    
+    // 检查是否有 location 属性（地理位置）
+    if (firstItem.location !== undefined) {
+      debugLog('  推断为地理位置结构');
+      return formatLocationValue(fieldValue);
+    }
+    
+    // 检查是否有 file_token 或 url 属性（附件）
+    if (firstItem.file_token !== undefined || firstItem.url !== undefined) {
+      debugLog('  推断为附件结构');
+      return formatAttachmentValue(fieldValue);
+    }
+    
+    // 检查是否有 link_record_ids 属性（关联字段）
+    if (firstItem.link_record_ids !== undefined) {
+      debugLog('  推断为关联字段结构');
+      return formatLinkValue(fieldValue);
+    }
+    
+    // 尝试常见的属性名
+    const possibleKeys = ['label', 'title', 'display', 'content', 'value'];
+    for (const key of possibleKeys) {
+      if (firstItem[key] !== undefined) {
+        debugLog(`  推断为含 ${key} 属性的对象`);
+        return fieldValue.map(item => item[key] || '').filter(Boolean).join(', ');
+      }
+    }
+  }
+  
+  // 无法识别，返回 JSON 字符串
+  debugLog('  无法推断，返回 JSON');
+  return formatUnknownValue(fieldValue);
 }
 
 // ============================================
