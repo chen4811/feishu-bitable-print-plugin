@@ -22,38 +22,32 @@ interface TemplatePreviewProps {
   onEditTemplate?: (template: Template) => void;
 }
 
-// 检测模板中的变量
+// 检测模板中的变量 - 支持 [字段名] 和 {{字段名}} 两种格式
 const extractVariables = (components: any[]): string[] => {
   const variables: string[] = [];
+  // 支持 [字段名]、[字段名:格式]、{{字段名}}、{{字段名:格式}}
+  const variableRegex = /\[([^\]]+)(?::([^\]]+))?\]|\{\{([^}]+)(?::([^}]+))?\}\}/g;
 
   const traverse = (comp: any, depth: number = 0) => {
     if (!comp) return;
 
-    // 检测文本中的变量 [字段名]
-    if (comp.text) {
-      const matches = comp.text.match(/\[([^\]]+)\]/g);
-      if (matches) {
-        matches.forEach((match: string) => {
-          const varName = match.slice(1, -1);
-          if (!variables.includes(varName)) {
-            variables.push(varName);
-          }
-        });
+    // 检测文本中的变量
+    const extractFromText = (text: string) => {
+      if (!text) return;
+      let match;
+      // 必须重置 regex 的 lastIndex
+      variableRegex.lastIndex = 0;
+      while ((match = variableRegex.exec(text)) !== null) {
+        // match[1] 是 [字段名] 的字段名, match[3] 是 {{字段名}} 的字段名
+        const varName = (match[1] || match[3])?.trim();
+        if (varName && !variables.includes(varName)) {
+          variables.push(varName);
+        }
       }
-    }
+    };
 
-    // 检测 content 中的变量
-    if (comp.content) {
-      const matches = comp.content.match(/\[([^\]]+)\]/g);
-      if (matches) {
-        matches.forEach((match: string) => {
-          const varName = match.slice(1, -1);
-          if (!variables.includes(varName)) {
-            variables.push(varName);
-          }
-        });
-      }
-    }
+    if (comp.text) extractFromText(comp.text);
+    if (comp.content) extractFromText(comp.content);
 
     // 递归检查子组件
     if (comp.children && Array.isArray(comp.children)) {
@@ -65,11 +59,15 @@ const extractVariables = (components: any[]): string[] => {
   return variables;
 };
 
-// 替换文本中的变量为实际值
+// 替换文本中的变量为实际值 - 支持 [字段名] 和 {{字段名}} 两种格式
 const replaceVariables = (text: string, data: Record<string, any>): string => {
   if (!text || typeof text !== 'string') return text;
 
-  return text.replace(/\[([^\]]+)\]/g, (match, varName) => {
+  // 支持 [字段名]、[字段名:格式]、{{字段名}}、{{字段名:格式}}
+  return text.replace(/\[([^\]]+)(?::([^\]]+))?\]|\{\{([^}]+)(?::([^}]+))?\}\}/g, (match, bracketName, bracketFormat, braceName, braceFormat) => {
+    const varName = (bracketName || braceName)?.trim();
+    if (!varName) return match;
+    
     const value = data[varName];
     if (value === undefined || value === null) {
       return match; // 保留原变量格式
