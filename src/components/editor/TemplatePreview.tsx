@@ -174,11 +174,8 @@ const renderComponentToHTML = (component: any, data: Record<string, any>): strin
   const processedContent = content ? replaceVariables(content, data) : '';
   
   const styleStr = `
-    position: ${type === 'text' ? 'absolute' : 'relative'};
-    left: ${style.x || 0}px;
-    top: ${style.y || 0}px;
-    width: ${style.width ? `${style.width}px` : 'auto'};
-    height: ${style.height ? `${style.height}px` : 'auto'};
+    position: relative;
+    width: ${style.width ? `${style.width}px` : '100%'};
     font-size: ${style.fontSize || '16px'};
     font-weight: ${style.fontWeight || 'normal'};
     color: ${style.color || '#000000'};
@@ -228,12 +225,9 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
   const processedText = text ? replaceVariables(text, data) : undefined;
   const processedContent = content ? replaceVariables(content, data) : undefined;
 
-  const commonStyle: React.CSSProperties = {
-    position: 'absolute',
-    left: style.x || 0,
-    top: style.y || 0,
-    width: style.width || 'auto',
-    height: style.height || 'auto',
+const commonStyle: React.CSSProperties = {
+    position: 'relative',
+    width: style.width ? `${style.width}px` : '100%',
     fontSize: style.fontSize,
     fontWeight: style.fontWeight,
     color: style.color,
@@ -624,6 +618,10 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     // 根据排版方式生成打印内容
     let printContent = '';
     const components = selectedTemplate.data?.components || [];
+    const pageConfig = selectedTemplate.data?.pageConfig;
+    const padding = pageConfig?.margins
+      ? `${pageConfig.margins.top || 20}mm ${pageConfig.margins.right || 20}mm ${pageConfig.margins.bottom || 20}mm ${pageConfig.margins.left || 20}mm`
+      : '20mm';
     
     switch (layoutMode) {
       case 'default':
@@ -634,17 +632,25 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           <div class="print-page" style="
             width: 210mm;
             min-height: 297mm;
-            padding: 20mm;
+            padding: ${padding};
             margin: 0 auto;
             box-sizing: border-box;
             page-break-after: ${isLast ? 'auto' : 'always'};
             position: relative;
             background: white;
           ">
-            ${components.map((comp: any) => {
-              const html = renderComponentToHTML(comp, record.data);
-              return html;
-            }).join('')}
+            <div style="
+              display: flex;
+              flex-direction: column;
+              flex-wrap: wrap;
+              gap: 0;
+              height: 100%;
+            ">
+              ${components.map((comp: any) => {
+                const html = renderComponentToHTML(comp, record.data);
+                return html;
+              }).join('')}
+            </div>
           </div>
         `}).join('');
         break;
@@ -655,7 +661,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           <div class="print-page" style="
             width: 210mm;
             min-height: 297mm;
-            padding: 20mm;
+            padding: ${padding};
             margin: 0 auto;
             box-sizing: border-box;
             background: white;
@@ -668,7 +674,14 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                   padding-bottom: ${isLast ? '0' : '40px'};
                   border-bottom: ${isLast ? 'none' : '1px dashed #e5e7eb'};
                 ">
-                  ${components.map((comp: any) => renderComponentToHTML(comp, record.data)).join('')}
+                  <div style="
+                    display: flex;
+                    flex-direction: column;
+                    flex-wrap: wrap;
+                    gap: 0;
+                  ">
+                    ${components.map((comp: any) => renderComponentToHTML(comp, record.data)).join('')}
+                  </div>
                 </div>
               `;
             }).join('')}
@@ -682,7 +695,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           <div class="print-page" style="
             width: 210mm;
             min-height: 297mm;
-            padding: 20mm;
+            padding: ${padding};
             margin: 0 auto;
             box-sizing: border-box;
             background: white;
@@ -699,7 +712,14 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                   padding: 3mm;
                   break-inside: avoid;
                 ">
-                  ${components.map((comp: any) => renderComponentToHTML(comp, record.data)).join('')}
+                  <div style="
+                    display: flex;
+                    flex-direction: column;
+                    flex-wrap: wrap;
+                    gap: 0;
+                  ">
+                    ${components.map((comp: any) => renderComponentToHTML(comp, record.data)).join('')}
+                  </div>
                 </div>
               `).join('')}
             </div>
@@ -951,6 +971,10 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
               (() => {
                 // 如果没有选中数据，显示空状态
                 if (selectedRecords.length === 0) {
+                  const pageConfig = selectedTemplate?.data?.pageConfig;
+                  const padding = pageConfig?.margins
+                    ? `${pageConfig.margins.top || 20}mm ${pageConfig.margins.right || 20}mm ${pageConfig.margins.bottom || 20}mm ${pageConfig.margins.left || 20}mm`
+                    : '20mm';
                   return (
                     <div className="flex justify-center">
                       <div
@@ -958,7 +982,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                         style={{
                           width: '210mm',
                           minHeight: '297mm',
-                          padding: '20mm',
+                          padding,
                           boxSizing: 'border-box',
                         }}
                       >
@@ -972,14 +996,14 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                   );
                 }
 
-                const components = selectedTemplate.data?.components || [];
-                
+                const components = selectedTemplate?.data?.components || [];
+                const pageConfig = selectedTemplate?.data?.pageConfig;
+                const padding = pageConfig?.margins
+                  ? `${pageConfig.margins.top || 20}mm ${pageConfig.margins.right || 20}mm ${pageConfig.margins.bottom || 20}mm ${pageConfig.margins.left || 20}mm`
+                  : '20mm';
+
                 // 渲染单个数据页面的函数
                 const renderDataPage = (record: SelectedRecord, pageIndex: number, isLast: boolean) => {
-                  const pageContent = components.map((component: any, idx: number) => 
-                    renderComponent(component, record.data)
-                  );
-                  
                   return (
                     <div
                       key={record.id}
@@ -987,7 +1011,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                       style={{
                         width: '210mm',
                         minHeight: layoutMode === 'label' ? 'auto' : '297mm',
-                        padding: '20mm',
+                        padding,
                         boxSizing: 'border-box',
                         position: 'relative',
                         marginBottom: layoutMode === 'default' && !isLast ? '20px' : '0',
@@ -998,7 +1022,18 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                       <div className="absolute top-2 right-2 text-xs text-gray-300 print:hidden">
                         #{pageIndex + 1}
                       </div>
-                      {pageContent}
+                      {/* 流式布局容器 */}
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        flexWrap: 'wrap',
+                        gap: '0',
+                        height: '100%',
+                      }}>
+                        {components.map((component: any) => 
+                          renderComponent(component, record.data)
+                        )}
+                      </div>
                     </div>
                   );
                 };
@@ -1024,7 +1059,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                           style={{
                             width: '210mm',
                             minHeight: '297mm',
-                            padding: '20mm',
+                            padding,
                             boxSizing: 'border-box',
                           }}
                         >
@@ -1037,9 +1072,16 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                                 paddingBottom: idx < selectedRecords.length - 1 ? '40px' : '0',
                               }}
                             >
-                              {components.map((component: any, compIdx: number) => 
-                                renderComponent(component, record.data)
-                              )}
+                              <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                flexWrap: 'wrap',
+                                gap: '0',
+                              }}>
+                                {components.map((component: any) => 
+                                  renderComponent(component, record.data)
+                                )}
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -1055,7 +1097,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                           style={{
                             width: '210mm',
                             minHeight: '297mm',
-                            padding: '20mm',
+                            padding,
                             boxSizing: 'border-box',
                           }}
                         >
@@ -1072,9 +1114,16 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                                   breakInside: 'avoid',
                                 }}
                               >
-                                {components.map((component: any, compIdx: number) => 
-                                  renderComponent(component, record.data)
-                                )}
+                                <div style={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  flexWrap: 'wrap',
+                                  gap: '0',
+                                }}>
+                                  {components.map((component: any) => 
+                                    renderComponent(component, record.data)
+                                  )}
+                                </div>
                               </div>
                             ))}
                           </div>
