@@ -1204,10 +1204,12 @@ export class CheckboxSelectionManager {
 /**
  * 查找表格中所有的 Checkbox 类型字段
  * 当 SDK 不提供 getSelectRecordIds() API 时，可以用此方案实现多选
+ * 
+ * 使用 base.getSelection() 获取当前上下文，然后使用 table.getFieldMetaList() 获取字段
  */
 export async function findCheckboxFields(tableId?: string): Promise<FieldInfo[]> {
   debugLog('======== findCheckboxFields() 开始 ========');
-  debugLog('🔍 查找 Checkbox 字段...');
+  debugLog('🔍 使用 base.getSelection() 获取当前上下文');
   
   try {
     if (envStatus !== 'ready') {
@@ -1216,15 +1218,22 @@ export async function findCheckboxFields(tableId?: string): Promise<FieldInfo[]>
       return [];
     }
     
-    // 获取表格 ID
-    let targetTableId = tableId;
-    if (!targetTableId) {
-      const selection = await base.getSelection();
-      targetTableId = selection?.tableId || '';
-    }
+    // 使用 base.getSelection() 获取当前选择上下文
+    debugLog('📍 调用 base.getSelection()...');
+    const selection = await base.getSelection();
+    debugLog('📍 base.getSelection() 返回:', {
+      baseId: selection?.baseId,
+      tableId: selection?.tableId,
+      viewId: selection?.viewId,
+      recordId: selection?.recordId,
+      fieldId: selection?.fieldId,
+    });
+    
+    // 获取表格 ID（优先使用传入的参数，其次使用 selection）
+    let targetTableId = tableId || selection?.tableId;
     
     if (!targetTableId) {
-      debugLog('❌ 无法获取表格 ID');
+      debugLog('❌ 无法获取表格 ID（传入参数和 selection 均为空）');
       debugLog('======== findCheckboxFields() 结束 ========');
       return [];
     }
@@ -1232,56 +1241,91 @@ export async function findCheckboxFields(tableId?: string): Promise<FieldInfo[]>
     debugLog(`📋 目标表格 ID: ${targetTableId}`);
     
     // 获取表格实例
+    debugLog('📊 调用 base.getTable() 获取表格实例...');
     const table = await base.getTable(targetTableId);
     debugLog(`📊 表格实例: ${table ? '已获取' : '未获取'}`);
     
     // 尝试获取表格名称
     try {
-      const tableName = (table as any).name || '未知';
+      const tableName = (table as any).name || (table as any).title || '未知';
       debugLog(`📊 表格名称: ${tableName}`);
     } catch (e) {
       debugLog('📊 无法获取表格名称');
     }
     
-    // 获取所有字段
-    debugLog('📋 正在获取字段元数据...');
-    const fieldMetaList = await table.getFieldMetaList();
+    // ===== 方案 1: 使用 getFieldMetaList() 获取字段元数据 =====
+    debugLog('📋 === 方案 1: 使用 table.getFieldMetaList() ===');
+    let fieldMetaList: any[] = [];
+    try {
+      fieldMetaList = await table.getFieldMetaList();
+      debugLog(`📋 getFieldMetaList() 返回 ${fieldMetaList.length} 个字段`);
+    } catch (e) {
+      debugLog('❌ getFieldMetaList() 失败:', e);
+    }
     
-    debugLog(`📋 获取到的字段总数: ${fieldMetaList.length}`);
+    // ===== 方案 2: 使用 getFields() 获取字段实例 =====
+    debugLog('📋 === 方案 2: 使用 table.getFields() ===');
+    let fieldsList: any[] = [];
+    try {
+      if (typeof (table as any).getFields === 'function') {
+        fieldsList = await (table as any).getFields();
+        debugLog(`📋 getFields() 返回 ${fieldsList.length} 个字段实例`);
+      } else {
+        debugLog('⚠️ table.getFields() 方法不存在');
+      }
+    } catch (e) {
+      debugLog('❌ getFields() 失败:', e);
+    }
     
-    // 🔍 关键调试：打印所有字段的原始数据
-    debugLog('📋 === 字段原始数据 ===');
-    fieldMetaList.forEach((field: any, index: number) => {
-      debugLog(`字段 ${index + 1}:`, {
-        id: field.id,
-        name: field.name,
-        type: field.type,
-        fieldType: field.fieldType,
-        typeName: typeof field.type,
-        // 打印所有可枚举属性
-        allKeys: Object.keys(field).join(', '),
+    // 🔍 关键调试：打印所有字段的原始数据（来自元数据）
+    if (fieldMetaList.length > 0) {
+      debugLog('📋 === 字段元数据原始数据 ===');
+      fieldMetaList.forEach((field: any, index: number) => {
+        // 打印完整的字段对象
+        debugLog(`字段 ${index + 1} 完整数据:`, JSON.stringify(field, null, 2));
       });
-    });
-    debugLog('📋 === 字段原始数据结束 ===');
+      debugLog('📋 === 字段元数据结束 ===');
+    }
     
-    // 筛选 Checkbox 字段
+    // 🔍 打印字段实例的信息（如果有）
+    if (fieldsList.length > 0) {
+      debugLog('📋 === 字段实例信息 ===');
+      fieldsList.forEach((field: any, index: number) => {
+        debugLog(`字段实例 ${index + 1}:`, {
+          id: field.id,
+          name: field.name,
+          type: field.type,
+          // 尝试获取更多信息
+          constructor: field.constructor?.name,
+          allKeys: Object.keys(field).join(', '),
+        });
+      });
+      debugLog('📋 === 字段实例结束 ===');
+    }
+    
+    // 筛选 Checkbox 字段（从元数据中筛选）
     const checkboxFields: FieldInfo[] = [];
     
     fieldMetaList.forEach((field: any) => {
-      // 检查多种可能的类型标识
       const typeValue = field.type;
       const fieldTypeValue = field.fieldType;
       const nameValue = field.name || '';
       
-      // 类型判断逻辑
+      // 飞书 Checkbox 字段类型可能是：
+      // - 数字 18
+      // - 字符串 'Checkbox' / 'checkbox'
+      // - 其他内部类型码
       const isCheckboxByTypeNumber = typeValue === 18 || fieldTypeValue === 18;
-      const isCheckboxByTypeString = String(typeValue).toLowerCase() === 'checkbox' || 
-                                     String(fieldTypeValue).toLowerCase() === 'checkbox';
+      const isCheckboxByTypeString = 
+        String(typeValue).toLowerCase() === 'checkbox' || 
+        String(fieldTypeValue).toLowerCase() === 'checkbox' ||
+        String(typeValue).toLowerCase() === 'check box' ||
+        String(fieldTypeValue).toLowerCase() === 'check box';
       const isCheckboxByName = /checkbox|复选框|勾选|选择|check/i.test(nameValue);
       
-      const isCheckbox = isCheckboxByTypeNumber || isCheckboxByTypeString || isCheckboxByName;
+      const isMatch = isCheckboxByTypeNumber || isCheckboxByTypeString || isCheckboxByName;
       
-      if (isCheckbox) {
+      if (isMatch) {
         debugLog(`✅ 发现 Checkbox 字段: ${nameValue} (type=${typeValue}, fieldType=${fieldTypeValue})`);
         checkboxFields.push({
           id: field.id,
@@ -1293,6 +1337,14 @@ export async function findCheckboxFields(tableId?: string): Promise<FieldInfo[]>
     
     debugLog(`📊 筛选结果: 找到 ${checkboxFields.length} 个 Checkbox 字段`);
     debugLog('Checkbox 字段列表:', checkboxFields);
+    
+    if (checkboxFields.length === 0) {
+      debugLog('⚠️ 未找到 Checkbox 字段，可能的类型值包括:');
+      fieldMetaList.forEach((field: any) => {
+        debugLog(`  - ${field.name}: type=${field.type} (类型: ${typeof field.type})`);
+      });
+    }
+    
     debugLog('======== findCheckboxFields() 结束 ========');
     
     return checkboxFields;
