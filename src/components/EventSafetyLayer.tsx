@@ -165,7 +165,9 @@ export function EventSafetyLayer() {
             const target = event.target as any;
             // 如果 target 不是标准 Element，创建一个代理
             if (typeof target === 'object' && target !== null && !(target instanceof Element)) {
-              console.warn('[EventSafetyLayer] 检测到非标准事件 target，已创建安全代理');
+              // 静默处理，不输出日志以避免性能问题
+              // console.warn('[EventSafetyLayer] 检测到非标准事件 target，已创建安全代理');
+              
               // 创建代理对象，拦截 closest 等方法
               const safeTarget = new Proxy(target, {
                 get(obj, prop) {
@@ -192,7 +194,8 @@ export function EventSafetyLayer() {
           // 捕获监听器中的错误
           const errorMsg = String(error).toLowerCase();
           if (errorMsg.includes('closest') || errorMsg.includes('is not a function')) {
-            console.warn('[EventSafetyLayer] 🎯 捕获到监听器中的 closest 错误，已阻止崩溃');
+            // 静默处理 closest 错误，避免频繁日志输出
+            // console.warn('[EventSafetyLayer] 捕获到监听器中的 closest 错误，已阻止崩溃');
           } else {
             // 其他错误重新抛出
             throw error;

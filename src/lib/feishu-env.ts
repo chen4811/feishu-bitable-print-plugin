@@ -167,69 +167,27 @@ let recordSelectUnsubscribe: (() => void) | null = null;
 // ============================================
 
 async function debugEnvironment() {
-  debugLog('🔍 ======== 环境调试开始 ========');
-  
+  // 简化日志输出，只在初始化时输出一次关键信息
   try {
-    // 检查SDK版本
-    debugLog('SDK版本信息:', (bitable as any).version);
+    const hasUiApi = !!(bitable as any).ui;
+    const hasGetSelectRecordIds = hasUiApi && typeof (bitable as any).ui?.getSelectRecordIds === 'function';
     
-    // 测试1: 检查基础对象
-    debugLog('bitable 对象:', typeof bitable);
-    debugLog('bitable.ui 对象:', typeof (bitable as any).ui);
-    debugLog('base 对象:', typeof base);
-    
-    // 测试2: 检查 bitable.ui 的所有方法
-    if ((bitable as any).ui) {
-      debugLog('bitable.ui 所有方法:', Object.keys((bitable as any).ui));
-    }
-    
-    // 测试3: 检查方法是否存在（可能在初始化后才可用）
-    debugLog('onRecordSelectChange 方法:', typeof (bitable as any).ui?.onRecordSelectChange);
-    debugLog('getSelectRecordIds 方法:', typeof (bitable as any).ui?.getSelectRecordIds);
-    debugLog('getSelection 方法:', typeof base.getSelection);
-    
-    // 测试4: 尝试直接调用 getSelectRecordIds（如果存在）
-    if ((bitable as any).ui && typeof (bitable as any).ui.getSelectRecordIds === 'function') {
-      try {
-        const selectState = await (bitable as any).ui.getSelectRecordIds();
-        debugLog('✅ 当前选中ID列表:', selectState);
-      } catch (error) {
-        debugLog('❌ 调用 getSelectRecordIds 失败:', error instanceof Error ? error.message : error);
-      }
-    } else {
-      debugLog('⚠️ getSelectRecordIds 方法不存在');
-    }
-    
-    // 测试5: 检查当前选择状态
-    try {
-      const selection = await base.getSelection();
-      debugLog('当前 base.getSelection() 状态:', selection);
-    } catch (error) {
-      debugLog('获取 base.getSelection() 失败:', error instanceof Error ? error.message : error);
-    }
-    
+    debugLog('SDK 检查:', {
+      hasUiApi,
+      hasGetSelectRecordIds,
+      hasGetSelection: typeof base.getSelection === 'function',
+    });
   } catch (error) {
-    debugLog('环境测试失败:', error);
+    // 静默处理错误
   }
-  
-  debugLog('🔍 ======== 环境调试结束 ========');
 }
 
 function checkEnvironment() {
-  debugLog('🌐 ======== 环境检查 ========');
-  debugLog('URL:', typeof window !== 'undefined' ? window.location.href : 'unknown');
-  debugLog('UserAgent:', typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown');
-  debugLog('是否在iframe中:', typeof window !== 'undefined' && window.self !== window.top);
-  
-  // 检查飞书环境特征
+  // 简化环境检查，只输出关键信息
+  const inIframe = typeof window !== 'undefined' && window.self !== window.top;
   const isFeishuEnv = typeof navigator !== 'undefined' && /lark|feishu/i.test(navigator.userAgent);
-  debugLog('飞书环境:', isFeishuEnv);
   
-  if (!isFeishuEnv) {
-    debugLog('⚠️  可能不在飞书环境中运行');
-  }
-  
-  debugLog('🌐 ======== 环境检查结束 ========');
+  debugLog('环境检查:', { inIframe, isFeishuEnv });
 }
 
 // ============================================
@@ -252,13 +210,12 @@ function startPolling(interval = 2000) {
       let currentSelection: string[] = [];
       let tableId = '';
       
-      // ✅ 优先尝试使用 bitable.ui.getSelectRecordIds()
+      // 优先尝试使用 bitable.ui.getSelectRecordIds()
       if ((bitable as any).ui && typeof (bitable as any).ui.getSelectRecordIds === 'function') {
         try {
           currentSelection = await (bitable as any).ui.getSelectRecordIds();
-          debugLog('✅ 使用 bitable.ui.getSelectRecordIds() 获取:', currentSelection);
         } catch (e) {
-          debugLog('❌ bitable.ui.getSelectRecordIds() 调用失败:', e);
+          // 静默处理，避免频繁日志
         }
       }
       
@@ -267,7 +224,6 @@ function startPolling(interval = 2000) {
         const selection = await base.getSelection();
         if (selection?.recordId) {
           currentSelection = [selection.recordId];
-          debugLog('⚠️ 使用 base.getSelection() 获取单条记录:', selection.recordId);
         }
         tableId = selection?.tableId || '';
       } else {
@@ -308,7 +264,8 @@ function startPolling(interval = 2000) {
       }
       
     } catch (error) {
-      debugLog('轮询检查失败:', error instanceof Error ? error.message : error);
+      // 静默处理轮询错误，避免频繁日志输出
+      // debugLog('轮询检查失败:', error instanceof Error ? error.message : error);
     }
   }, interval);
   
