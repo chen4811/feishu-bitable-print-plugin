@@ -222,6 +222,11 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
+  // 文本组件 resize 状态
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeStart, setResizeStart] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const textComponentRef = useRef<HTMLDivElement>(null);
+  
   // 表格编辑状态（本地数据，UI 状态在 store）
   const [tableEditData, setTableEditData] = useState<any[][]>([]);
   
@@ -493,6 +498,23 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     if (component.type === 'text') {
       updateComponent(component.id, { content: editContent });
     }
+  };
+
+  // 文本组件 resize 处理
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    if (!textComponentRef.current) return;
+    
+    const rect = textComponentRef.current.getBoundingClientRect();
+    setIsResizing(true);
+    setResizeStart({
+      x: e.clientX,
+      y: e.clientY,
+      width: rect.width,
+      height: rect.height,
+    });
   };
 
   // 表格编辑 - 切换编辑状态
@@ -888,6 +910,20 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   // 🔥 处理全局鼠标移动（用于拖动调整）
   useEffect(() => {
     const handleGlobalMouseMove = (e: MouseEvent) => {
+      // 处理文本组件 resize
+      if (isResizing && resizeStart && component.type === 'text') {
+        const deltaX = e.clientX - resizeStart.x;
+        const deltaY = e.clientY - resizeStart.y;
+        const newWidth = Math.max(100, resizeStart.width + deltaX); // 最小宽度100px
+        const newHeight = Math.max(40, resizeStart.height + deltaY); // 最小高度40px
+        
+        updateComponent(component.id, {
+          width: newWidth,
+          height: newHeight,
+        });
+        return;
+      }
+
       if (resizingRow) {
         const deltaY = e.clientY - resizingRow.startY;
         const newHeight = Math.max(20, resizingRow.startHeight + deltaY); // 最小高度20px
@@ -924,9 +960,11 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     const handleGlobalMouseUp = () => {
       setResizingRow(null);
       setResizingCol(null);
+      setIsResizing(false);
+      setResizeStart(null);
     };
 
-    if (resizingRow || resizingCol) {
+    if (resizingRow || resizingCol || isResizing) {
       document.addEventListener('mousemove', handleGlobalMouseMove);
       document.addEventListener('mouseup', handleGlobalMouseUp);
     }
@@ -935,7 +973,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       document.removeEventListener('mousemove', handleGlobalMouseMove);
       document.removeEventListener('mouseup', handleGlobalMouseUp);
     };
-  }, [resizingRow, resizingCol, component, updateComponent]);
+  }, [resizingRow, resizingCol, isResizing, resizeStart, component, updateComponent]);
 
   // 自动聚焦到编辑框
   useEffect(() => {
@@ -1600,8 +1638,12 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         if (isEditing) {
           return (
             <div
-              className="w-full cursor-text whitespace-pre-wrap"
+              ref={textComponentRef}
+              className="relative cursor-text whitespace-pre-wrap"
               style={{
+                width: textComp.width ? `${textComp.width}px` : '100%',
+                height: textComp.height ? `${textComp.height}px` : 'auto',
+                minHeight: '40px',
                 padding: '0.5rem',
                 fontSize: `${textComp.textStyle?.fontSize || styleConfig.fontSize}px`,
                 fontWeight: textComp.textStyle?.bold ? 'bold' : 'normal',
@@ -1614,12 +1656,13 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 textDecoration: textComp.textStyle?.underline ? 'underline' : textComp.textStyle?.textDecoration || 'none',
                 textTransform: textComp.textStyle?.textTransform || 'none',
                 whiteSpace: 'pre-wrap',
+                border: isSelected ? '1px solid #3b82f6' : '1px solid transparent',
               }}
               onDoubleClick={(e) => e.stopPropagation()}
             >
               <textarea
                 ref={textareaRef}
-                className="w-full border-0 outline-none resize-none bg-transparent"
+                className="w-full h-full border-0 outline-none resize-none bg-transparent"
                 style={{
                   all: 'unset', // 🔥 清除所有默认样式
                   fontSize: '1em',
@@ -1639,6 +1682,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   outline: 'none',
                   display: 'block', // 🔥 块级元素，整行显示
                   width: '100%', // 🔥 宽度100%，整行可用
+                  height: '100%',
                   fontFamily: 'inherit',
                   cursor: 'text',
                   overflow: 'visible',
@@ -1658,14 +1702,30 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 }}
                 placeholder="输入文本..."
               />
+              {/* Resize 手柄 - 仅在选中状态下显示 */}
+              {isSelected && (
+                <div
+                  className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
+                  style={{
+                    background: 'linear-gradient(135deg, transparent 50%, #3b82f6 50%)',
+                    borderRadius: '0 0 2px 0',
+                  }}
+                  onMouseDown={handleResizeStart}
+                  title="拖拽调整大小"
+                />
+              )}
             </div>
           );
         }
 
         return (
           <div
-            className="w-full cursor-text whitespace-pre-wrap"
+            ref={textComponentRef}
+            className="relative cursor-text whitespace-pre-wrap"
             style={{
+              width: textComp.width ? `${textComp.width}px` : '100%',
+              height: textComp.height ? `${textComp.height}px` : 'auto',
+              minHeight: '40px',
               padding: '0.5rem',
               fontSize: `${textComp.textStyle?.fontSize || styleConfig.fontSize}px`,
               fontWeight: textComp.textStyle?.bold ? 'bold' : 'normal',
@@ -1678,6 +1738,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               textDecoration: textComp.textStyle?.underline ? 'underline' : textComp.textStyle?.textDecoration || 'none',
               textTransform: textComp.textStyle?.textTransform || 'none',
               whiteSpace: 'pre-wrap',
+              border: isSelected ? '1px solid #3b82f6' : '1px solid transparent',
             }}
             onDoubleClick={handleDoubleClickText}
           >
@@ -1762,6 +1823,19 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   />
                 )}
               </span>
+            )}
+            
+            {/* Resize 手柄 - 仅在选中状态下显示 */}
+            {isSelected && (
+              <div
+                className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
+                style={{
+                  background: 'linear-gradient(135deg, transparent 50%, #3b82f6 50%)',
+                  borderRadius: '0 0 2px 0',
+                }}
+                onMouseDown={handleResizeStart}
+                title="拖拽调整大小"
+              />
             )}
           </div>
         );
