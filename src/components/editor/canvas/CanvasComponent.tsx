@@ -1714,15 +1714,32 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 textDecoration: textComp.textStyle?.underline ? 'underline' : textComp.textStyle?.textDecoration || 'none',
                 textTransform: textComp.textStyle?.textTransform || 'none',
                 whiteSpace: 'pre-wrap',
-                border: isSelected ? '2px solid #3b82f6' : '1px solid transparent',
-                cursor: isSelected ? 'se-resize' : 'text',
+                border: '1px solid transparent',
               }}
               onDoubleClick={(e) => e.stopPropagation()}
-              onMouseDown={(e) => {
-                // 检测是否点击在边框区域（距离边缘8px以内）
-                if (!textComponentRef.current || !isSelected) return;
+              onMouseMove={(e) => {
+                // 动态改变光标：当靠近右/下边缘时显示 resize 光标
+                if (!textComponentRef.current) return;
                 const rect = textComponentRef.current.getBoundingClientRect();
-                const borderThreshold = 8;
+                const borderThreshold = 6;
+                const isNearRightEdge = e.clientX >= rect.right - borderThreshold;
+                const isNearBottomEdge = e.clientY >= rect.bottom - borderThreshold;
+                if (isNearRightEdge || isNearBottomEdge) {
+                  textComponentRef.current.style.cursor = 'se-resize';
+                } else {
+                  textComponentRef.current.style.cursor = 'text';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (textComponentRef.current) {
+                  textComponentRef.current.style.cursor = 'text';
+                }
+              }}
+              onMouseDown={(e) => {
+                // 检测是否点击在边框附近（距离边缘6px以内）开始拖动
+                if (!textComponentRef.current) return;
+                const rect = textComponentRef.current.getBoundingClientRect();
+                const borderThreshold = 6;
                 const isNearRightEdge = e.clientX >= rect.right - borderThreshold;
                 const isNearBottomEdge = e.clientY >= rect.bottom - borderThreshold;
                 if (isNearRightEdge || isNearBottomEdge) {
@@ -1796,15 +1813,32 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               textDecoration: textComp.textStyle?.underline ? 'underline' : textComp.textStyle?.textDecoration || 'none',
               textTransform: textComp.textStyle?.textTransform || 'none',
               whiteSpace: 'pre-wrap',
-              border: isSelected ? '2px solid #3b82f6' : '1px solid transparent',
-              cursor: isSelected ? 'se-resize' : 'text',
+              border: '1px solid transparent',
             }}
             onDoubleClick={handleDoubleClickText}
-            onMouseDown={(e) => {
-              // 检测是否点击在边框区域（距离边缘8px以内）
-              if (!textComponentRef.current || !isSelected) return;
+            onMouseMove={(e) => {
+              // 动态改变光标：当靠近右/下边缘时显示 resize 光标
+              if (!textComponentRef.current) return;
               const rect = textComponentRef.current.getBoundingClientRect();
-              const borderThreshold = 8;
+              const borderThreshold = 6;
+              const isNearRightEdge = e.clientX >= rect.right - borderThreshold;
+              const isNearBottomEdge = e.clientY >= rect.bottom - borderThreshold;
+              if (isNearRightEdge || isNearBottomEdge) {
+                textComponentRef.current.style.cursor = 'se-resize';
+              } else {
+                textComponentRef.current.style.cursor = 'text';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (textComponentRef.current) {
+                textComponentRef.current.style.cursor = 'text';
+              }
+            }}
+            onMouseDown={(e) => {
+              // 检测是否点击在边框附近（距离边缘6px以内）开始拖动
+              if (!textComponentRef.current) return;
+              const rect = textComponentRef.current.getBoundingClientRect();
+              const borderThreshold = 6;
               const isNearRightEdge = e.clientX >= rect.right - borderThreshold;
               const isNearBottomEdge = e.clientY >= rect.bottom - borderThreshold;
               if (isNearRightEdge || isNearBottomEdge) {
