@@ -37,7 +37,8 @@ interface Template {
   feishuUserId: string;
   name: string;
   description: string;
-  config: Record<string, unknown>;
+  data: any; // 完整的模板数据（包含组件、页面配置等）
+  config?: Record<string, unknown>; // 兼容旧代码
   isPublic: boolean;
   createdAt: string;
   updatedAt: string;
@@ -66,8 +67,8 @@ interface AdminState {
 
   // 模板管理
   fetchTemplates: () => Promise<void>;
-  addTemplate: (data: { name: string; description: string; config: Record<string, unknown> }) => Promise<void>;
-  updateTemplate: (id: number, data: { name?: string; description?: string; config?: Record<string, unknown> }) => Promise<void>;
+  addTemplate: (data: { name: string; description: string; data?: any }) => Promise<void>;
+  updateTemplate: (id: number, data: { name?: string; description?: string; data?: any }) => Promise<void>;
   deleteTemplate: (id: number) => Promise<void>;
 }
 
@@ -240,12 +241,12 @@ export const useAdminStore = create<AdminState>()(
         }
       },
 
-      addTemplate: async (data: { name: string; description: string; config: Record<string, unknown> }) => {
+      addTemplate: async (data: { name: string; description: string; data?: any }) => {
         console.log('[adminStore] addTemplate 被调用', data);
         // TODO: 管理员后台不直接添加模板，由用户在前端创建
       },
 
-      updateTemplate: async (id: number, data: { name?: string; description?: string; config?: Record<string, unknown>; isPublic?: boolean }) => {
+      updateTemplate: async (id: number, data: { name?: string; description?: string; data?: any; isPublic?: boolean }) => {
         const { token, templates } = get();
         if (!token) return;
 

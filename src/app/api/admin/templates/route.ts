@@ -64,6 +64,15 @@ export async function GET(request: NextRequest) {
     // 格式化数据
     const formattedData = (templates || []).map((template: any) => {
       const user = usersMap[template.user_id];
+      let parsedData = template.data;
+      // 如果 data 是字符串，尝试解析为 JSON
+      if (typeof template.data === 'string') {
+        try {
+          parsedData = JSON.parse(template.data);
+        } catch {
+          parsedData = {};
+        }
+      }
       return {
         id: template.id,
         userId: template.user_id,
@@ -72,6 +81,7 @@ export async function GET(request: NextRequest) {
         feishuUserId: user?.feishu_user_id || '',
         name: template.name,
         description: template.description,
+        data: parsedData,
         isPublic: template.is_public,
         createdAt: template.created_at,
         updatedAt: template.updated_at,
