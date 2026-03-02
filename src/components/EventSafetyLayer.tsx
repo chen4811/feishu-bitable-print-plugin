@@ -80,6 +80,30 @@ export function EventSafetyLayer() {
     window.addEventListener('unhandledrejection', handleUnhandledRejection);
 
     // ============================================
+    // 2.5 拦截 console.error - 阻止飞书 SDK 错误日志
+    // ============================================
+    const originalConsoleError = console.error;
+    console.error = function(...args: any[]) {
+      const errorMsg = args.map(arg => String(arg)).join(' ').toLowerCase();
+      
+      // 拦截飞书 SDK 相关的错误
+      if (errorMsg.includes('closest') || 
+          errorMsg.includes('is not a function') ||
+          errorMsg.includes('isnodeinoutercontrolledzone') ||
+          errorMsg.includes('handleiframeclick') ||
+          errorMsg.includes('lark') ||
+          errorMsg.includes('bitable')) {
+        // 静默忽略这些错误
+        return;
+      }
+      
+      // 其他错误正常输出
+      originalConsoleError.apply(console, args);
+    };
+    
+    console.log('[EventSafetyLayer] ✅ console.error 已拦截');
+
+    // ============================================
     // 3. 安全的 Element 原型方法包装 - 第三层防线
     // ============================================
     if (typeof Element !== 'undefined') {
@@ -241,6 +265,7 @@ export function EventSafetyLayer() {
       
       window.onerror = originalErrorHandler;
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      console.error = originalConsoleError;
       
       // 注意：我们不恢复 Element 原型方法和 addEventListener，
       // 因为那样可能会导致其他代码出错

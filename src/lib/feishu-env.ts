@@ -1206,11 +1206,13 @@ export class CheckboxSelectionManager {
  * 当 SDK 不提供 getSelectRecordIds() API 时，可以用此方案实现多选
  */
 export async function findCheckboxFields(tableId?: string): Promise<FieldInfo[]> {
+  debugLog('======== findCheckboxFields() 开始 ========');
   debugLog('🔍 查找 Checkbox 字段...');
   
   try {
     if (envStatus !== 'ready') {
       debugLog('⚠️ 环境未就绪');
+      debugLog('======== findCheckboxFields() 结束 ========');
       return [];
     }
     
@@ -1223,33 +1225,81 @@ export async function findCheckboxFields(tableId?: string): Promise<FieldInfo[]>
     
     if (!targetTableId) {
       debugLog('❌ 无法获取表格 ID');
+      debugLog('======== findCheckboxFields() 结束 ========');
       return [];
     }
     
+    debugLog(`📋 目标表格 ID: ${targetTableId}`);
+    
     // 获取表格实例
     const table = await base.getTable(targetTableId);
+    debugLog(`📊 表格实例: ${table ? '已获取' : '未获取'}`);
+    
+    // 尝试获取表格名称
+    try {
+      const tableName = (table as any).name || '未知';
+      debugLog(`📊 表格名称: ${tableName}`);
+    } catch (e) {
+      debugLog('📊 无法获取表格名称');
+    }
     
     // 获取所有字段
+    debugLog('📋 正在获取字段元数据...');
     const fieldMetaList = await table.getFieldMetaList();
     
-    // 筛选 Checkbox 字段（类型码为 18 或字段名称包含"复选框"、"checkbox"等）
-    const checkboxFields: FieldInfo[] = fieldMetaList
-      .filter((field: any) => {
-        const isCheckboxType = field.type === 18 || field.fieldType === 18;
-        const isCheckboxName = /checkbox|复选框|勾选|选择/i.test(field.name || '');
-        return isCheckboxType || isCheckboxName;
-      })
-      .map((field: any) => ({
+    debugLog(`📋 获取到的字段总数: ${fieldMetaList.length}`);
+    
+    // 🔍 关键调试：打印所有字段的原始数据
+    debugLog('📋 === 字段原始数据 ===');
+    fieldMetaList.forEach((field: any, index: number) => {
+      debugLog(`字段 ${index + 1}:`, {
         id: field.id,
         name: field.name,
-        type: String(field.type || field.fieldType),
-      }));
+        type: field.type,
+        fieldType: field.fieldType,
+        typeName: typeof field.type,
+        // 打印所有可枚举属性
+        allKeys: Object.keys(field).join(', '),
+      });
+    });
+    debugLog('📋 === 字段原始数据结束 ===');
     
-    debugLog(`✅ 找到 ${checkboxFields.length} 个 Checkbox 字段:`, checkboxFields);
+    // 筛选 Checkbox 字段
+    const checkboxFields: FieldInfo[] = [];
+    
+    fieldMetaList.forEach((field: any) => {
+      // 检查多种可能的类型标识
+      const typeValue = field.type;
+      const fieldTypeValue = field.fieldType;
+      const nameValue = field.name || '';
+      
+      // 类型判断逻辑
+      const isCheckboxByTypeNumber = typeValue === 18 || fieldTypeValue === 18;
+      const isCheckboxByTypeString = String(typeValue).toLowerCase() === 'checkbox' || 
+                                     String(fieldTypeValue).toLowerCase() === 'checkbox';
+      const isCheckboxByName = /checkbox|复选框|勾选|选择|check/i.test(nameValue);
+      
+      const isCheckbox = isCheckboxByTypeNumber || isCheckboxByTypeString || isCheckboxByName;
+      
+      if (isCheckbox) {
+        debugLog(`✅ 发现 Checkbox 字段: ${nameValue} (type=${typeValue}, fieldType=${fieldTypeValue})`);
+        checkboxFields.push({
+          id: field.id,
+          name: field.name,
+          type: String(typeValue || fieldTypeValue),
+        });
+      }
+    });
+    
+    debugLog(`📊 筛选结果: 找到 ${checkboxFields.length} 个 Checkbox 字段`);
+    debugLog('Checkbox 字段列表:', checkboxFields);
+    debugLog('======== findCheckboxFields() 结束 ========');
+    
     return checkboxFields;
     
   } catch (error) {
     debugLog('❌ 查找 Checkbox 字段失败:', error);
+    debugLog('======== findCheckboxFields() 结束 ========');
     return [];
   }
 }
@@ -1291,26 +1341,54 @@ export async function scanRecordsByCheckboxField(
     
     // 获取字段元数据
     const fieldMetaList = await table.getFieldMetaList();
+    debugLog(`📋 获取到 ${fieldMetaList.length} 个字段`);
+    
+    // 🔍 打印所有字段用于调试
+    debugLog('📋 === 所有字段列表 ===');
+    fieldMetaList.forEach((field: any, index: number) => {
+      debugLog(`  ${index + 1}. ${field.name} (type=${field.type}, fieldType=${field.fieldType}, id=${field.id})`);
+    });
     
     // 确定 Checkbox 字段
     let targetFieldId = fieldId;
     
     if (!targetFieldId) {
       // 自动查找 Checkbox 字段
+      debugLog('🔍 自动查找 Checkbox 字段...');
+      
       const checkboxFields = fieldMetaList.filter((field: any) => {
-        const isCheckboxType = field.type === 18 || field.fieldType === 18;
-        const isCheckboxName = /checkbox|复选框|勾选|选择/i.test(field.name || '');
-        return isCheckboxType || isCheckboxName;
+        const typeValue = field.type;
+        const fieldTypeValue = field.fieldType;
+        const nameValue = field.name || '';
+        
+        // 多种判断条件
+        const isCheckboxByNumber = typeValue === 18 || fieldTypeValue === 18;
+        const isCheckboxByString = String(typeValue).toLowerCase() === 'checkbox' || 
+                                   String(fieldTypeValue).toLowerCase() === 'checkbox';
+        const isCheckboxByName = /checkbox|复选框|勾选|选择|check/i.test(nameValue);
+        
+        const isMatch = isCheckboxByNumber || isCheckboxByString || isCheckboxByName;
+        
+        if (isMatch) {
+          debugLog(`  ✅ 匹配到 Checkbox 字段: ${nameValue} (type=${typeValue}, fieldType=${fieldTypeValue})`);
+        }
+        
+        return isMatch;
       });
       
       if (checkboxFields.length === 0) {
         debugLog('❌ 表格中没有 Checkbox 字段');
+        debugLog('💡 提示: 请确保表格中有复选框类型的字段');
+        debugLog('💡 提示: 字段名称可以包含"复选框"、"checkbox"、"勾选"等关键字');
+        debugLog('======== scanRecordsByCheckboxField() 结束 ========');
         return [];
       }
       
       // 使用第一个 Checkbox 字段
       targetFieldId = checkboxFields[0].id;
-      debugLog(`使用自动发现的 Checkbox 字段: ${checkboxFields[0].name} (ID: ${targetFieldId})`);
+      debugLog(`🎯 使用 Checkbox 字段: ${checkboxFields[0].name} (ID: ${targetFieldId})`);
+    } else {
+      debugLog(`🎯 使用指定的 Checkbox 字段 ID: ${targetFieldId}`);
     }
     
     // 获取所有记录 ID
