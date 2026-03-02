@@ -1966,21 +1966,21 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
             className="relative" 
             onDoubleClick={handleDoubleClickTable}
             onMouseEnter={() => {
-              // 取消之前的隐藏定时器
-              if (tableToolbarTimeoutRef.current) {
-                clearTimeout(tableToolbarTimeoutRef.current);
-                tableToolbarTimeoutRef.current = null;
-              }
               setIsTableHovered(true);
             }}
             onMouseLeave={() => {
-              // 延迟3秒后隐藏工具栏
-              tableToolbarTimeoutRef.current = setTimeout(() => {
-                setIsTableHovered(false);
-              }, 3000);
+              setIsTableHovered(false);
             }}
           >
-            <div className="absolute -top-9 right-0 z-10">
+            <div 
+              className="absolute -top-9 right-0 z-10"
+              onMouseEnter={() => {
+                setIsTableHovered(true);
+              }}
+              onMouseLeave={() => {
+                setIsTableHovered(false);
+              }}
+            >
               <HoverToolbar
                 onEdit={handleEditTable}
                 onDelete={handleDeleteComponent}
