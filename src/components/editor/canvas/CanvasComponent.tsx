@@ -234,11 +234,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   // 表格编辑状态（本地数据，UI 状态在 store）
   const [tableEditData, setTableEditData] = useState<any[][]>([]);
   
-  // 表格 hover 状态 - 用于控制工具栏显示
-  const [isTableHovered, setIsTableHovered] = useState(false);
-  // 表格工具栏延迟隐藏定时器
-  const tableToolbarTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
   // 表格单元格选择状态（用于拖动选择）
   const [cellSelection, setCellSelection] = useState<{
     startRow: number | null;
@@ -275,7 +270,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       if (rowMenuTimeoutRef.current) clearTimeout(rowMenuTimeoutRef.current);
       if (colMenuTimeoutRef.current) clearTimeout(colMenuTimeoutRef.current);
       if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
-      if (tableToolbarTimeoutRef.current) clearTimeout(tableToolbarTimeoutRef.current);
     };
   }, []);
 
@@ -294,17 +288,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       }
     };
   }, []);
-
-  // 当组件被取消选中时，重置 hover 状态
-  useEffect(() => {
-    if (!isSelected) {
-      setIsTableHovered(false);
-      if (tableToolbarTimeoutRef.current) {
-        clearTimeout(tableToolbarTimeoutRef.current);
-        tableToolbarTimeoutRef.current = null;
-      }
-    }
-  }, [isSelected]);
 
   // 判断当前是否在编辑这个表格
   const isCurrentTableEditing = tableEditing.isEditing && tableEditing.tableId === component.id;
@@ -1965,28 +1948,13 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
           <div 
             className="relative" 
             onDoubleClick={handleDoubleClickTable}
-            onMouseEnter={() => {
-              setIsTableHovered(true);
-            }}
-            onMouseLeave={() => {
-              setIsTableHovered(false);
-            }}
           >
-            <div 
-              className="absolute -top-9 right-0 z-10"
-              onMouseEnter={() => {
-                setIsTableHovered(true);
-              }}
-              onMouseLeave={() => {
-                setIsTableHovered(false);
-              }}
-            >
+            <div className="absolute -top-9 right-0 z-10">
               <HoverToolbar
                 onEdit={handleEditTable}
                 onDelete={handleDeleteComponent}
                 onCopy={handleCopyComponent}
                 isSelected={isSelected}
-                isHovered={isTableHovered}
               />
             </div>
             {renderTableContent(tableComp)}
