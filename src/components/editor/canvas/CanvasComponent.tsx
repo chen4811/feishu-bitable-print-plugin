@@ -582,27 +582,52 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     if (!tableComp.tableConfig?.cells) return;
     
     const colCount = tableComp.tableConfig.cells[0]?.length || 3;
-    const newRow = Array(colCount).fill(null).map((_, colIndex) => ({
-      id: `cell-${Date.now()}-${colIndex}`,
-      content: '',
-      backgroundColor: undefined,
-      verticalAlign: 'middle',
-      border: undefined,
-      style: {},
-    }));
     
-    const newCells = [
-      ...tableComp.tableConfig.cells.slice(0, rowIndex),
-      newRow,
-      ...tableComp.tableConfig.cells.slice(rowIndex),
-    ];
+    // 修复：正确处理合并单元格的情况
+    // 遍历当前行的每个单元格，检查是否需要调整合并属性
+    const newRow = Array(colCount).fill(null).map((_, colIndex) => {
+      const cell = tableComp.tableConfig.cells[rowIndex]?.[colIndex];
+      // 如果被合并的单元格（rowSpan === 0）在当前行上方插入新行，
+      // 需要找到实际的合并单元格并增加其 rowSpan
+      return {
+        id: `cell-${Date.now()}-${colIndex}`,
+        content: '',
+        rowSpan: 1,
+        colSpan: 1,
+        backgroundColor: undefined,
+        verticalAlign: 'middle',
+        border: undefined,
+        style: {},
+      };
+    });
+    
+    // 创建新的 cells 数组，同时调整可能跨越新行的合并单元格
+    const newCells = tableComp.tableConfig.cells.map((row: any[]) => 
+      row.map((cell: any) => ({ ...cell }))
+    );
+    
+    // 在指定位置插入新行
+    newCells.splice(rowIndex, 0, newRow);
+    
+    // 调整跨越新行的合并单元格：如果合并单元格的 rowSpan 跨越了插入位置，需要增加 rowSpan
+    newCells.forEach((row: any[], rIndex: number) => {
+      row.forEach((cell: any, cIndex: number) => {
+        if (cell.rowSpan && cell.rowSpan > 1) {
+          // 找到合并单元格的起始位置
+          const mergeStartRow = rIndex;
+          const mergeEndRow = rIndex + cell.rowSpan - 1;
+          
+          // 如果插入位置在合并区域内（不包括起始行），需要增加 rowSpan
+          if (rowIndex > mergeStartRow && rowIndex <= mergeEndRow) {
+            cell.rowSpan += 1;
+          }
+        }
+      });
+    });
     
     // 同时更新 tableEditData
-    const newEditData = [
-      ...tableEditData.slice(0, rowIndex),
-      Array(colCount).fill(''),
-      ...tableEditData.slice(rowIndex),
-    ];
+    const newEditData = [...tableEditData];
+    newEditData.splice(rowIndex, 0, Array(colCount).fill(''));
     setTableEditData(newEditData);
     
     updateComponent(component.id, {
@@ -623,7 +648,57 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     const tableComp = component as any;
     if (!tableComp.tableConfig?.cells || tableComp.tableConfig.cells.length <= 1) return;
     
-    const newCells = tableComp.tableConfig.cells.filter((_: any, index: number) => index !== rowIndex);
+    // 修复：在删除前，调整可能跨越该行的合并单元格
+    const cellsToUpdate: { row: number; col: number; newRowSpan: number }[] = [];
+    
+    tableComp.tableConfig.cells.forEach((row: any[], rIndex: number) => {
+      row.forEach((cell: any, cIndex: number) => {
+        if (cell.rowSpan && cell.rowSpan > 1) {
+          const mergeStartRow = rIndex;
+          const mergeEndRow = rIndex + cell.rowSpan - 1;
+          
+          // 如果要删除的行在合并区域内（不包括起始行）
+          if (rowIndex > mergeStartRow && rowIndex <= mergeEndRow) {
+            cellsToUpdate.push({ row: rIndex, col: cIndex, newRowSpan: cell.rowSpan - 1 });
+          }
+          // 如果要删除的行是合并单元格的起始行，需要转移合并属性到下一行
+          else if (rowIndex === mergeStartRow && cell.rowSpan > 1) {
+            const nextRow = rIndex + 1;
+            if (nextRow < tableComp.tableConfig.cells.length) {
+              cellsToUpdate.push({ row: rIndex, col: cIndex, newRowSpan: -1 }); // -1 表示需要转移
+            }
+          }
+        }
+      });
+    });
+    
+    // 创建新的 cells 数组
+    let newCells = tableComp.tableConfig.cells.map((row: any[]) => 
+      row.map((cell: any) => ({ ...cell }))
+    );
+    
+    // 处理需要转移的合并单元格
+    cellsToUpdate.forEach(({ row, col, newRowSpan }) => {
+      if (newRowSpan === -1) {
+        // 转移合并属性到下一行
+        const nextRow = row + 1;
+        if (nextRow < newCells.length) {
+          const cell = newCells[row][col];
+          newCells[nextRow][col] = {
+            ...newCells[nextRow][col],
+            rowSpan: cell.rowSpan - 1,
+            colSpan: cell.colSpan,
+            content: cell.content,
+          };
+        }
+      } else {
+        // 调整 rowSpan
+        newCells[row][col].rowSpan = newRowSpan;
+      }
+    });
+    
+    // 删除指定行
+    newCells = newCells.filter((_: any, index: number) => index !== rowIndex);
     const newEditData = tableEditData.filter((_: any, index: number) => index !== rowIndex);
     
     setTableEditData(newEditData);
@@ -640,24 +715,48 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     const tableComp = component as any;
     if (!tableComp.tableConfig?.cells) return;
     
-    const newCells = tableComp.tableConfig.cells.map((row: any[], rowIdx: number) => [
-      ...row.slice(0, colIndex),
-      {
+    // 修复：正确处理列合并的情况
+    // 创建新的 cells 数组
+    const newCells = tableComp.tableConfig.cells.map((row: any[], rowIdx: number) => {
+      const newRow = row.map((cell: any) => ({ ...cell }));
+      
+      // 在指定位置插入新单元格
+      const newCell = {
         id: `cell-${Date.now()}-${rowIdx}`,
         content: '',
+        rowSpan: 1,
+        colSpan: 1,
         backgroundColor: undefined,
         verticalAlign: 'middle',
         border: undefined,
         style: {},
-      },
-      ...row.slice(colIndex),
-    ]);
+      };
+      newRow.splice(colIndex, 0, newCell);
+      
+      return newRow;
+    });
     
-    const newEditData = tableEditData.map((row: any[]) => [
-      ...row.slice(0, colIndex),
-      '',
-      ...row.slice(colIndex),
-    ]);
+    // 调整跨越新列的合并单元格：如果合并单元格的 colSpan 跨越了插入位置，需要增加 colSpan
+    newCells.forEach((row: any[]) => {
+      row.forEach((cell: any, cIndex: number) => {
+        if (cell.colSpan && cell.colSpan > 1) {
+          // 找到合并单元格的起始位置
+          const mergeStartCol = cIndex;
+          const mergeEndCol = cIndex + cell.colSpan - 1;
+          
+          // 如果插入位置在合并区域内（不包括起始列），需要增加 colSpan
+          if (colIndex > mergeStartCol && colIndex <= mergeEndCol) {
+            cell.colSpan += 1;
+          }
+        }
+      });
+    });
+    
+    const newEditData = tableEditData.map((row: any[]) => {
+      const newRow = [...row];
+      newRow.splice(colIndex, 0, '');
+      return newRow;
+    });
     
     setTableEditData(newEditData);
     updateComponent(component.id, {
@@ -678,7 +777,57 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     const tableComp = component as any;
     if (!tableComp.tableConfig?.cells || tableComp.tableConfig.cells[0]?.length <= 1) return;
     
-    const newCells = tableComp.tableConfig.cells.map((row: any[]) => 
+    // 修复：在删除前，调整可能跨越该列的合并单元格
+    const cellsToUpdate: { row: number; col: number; newColSpan: number }[] = [];
+    
+    tableComp.tableConfig.cells.forEach((row: any[], rIndex: number) => {
+      row.forEach((cell: any, cIndex: number) => {
+        if (cell.colSpan && cell.colSpan > 1) {
+          const mergeStartCol = cIndex;
+          const mergeEndCol = cIndex + cell.colSpan - 1;
+          
+          // 如果要删除的列在合并区域内（不包括起始列）
+          if (colIndex > mergeStartCol && colIndex <= mergeEndCol) {
+            cellsToUpdate.push({ row: rIndex, col: cIndex, newColSpan: cell.colSpan - 1 });
+          }
+          // 如果要删除的列是合并单元格的起始列，需要转移合并属性到下一列
+          else if (colIndex === mergeStartCol && cell.colSpan > 1) {
+            const nextCol = cIndex + 1;
+            if (nextCol < row.length) {
+              cellsToUpdate.push({ row: rIndex, col: cIndex, newColSpan: -1 }); // -1 表示需要转移
+            }
+          }
+        }
+      });
+    });
+    
+    // 创建新的 cells 数组
+    let newCells = tableComp.tableConfig.cells.map((row: any[]) => 
+      row.map((cell: any) => ({ ...cell }))
+    );
+    
+    // 处理需要转移的合并单元格
+    cellsToUpdate.forEach(({ row, col, newColSpan }) => {
+      if (newColSpan === -1) {
+        // 转移合并属性到下一列
+        const nextCol = col + 1;
+        if (nextCol < newCells[row].length) {
+          const cell = newCells[row][col];
+          newCells[row][nextCol] = {
+            ...newCells[row][nextCol],
+            rowSpan: cell.rowSpan,
+            colSpan: cell.colSpan - 1,
+            content: cell.content,
+          };
+        }
+      } else {
+        // 调整 colSpan
+        newCells[row][col].colSpan = newColSpan;
+      }
+    });
+    
+    // 删除指定列
+    newCells = newCells.map((row: any[]) => 
       row.filter((_: any, index: number) => index !== colIndex)
     );
     

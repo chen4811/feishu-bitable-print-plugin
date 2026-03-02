@@ -6,6 +6,7 @@ import { GripVertical, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CanvasComponentNode } from '@/types/editor';
 import { CanvasComponent } from './CanvasComponent';
+import { useEditorStore } from '@/store/editorStore';
 
 interface SortableItemProps {
   id: string;
@@ -32,6 +33,12 @@ export function SortableItem({
     transition,
     isDragging,
   } = useSortable({ id });
+
+  // 获取表格编辑状态
+  const tableEditing = useEditorStore((state) => state.tableEditing);
+  
+  // 检查当前表格是否处于编辑状态
+  const isTableEditing = tableEditing.isEditing && tableEditing.tableId === component.id;
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -60,39 +67,41 @@ export function SortableItem({
         onSelect();
       }}
     >
-      {/* 左侧操作栏 - 拖拽手柄和删除按钮 */}
-      <div className={`
-        absolute -left-14 top-0 flex flex-col items-center gap-1
-        transition-opacity duration-200
-        ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}
-      `}>
-        {/* 拖拽手柄 */}
-        <div
-          {...attributes}
-          {...listeners}
-          className="
-            p-1.5 rounded-md cursor-grab active:cursor-grabbing
-            bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700
-            transition-colors
-          "
-        >
-          <GripVertical className="w-4 h-4" />
-        </div>
+      {/* 左侧操作栏 - 拖拽手柄和删除按钮 - 仅在非编辑状态下显示 */}
+      {!isTableEditing && (
+        <div className={`
+          absolute -left-14 top-0 flex flex-col items-center gap-1
+          transition-opacity duration-200
+          ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}
+        `}>
+          {/* 拖拽手柄 */}
+          <div
+            {...attributes}
+            {...listeners}
+            className="
+              p-1.5 rounded-md cursor-grab active:cursor-grabbing
+              bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700
+              transition-colors
+            "
+          >
+            <GripVertical className="w-4 h-4" />
+          </div>
 
-        {/* 删除按钮 */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="
-            h-8 w-8
-            bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-700
-            transition-colors
-          "
-          onClick={handleDelete}
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
-      </div>
+          {/* 删除按钮 */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="
+              h-8 w-8
+              bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-700
+              transition-colors
+            "
+            onClick={handleDelete}
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
 
       {/* 组件内容 */}
       <div className="w-full">
