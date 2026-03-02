@@ -22,16 +22,10 @@ export const VariableChip: React.FC<VariableChipProps> = ({
     <span
       className={`
         inline-flex items-center
-        bg-blue-50 border border-blue-200
         text-blue-700
-        px-1.5 py-0.5
-        rounded-md
         text-sm font-medium
         cursor-default
-        mx-0.5
         select-none
-        transition-colors
-        hover:bg-blue-100 hover:border-blue-300
         ${className}
       `}
       data-field-name={fieldName}
