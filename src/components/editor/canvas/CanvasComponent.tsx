@@ -295,6 +295,17 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     };
   }, []);
 
+  // 当组件被取消选中时，重置 hover 状态
+  useEffect(() => {
+    if (!isSelected) {
+      setIsTableHovered(false);
+      if (tableToolbarTimeoutRef.current) {
+        clearTimeout(tableToolbarTimeoutRef.current);
+        tableToolbarTimeoutRef.current = null;
+      }
+    }
+  }, [isSelected]);
+
   // 判断当前是否在编辑这个表格
   const isCurrentTableEditing = tableEditing.isEditing && tableEditing.tableId === component.id;
 
