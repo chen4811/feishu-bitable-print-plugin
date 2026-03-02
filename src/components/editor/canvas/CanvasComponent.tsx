@@ -234,6 +234,9 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   // 表格编辑状态（本地数据，UI 状态在 store）
   const [tableEditData, setTableEditData] = useState<any[][]>([]);
   
+  // 表格 hover 状态 - 用于控制工具栏显示
+  const [isTableHovered, setIsTableHovered] = useState(false);
+  
   // 表格单元格选择状态（用于拖动选择）
   const [cellSelection, setCellSelection] = useState<{
     startRow: number | null;
@@ -1945,13 +1948,19 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         
         // 非编辑状态：工具栏在右上角悬浮
         return (
-          <div className="relative group" onDoubleClick={handleDoubleClickTable}>
+          <div 
+            className="relative" 
+            onDoubleClick={handleDoubleClickTable}
+            onMouseEnter={() => setIsTableHovered(true)}
+            onMouseLeave={() => setIsTableHovered(false)}
+          >
             <div className="absolute -top-9 right-0 z-10">
               <HoverToolbar
                 onEdit={handleEditTable}
                 onDelete={handleDeleteComponent}
                 onCopy={handleCopyComponent}
                 isSelected={isSelected}
+                isHovered={isTableHovered}
               />
             </div>
             {renderTableContent(tableComp)}
