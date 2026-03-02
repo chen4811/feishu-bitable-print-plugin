@@ -584,6 +584,10 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     
     const colCount = tableComp.tableConfig.cells[0]?.length || 3;
     
+    // 使用更可靠的唯一 ID 生成方式（时间戳 + 随机数 + 行/列索引）
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 8);
+    
     // 修复：正确处理合并单元格的情况
     // 遍历当前行的每个单元格，检查是否需要调整合并属性
     const newRow = Array(colCount).fill(null).map((_, colIndex) => {
@@ -591,7 +595,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       // 如果被合并的单元格（rowSpan === 0）在当前行上方插入新行，
       // 需要找到实际的合并单元格并增加其 rowSpan
       return {
-        id: `cell-${Date.now()}-${colIndex}`,
+        id: `cell-${timestamp}-${random}-${rowIndex}-${colIndex}`,
         content: '',
         rowSpan: 1,
         colSpan: 1,
@@ -716,6 +720,10 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     const tableComp = component as any;
     if (!tableComp.tableConfig?.cells) return;
     
+    // 使用更可靠的唯一 ID 生成方式
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 8);
+    
     // 修复：正确处理列合并的情况
     // 创建新的 cells 数组
     const newCells = tableComp.tableConfig.cells.map((row: any[], rowIdx: number) => {
@@ -723,7 +731,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       
       // 在指定位置插入新单元格
       const newCell = {
-        id: `cell-${Date.now()}-${rowIdx}`,
+        id: `cell-${timestamp}-${random}-${rowIdx}-${colIndex}`,
         content: '',
         rowSpan: 1,
         colSpan: 1,
