@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -24,6 +24,9 @@ import {
   CheckSquare,
   Square,
   AlertCircle,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -51,6 +54,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
   const [currentPage, setCurrentPage] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
   const [printError, setPrintError] = useState<string | null>(null);
+  const [scale, setScale] = useState(1);
   const previewRef = useRef<HTMLDivElement>(null);
 
   // 计算画布尺寸
@@ -60,6 +64,31 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
   const canvasWidth = isLandscape ? pageSize.height * mmToPx : pageSize.width * mmToPx;
   const canvasHeight = isLandscape ? pageSize.width * mmToPx : pageSize.height * mmToPx;
 
+  // 缩放控制
+  const handleZoomIn = () => {
+    setScale(prev => Math.min(2, Math.round((prev + 0.1) * 10) / 10));
+  };
+
+  const handleZoomOut = () => {
+    setScale(prev => Math.max(0.5, Math.round((prev - 0.1) * 10) / 10));
+  };
+
+  const handleResetZoom = () => {
+    setScale(1);
+  };
+
+  // 鼠标滚轮缩放
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      setScale(prev => {
+        const newScale = Math.max(0.5, Math.min(2, prev + delta));
+        return Math.round(newScale * 10) / 10;
+      });
+    }
+  }, []);
+
   // 获取预览记录
   const previewRecords = selectedRecordIds.length > 0
     ? records.filter(r => selectedRecordIds.includes(r.id as string))
@@ -68,14 +97,20 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
   // 渲染单页内容（流式布局）
   const renderPageContent = useCallback((record: Record<string, unknown>) => {
     return (
-      <div className="flex flex-col gap-3 w-full">
+      <div className="flex flex-wrap content-start gap-3 w-full">
         {components.map((component) => {
+          const layoutWidth = component.layout?.width || '100%';
+          const widthPercent = layoutWidth === '100%' ? 100 : 
+                              layoutWidth === '50%' ? 50 :
+                              layoutWidth === '33%' ? 33.333 : 25;
+          
           return (
             <div
               key={component.id}
-              className="w-full"
               style={{
-                width: component.width === 100 ? '100%' : `${component.width}%`,
+                flex: `0 0 ${widthPercent}%`,
+                maxWidth: `${widthPercent}%`,
+                padding: '4px',
               }}
             >
               {renderComponent(component, record)}
@@ -95,22 +130,138 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
       });
     };
 
+    // 获取基础样式
+    const getBaseTextStyles = (textStyle?: any): React.CSSProperties => ({
+      fontFamily: styleConfig.fontFamily,
+      fontSize: `${textStyle?.fontSize || styleConfig.fontSize}px`,
+      lineHeight: textStyle?.lineHeight || styleConfig.lineHeight,
+      color: textStyle?.color || '#000000',
+      textAlign: (textStyle?.align as any) || 'left',
+      fontWeight: textStyle?.bold ? 'bold' : textStyle?.fontWeight || 'normal',
+      fontStyle: textStyle?.italic ? 'italic' : 'normal',
+      textDecoration: textStyle?.underline ? 'underline' : textStyle?.lineThrough ? 'line-through' : 'none',
+    });
+
     switch (component.type) {
       case 'text':
         const textComp = component as any;
+        const textStyle = getBaseTextStyles(textComp.textStyle);
+        
+        // 标题样式
+        if (textComp.textStyle?.headingLevel) {
+          const headingSizes: Record<number, number> = { 1: 24, 2: 20, 3: 18, 4: 16, 5: 14, 6: 12 };
+          const headingStyle = {
+            ...textStyle,
+            fontSize: `${headingSizes[textComp.textStyle.headingLevel] || 18}px`,
+            fontWeight: 'bold',
+            marginBottom: '0.5em',
+            marginTop: '0.5em',
+          };
+          const headingContent = resolveVariables(textComp.content || '');
+          
+          switch (textComp.textStyle.headingLevel) {
+            case 1: return <h1 style={headingStyle}>{headingContent}</h1>;
+            case 2: return <h2 style={headingStyle}>{headingContent}</h2>;
+            case 3: return <h3 style={headingStyle}>{headingContent}</h3>;
+            case 4: return <h4 style={headingStyle}>{headingContent}</h4>;
+            case 5: return <h5 style={headingStyle}>{headingContent}</h5>;
+            case 6: return <h6 style={headingStyle}>{headingContent}</h6>;
+            default: return <h1 style={headingStyle}>{headingContent}</h1>;
+          }
+        }
+        
+        // 列表样式
+        if (textComp.textStyle?.listType === 'unordered') {
+          return (
+            <ul style={{ ...textStyle, marginLeft: '1.5rem', listStyleType: 'disc' }}>
+              <li>{resolveVariables(textComp.content || '')}</li>
+            </ul>
+          );
+        }
+        
+        if (textComp.textStyle?.listType === 'ordered') {
+          return (
+            <ol style={{ ...textStyle, marginLeft: '1.5rem', listStyleType: 'decimal' }}>
+              <li>{resolveVariables(textComp.content || '')}</li>
+            </ol>
+          );
+        }
+        
         return (
-          <div
-            style={{
-              fontSize: `${textComp.textStyle?.fontSize || styleConfig.fontSize}px`,
-              fontWeight: textComp.textStyle?.bold ? 'bold' : 'normal',
-              color: textComp.textStyle?.color || '#000000',
-              textAlign: textComp.textStyle?.align || 'left',
-              lineHeight: textComp.textStyle?.lineHeight || styleConfig.lineHeight,
-              fontFamily: styleConfig.fontFamily,
-            }}
-          >
+          <div style={textStyle}>
             {resolveVariables(textComp.content || '')}
           </div>
+        );
+        
+      case 'heading':
+        const headingComp = component as any;
+        const level = headingComp.level || 1;
+        const headingSizes: Record<number, number> = { 1: 24, 2: 20, 3: 18, 4: 16, 5: 14, 6: 12 };
+        const headingStyle = {
+          fontFamily: styleConfig.fontFamily,
+          fontSize: headingComp.textStyle?.fontSize ? `${headingComp.textStyle.fontSize}px` : `${headingSizes[level]}px`,
+          fontWeight: headingComp.textStyle?.bold !== false ? 'bold' : 'normal',
+          color: headingComp.textStyle?.color || '#000000',
+          textAlign: (headingComp.textStyle?.align as any) || 'center',
+          lineHeight: headingComp.textStyle?.lineHeight || 1.5,
+          margin: '0 0 16px 0',
+          padding: '8px 0',
+        };
+        const headingContent = resolveVariables(headingComp.content || '');
+        
+        switch (level) {
+          case 1: return <h1 style={headingStyle}>{headingContent}</h1>;
+          case 2: return <h2 style={headingStyle}>{headingContent}</h2>;
+          case 3: return <h3 style={headingStyle}>{headingContent}</h3>;
+          case 4: return <h4 style={headingStyle}>{headingContent}</h4>;
+          case 5: return <h5 style={headingStyle}>{headingContent}</h5>;
+          case 6: return <h6 style={headingStyle}>{headingContent}</h6>;
+          default: return <h1 style={headingStyle}>{headingContent}</h1>;
+        }
+        
+      case 'paragraph':
+        const paraComp = component as any;
+        const lines = resolveVariables(paraComp.content || '').split('\n');
+        return (
+          <p style={{
+            fontFamily: styleConfig.fontFamily,
+            fontSize: paraComp.textStyle?.fontSize ? `${paraComp.textStyle.fontSize}px` : `${styleConfig.fontSize}px`,
+            fontWeight: paraComp.textStyle?.bold ? 'bold' : 'normal',
+            color: paraComp.textStyle?.color || '#000000',
+            textAlign: (paraComp.textStyle?.align as any) || 'justify',
+            lineHeight: paraComp.textStyle?.lineHeight || 1.8,
+            textIndent: `${(paraComp.indent || 2) * 2}em`,
+            margin: '0 0 12px 0',
+            padding: '4px 0',
+          }}>
+            {lines.map((line, index) => (
+              <React.Fragment key={index}>
+                {line}
+                {index < lines.length - 1 && <br />}
+              </React.Fragment>
+            ))}
+          </p>
+        );
+        
+      case 'list':
+        const listComp = component as any;
+        const ListTag = listComp.listType === 'ordered' ? 'ol' : 'ul';
+        return (
+          <ListTag style={{
+            fontFamily: styleConfig.fontFamily,
+            fontSize: listComp.textStyle?.fontSize ? `${listComp.textStyle.fontSize}px` : `${styleConfig.fontSize}px`,
+            fontWeight: listComp.textStyle?.bold ? 'bold' : 'normal',
+            color: listComp.textStyle?.color || '#000000',
+            lineHeight: listComp.textStyle?.lineHeight || 1.8,
+            margin: '0 0 12px 0',
+            paddingLeft: '2em',
+          }}>
+            {(listComp.items || []).map((item: string, index: number) => (
+              <li key={index} style={{ marginBottom: '4px' }}>
+                {resolveVariables(item)}
+              </li>
+            ))}
+          </ListTag>
         );
       case 'line':
         const lineComp = component as any;
@@ -222,8 +373,44 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
           <div className="flex items-center justify-between">
             <DialogTitle>打印预览</DialogTitle>
             
-            {/* 操作按钮 */}
-            <div className="flex items-center gap-2">
+            {/* 缩放控制 + 操作按钮 */}
+            <div className="flex items-center gap-4">
+              {/* 缩放控制 */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleZoomOut}
+                  disabled={scale <= 0.5}
+                  className="h-8 w-8"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </Button>
+                <span className="text-sm font-medium min-w-[60px] text-center">
+                  {Math.round(scale * 100)}%
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleZoomIn}
+                  disabled={scale >= 2}
+                  className="h-8 w-8"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleResetZoom}
+                  className="h-8 w-8"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </Button>
+              </div>
+              
+              <div className="w-px h-6 bg-gray-300" />
+              
+              {/* 操作按钮 */}
               <Button
                 variant="outline"
                 size="sm"
@@ -301,7 +488,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
             </div>
 
             {/* 预览内容 */}
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1" onWheel={handleWheel}>
               <div className="p-8 flex flex-col items-center gap-8">
                 {printError && (
                   <Alert variant="destructive" className="max-w-lg">
@@ -321,6 +508,9 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
                         width: `${canvasWidth}px`,
                         minHeight: `${canvasHeight}px`,
                         padding: `${pageConfig.margins.top * mmToPx}px ${pageConfig.margins.right * mmToPx}px ${pageConfig.margins.bottom * mmToPx}px ${pageConfig.margins.left * mmToPx}px`,
+                        transform: `scale(${scale})`,
+                        transformOrigin: 'top center',
+                        marginBottom: `${20 * scale}px`,
                       }}
                     >
                       <div className="absolute -top-6 left-0 text-sm text-muted-foreground">
@@ -363,6 +553,8 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
                         width: `${canvasWidth}px`,
                         minHeight: `${canvasHeight}px`,
                         padding: `${pageConfig.margins.top * mmToPx}px ${pageConfig.margins.right * mmToPx}px ${pageConfig.margins.bottom * mmToPx}px ${pageConfig.margins.left * mmToPx}px`,
+                        transform: `scale(${scale})`,
+                        transformOrigin: 'top center',
                       }}
                     >
                       {renderPageContent(previewRecords[currentPage])}

@@ -2,7 +2,7 @@
 
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Trash2 } from 'lucide-react';
+import { GripVertical, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CanvasComponentNode } from '@/types/editor';
 import { CanvasComponent } from './CanvasComponent';
@@ -15,7 +15,10 @@ interface SortableItemProps {
   onSelect: () => void;
   onDelete: () => void;
   opacity?: number;
+  onResize?: (width: '100%' | '50%' | '33%' | '25%') => void;
 }
+
+const WIDTH_OPTIONS: ('100%' | '50%' | '33%' | '25%')[] = ['100%', '50%', '33%', '25%'];
 
 export function SortableItem({
   id,
@@ -24,6 +27,7 @@ export function SortableItem({
   onSelect,
   onDelete,
   opacity = 1,
+  onResize,
 }: SortableItemProps) {
   const {
     attributes,
@@ -51,6 +55,30 @@ export function SortableItem({
     e.stopPropagation();
     onDelete();
   };
+
+  // 获取当前宽度索引
+  const currentWidth = component.layout?.width || '100%';
+  const currentIndex = WIDTH_OPTIONS.indexOf(currentWidth as any);
+
+  // 调整宽度 - 缩小
+  const handleShrink = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (currentIndex < WIDTH_OPTIONS.length - 1) {
+      onResize?.(WIDTH_OPTIONS[currentIndex + 1]);
+    }
+  };
+
+  // 调整宽度 - 放大
+  const handleExpand = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (currentIndex > 0) {
+      onResize?.(WIDTH_OPTIONS[currentIndex - 1]);
+    }
+  };
+
+  // 是否允许调整
+  const canShrink = currentIndex < WIDTH_OPTIONS.length - 1;
+  const canExpand = currentIndex > 0;
 
   return (
     <div
@@ -99,6 +127,52 @@ export function SortableItem({
             onClick={handleDelete}
           >
             <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+
+      {/* 右侧操作栏 - 尺寸调整 - 仅在非编辑状态下显示 */}
+      {!isTableEditing && onResize && (
+        <div className={`
+          absolute -right-14 top-0 flex flex-col items-center gap-1
+          transition-opacity duration-200
+          ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}
+        `}>
+          {/* 放大按钮 */}
+          <Button
+            variant="ghost"
+            size="icon"
+            disabled={!canExpand}
+            className="
+              h-8 w-8
+              bg-blue-50 hover:bg-blue-100 text-blue-500 hover:text-blue-700
+              transition-colors disabled:opacity-30
+            "
+            onClick={handleExpand}
+            title="扩大宽度"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+
+          {/* 当前宽度指示 */}
+          <div className="text-xs text-gray-500 font-medium py-1">
+            {currentWidth}
+          </div>
+
+          {/* 缩小按钮 */}
+          <Button
+            variant="ghost"
+            size="icon"
+            disabled={!canShrink}
+            className="
+              h-8 w-8
+              bg-blue-50 hover:bg-blue-100 text-blue-500 hover:text-blue-700
+              transition-colors disabled:opacity-30
+            "
+            onClick={handleShrink}
+            title="缩小宽度"
+          >
+            <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
       )}

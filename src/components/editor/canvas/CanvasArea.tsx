@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -18,10 +18,11 @@ import {
 } from '@dnd-kit/sortable';
 import { useEditorStore } from '@/store/editorStore';
 import { PAGE_SIZES, ComponentType, CanvasComponentNode } from '@/types/editor';
-import { Plus } from 'lucide-react';
+import { Plus, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { InsertionIndicator } from './InsertionIndicator';
 import { SortableItem } from './SortableItem';
 import { FloatingAddButton } from './FloatingAddButton';
+import { Button } from '@/components/ui/button';
 
 // 插入位置类型
 type InsertPosition = 'top' | 'bottom' | null;
@@ -64,6 +65,11 @@ export function CanvasArea() {
   const [insertPosition, setInsertPosition] = useState<InsertPosition>(null);
   const [isFromPanel, setIsFromPanel] = useState(false);
   const [dragType, setDragType] = useState<ComponentType | null>(null);
+  
+  // 缩放状态
+  const [scale, setScale] = useState(1);
+  const [isCtrlPressed, setIsCtrlPressed] = useState(false);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
 
   // 传感器设置
   const sensors = useSensors(
@@ -89,6 +95,54 @@ export function CanvasArea() {
   const activeComponent = isFromPanel 
     ? null 
     : components.find((c) => c.id === activeId);
+
+  // 监听键盘事件 - Ctrl键状态
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Control' || e.key === 'Meta') {
+        setIsCtrlPressed(true);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Control' || e.key === 'Meta') {
+        setIsCtrlPressed(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+
+  // 监听鼠标滚轮 - Ctrl+滚轮缩放
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      setScale(prev => {
+        const newScale = Math.max(0.5, Math.min(2, prev + delta));
+        return Math.round(newScale * 10) / 10;
+      });
+    }
+  }, []);
+
+  // 缩放控制
+  const handleZoomIn = () => {
+    setScale(prev => Math.min(2, Math.round((prev + 0.1) * 10) / 10));
+  };
+
+  const handleZoomOut = () => {
+    setScale(prev => Math.max(0.5, Math.round((prev - 0.1) * 10) / 10));
+  };
+
+  const handleResetZoom = () => {
+    setScale(1);
+  };
 
   // 拖拽开始
   const handleDragStart = (event: DragStartEvent) => {
@@ -218,136 +272,170 @@ export function CanvasArea() {
   };
 
   return (
-    <div className="flex items-start justify-center">
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-      >
-        <div
-          id="canvas"
-          className="bg-white shadow-lg relative transition-all"
-          style={{
-            width: `${canvasWidth}px`,
-            minHeight: `${canvasHeight}px`,
-            padding: `${pageConfig.margins.top * mmToPx}px ${pageConfig.margins.right * mmToPx}px ${pageConfig.margins.bottom * mmToPx}px ${pageConfig.margins.left * mmToPx}px`,
-            fontFamily: styleConfig.fontFamily,
-          }}
-          onClick={handleCanvasClick}
+    <div className="flex flex-col items-center">
+      {/* 缩放控制栏 */}
+      <div className="flex items-center gap-2 mb-4 bg-white rounded-lg shadow-sm border p-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleZoomOut}
+          disabled={scale <= 0.5}
+          className="h-8 w-8"
         >
-          {/* 使用 flex-wrap 实现并排 */}
+          <ZoomOut className="w-4 h-4" />
+        </Button>
+        <span className="text-sm font-medium min-w-[60px] text-center">
+          {Math.round(scale * 100)}%
+        </span>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleZoomIn}
+          disabled={scale >= 2}
+          className="h-8 w-8"
+        >
+          <ZoomIn className="w-4 h-4" />
+        </Button>
+        <div className="w-px h-4 bg-gray-300 mx-1" />
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleResetZoom}
+          className="h-8 w-8"
+          title="重置缩放"
+        >
+          <RotateCcw className="w-4 h-4" />
+        </Button>
+        <span className="text-xs text-gray-500 ml-2">
+          Ctrl+滚轮缩放
+        </span>
+      </div>
+
+      {/* 画布容器 - 支持滚轮缩放 */}
+      <div 
+        ref={canvasContainerRef}
+        className="flex items-start justify-center overflow-auto"
+        onWheel={handleWheel}
+        style={{ 
+          maxWidth: '100vw',
+          maxHeight: 'calc(100vh - 200px)',
+        }}
+      >
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+        >
           <div
-            id="canvas-grid"
-            className="flex flex-wrap content-start gap-3"
-            style={{ minHeight: `${contentHeight}px` }}
+            id="canvas"
+            className="bg-white shadow-lg relative transition-transform origin-top"
+            style={{
+              width: `${canvasWidth}px`,
+              minHeight: `${canvasHeight}px`,
+              padding: `${pageConfig.margins.top * mmToPx}px ${pageConfig.margins.right * mmToPx}px ${pageConfig.margins.bottom * mmToPx}px ${pageConfig.margins.left * mmToPx}px`,
+              fontFamily: styleConfig.fontFamily,
+              transform: `scale(${scale})`,
+              transformOrigin: 'top center',
+            }}
+            onClick={handleCanvasClick}
           >
-            <SortableContext
-              items={components.map((c) => c.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              {components.length > 0 ? (
-                components.map((component) => {
-                  const isTarget = overId === component.id;
-                  const isActive = activeId === component.id;
-                  const layoutWidth = component.layout?.width || '100%';
-
-                  return (
-                    <React.Fragment key={component.id}>
-                      {/* 插入指示器 */}
-                      {isTarget && !isActive && insertPosition && (
-                        <div className="w-full flex-shrink-0">
-                          <InsertionIndicator type="horizontal" />
-                        </div>
-                      )}
-
-                      <div
-                        className={getComponentWidthClass(layoutWidth)}
-                        style={{
-                          ...getComponentWidthStyle(layoutWidth),
-                          flexShrink: 0,
-                        }}
-                      >
-                        <div data-component-id={component.id}>
-                          <SortableItem
-                            id={component.id}
-                            component={component}
-                            isSelected={selectedComponentId === component.id}
-                            onSelect={() => selectComponent(component.id)}
-                            onDelete={() => handleDeleteComponent(component.id)}
-                            opacity={isActive ? 0.4 : 1}
-                          />
-                        </div>
-                      </div>
-                    </React.Fragment>
-                  );
-                })
-              ) : (
-                /* 空状态 */
-                <div
-                  className="flex flex-col items-center justify-center text-muted-foreground w-full"
-                  style={{ minHeight: `${contentHeight}px` }}
-                >
-                  <div
-                    className="w-12 h-12 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center mb-3 cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
-                    onClick={handleAddClick}
-                  >
-                    <Plus className="w-6 h-6" />
-                  </div>
-                  <p className="text-sm">从左侧拖拽组件开始排版</p>
-                  <p className="text-xs mt-1">或点击上方 + 添加文本</p>
-                  <p className="text-xs mt-2 text-primary">💡 拖新组件到100%宽度组件旁会自动并排为50%</p>
-                </div>
-              )}
-            </SortableContext>
-          </div>
-
-          {/* 页面信息 */}
-          <div className="absolute bottom-2 right-2 text-xs text-muted-foreground/50">
-            {pageConfig.size} {isLandscape ? '横向' : '纵向'}
-          </div>
-          
-          {/* 浮动添加按钮 */}
-          <FloatingAddButton onAddComponent={handleAddComponent} />
-        </div>
-
-        {/* 拖拽覆盖层 */}
-        <DragOverlay dropAnimation={null}>
-          {activeId && activeComponent ? (
+            {/* 使用 flex-wrap 实现并排 */}
             <div
-              className="opacity-80 bg-white shadow-2xl rounded-lg p-1"
-              style={{
-                width: '300px',
-              }}
+              id="canvas-grid"
+              className="flex flex-wrap content-start gap-3"
+              style={{ minHeight: `${contentHeight}px` }}
             >
-              <div className="text-sm text-muted-foreground p-2 border-b mb-2">
-                拖拽中: {activeComponent.type}
-              </div>
-              <div className="p-4 bg-gray-50 rounded">
-                <div className="text-center text-gray-500">
+              <SortableContext
+                items={components.map((c) => c.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {components.length > 0 ? (
+                  components.map((component) => {
+                    const isTarget = overId === component.id;
+                    const isActive = activeId === component.id;
+                    const layoutWidth = component.layout?.width || '100%';
+
+                    return (
+                      <React.Fragment key={component.id}>
+                        {/* 插入指示器 */}
+                        {isTarget && !isActive && insertPosition && (
+                          <div className="w-full flex-shrink-0">
+                            <InsertionIndicator type="horizontal" />
+                          </div>
+                        )}
+
+                        <div
+                          className={getComponentWidthClass(layoutWidth)}
+                          style={{
+                            ...getComponentWidthStyle(layoutWidth),
+                            flexShrink: 0,
+                          }}
+                        >
+                          <div data-component-id={component.id}>
+                            <SortableItem
+                              id={component.id}
+                              component={component}
+                              isSelected={selectedComponentId === component.id}
+                              onSelect={() => selectComponent(component.id)}
+                              onDelete={() => handleDeleteComponent(component.id)}
+                              opacity={isActive ? 0.4 : 1}
+                              onResize={(width) => {
+                                updateComponent(component.id, { 
+                                  layout: { width } 
+                                });
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </React.Fragment>
+                    );
+                  })
+                ) : (
+                  /* 空状态 */
+                  <div
+                    className="flex flex-col items-center justify-center text-muted-foreground w-full"
+                    style={{ minHeight: `${contentHeight}px` }}
+                  >
+                    <div
+                      className="w-12 h-12 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center mb-3 cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
+                      onClick={handleAddClick}
+                    >
+                      <Plus className="w-6 h-6" />
+                    </div>
+                    <p className="text-sm">从左侧拖拽组件开始排版</p>
+                    <p className="text-xs mt-1">或点击上方 + 添加文本</p>
+                    <p className="text-xs mt-2 text-primary">💡 拖新组件到100%宽度组件旁会自动并排为50%</p>
+                  </div>
+                )}
+              </SortableContext>
+            </div>
+
+            {/* 悬浮添加按钮 */}
+            <FloatingAddButton onAddComponent={handleAddComponent} />
+          </div>
+
+          {/* 拖拽时的覆盖层 */}
+          <DragOverlay>
+            {activeComponent ? (
+              <div className="bg-white shadow-lg border-2 border-primary rounded-lg p-4 opacity-90">
+                <p className="text-sm font-medium">
                   {activeComponent.type === 'text' && '文本组件'}
+                  {activeComponent.type === 'heading' && '标题组件'}
+                  {activeComponent.type === 'paragraph' && '段落组件'}
+                  {activeComponent.type === 'list' && '列表组件'}
                   {activeComponent.type === 'table' && '表格组件'}
                   {activeComponent.type === 'image' && '图片组件'}
-                  {activeComponent.type === 'qrcode' && '二维码组件'}
-                  {activeComponent.type === 'barcode' && '条形码组件'}
-                  {activeComponent.type === 'line' && '分隔线组件'}
-                </div>
+                  {activeComponent.type === 'qrcode' && '二维码'}
+                  {activeComponent.type === 'barcode' && '条形码'}
+                  {activeComponent.type === 'line' && '分隔线'}
+                </p>
               </div>
-            </div>
-          ) : isFromPanel && dragType ? (
-            <div className="opacity-80 bg-white shadow-2xl rounded-lg p-4 border-2 border-dashed border-primary">
-              <p className="text-sm text-primary font-medium">新组件</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                组件类型: {dragType}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                拖到100%宽度组件旁会自动并排为50%
-              </p>
-            </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+      </div>
     </div>
   );
 }
