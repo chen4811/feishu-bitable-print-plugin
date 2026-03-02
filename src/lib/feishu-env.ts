@@ -783,14 +783,41 @@ export async function getSelectedRecords(): Promise<BitableRecord[]> {
   }
 }
 
+// 字段类型常量（根据飞书开放平台文档）
+const FIELD_TYPES = {
+  TEXT: 1,           // 文本
+  NUMBER: 2,         // 数字
+  SINGLE_SELECT: 3,   // 单选
+  MULTI_SELECT: 4,    // 多选
+  DATETIME: 5,       // 日期
+  CHECKBOX: 7,       // 复选框
+  USER: 11,          // 人员
+  PHONE: 13,         // 电话号码
+  URL: 15,           // 超链接
+  ATTACHMENT: 17,     // 附件
+  SINGLE_LINK: 18,    // 单向关联
+  FORMULA: 20,       // 公式
+  DUPLEX_LINK: 21,    // 双向关联
+  LOCATION: 22,      // 地理位置
+  GROUP_CHAT: 23,     // 群组
+  CREATED_TIME: 1001, // 创建时间
+  MODIFIED_TIME: 1002, // 最后更新时间
+  CREATED_USER: 1003, // 创建人
+  MODIFIED_USER: 1004, // 修改人
+  AUTO_NUMBER: 1005   // 自动编号
+};
+
 function processRecordData(recordData: any, fieldMetaList: any[]): BitableRecord {
   debugLog('processRecordData 被调用');
   
   const { fields } = recordData;
   
+  // 创建字段名称映射和字段类型映射
   const fieldMap: Record<string, string> = {};
+  const fieldTypeMap: Record<string, number> = {};
   fieldMetaList.forEach(field => {
     fieldMap[field.id] = field.name;
+    fieldTypeMap[field.id] = field.type;
   });
   
   const formattedData: Record<string, unknown> = {};
@@ -798,7 +825,8 @@ function processRecordData(recordData: any, fieldMetaList: any[]): BitableRecord
   Object.keys(fields).forEach(fieldId => {
     const fieldName = fieldMap[fieldId] || fieldId;
     const fieldValue = fields[fieldId];
-    formattedData[fieldName] = formatFieldValue(fieldValue);
+    const fieldType = fieldTypeMap[fieldId];
+    formattedData[fieldName] = formatFieldValue(fieldValue, fieldType);
   });
   
   debugLog('processRecordData 处理完成:', formattedData);
@@ -811,26 +839,215 @@ function processRecordData(recordData: any, fieldMetaList: any[]): BitableRecord
   };
 }
 
-function formatFieldValue(fieldValue: any): string {
-  if (!fieldValue) return '';
+/**
+ * 根据字段类型格式化字段值
+ * @param fieldValue - 字段值
+ * @param fieldType - 字段类型
+ * @returns 格式化后的值
+ */
+function formatFieldValue(fieldValue: any, fieldType?: number): any {
+  if (!fieldValue) {
+    return getDefaultValue(fieldType);
+  }
   
   if (!Array.isArray(fieldValue)) {
     return String(fieldValue);
   }
   
-  if (fieldValue[0] && fieldValue[0].text) {
+  if (fieldValue.length === 0) {
+    return getDefaultValue(fieldType);
+  }
+  
+  try {
+    switch (fieldType) {
+      case FIELD_TYPES.TEXT: // 文本
+      case FIELD_TYPES.PHONE: // 电话
+      case FIELD_TYPES.AUTO_NUMBER: // 自动编号
+        return formatTextValue(fieldValue);
+      case FIELD_TYPES.NUMBER: // 数字
+        return formatNumberValue(fieldValue);
+      case FIELD_TYPES.SINGLE_SELECT: // 单选
+        return formatSingleSelectValue(fieldValue);
+      case FIELD_TYPES.MULTI_SELECT: // 多选
+        return formatMultiSelectValue(fieldValue);
+      case FIELD_TYPES.DATETIME: // 日期
+      case FIELD_TYPES.CREATED_TIME: // 创建时间
+      case FIELD_TYPES.MODIFIED_TIME: // 修改时间
+        return formatDateTimeValue(fieldValue);
+      case FIELD_TYPES.CHECKBOX: // 复选框
+        return formatCheckboxValue(fieldValue);
+      case FIELD_TYPES.USER: // 人员
+      case FIELD_TYPES.CREATED_USER: // 创建人
+      case FIELD_TYPES.MODIFIED_USER: // 修改人
+        return formatUserValue(fieldValue);
+      case FIELD_TYPES.URL: // 超链接
+        return formatUrlValue(fieldValue);
+      case FIELD_TYPES.ATTACHMENT: // 附件
+        return formatAttachmentValue(fieldValue);
+      case FIELD_TYPES.SINGLE_LINK: // 单向关联
+      case FIELD_TYPES.DUPLEX_LINK: // 双向关联
+        return formatLinkValue(fieldValue);
+      case FIELD_TYPES.FORMULA: // 公式
+        return formatFormulaValue(fieldValue);
+      case FIELD_TYPES.LOCATION: // 地理位置
+        return formatLocationValue(fieldValue);
+      case FIELD_TYPES.GROUP_CHAT: // 群组
+        return formatGroupChatValue(fieldValue);
+      default:
+        // 未知类型，使用通用处理
+        return formatUnknownValue(fieldValue);
+    }
+  } catch (error) {
+    console.error('[FeishuEnv] 字段值格式化错误:', error, fieldType, fieldValue);
+    return fieldValue;
+  }
+}
+
+// 文本类型处理（1, 13, 1005）
+function formatTextValue(fieldValue: any[]): string {
+  return fieldValue[0]?.text || '';
+}
+
+// 数字类型处理（2）
+function formatNumberValue(fieldValue: any[]): number {
+  const value = fieldValue[0]?.text;
+  return value ? parseFloat(value) : 0;
+}
+
+// 单选类型处理（3）
+function formatSingleSelectValue(fieldValue: any[]): string {
+  if (fieldValue[0]?.text) {
     return fieldValue[0].text;
   }
-  
-  if (fieldValue[0] && fieldValue[0].id) {
-    return fieldValue.map((item: any) => item.id || item.name || '').filter(Boolean).join(', ');
+  if (fieldValue[0]?.name) {
+    return fieldValue[0].name;
   }
-  
-  if (fieldValue[0] && fieldValue[0].name) {
-    return fieldValue.map((item: any) => item.name || item.id || '').filter(Boolean).join(', ');
+  return '';
+}
+
+// 多选类型处理（4）
+function formatMultiSelectValue(fieldValue: any[]): string {
+  return fieldValue
+    .map(item => item.text || item.name || '')
+    .filter(text => text)
+    .join(', ');
+}
+
+// 日期时间类型处理（5, 1001, 1002）
+function formatDateTimeValue(fieldValue: any[]): string {
+  if (typeof fieldValue[0] === 'number') {
+    // 时间戳格式
+    return new Date(fieldValue[0]).toLocaleString();
   }
-  
-  return JSON.stringify(fieldValue);
+  if (fieldValue[0]?.text) {
+    // 文本格式
+    return fieldValue[0].text;
+  }
+  return '';
+}
+
+// 复选框类型处理（7）
+function formatCheckboxValue(fieldValue: any[]): boolean {
+  return fieldValue[0] === true || fieldValue[0]?.text === 'true';
+}
+
+// 人员类型处理（11, 1003, 1004）
+function formatUserValue(fieldValue: any[]): string {
+  return fieldValue
+    .map(user => user.name || user.id || '')
+    .filter(name => name)
+    .join(', ');
+}
+
+// 超链接类型处理（15）
+function formatUrlValue(fieldValue: any[]): string | { text: string; url: string } {
+  if (fieldValue[0]?.link && fieldValue[0]?.text) {
+    return {
+      text: fieldValue[0].text,
+      url: fieldValue[0].link
+    };
+  }
+  return fieldValue[0]?.text || '';
+}
+
+// 附件类型处理（17）
+function formatAttachmentValue(fieldValue: any[]): any[] {
+  return fieldValue.map(file => ({
+    name: file.name,
+    url: file.url,
+    token: file.file_token,
+    size: file.size,
+    type: file.type
+  }));
+}
+
+// 关联字段处理（18, 21）
+function formatLinkValue(fieldValue: any[]): string[] {
+  if (fieldValue[0]?.link_record_ids) {
+    return fieldValue[0].link_record_ids;
+  }
+  return fieldValue.map(item => item.text || item.id || '').filter(Boolean);
+}
+
+// 公式字段处理（20）
+function formatFormulaValue(fieldValue: any[]): string {
+  if (fieldValue[0]?.value) {
+    // 公式字段的特殊结构
+    return Array.isArray(fieldValue[0].value) ? 
+      fieldValue[0].value[0]?.text : 
+      fieldValue[0].value;
+  }
+  return fieldValue[0]?.text || '';
+}
+
+// 地理位置处理（22）
+function formatLocationValue(fieldValue: any[]): string | { address: string; location: any; name: string } {
+  if (fieldValue[0]?.location) {
+    return {
+      address: fieldValue[0].address,
+      location: fieldValue[0].location,
+      name: fieldValue[0].name
+    };
+  }
+  return fieldValue[0]?.text || '';
+}
+
+// 群组处理（23）
+function formatGroupChatValue(fieldValue: any[]): string {
+  return fieldValue
+    .map(group => group.name || group.id || '')
+    .filter(name => name)
+    .join(', ');
+}
+
+// 未知类型处理
+function formatUnknownValue(fieldValue: any[]): string {
+  // 尝试通用的文本提取
+  if (fieldValue[0]?.text) {
+    return fieldValue.map(item => item.text || '').filter(Boolean).join(', ');
+  }
+  if (fieldValue[0]?.name) {
+    return fieldValue.map(item => item.name || '').filter(Boolean).join(', ');
+  }
+  try {
+    return JSON.stringify(fieldValue);
+  } catch {
+    return '无法解析的值';
+  }
+}
+
+// 获取字段类型的默认值
+function getDefaultValue(fieldType?: number): any {
+  switch (fieldType) {
+    case FIELD_TYPES.NUMBER:
+      return 0;
+    case FIELD_TYPES.CHECKBOX:
+      return false;
+    case FIELD_TYPES.ATTACHMENT:
+      return [];
+    default:
+      return '';
+  }
 }
 
 // ============================================
