@@ -979,14 +979,25 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     };
   }, [resizingRow, resizingCol, isResizing, resizeStart, component, updateComponent]);
 
-  // 全局点击监听 - 点击组件外部时退出编辑并取消选中
+  // 全局点击监听 - 点击画布空白区域时退出编辑并取消选中
   useEffect(() => {
     const handleGlobalClick = (e: MouseEvent) => {
       // 如果当前不是选中状态，不需要处理
       if (!isSelected) return;
       
-      // 检查点击是否在组件容器外部
-      if (componentContainerRef.current && !componentContainerRef.current.contains(e.target as Node)) {
+      const target = e.target as HTMLElement;
+      
+      // 检查点击是否在画布区域内（#canvas 或 #canvas-grid）
+      const isInCanvas = target.closest('#canvas') !== null || target.closest('#canvas-grid') !== null;
+      
+      // 如果点击不在画布区域内，保持选中状态（例如点击侧边栏、工具栏等）
+      if (!isInCanvas) return;
+      
+      // 检查点击是否在组件容器内部
+      const isInComponent = componentContainerRef.current?.contains(target) ?? false;
+      
+      // 如果点击在画布内但不在组件内部，则取消选中和退出编辑
+      if (!isInComponent) {
         // 如果正在编辑文本，先退出编辑并保存
         if (isEditing && component.type === 'text') {
           setIsEditing(false);
@@ -994,14 +1005,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         }
         
         // 取消选中当前组件
-        // 使用 selectComponent(null) 会取消所有选中
-        // 但由于每个组件都有自己的监听器，所以需要额外判断
-        // 通过调用 onSelect 的反向操作来实现取消选中
-        // 实际上 onSelect 是传入的，我们需要一个取消选中的方法
-        // 这里我们通过调用 onSelect 时传入一个特殊值或使用 store 的方法
-        
-        // 直接调用 selectComponent(null) 来取消选中
-        const { selectComponent } = useEditorStore.getState();
         selectComponent(null);
       }
     };
