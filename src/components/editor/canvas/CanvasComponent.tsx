@@ -142,6 +142,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     setTableCellEditing,
     records,
     fields,
+    selectComponent,
   } = useEditorStore();
 
   // 获取预览用的记录（优先使用第一条记录）
@@ -226,6 +227,9 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   const [isResizing, setIsResizing] = useState(false);
   const [resizeStart, setResizeStart] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const textComponentRef = useRef<HTMLDivElement>(null);
+  
+  // 组件容器 ref - 用于检测点击外部
+  const componentContainerRef = useRef<HTMLDivElement>(null);
   
   // 表格编辑状态（本地数据，UI 状态在 store）
   const [tableEditData, setTableEditData] = useState<any[][]>([]);
@@ -974,6 +978,44 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       document.removeEventListener('mouseup', handleGlobalMouseUp);
     };
   }, [resizingRow, resizingCol, isResizing, resizeStart, component, updateComponent]);
+
+  // 全局点击监听 - 点击组件外部时退出编辑并取消选中
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      // 如果当前不是选中状态，不需要处理
+      if (!isSelected) return;
+      
+      // 检查点击是否在组件容器外部
+      if (componentContainerRef.current && !componentContainerRef.current.contains(e.target as Node)) {
+        // 如果正在编辑文本，先退出编辑并保存
+        if (isEditing && component.type === 'text') {
+          setIsEditing(false);
+          updateComponent(component.id, { content: editContent });
+        }
+        
+        // 取消选中当前组件
+        // 使用 selectComponent(null) 会取消所有选中
+        // 但由于每个组件都有自己的监听器，所以需要额外判断
+        // 通过调用 onSelect 的反向操作来实现取消选中
+        // 实际上 onSelect 是传入的，我们需要一个取消选中的方法
+        // 这里我们通过调用 onSelect 时传入一个特殊值或使用 store 的方法
+        
+        // 直接调用 selectComponent(null) 来取消选中
+        const { selectComponent } = useEditorStore.getState();
+        selectComponent(null);
+      }
+    };
+
+    // 只有在选中状态下才添加监听器
+    if (isSelected) {
+      // 使用 capture 阶段来确保在其他事件处理之前执行
+      document.addEventListener('mousedown', handleGlobalClick, true);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleGlobalClick, true);
+    };
+  }, [isSelected, isEditing, component.id, component.type, editContent, updateComponent, selectComponent]);
 
   // 自动聚焦到编辑框
   useEffect(() => {
@@ -1961,7 +2003,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   };
 
   return (
-    <div className="w-full">
+    <div ref={componentContainerRef} className="w-full">
       {renderContent()}
     </div>
   );
