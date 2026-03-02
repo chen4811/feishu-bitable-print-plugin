@@ -399,8 +399,18 @@ export async function initFeishuEnv(): Promise<boolean> {
       });
 
       const initSdk = async () => {
+        debugLog('📍 初始化中调用 base.getSelection()...');
         const selection = await base.getSelection();
-        debugLog('getSelection() 成功:', selection);
+        
+        // 🔍 输出完整的返回对象
+        debugLog('📍 base.getSelection() 完整返回:');
+        debugLog('  - baseId:', selection?.baseId);
+        debugLog('  - tableId:', selection?.tableId);
+        debugLog('  - viewId:', selection?.viewId);
+        debugLog('  - recordId:', selection?.recordId);
+        debugLog('  - fieldId:', selection?.fieldId);
+        debugLog('📍 原始对象:', JSON.stringify(selection, null, 2));
+        
         return selection;
       };
 
@@ -683,10 +693,17 @@ export async function getSelectedRecords(): Promise<BitableRecord[]> {
   }
 
   try {
-    debugLog('第一步：获取选中信息...');
+    debugLog('第一步：调用 base.getSelection() 获取选中信息...');
     const selection = await base.getSelection();
     
-    debugLog('选中信息:', selection);
+    // 🔍 输出完整的返回对象
+    debugLog('📍 base.getSelection() 完整返回:');
+    debugLog('  - baseId:', selection?.baseId);
+    debugLog('  - tableId:', selection?.tableId);
+    debugLog('  - viewId:', selection?.viewId);
+    debugLog('  - recordId:', selection?.recordId);
+    debugLog('  - fieldId:', selection?.fieldId);
+    debugLog('📍 原始对象:', JSON.stringify(selection, null, 2));
     
     // 至少需要 tableId
     if (!selection?.tableId) {
@@ -971,13 +988,14 @@ export async function getCheckboxSelectedRecords(): Promise<BitableRecord[]> {
     debugLog('📍 调用 base.getSelection()...');
     const selection = await base.getSelection();
     
-    debugLog('📍 base.getSelection() 返回:', {
-      baseId: selection?.baseId,
-      tableId: selection?.tableId,
-      viewId: selection?.viewId,
-      recordId: selection?.recordId,
-      fieldId: selection?.fieldId,
-    });
+    // 🔍 输出完整的返回对象
+    debugLog('📍 base.getSelection() 完整返回:');
+    debugLog('  - baseId:', selection?.baseId);
+    debugLog('  - tableId:', selection?.tableId);
+    debugLog('  - viewId:', selection?.viewId);
+    debugLog('  - recordId:', selection?.recordId);
+    debugLog('  - fieldId:', selection?.fieldId);
+    debugLog('📍 原始对象:', JSON.stringify(selection, null, 2));
 
     const tableId = selection?.tableId;
     const recordId = selection?.recordId;
