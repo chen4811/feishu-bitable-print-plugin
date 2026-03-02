@@ -16,6 +16,7 @@ import { useTemplateStore, type Template } from '@/store/templateStore';
 import { useSelectedDataStore } from '@/store/selectedDataStore';
 import { useEditorStore } from '@/store/editorStore';
 import { feishuEnv } from '@/lib/feishu-env';
+import { onSelectionChange } from '@/lib/feishu-env';
 
 interface TemplatePreviewProps {
   baseId?: string;
@@ -363,7 +364,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     });
   }, [fetchTemplates]);
 
-  // 初始化：设置飞书环境状态并初始化 SDK
+  // 初始化：设置飞书环境状态并初始化 SDK，添加选中变化监听器
   useEffect(() => {
     const init = async () => {
       // 先初始化 SDK
@@ -376,6 +377,22 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       // 如果初始化成功，获取一次记录
       if (isReady) {
         fetchSelectedRecordsFromEnv();
+        
+        // 注册选中变化监听器 - 当用户在多维表格中点击行时自动刷新
+        const unsubscribe = onSelectionChange((event) => {
+          console.log('[TemplatePreview] 选中变化事件:', event);
+          if (event?.data?.recordId) {
+            // 延迟一下再获取，确保飞书 SDK 已更新内部状态
+            setTimeout(() => {
+              fetchSelectedRecordsFromEnv();
+            }, 100);
+          }
+        });
+        
+        // 清理函数
+        return () => {
+          unsubscribe();
+        };
       }
     };
     
@@ -414,7 +431,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     setSelectedRecords(prev => {
       // 检查是否已存在
       if (prev.some(r => r.id === record.id)) {
-        toast.info('该记录已在列表中');
         return prev;
       }
       // 添加到列表
@@ -423,7 +439,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         data: record,
         addedAt: Date.now(),
       };
-      toast.success('已添加记录');
       return [...prev, newRecord];
     });
   }, []);
@@ -431,7 +446,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   // 从选中列表移除记录
   const removeRecordFromSelection = useCallback((recordId: string) => {
     setSelectedRecords(prev => prev.filter(r => r.id !== recordId));
-    toast.success('已移除记录');
   }, []);
   
   // 清空选中列表
@@ -926,8 +940,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                       >
                         <div className="text-center text-gray-400">
                           <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                          <p className="text-lg">请从右侧添加数据</p>
-                          <p className="text-sm mt-2">点击"可用数据"中的记录添加到预览</p>
+                          <p className="text-lg">请从右侧选择数据</p>
+                          <p className="text-sm mt-2">点击右侧数据卡片添加到预览</p>
                         </div>
                       </div>
                     </div>
@@ -1062,100 +1076,65 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         </div>
       </div>
 
-      {/* 右侧：数据匹配 - 重构为数据卡片列表 */}
+      {/* 右侧：数据匹配 - 简化为点击选中模式 */}
       <Card className="w-72 flex-shrink-0 flex flex-col overflow-hidden">
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg">数据匹配</CardTitle>
+          <CardTitle className="text-lg flex items-center justify-between">
+            <span>数据匹配</span>
+            {selectedRecords.length > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {selectedRecords.length}
+              </Badge>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent className="flex-1 p-0 overflow-hidden">
           <ScrollArea className="h-full">
-            <div className="p-4 space-y-4">
+            <div className="p-4 space-y-2">
               {selectedTemplate ? (
-                <>
-                  {/* 可用数据区域 */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-medium text-gray-700">可用数据</h4>
-                      <Badge variant="outline" className="text-xs">
-                        {availableRecords.length}
-                      </Badge>
-                    </div>
-                    {availableRecords.length > 0 ? (
-                      <div className="space-y-2">
-                        {availableRecords.map((record, idx) => {
-                          const isSelected = selectedRecords.some(r => r.id === record.id);
-                          return (
-                            <button
-                              key={record.id || idx}
-                              onClick={() => addRecordToSelection(record)}
-                              disabled={isSelected}
-                              className={`w-full text-left p-2 rounded border text-xs transition-all ${
-                                isSelected 
-                                  ? 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed' 
-                                  : 'bg-white border-gray-200 hover:border-blue-300 hover:bg-blue-50'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="font-medium truncate">
-                                  {record.编号 || record.id || `记录 ${idx + 1}`}
-                                </span>
-                                {!isSelected && <Plus className="h-3 w-3 text-blue-500" />}
-                              </div>
-                              {record.简述 && (
-                                <p className="text-gray-500 truncate mt-1">{String(record.简述).slice(0, 30)}</p>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-gray-400 text-center py-4">
-                        暂无可用数据<br />
-                        点击"刷新数据"获取
-                      </p>
-                    )}
+                availableRecords.length > 0 ? (
+                  availableRecords.map((record, idx) => {
+                    const isSelected = selectedRecords.some(r => r.id === record.id);
+                    return (
+                      <button
+                        key={record.id || idx}
+                        onClick={() => {
+                          if (isSelected) {
+                            removeRecordFromSelection(record.id);
+                          } else {
+                            addRecordToSelection(record);
+                          }
+                        }}
+                        className={`w-full text-left p-3 rounded-lg border text-xs transition-all ${
+                          isSelected 
+                            ? 'bg-blue-50 border-blue-400 ring-1 ring-blue-400 shadow-sm' 
+                            : 'bg-white border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className={`font-medium truncate ${isSelected ? 'text-blue-700' : 'text-gray-700'}`}>
+                            {record.编号 || record.id || `记录 ${idx + 1}`}
+                          </span>
+                          {isSelected && (
+                            <span className="text-[10px] px-1.5 py-0.5 bg-blue-500 text-white rounded">
+                              已选
+                            </span>
+                          )}
+                        </div>
+                        {record.简述 && (
+                          <p className={`truncate mt-1.5 ${isSelected ? 'text-blue-600' : 'text-gray-500'}`}>
+                            {String(record.简述).slice(0, 35)}
+                          </p>
+                        )}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-8 text-gray-400">
+                    <p className="text-sm mb-2">暂无数据</p>
+                    <p className="text-xs">在多维表格中选中行<br/>或点击"刷新数据"</p>
                   </div>
-
-                  {/* 分割线 */}
-                  {availableRecords.length > 0 && selectedRecords.length > 0 && (
-                    <div className="border-t border-gray-200" />
-                  )}
-
-                  {/* 已选数据区域 */}
-                  {selectedRecords.length > 0 && (
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-sm font-medium text-gray-700">已选数据</h4>
-                        <Badge variant="secondary" className="text-xs">
-                          {selectedRecords.length}
-                        </Badge>
-                      </div>
-                      <div className="space-y-2">
-                        {selectedRecords.map((record, idx) => (
-                          <div
-                            key={record.id}
-                            className="relative p-2 rounded border border-blue-200 bg-blue-50 text-xs group"
-                          >
-                            <button
-                              onClick={() => removeRecordFromSelection(record.id)}
-                              className="absolute top-1 right-1 p-0.5 rounded hover:bg-red-100 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                            <div className="font-medium truncate pr-5">
-                              {record.data.编号 || record.id || `记录 ${idx + 1}`}
-                            </div>
-                            {record.data.简述 && (
-                              <p className="text-gray-600 truncate mt-1">
-                                {String(record.data.简述).slice(0, 25)}
-                              </p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
+                )
               ) : (
                 <p className="text-sm text-gray-400 text-center py-4">
                   选择模板后可添加数据
