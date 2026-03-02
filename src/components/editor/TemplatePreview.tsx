@@ -563,17 +563,17 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   }, [selectedTemplate, records]);
 
   return (
-    <div className="flex h-full gap-4 p-4">
+    <div className="h-full flex gap-4 p-4 overflow-hidden">
       {/* 左侧：模板列表 */}
-      <Card className="w-80 flex-shrink-0 flex flex-col">
+      <Card className="w-72 flex-shrink-0 flex flex-col">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <FileText className="h-5 w-5" />
             模板列表 ({templates.length})
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 p-0">
-          <ScrollArea className="h-[calc(100vh-300px)]">
+        <CardContent className="flex-1 p-0 overflow-hidden">
+          <ScrollArea className="h-full">
             <div className="space-y-2 p-4 pt-0">
               {templates.map((template) => (
                 <button
@@ -617,7 +617,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       </Card>
 
       {/* 中间：打印预览 */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         {/* 工具栏 */}
         <Card className="mb-4">
           <CardContent className="p-4">
@@ -765,8 +765,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         </Card>
 
         {/* A4 预览区域 */}
-        <div className="flex-1 bg-gray-100 rounded-lg p-8 overflow-auto">
-          <div className="flex justify-center min-h-full">
+        <div className="flex-1 bg-gray-100 rounded-lg overflow-auto relative">
+          <div className="min-w-max p-4 flex justify-center">
             {selectedTemplate ? (
               <div
                 className="bg-white shadow-lg print:shadow-none"
@@ -815,12 +815,12 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       </div>
 
       {/* 右侧：变量映射和数据信息 */}
-      <Card className="w-64 flex-shrink-0">
+      <Card className="w-60 flex-shrink-0 flex flex-col overflow-hidden">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">数据匹配</CardTitle>
         </CardHeader>
-        <CardContent>
-          <ScrollArea className="h-[calc(100vh-250px)]">
+        <CardContent className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
             {selectedTemplate ? (
               <div className="space-y-4">
                 {/* 模板变量 */}
