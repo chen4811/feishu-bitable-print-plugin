@@ -159,8 +159,6 @@ type RecordSelectChangeEvent = {
   };
 };
 
-const onRecordSelectChangeCallbacks = new Set<(event: RecordSelectChangeEvent) => void>();
-let recordSelectUnsubscribe: (() => void) | null = null;
 
 // ============================================
 // 新增：调试和环境检查
@@ -251,15 +249,6 @@ function startPolling(interval = 2000) {
           },
         };
         
-        // 通知所有回调
-        onRecordSelectChangeCallbacks.forEach(cb => {
-          try {
-            cb(event);
-          } catch (e) {
-            console.error('[FeishuEnv] 轮询回调执行失败:', e);
-          }
-        });
-        
         lastPolledSelection = currentSelection;
       }
       
@@ -281,88 +270,6 @@ function stopPolling() {
   }
 }
 
-export function onRecordSelectChange(callback: (event: RecordSelectChangeEvent) => void): () => void {
-  debugLog('注册复选框勾选变化监听器');
-  onRecordSelectChangeCallbacks.add(callback);
-  
-  // 如果还没设置监听器，现在设置
-  if (!recordSelectUnsubscribe && envStatus === 'ready') {
-    setupRecordSelectListener();
-  }
-  
-  return () => {
-    debugLog('移除复选框勾选变化监听器');
-    onRecordSelectChangeCallbacks.delete(callback);
-  };
-}
-
-function setupRecordSelectListener() {
-  if (recordSelectUnsubscribe) {
-    debugLog('复选框勾选监听器已存在，跳过');
-    return;
-  }
-  
-  try {
-    debugLog('🔄 ======== 设置复选框勾选变化监听器 ========');
-    
-    // 先进行环境检查和调试
-    checkEnvironment();
-    debugEnvironment();
-    
-    // 检查 bitable.ui 是否存在
-    if ((bitable as any).ui && typeof (bitable as any).ui.onRecordSelectChange === 'function') {
-      debugLog('✅ 找到 onRecordSelectChange 方法，设置事件监听器');
-      
-      recordSelectUnsubscribe = (bitable as any).ui.onRecordSelectChange((event: RecordSelectChangeEvent) => {
-        debugLog('🎯 ======== 复选框勾选事件触发! ========');
-        debugLog('事件数据:', event);
-        debugLog('选中记录 IDs:', event.data.recordIds);
-        debugLog('选中记录数量:', event.data.recordIds.length);
-        debugLog('是否全选:', event.data.isSelectAll);
-        debugLog('表格 ID:', event.data.tableId);
-        debugLog('时间:', new Date().toISOString());
-        
-        // 通知所有注册的回调
-        onRecordSelectChangeCallbacks.forEach(cb => {
-          try {
-            cb(event);
-          } catch (e) {
-            console.error('[FeishuEnv] 选中变化回调执行失败:', e);
-          }
-        });
-        
-        debugLog('🎯 ======== 事件处理完成 ========');
-      });
-      
-      debugLog('✅ 事件监听器设置成功');
-      
-      // 同时启动轮询作为备用方案
-      debugLog('🔁 同时启动轮询作为备用方案');
-      startPolling(3000);
-      
-    } else {
-      debugLog('⚠️  不支持 onRecordSelectChange，仅使用轮询方案');
-      debugLog('bitable.ui:', typeof (bitable as any).ui);
-      debugLog('onRecordSelectChange:', typeof (bitable as any).ui?.onRecordSelectChange);
-      
-      // 启动轮询作为主要方案
-      startPolling(2000);
-    }
-    
-    debugLog('🔄 ======== 监听器设置流程完成 ========');
-    
-  } catch (error) {
-    debugLog('❌ 设置选中监听器失败:', error);
-    debugLog('错误堆栈:', error instanceof Error ? error.stack : error);
-    
-    // 出错时也尝试启动轮询
-    debugLog('🔁 出错时尝试启动轮询作为备用方案');
-    startPolling(2000);
-  }
-}
-
-// ============================================
-// 新增：选中变化监听（点击行）
 // ============================================
 
 export function onSelectionChange(callback: (event: SelectionChangeEvent) => void): () => void {
@@ -502,9 +409,8 @@ export async function initFeishuEnv(): Promise<boolean> {
       envStatus = 'ready';
       debugLog('✅ SDK 初始化成功，飞书环境已就绪');
       
-      // 立即设置两种监听器
-      setupSelectionListener();      // 点击行选择
-      setupRecordSelectListener();   // 复选框勾选
+      // 设置选中变化监听器
+      setupSelectionListener();
       
       // 初始化完成后进行一次完整的环境调试
       debugLog('初始化完成，执行环境调试...');
@@ -1052,151 +958,8 @@ export function getDebugInfo(): Record<string, unknown> {
   };
 }
 
-
 // ============================================
-// 复选框选择管理器类 (CheckboxSelectionManager)
-// ============================================
-
-export class CheckboxSelectionManager {
-  private selectedIds: string[] = [];
-  private tableId: string | null = null;
-  private unsubscribe: (() => void) | null = null;
-  private onRecordsSelected: ((records: BitableRecord[]) => void) | null = null;
-
-  constructor(onRecordsSelected?: (records: BitableRecord[]) => void) {
-    this.onRecordsSelected = onRecordsSelected || null;
-  }
-
-  // 初始化
-  async init(): Promise<CheckboxSelectionManager> {
-    debugLog('🔄 初始化复选框选择管理器');
-
-    if (envStatus !== 'ready') {
-      debugLog('⚠️ 环境未就绪，等待环境就绪...');
-      await new Promise<void>((resolve) => {
-        const checkInterval = setInterval(() => {
-          if (envStatus === 'ready') {
-            clearInterval(checkInterval);
-            resolve();
-          }
-        }, 100);
-      });
-    }
-
-    // 获取初始选中状态
-    await this.refreshSelection();
-
-    // 设置监听器
-    this.setupListener();
-
-    debugLog('✅ 复选框选择管理器初始化完成');
-    return this;
-  }
-
-  // 获取当前选中状态
-  async refreshSelection(): Promise<void> {
-    try {
-      let recordIds: string[] = [];
-      
-      // ✅ 优先尝试使用 bitable.ui.getSelectRecordIds()
-      if ((bitable as any).ui && typeof (bitable as any).ui.getSelectRecordIds === 'function') {
-        try {
-          recordIds = await (bitable as any).ui.getSelectRecordIds();
-          debugLog('✅ 使用 bitable.ui.getSelectRecordIds() 获取:', recordIds);
-        } catch (e) {
-          debugLog('❌ bitable.ui.getSelectRecordIds() 调用失败:', e);
-        }
-      }
-      
-      // 获取选择状态（用于获取 tableId）
-      const selection = await base.getSelection();
-      this.tableId = selection?.tableId || null;
-      
-      // 如果上面的方法不可用或返回空，尝试使用 base.getSelection()
-      if (recordIds.length === 0 && selection?.recordId) {
-        recordIds = [selection.recordId];
-        debugLog('⚠️ 使用 base.getSelection() 获取单条记录:', selection.recordId);
-      }
-      
-      this.selectedIds = recordIds;
-
-      debugLog('📊 当前选中状态:', {
-        记录IDs: this.selectedIds,
-        数量: this.selectedIds.length,
-        表ID: this.tableId,
-      });
-    } catch (error) {
-      debugLog('❌ 刷新选中状态失败:', error);
-    }
-  }
-
-  // 设置监听器
-  setupListener(): void {
-    this.unsubscribe = onRecordSelectChange(async (event) => {
-      const { data } = event;
-
-      this.selectedIds = data.recordIds;
-      this.tableId = data.tableId;
-
-      debugLog('🎯 复选框选择变化:', {
-        操作: data.isSelectAll ? '全选' : '手动选择',
-        数量: data.recordIds.length,
-      });
-
-      if (data.recordIds.length > 0) {
-        await this.loadSelectedData();
-      } else {
-        debugLog('📭 选择已清空');
-        this.onRecordsSelected?.([]);
-      }
-    });
-
-    debugLog('✅ 复选框监听器设置成功');
-  }
-
-  // 加载选中数据
-  async loadSelectedData(): Promise<BitableRecord[]> {
-    try {
-      if (!this.tableId || this.selectedIds.length === 0) {
-        debugLog('⚠️ 没有可加载的数据');
-        return [];
-      }
-
-      const records = await getRecordsByCheckboxIds(this.tableId, this.selectedIds);
-
-      debugLog(`✅ 数据加载成功: ${records.length} 条记录`);
-
-      // 调用回调
-      this.onRecordsSelected?.(records);
-
-      return records;
-    } catch (error) {
-      debugLog('❌ 加载选中数据失败:', error);
-      return [];
-    }
-  }
-
-  // 获取当前选中IDs
-  getSelectedIds(): string[] {
-    return [...this.selectedIds];
-  }
-
-  // 获取当前选中数量
-  getSelectedCount(): number {
-    return this.selectedIds.length;
-  }
-
-  // 销毁
-  destroy(): void {
-    if (this.unsubscribe) {
-      this.unsubscribe();
-      this.unsubscribe = null;
-    }
-    stopPolling();
-    debugLog('🛑 复选框选择管理器已销毁');
-  }
-}
-// 便捷函数：快速获取复选框选中记录（基于 base.getSelection）
+// 便捷函数：通过 base.getSelection 获取选中记录
 // ============================================
 
 export async function getCheckboxSelectedRecords(): Promise<BitableRecord[]> {
@@ -1275,22 +1038,10 @@ export const feishuEnv = {
   initFeishuContext,
   getDebugInfo,
   
-  // 选中变化（点击行 - 用于编辑器）
+  // 选中变化（基于 base.getSelection）
   onSelectionChange,
   getSelectedRecords,
-  
-  // 复选框勾选（用于打印预览）
-  onRecordSelectChange,
-  getRecordsByCheckboxIds,
   getCheckboxSelectedRecords,
-  
-  
-  // 管理器类
-  CheckboxSelectionManager,
-  
-  // 轮询控制
-  startPolling,
-  stopPolling,
 };
 
 export default feishuEnv;

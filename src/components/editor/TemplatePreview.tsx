@@ -353,48 +353,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     }
   }, [setRecords, setCurrentIndex, showDebugInfo]);
 
-  // 注册复选框勾选监听（使用 feishu-env）
-  useEffect(() => {
-    if (!isFeishuEnvironment) {
-      return;
-    }
-
-    // 监听器: 复选框勾选（打印预览模式只监听复选框
-    const unsubscribe = feishuEnv.onRecordSelectChange(async (event) => {
-      if (showDebugInfo) {
-        setDebugInfo(`复选框勾选事件: ${JSON.stringify(event, null, 2)}`);
-      }
-
-      const { tableId, recordIds } = event.data;
-      
-      if (recordIds.length > 0) {
-        const records = await feishuEnv.getRecordsByCheckboxIds(tableId, recordIds);
-        
-        if (records.length > 0) {
-          // 转换格式（与 fetchSelectedRecordsFromEnv 中同样的逻辑
-          const formattedRecords = records.map((record, index) => ({
-            id: record.id,
-            ...record.fields,
-            _rowIndex: index,
-          }));
-          
-          setRecords(formattedRecords);
-          setCurrentIndex(0);
-          
-          if (showDebugInfo) {
-            setDebugInfo(prev => prev + `\n\n格式化记录: ${JSON.stringify(formattedRecords, null, 2)}`);
-          }
-        }
-      } else {
-        setRecords([]);
-        setCurrentIndex(0);
-      }
-    });
-    
-    // 返回清理函数
-    return unsubscribe;
-  }, [isFeishuEnvironment, showDebugInfo, setRecords, setCurrentIndex]);
-
   // 处理模板选择
   const handleSelectTemplate = useCallback((template: Template) => {
     setSelectedTemplate(template);
