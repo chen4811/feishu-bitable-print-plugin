@@ -87,7 +87,7 @@ export interface ComponentLayout {
 // 画布组件节点（网格布局 - v17.0）
 export interface BaseCanvasNode {
   id: string;
-  type: 'text' | 'table' | 'image' | 'barcode' | 'qrcode' | 'line';
+  type: 'text' | 'heading' | 'paragraph' | 'list' | 'table' | 'image' | 'barcode' | 'qrcode' | 'line';
   width: number; // 保留兼容性
   height?: number;
   minHeight?: number;
@@ -99,6 +99,30 @@ export interface BaseCanvasNode {
 export interface TextCanvasNode extends BaseCanvasNode {
   type: 'text';
   content: string;
+  textStyle: ComponentTextStyle;
+}
+
+// 标题组件节点（H1-H6）
+export interface HeadingCanvasNode extends BaseCanvasNode {
+  type: 'heading';
+  content: string;
+  level: 1 | 2 | 3 | 4 | 5 | 6;
+  textStyle: ComponentTextStyle;
+}
+
+// 段落组件节点（支持首行缩进）
+export interface ParagraphCanvasNode extends BaseCanvasNode {
+  type: 'paragraph';
+  content: string;
+  indent: number; // 首行缩进（字符数）
+  textStyle: ComponentTextStyle;
+}
+
+// 列表组件节点（有序/无序）
+export interface ListCanvasNode extends BaseCanvasNode {
+  type: 'list';
+  items: string[];
+  listType: 'ordered' | 'unordered';
   textStyle: ComponentTextStyle;
 }
 
@@ -142,6 +166,9 @@ export interface LineCanvasNode extends BaseCanvasNode {
 // 画布组件节点联合类型
 export type CanvasComponentNode = 
   | TextCanvasNode 
+  | HeadingCanvasNode
+  | ParagraphCanvasNode
+  | ListCanvasNode
   | TableCanvasNode 
   | ImageCanvasNode 
   | BarcodeCanvasNode 
@@ -159,6 +186,9 @@ export interface CanvasState {
 // 组件类型枚举
 export type ComponentType = 
   | 'text'       // 文本组件
+  | 'heading'    // 标题组件（H1-H6）
+  | 'paragraph'  // 段落组件（支持首行缩进）
+  | 'list'       // 列表组件（有序/无序）
   | 'table'      // 表格组件
   | 'image'      // 图片组件
   | 'qrcode'     // 二维码
@@ -369,6 +399,9 @@ export const PAGE_SIZES: Record<string, { width: number; height: number }> = {
 // 默认组件尺寸（流式布局版本）
 export const DEFAULT_COMPONENT_SIZES: Record<ComponentType, { width: number; height: number }> = {
   text: { width: 100, height: 60 }, // 100% 宽度
+  heading: { width: 100, height: 60 },
+  paragraph: { width: 100, height: 80 },
+  list: { width: 100, height: 100 },
   table: { width: 100, height: 200 },
   image: { width: 100, height: 150 },
   qrcode: { width: 100, height: 80 },

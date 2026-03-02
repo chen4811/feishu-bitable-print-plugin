@@ -232,6 +232,34 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         newComponent.content = '';
         newComponent.textStyle = createDefaultTextStyle(state.styleConfig);
         break;
+      case 'heading':
+        newComponent.content = '标题';
+        newComponent.level = 1;
+        newComponent.textStyle = {
+          ...createDefaultTextStyle(state.styleConfig),
+          fontSize: 24,
+          bold: true,
+          align: 'center',
+        };
+        break;
+      case 'paragraph':
+        newComponent.content = '';
+        newComponent.indent = 2; // 首行缩进2字符
+        newComponent.textStyle = {
+          ...createDefaultTextStyle(state.styleConfig),
+          fontSize: 14,
+          lineHeight: 1.8,
+        };
+        break;
+      case 'list':
+        newComponent.items = ['列表项1', '列表项2'];
+        newComponent.listType = 'unordered';
+        newComponent.textStyle = {
+          ...createDefaultTextStyle(state.styleConfig),
+          fontSize: 14,
+          lineHeight: 1.8,
+        };
+        break;
       case 'table':
         newComponent.tableConfig = createDefaultTableConfig();
         break;

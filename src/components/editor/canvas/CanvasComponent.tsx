@@ -123,6 +123,7 @@ import JsBarcode from 'jsbarcode';
 import { HoverToolbar } from '../table/HoverToolbar';
 import { RowActionMenu } from '../table/RowActionMenu';
 import { ColumnActionMenu } from '../table/ColumnActionMenu';
+import { DocumentComponentRenderer } from './DocumentComponents';
 
 interface CanvasComponentProps {
   component: CanvasComponentNode;
@@ -1840,6 +1841,28 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 backgroundColor: lineComp.color || '#000000',
                 borderTop: lineComp.style === 'dashed' ? '1px dashed #000' : 
                           lineComp.style === 'dotted' ? '1px dotted #000' : 'none',
+              }}
+            />
+          </div>
+        );
+
+      case 'heading':
+      case 'paragraph':
+      case 'list':
+        return (
+          <div className="w-full p-4">
+            <DocumentComponentRenderer
+              component={component}
+              isEditing={isEditing}
+              isSelected={isSelected}
+              onChange={(content) => {
+                updateComponent(component.id, { content });
+              }}
+              onItemsChange={(items) => {
+                updateComponent(component.id, { items });
+              }}
+              onLevelChange={(level) => {
+                updateComponent(component.id, { level: level as 1 | 2 | 3 | 4 | 5 | 6 });
               }}
             />
           </div>
