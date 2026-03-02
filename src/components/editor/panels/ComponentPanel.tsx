@@ -14,10 +14,7 @@ import {
   FileText,
   Table2,
   GripVertical,
-  Heading,
   AlignLeft,
-  List,
-  ListOrdered,
 } from 'lucide-react';
 import { useDraggable } from '@dnd-kit/core';
 
@@ -31,15 +28,11 @@ const components: {
   name: string;
   icon: React.ComponentType<{ className?: string }>;
   description: string;
-  category: 'basic' | 'document' | 'code' | 'layout' | 'advanced';
+  category: 'basic' | 'code' | 'layout' | 'advanced';
 }[] = [
-  // 文档组件（Word 式排版）
-  { type: 'heading', name: '标题', icon: Heading, description: '文档标题（H1-H6）', category: 'document' },
-  { type: 'paragraph', name: '段落', icon: AlignLeft, description: '带首行缩进的段落', category: 'document' },
-  { type: 'list', name: '无序列表', icon: List, description: '项目符号列表', category: 'document' },
-  { type: 'text', name: '文本', icon: Type, description: '普通文本内容', category: 'document' },
-  
   // 基础内容
+  { type: 'text', name: '文本', icon: Type, description: '普通文本内容', category: 'basic' },
+  { type: 'paragraph', name: '段落', icon: AlignLeft, description: '带首行缩进的段落', category: 'basic' },
   { type: 'table', name: '表格', icon: Table, description: '添加表格', category: 'basic' },
   { type: 'image', name: '图片', icon: Image, description: '添加图片', category: 'basic' },
   
@@ -107,7 +100,6 @@ function DraggableComponentItem({
 export function ComponentPanel({ onAddComponent }: ComponentPanelProps) {
   // 按类别分组
   const categories = {
-    document: { name: '文档排版', items: components.filter(c => c.category === 'document') },
     basic: { name: '基础内容', items: components.filter(c => c.category === 'basic') },
     code: { name: '标识类', items: components.filter(c => c.category === 'code') },
     layout: { name: '布局', items: components.filter(c => c.category === 'layout') },
