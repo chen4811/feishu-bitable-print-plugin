@@ -414,8 +414,18 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
         setRecords(formattedRecords);
         setCurrentIndex(0);
-        // 同时更新可用记录列表
-        setAvailableRecords(formattedRecords);
+        
+        // 追加到可用记录列表（而不是替换），避免覆盖之前的数据
+        setAvailableRecords(prev => {
+          const newRecords = [...prev];
+          formattedRecords.forEach(record => {
+            // 检查是否已存在
+            if (!newRecords.some(r => r.id === record.id)) {
+              newRecords.push(record);
+            }
+          });
+          return newRecords;
+        });
         
         if (showDebugInfo) {
           setDebugInfo(`选中记录: ${JSON.stringify(selRecords.map(r => ({ id: r.id, fields: r.fields })), null, 2)}`);
