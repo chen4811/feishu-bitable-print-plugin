@@ -104,8 +104,9 @@ const renderTableComponent = (component: any, data: Record<string, any>): React.
       style={{
         position: 'relative',
         width: component.layout?.width || '100%',
-        maxWidth: '100%',
-        overflow: 'auto',
+        flex: `0 0 ${component.layout?.width || '100%'}`,
+        maxWidth: component.layout?.width || '100%',
+        boxSizing: 'border-box',
         ...style,
       }}
     >
@@ -113,7 +114,6 @@ const renderTableComponent = (component: any, data: Record<string, any>): React.
         style={{
           borderCollapse: 'collapse',
           width: '100%',
-          tableLayout: 'fixed',
           border: showOuterBorder ? `${borderWidth}px solid ${borderColor}` : 'none',
         }}
       >
@@ -177,6 +177,8 @@ const renderComponentToHTML = (component: any, data: Record<string, any>): strin
   const styleStr = `
     position: relative;
     width: ${component.layout?.width || '100%'};
+    flex: 0 0 ${component.layout?.width || '100%'};
+    max-width: ${component.layout?.width || '100%'};
     font-size: ${style.fontSize || '16px'};
     font-weight: ${style.fontWeight || 'normal'};
     color: ${style.color || '#000000'};
@@ -185,6 +187,7 @@ const renderComponentToHTML = (component: any, data: Record<string, any>): strin
     text-align: ${style.textAlign || 'left'};
     white-space: pre-wrap;
     word-wrap: break-word;
+    box-sizing: border-box;
   `;
 
   switch (type) {
@@ -198,7 +201,6 @@ const renderComponentToHTML = (component: any, data: Record<string, any>): strin
           <table style="
             border-collapse: collapse;
             width: 100%;
-            table-layout: fixed;
             border: ${showOuterBorder ? `${borderWidth}px solid ${borderColor}` : 'none'};
           ">
             <tbody>
@@ -227,6 +229,7 @@ const renderComponentToHTML = (component: any, data: Record<string, any>): strin
                             vertical-align: top;
                             white-space: pre-wrap;
                             word-wrap: break-word;
+                            overflow-wrap: break-word;
                           "
                         >${processedContent}</td>
                       `;
@@ -237,7 +240,7 @@ const renderComponentToHTML = (component: any, data: Record<string, any>): strin
             </tbody>
           </table>
         `;
-        return `<div style="${styleStr} max-width: 100%; overflow: auto;">${tableHtml}</div>`;
+        return `<div style="${styleStr}">${tableHtml}</div>`;
       }
       return `<div style="${styleStr}">[表格]</div>`;
     case 'qrcode':
@@ -276,6 +279,8 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
 const commonStyle: React.CSSProperties = {
     position: 'relative',
     width: component.layout?.width || '100%',
+    flex: `0 0 ${component.layout?.width || '100%'}`,
+    maxWidth: component.layout?.width || '100%',
     fontSize: style.fontSize,
     fontWeight: style.fontWeight,
     color: style.color,
@@ -289,6 +294,7 @@ const commonStyle: React.CSSProperties = {
     whiteSpace: 'pre-wrap',
     wordWrap: 'break-word',
     overflow: 'hidden',
+    boxSizing: 'border-box',
     ...style,
   };
 
@@ -847,8 +853,31 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
             /* 6. 组件宽度修复 - 只针对 Flex 容器的直接子元素 */
             .print-page > div[style*="flex-wrap"] > * {
+              flex: 0 0 auto !important;
               max-width: 100% !important;
               box-sizing: border-box !important;
+            }
+
+            /* 6.1 根据 layout.width 设置具体宽度 */
+            .print-page > div[style*="flex-wrap"] > [style*="width:100%"],
+            .print-page > div[style*="flex-wrap"] > [style*="width: 100%"] {
+              flex: 0 0 100% !important;
+              width: 100% !important;
+            }
+            .print-page > div[style*="flex-wrap"] > [style*="width:50%"],
+            .print-page > div[style*="flex-wrap"] > [style*="width: 50%"] {
+              flex: 0 0 50% !important;
+              width: 50% !important;
+            }
+            .print-page > div[style*="flex-wrap"] > [style*="width:33%"],
+            .print-page > div[style*="flex-wrap"] > [style*="width: 33%"] {
+              flex: 0 0 33.333% !important;
+              width: 33.333% !important;
+            }
+            .print-page > div[style*="flex-wrap"] > [style*="width:25%"],
+            .print-page > div[style*="flex-wrap"] > [style*="width: 25%"] {
+              flex: 0 0 25% !important;
+              width: 25% !important;
             }
 
             /* 7. 确保文本正确换行 */
