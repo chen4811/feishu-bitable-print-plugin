@@ -14,22 +14,31 @@ import {
   Ruler,
   Layers
 } from 'lucide-react';
+import { PAGE_SIZES } from '@/types/editor';
 
 // 组件类型图标映射
 const componentTypeIcons: Record<string, React.ReactNode> = {
   text: <Type className="h-4 w-4" />,
+  heading: <Type className="h-4 w-4" />,
+  paragraph: <Type className="h-4 w-4" />,
+  list: <Type className="h-4 w-4" />,
   table: <TableIcon className="h-4 w-4" />,
   qrcode: <QrCode className="h-4 w-4" />,
   barcode: <Barcode className="h-4 w-4" />,
   container: <Box className="h-4 w-4" />,
+  line: <Ruler className="h-4 w-4" />,
 };
 
 const componentTypeLabels: Record<string, string> = {
   text: '文本',
+  heading: '标题',
+  paragraph: '段落',
+  list: '列表',
   table: '表格',
   qrcode: '二维码',
   barcode: '条形码',
   container: '容器',
+  line: '分隔线',
 };
 
 // 检测模板中的变量 - 支持 [字段名] 和 {{字段名}} 两种格式
@@ -54,9 +63,17 @@ const extractVariables = (components: any[]): string[] => {
 
     if (comp.text) extractFromText(comp.text);
     if (comp.content) extractFromText(comp.content);
+    if (comp.items && Array.isArray(comp.items)) {
+      comp.items.forEach((item: string) => extractFromText(item));
+    }
 
-    if (comp.children && Array.isArray(comp.children)) {
-      comp.children.forEach((child: any) => traverse(child));
+    // 遍历表格单元格
+    if (comp.tableConfig?.cells) {
+      comp.tableConfig.cells.forEach((row: any[]) => {
+        row.forEach((cell: any) => {
+          if (cell?.content) extractFromText(cell.content);
+        });
+      });
     }
   };
 
@@ -74,126 +91,92 @@ const analyzeComponents = (components: any[]) => {
     const type = comp.type || 'unknown';
     stats[type] = (stats[type] || 0) + 1;
     totalCount++;
-
-    if (comp.children && Array.isArray(comp.children)) {
-      comp.children.forEach((child: any) => traverse(child));
-    }
   };
 
   components.forEach((comp) => traverse(comp));
   return { stats, totalCount };
 };
 
-// 渲染表格组件
-const renderTableComponent = (component: any): React.ReactNode => {
-  const { id, tableConfig, style = {} } = component;
+// 渲染表格组件 - 使用与编辑器一致的样式
+const renderTableComponent = (component: any, styleConfig: any): React.ReactNode => {
+  const { id, tableConfig } = component;
   
-  if (!tableConfig) return null;
+  if (!tableConfig?.cells || tableConfig.cells.length === 0) {
+    return (
+      <div key={id} className="border border-gray-300 bg-gray-50 p-4 text-center text-gray-500">
+        空表格
+      </div>
+    );
+  }
 
-  const { cells = [], borderWidth = 1, borderColor = '#000000', showOuterBorder = true, showInnerBorder = true } = tableConfig;
+  const { cells = [], colWidths = [], borderWidth = 1, borderColor = '#000000' } = tableConfig;
 
   return (
-    <div 
+    <table 
       key={id}
       style={{
-        position: 'absolute',
-        left: style.x || 0,
-        top: style.y || 0,
-        width: style.width || 'auto',
-        ...style,
+        width: '100%',
+        borderCollapse: 'collapse',
+        fontSize: styleConfig?.fontSize || 14,
+        fontFamily: styleConfig?.fontFamily || 'Arial',
       }}
     >
-      <table 
-        style={{
-          borderCollapse: 'collapse',
-          width: '100%',
-          border: showOuterBorder ? `${borderWidth}px solid ${borderColor}` : 'none',
-          fontSize: style.fontSize || '14px',
-        }}
-      >
-        <tbody>
-          {cells.map((row: any[], rowIndex: number) => {
-            const visibleCells = row.filter((cell: any) => {
-              const rowSpan = cell?.rowSpan ?? 1;
-              const colSpan = cell?.colSpan ?? 1;
-              return rowSpan > 0 && colSpan > 0;
-            });
-            
-            if (visibleCells.length === 0) return null;
-
-            return (
-              <tr key={rowIndex}>
-                {visibleCells.map((cell: any, colIndex: number) => {
-                  if (!cell) return null;
-                  
-                  const rowSpan = cell.rowSpan ?? 1;
-                  const colSpan = cell.colSpan ?? 1;
-                  const content = cell.content || '';
-                  
-                  // 截断过长的内容用于预览
-                  const displayContent = content.length > 50 
-                    ? content.substring(0, 50) + '...' 
-                    : content;
-                  
-                  return (
-                    <td
-                      key={`${rowIndex}-${colIndex}`}
-                      rowSpan={rowSpan > 1 ? rowSpan : undefined}
-                      colSpan={colSpan > 1 ? colSpan : undefined}
-                      style={{
-                        border: showInnerBorder ? `${borderWidth}px solid ${borderColor}` : 'none',
-                        padding: '4px 8px',
-                        verticalAlign: 'top',
-                        whiteSpace: 'pre-wrap',
-                        wordWrap: 'break-word',
-                        ...cell.style,
-                      }}
-                    >
-                      {displayContent}
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+      <tbody>
+        {cells.map((row: any[], rowIndex: number) => (
+          <tr key={rowIndex}>
+            {row.map((cell: any, colIndex: number) => {
+              // 跳过被合并的单元格
+              if (cell?.rowSpan === 0 || cell?.colSpan === 0) {
+                return null;
+              }
+              
+              const colWidth = colWidths[colIndex];
+              
+              return (
+                <td
+                  key={colIndex}
+                  rowSpan={cell?.rowSpan || 1}
+                  colSpan={cell?.colSpan || 1}
+                  style={{
+                    border: `${borderWidth}px solid ${borderColor}`,
+                    padding: '8px',
+                    textAlign: cell?.align || 'left',
+                    verticalAlign: cell?.verticalAlign || 'top',
+                    fontWeight: cell?.bold ? 'bold' : 'normal',
+                    fontStyle: cell?.italic ? 'italic' : 'normal',
+                    backgroundColor: cell?.backgroundColor || 'transparent',
+                    color: cell?.color || '#000000',
+                    fontSize: cell?.fontSize ? `${cell.fontSize}px` : undefined,
+                    width: colWidth ? `${colWidth}px` : undefined,
+                    minWidth: colWidth ? `${colWidth}px` : undefined,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {cell?.content || ''}
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 };
 
-// 渲染单个组件（预览模式）
-const renderComponent = (component: any): React.ReactNode => {
+// 渲染单个组件 - 流式布局
+const renderComponent = (component: any, styleConfig: any): React.ReactNode => {
   if (!component) return null;
 
-  const { id, type, text, content, style = {}, children = [] } = component;
-
+  const { id, type, text, content, textStyle = {}, items = [], tableConfig } = component;
+  
+  const fontSize = textStyle?.fontSize || styleConfig?.fontSize || 14;
+  const fontFamily = styleConfig?.fontFamily || 'Arial';
+  
   // 表格组件特殊处理
   if (type === 'table') {
-    return renderTableComponent(component);
+    return renderTableComponent(component, styleConfig);
   }
-
-  const commonStyle: React.CSSProperties = {
-    position: 'absolute',
-    left: style.x || 0,
-    top: style.y || 0,
-    width: style.width || 'auto',
-    height: style.height || 'auto',
-    fontSize: style.fontSize,
-    fontWeight: style.fontWeight,
-    color: style.color,
-    backgroundColor: style.backgroundColor,
-    borderWidth: style.borderWidth,
-    borderColor: style.borderColor,
-    borderStyle: style.borderWidth ? 'solid' : undefined,
-    borderRadius: style.borderRadius,
-    padding: style.padding,
-    textAlign: style.textAlign,
-    whiteSpace: 'pre-wrap',
-    wordWrap: 'break-word',
-    overflow: 'hidden',
-    ...style,
-  };
 
   // 截断过长的文本用于预览
   const truncateText = (str: string, maxLen: number = 100) => {
@@ -204,55 +187,146 @@ const renderComponent = (component: any): React.ReactNode => {
   switch (type) {
     case 'text':
       return (
-        <div key={id} style={commonStyle}>
+        <div 
+          key={id}
+          style={{
+            fontSize: `${fontSize}px`,
+            fontFamily,
+            fontWeight: textStyle?.bold ? 'bold' : 'normal',
+            color: textStyle?.color || '#000000',
+            textAlign: textStyle?.align || 'left',
+            lineHeight: textStyle?.lineHeight || 1.6,
+            marginBottom: textStyle?.paragraphSpacing ? `${textStyle.paragraphSpacing}px` : 0,
+          }}
+        >
           {truncateText(text || content)}
         </div>
       );
+      
+    case 'heading': {
+      const level = component.level || 1;
+      const sizes: Record<number, number> = { 1: 24, 2: 20, 3: 18, 4: 16, 5: 14, 6: 12 };
+      const size = textStyle?.fontSize || sizes[level] || 18;
+      const align = textStyle?.align || 'center';
+      
+      const headingContent = <span style={{ fontWeight: textStyle?.bold !== false ? 'bold' : 'normal' }}>{text || content}</span>;
+      
+      switch (level) {
+        case 1: return <h1 key={id} style={{ fontSize: `${size}px`, fontFamily, textAlign: align as any, margin: '0 0 16px 0', padding: '8px 0' }}>{headingContent}</h1>;
+        case 2: return <h2 key={id} style={{ fontSize: `${size}px`, fontFamily, textAlign: align as any, margin: '0 0 16px 0', padding: '8px 0' }}>{headingContent}</h2>;
+        case 3: return <h3 key={id} style={{ fontSize: `${size}px`, fontFamily, textAlign: align as any, margin: '0 0 16px 0', padding: '8px 0' }}>{headingContent}</h3>;
+        case 4: return <h4 key={id} style={{ fontSize: `${size}px`, fontFamily, textAlign: align as any, margin: '0 0 16px 0', padding: '8px 0' }}>{headingContent}</h4>;
+        case 5: return <h5 key={id} style={{ fontSize: `${size}px`, fontFamily, textAlign: align as any, margin: '0 0 16px 0', padding: '8px 0' }}>{headingContent}</h5>;
+        case 6: return <h6 key={id} style={{ fontSize: `${size}px`, fontFamily, textAlign: align as any, margin: '0 0 16px 0', padding: '8px 0' }}>{headingContent}</h6>;
+        default: return <h1 key={id} style={{ fontSize: `${size}px`, fontFamily, textAlign: align as any, margin: '0 0 16px 0', padding: '8px 0' }}>{headingContent}</h1>;
+      }
+    }
+      
+    case 'paragraph': {
+      const lines = (text || content || '').split('\n');
+      const indent = (component.indent || 2) * 2;
+      return (
+        <p 
+          key={id}
+          style={{
+            fontSize: `${fontSize}px`,
+            fontFamily,
+            fontWeight: textStyle?.bold ? 'bold' : 'normal',
+            color: textStyle?.color || '#000000',
+            textAlign: textStyle?.align || 'justify',
+            lineHeight: textStyle?.lineHeight || 1.8,
+            textIndent: `${indent}em`,
+            margin: '0 0 12px 0',
+            padding: '4px 0',
+          }}
+        >
+          {lines.map((line: string, index: number) => (
+            <React.Fragment key={index}>
+              {truncateText(line)}
+              {index < lines.length - 1 && <br />}
+            </React.Fragment>
+          ))}
+        </p>
+      );
+    }
+      
+    case 'list': {
+      const listItems = (items || []).map((item: string, index: number) => (
+        <li key={index} style={{ marginBottom: '4px' }}>{truncateText(item)}</li>
+      ));
+      const listStyle = {
+        fontSize: `${fontSize}px`,
+        fontFamily,
+        fontWeight: textStyle?.bold ? 'bold' : 'normal',
+        color: textStyle?.color || '#000000',
+        lineHeight: textStyle?.lineHeight || 1.8,
+        margin: '0 0 12px 0',
+        paddingLeft: '2em',
+      };
+      
+      if (component.listType === 'ordered') {
+        return <ol key={id} style={listStyle}>{listItems}</ol>;
+      }
+      return <ul key={id} style={listStyle}>{listItems}</ul>;
+    }
+      
     case 'qrcode':
       return (
         <div
           key={id}
           style={{
-            ...commonStyle,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: style.backgroundColor || '#fff',
+            backgroundColor: '#fff',
             border: '1px solid #e2e8f0',
             minWidth: '60px',
             minHeight: '60px',
+            padding: '10px',
           }}
         >
           <QrCode className="h-6 w-6 text-slate-400" />
         </div>
       );
+      
     case 'barcode':
       return (
         <div
           key={id}
           style={{
-            ...commonStyle,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: style.backgroundColor || '#fff',
+            backgroundColor: '#fff',
             border: '1px solid #e2e8f0',
             minWidth: '80px',
             minHeight: '40px',
+            padding: '10px',
           }}
         >
           <Barcode className="h-4 w-12 text-slate-400" />
         </div>
       );
-    case 'container':
+      
+    case 'line': {
+      const lineColor = component.color || '#000000';
+      const lineThickness = component.thickness || 1;
       return (
-        <div key={id} style={{ ...commonStyle, border: '1px dashed #cbd5e1' }}>
-          {children.map((child: any) => renderComponent(child))}
-        </div>
+        <hr 
+          key={id}
+          style={{
+            border: 'none',
+            height: `${lineThickness}px`,
+            backgroundColor: lineColor,
+            margin: '16px 0',
+          }}
+        />
       );
+    }
+      
     default:
       return (
-        <div key={id} style={commonStyle}>
+        <div key={id} style={{ fontSize: `${fontSize}px`, fontFamily }}>
           {truncateText(text || content)}
         </div>
       );
@@ -274,15 +348,24 @@ export function TemplateCanvasPreview({
   showVariables = true,
   scale = 0.5,
 }: TemplateCanvasPreviewProps) {
-  const { pageConfig = {}, components = [] } = templateData || {};
+  const { pageConfig = {}, components = [], styleConfig = {} } = templateData || {};
 
   const variables = useMemo(() => extractVariables(components), [components]);
   const { stats, totalCount } = useMemo(() => analyzeComponents(components), [components]);
 
-  // 页面尺寸配置
-  const pageWidth = pageConfig.width || 794; // A4 默认宽度 (px at 96dpi)
-  const pageHeight = pageConfig.height || 1123; // A4 默认高度
-  const padding = pageConfig.padding || { top: 40, right: 40, bottom: 40, left: 40 };
+  // 计算页面尺寸 - 与编辑器一致
+  const mmToPx = 3.78;
+  const pageSize = PAGE_SIZES[pageConfig.size || 'A4'];
+  const isLandscape = pageConfig.orientation === 'landscape';
+  
+  const canvasWidth = isLandscape ? pageSize.height * mmToPx : pageSize.width * mmToPx;
+  const canvasHeight = isLandscape ? pageSize.width * mmToPx : pageSize.height * mmToPx;
+  
+  // 页边距 - 与编辑器一致
+  const margins = pageConfig.margins || { top: 20, right: 20, bottom: 20, left: 20 };
+  
+  const contentWidth = canvasWidth - (margins.left + margins.right) * mmToPx;
+  const contentHeight = canvasHeight - (margins.top + margins.bottom) * mmToPx;
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -298,42 +381,26 @@ export function TemplateCanvasPreview({
               <Badge key={type} variant="secondary" className="flex items-center gap-1">
                 {componentTypeIcons[type] || <Box className="h-3 w-3" />}
                 {componentTypeLabels[type] || type}
-                <span className="ml-1 text-xs">{count}</span>
+                <span className="ml-1 text-xs">{count as number}</span>
               </Badge>
             ))}
-            <Badge variant="outline" className="ml-auto">
-              总计: {totalCount}
-            </Badge>
+          </div>
+          <div className="text-xs text-slate-500">
+            共 {totalCount} 个组件
           </div>
         </div>
       )}
 
-      {/* 页面配置信息 */}
-      <div className="bg-slate-50 rounded-lg p-4 space-y-3">
-        <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-          <Ruler className="h-4 w-4" />
-          页面配置
-        </div>
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div className="text-slate-600">
-            尺寸: {pageWidth} × {pageHeight} px
-          </div>
-          <div className="text-slate-600">
-            边距: 上{padding.top} 右{padding.right} 下{padding.bottom} 左{padding.left}
-          </div>
-        </div>
-      </div>
-
       {/* 变量列表 */}
       {showVariables && variables.length > 0 && (
-        <div className="bg-slate-50 rounded-lg p-4 space-y-3">
-          <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+        <div className="bg-blue-50 rounded-lg p-4 space-y-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-blue-700">
             <Variable className="h-4 w-4" />
             模板变量 ({variables.length}个)
           </div>
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-2">
             {variables.map((variable) => (
-              <Badge key={variable} variant="outline" className="font-mono text-xs">
+              <Badge key={variable} variant="outline" className="bg-white text-blue-600 border-blue-200">
                 [{variable}]
               </Badge>
             ))}
@@ -343,49 +410,65 @@ export function TemplateCanvasPreview({
 
       <Separator />
 
-      {/* 画布预览 */}
-      <div className="flex justify-center overflow-auto bg-slate-100 rounded-lg p-4">
-        <div
-          style={{
-            width: pageWidth * scale,
-            height: pageHeight * scale,
-            backgroundColor: '#fff',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-            position: 'relative',
-            overflow: 'hidden',
-            transform: `scale(${scale})`,
-            transformOrigin: 'top left',
-          }}
-        >
-          {/* 边距指示 */}
-          <div
-            style={{
-              position: 'absolute',
-              top: padding.top,
-              left: padding.left,
-              right: padding.right,
-              bottom: padding.bottom,
-              border: '1px dashed #e2e8f0',
-              pointerEvents: 'none',
-            }}
-          />
-          
-          {/* 渲染所有组件 */}
-          {components.map((component: any) => renderComponent(component))}
-          
-          {/* 空状态 */}
-          {components.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center text-slate-400">
-              <div className="text-center">
-                <Layers className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">空模板</p>
+      {/* 画布预览 - 与编辑器一致的页边距和布局 */}
+      <div className="bg-gray-100 p-4 rounded-lg">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-slate-700">画布预览</span>
+          <span className="text-xs text-slate-500">
+            {pageConfig.size || 'A4'} {isLandscape ? '横向' : '纵向'} · {scale * 100}%
+          </span>
+        </div>
+        
+        <ScrollArea className="w-full overflow-auto">
+          <div className="flex justify-center p-4">
+            <div
+              className="bg-white shadow-lg relative"
+              style={{
+                width: `${canvasWidth * scale}px`,
+                minHeight: `${canvasHeight * scale}px`,
+                padding: `${margins.top * mmToPx * scale}px ${margins.right * mmToPx * scale}px ${margins.bottom * mmToPx * scale}px ${margins.left * mmToPx * scale}px`,
+                fontFamily: styleConfig.fontFamily || 'Arial',
+                fontSize: (styleConfig.fontSize || 14) * scale,
+                transform: `scale(${scale})`,
+                transformOrigin: 'top center',
+              }}
+            >
+              {/* 组件内容 - 流式布局 */}
+              <div 
+                className="flex flex-wrap content-start gap-3"
+                style={{ minHeight: `${contentHeight * scale}px` }}
+              >
+                {components.length > 0 ? (
+                  components.map((component: any) => {
+                    const layoutWidth = component.layout?.width || '100%';
+                    const widthPercent = layoutWidth === '100%' ? 100 : 
+                                        layoutWidth === '50%' ? 50 :
+                                        layoutWidth === '33%' ? 33.333 : 25;
+                    
+                    return (
+                      <div
+                        key={component.id}
+                        style={{
+                          flex: `0 0 ${widthPercent}%`,
+                          maxWidth: `${widthPercent}%`,
+                          padding: '4px',
+                          boxSizing: 'border-box',
+                        }}
+                      >
+                        {renderComponent(component, styleConfig)}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm" style={{ minHeight: '200px' }}>
+                    暂无组件
+                  </div>
+                )}
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        </ScrollArea>
       </div>
     </div>
   );
 }
-
-export default TemplateCanvasPreview;

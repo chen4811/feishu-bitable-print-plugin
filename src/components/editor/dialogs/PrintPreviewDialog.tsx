@@ -304,12 +304,67 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
           </div>
         );
       case 'table':
-        return (
-          <div className="w-full border-collapse">
-            <div className="border border-gray-300 bg-gray-50 p-2">
-              表格预览
+        const tableComp = component as any;
+        const tableConfig = tableComp.tableConfig;
+        
+        if (!tableConfig?.cells || tableConfig.cells.length === 0) {
+          return (
+            <div className="w-full border border-gray-300 bg-gray-50 p-4 text-center text-gray-500">
+              空表格
             </div>
-          </div>
+          );
+        }
+        
+        const colWidths = tableConfig.colWidths || [];
+        
+        return (
+          <table style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            fontFamily: styleConfig.fontFamily,
+            fontSize: `${styleConfig.fontSize}px`,
+          }}>
+            <tbody>
+              {tableConfig.cells.map((row: any[], rowIndex: number) => (
+                <tr key={rowIndex}>
+                  {row.map((cell: any, colIndex: number) => {
+                    // 跳过被合并的单元格
+                    if (cell.rowSpan === 0 || cell.colSpan === 0) {
+                      return null;
+                    }
+                    
+                    const colWidth = colWidths[colIndex];
+                    
+                    return (
+                      <td
+                        key={colIndex}
+                        rowSpan={cell.rowSpan || 1}
+                        colSpan={cell.colSpan || 1}
+                        style={{
+                          border: '1px solid #000',
+                          padding: '8px',
+                          textAlign: cell.align || 'left',
+                          verticalAlign: cell.verticalAlign || 'top',
+                          fontWeight: cell.bold ? 'bold' : 'normal',
+                          fontStyle: cell.italic ? 'italic' : 'normal',
+                          textDecoration: cell.underline ? 'underline' : 'none',
+                          backgroundColor: cell.backgroundColor || 'transparent',
+                          color: cell.color || '#000000',
+                          fontSize: cell.fontSize ? `${cell.fontSize}px` : undefined,
+                          width: colWidth ? `${colWidth}px` : undefined,
+                          minWidth: colWidth ? `${colWidth}px` : undefined,
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word',
+                        }}
+                      >
+                        {resolveVariables(cell.content || '')}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         );
       default:
         return <div className="text-gray-500">{(component as any).type}</div>;
@@ -352,8 +407,202 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
 
   // 系统打印
   const handleSystemPrint = useCallback(() => {
-    window.print();
-  }, []);
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('请允许弹窗以进行打印');
+      return;
+    }
+
+    // 获取当前预览的记录
+    const recordToPrint = previewRecords[currentPage] || previewRecords[0];
+    
+    // 渲染所有组件为 HTML 字符串
+    const renderComponentsForPrint = () => {
+      return components.map(component => {
+        const layoutWidth = component.layout?.width || '100%';
+        const widthPercent = layoutWidth === '100%' ? 100 : 
+                            layoutWidth === '50%' ? 50 :
+                            layoutWidth === '33%' ? 33.333 : 25;
+        
+        return `
+          <div style="
+            flex: 0 0 ${widthPercent}%;
+            max-width: ${widthPercent}%;
+            padding: 4px;
+            box-sizing: border-box;
+          ">
+            ${renderComponentToHTML(component, recordToPrint)}
+          </div>
+        `;
+      }).join('');
+    };
+
+    // 简化的组件渲染为 HTML 字符串
+    const renderComponentToHTML = (component: CanvasComponentNode, record: any): string => {
+      const resolveVars = (text: string) => {
+        return text.replace(/\[([^\]]+)\]/g, (match, varName) => {
+          return String(record[varName] || match);
+        });
+      };
+
+      switch (component.type) {
+        case 'text': {
+          const textComp = component as any;
+          const style = textComp.textStyle || {};
+          const fontSize = style.fontSize || styleConfig.fontSize;
+          const align = style.align || 'left';
+          const fontWeight = style.bold ? 'bold' : 'normal';
+          const content = resolveVars(textComp.content || '');
+          
+          if (style.headingLevel) {
+            const sizes: Record<number, number> = { 1: 24, 2: 20, 3: 18, 4: 16, 5: 14, 6: 12 };
+            const size = sizes[style.headingLevel] || 18;
+            return `<h${style.headingLevel} style="font-size:${size}px;font-weight:bold;margin:0.5em 0;text-align:${align}">${content}</h${style.headingLevel}>`;
+          }
+          
+          if (style.listType === 'unordered') {
+            return `<ul style="margin-left:1.5rem;list-style-type:disc"><li style="font-size:${fontSize}px;text-align:${align}">${content}</li></ul>`;
+          }
+          
+          if (style.listType === 'ordered') {
+            return `<ol style="margin-left:1.5rem;list-style-type:decimal"><li style="font-size:${fontSize}px;text-align:${align}">${content}</li></ol>`;
+          }
+          
+          return `<div style="font-size:${fontSize}px;font-weight:${fontWeight};text-align:${align};color:${style.color || '#000'}">${content}</div>`;
+        }
+        
+        case 'heading': {
+          const headingComp = component as any;
+          const lvl = headingComp.level || 1;
+          const sizes: Record<number, number> = { 1: 24, 2: 20, 3: 18, 4: 16, 5: 14, 6: 12 };
+          const size = headingComp.textStyle?.fontSize || sizes[lvl];
+          const align = headingComp.textStyle?.align || 'center';
+          const content = resolveVars(headingComp.content || '');
+          return `<h${lvl} style="font-size:${size}px;font-weight:bold;text-align:${align};margin:0 0 16px 0;padding:8px 0">${content}</h${lvl}>`;
+        }
+        
+        case 'paragraph': {
+          const paraComp = component as any;
+          const fontSize = paraComp.textStyle?.fontSize || styleConfig.fontSize;
+          const align = paraComp.textStyle?.align || 'justify';
+          const indent = (paraComp.indent || 2) * 2;
+          const content = resolveVars(paraComp.content || '').replace(/\n/g, '<br>');
+          return `<p style="font-size:${fontSize}px;text-align:${align};text-indent:${indent}em;margin:0 0 12px 0;padding:4px 0;line-height:1.8">${content}</p>`;
+        }
+        
+        case 'list': {
+          const listComp = component as any;
+          const items = (listComp.items || []).map((item: string) => 
+            `<li style="margin-bottom:4px">${resolveVars(item)}</li>`
+          ).join('');
+          const fontSize = listComp.textStyle?.fontSize || styleConfig.fontSize;
+          const Tag = listComp.listType === 'ordered' ? 'ol' : 'ul';
+          return `<${Tag} style="font-size:${fontSize}px;margin:0 0 12px 0;padding-left:2em;line-height:1.8">${items}</${Tag}>`;
+        }
+        
+        case 'table': {
+          const tableComp = component as any;
+          const tableConfig = tableComp.tableConfig;
+          
+          if (!tableConfig?.cells || tableConfig.cells.length === 0) {
+            return '<div style="border:1px solid #ccc;padding:10px;text-align:center">空表格</div>';
+          }
+          
+          const colWidths = tableConfig.colWidths || [];
+          const rows = tableConfig.cells.map((row: any[], rowIdx: number) => {
+            const cells = row.map((cell: any, colIdx: number) => {
+              if (cell.rowSpan === 0 || cell.colSpan === 0) return '';
+              const width = colWidths[colIdx] ? `width:${colWidths[colIdx]}px;min-width:${colWidths[colIdx]}px` : '';
+              return `<td 
+                rowspan="${cell.rowSpan || 1}" 
+                colspan="${cell.colSpan || 1}"
+                style="border:1px solid #000;padding:8px;${width};text-align:${cell.align || 'left'};font-weight:${cell.bold ? 'bold' : 'normal'};background-color:${cell.backgroundColor || 'transparent'};color:${cell.color || '#000'}"
+              >${resolveVars(cell.content || '')}</td>`;
+            }).join('');
+            return `<tr>${cells}</tr>`;
+          }).join('');
+          
+          return `<table style="width:100%;border-collapse:collapse;font-size:${styleConfig.fontSize}px"><tbody>${rows}</tbody></table>`;
+        }
+        
+        case 'line': {
+          const lineComp = component as any;
+          return `<hr style="border:none;height:${lineComp.thickness || 1}px;background-color:${lineComp.color || '#000'};margin:16px 0" />`;
+        }
+        
+        case 'image': {
+          const imageComp = component as any;
+          if (imageComp.src) {
+            return `<div style="text-align:center"><img src="${imageComp.src}" alt="${imageComp.alt || ''}" style="max-width:100%;max-height:300px;object-fit:contain" /></div>`;
+          }
+          return '<div style="border:1px dashed #ccc;padding:20px;text-align:center;color:#999">图片</div>';
+        }
+        
+        case 'qrcode':
+        case 'barcode':
+          return '<div style="border:1px solid #ccc;padding:10px;text-align:center">二维码/条形码</div>';
+        
+        default:
+          return '';
+      }
+    };
+
+    // 构建打印页面
+    const printHTML = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>打印 - ${templateName || '未命名模板'}</title>
+          <style>
+            @page {
+              size: ${pageConfig.size} ${pageConfig.orientation};
+              margin: ${pageConfig.margins.top}mm ${pageConfig.margins.right}mm ${pageConfig.margins.bottom}mm ${pageConfig.margins.left}mm;
+            }
+            body {
+              margin: 0;
+              padding: 0;
+              font-family: ${styleConfig.fontFamily}, Arial, sans-serif;
+              font-size: ${styleConfig.fontSize}px;
+              line-height: ${styleConfig.lineHeight};
+              color: #333;
+            }
+            .print-container {
+              width: 100%;
+              box-sizing: border-box;
+            }
+            .components-wrapper {
+              display: flex;
+              flex-wrap: wrap;
+              align-content: flex-start;
+            }
+            table {
+              border-collapse: collapse;
+            }
+            td, th {
+              border: 1px solid #000;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="print-container">
+            <div class="components-wrapper">
+              ${renderComponentsForPrint()}
+            </div>
+          </div>
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+              }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printHTML);
+    printWindow.document.close();
+  }, [components, pageConfig, styleConfig, templateName, previewRecords, currentPage]);
 
   // 全选/取消全选
   const allSelected = records.length > 0 && selectedRecordIds.length === records.length;
