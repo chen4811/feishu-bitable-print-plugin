@@ -1040,6 +1040,17 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
   }, [isEditing]);
 
+  // 文本编辑时自动调整高度
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      const textarea = textareaRef.current;
+      // 重置高度以获取准确的 scrollHeight
+      textarea.style.height = 'auto';
+      // 设置为内容的 scrollHeight
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  }, [isEditing, editContent]);
+
   // 初始化/同步表格编辑数据
   useEffect(() => {
     if (component.type === 'table') {
@@ -1749,9 +1760,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
             >
               <textarea
                 ref={textareaRef}
-                className="w-full h-full border-0 outline-none resize-none bg-transparent"
+                className="w-full border-0 outline-none resize-none bg-transparent overflow-hidden"
                 style={{
-                  all: 'unset', // 🔥 清除所有默认样式
                   fontSize: '1em',
                   fontWeight: 'inherit',
                   fontStyle: 'inherit',
@@ -1760,20 +1770,16 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   lineHeight: 'inherit',
                   whiteSpace: 'pre-wrap',
                   backgroundColor: 'transparent',
+                  width: '100%',
+                  height: 'auto',
                   minHeight: '1.5em',
-                  padding: '0',
-                  margin: '0',
-                  textIndent: '0',
-                  boxSizing: 'border-box',
-                  border: 'none',
-                  outline: 'none',
-                  display: 'block', // 🔥 块级元素，整行显示
-                  width: '100%', // 🔥 宽度100%，整行可用
-                  height: '100%',
                   fontFamily: 'inherit',
                   cursor: 'text',
-                  overflow: 'visible',
+                  border: 'none',
+                  outline: 'none',
                   resize: 'none',
+                  padding: '0',
+                  margin: '0',
                 }}
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
