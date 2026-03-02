@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Printer, ChevronLeft, ChevronRight, Eye, RefreshCw, FileText, Pencil, Download, ScanSearch } from 'lucide-react';
+import { Printer, ChevronLeft, ChevronRight, Eye, RefreshCw, FileText, Pencil, Download, ScanSearch, X, Plus, LayoutGrid, List, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 import { toast } from 'sonner';
 import { useTemplateStore, type Template } from '@/store/templateStore';
@@ -20,6 +21,16 @@ interface TemplatePreviewProps {
   baseId?: string;
   tableId?: string;
   onEditTemplate?: (template: Template) => void;
+}
+
+// 排版方式类型
+type LayoutMode = 'default' | 'continuous' | 'label';
+
+// 选中的数据记录类型
+interface SelectedRecord {
+  id: string;
+  data: Record<string, any>;
+  addedAt: number;
 }
 
 // 检测模板中的变量 - 支持 [字段名] 和 {{字段名}} 两种格式
@@ -150,6 +161,46 @@ const renderTableComponent = (component: any, data: Record<string, any>): React.
       </table>
     </div>
   );
+};
+
+// 将组件渲染为 HTML 字符串（用于打印）
+const renderComponentToHTML = (component: any, data: Record<string, any>): string => {
+  if (!component) return '';
+
+  const { type, text, content, style = {} } = component;
+  
+  const processedText = text ? replaceVariables(text, data) : '';
+  const processedContent = content ? replaceVariables(content, data) : '';
+  
+  const styleStr = `
+    position: ${type === 'text' ? 'absolute' : 'relative'};
+    left: ${style.x || 0}px;
+    top: ${style.y || 0}px;
+    width: ${style.width ? `${style.width}px` : 'auto'};
+    height: ${style.height ? `${style.height}px` : 'auto'};
+    font-size: ${style.fontSize || '16px'};
+    font-weight: ${style.fontWeight || 'normal'};
+    color: ${style.color || '#000000'};
+    background-color: ${style.backgroundColor || 'transparent'};
+    padding: ${style.padding || '0'};
+    text-align: ${style.textAlign || 'left'};
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  `;
+
+  switch (type) {
+    case 'text':
+      return `<div style="${styleStr}">${processedContent || processedText}</div>`;
+    case 'table':
+      // 简化表格渲染
+      return `<div style="${styleStr}">[表格]</div>`;
+    case 'qrcode':
+      return `<div style="${styleStr}">QR</div>`;
+    case 'barcode':
+      return `<div style="${styleStr}">||||||||||</div>`;
+    default:
+      return `<div style="${styleStr}">${processedContent || processedText}</div>`;
+  }
 };
 
 // 渲染单个组件（带变量替换）
@@ -299,6 +350,11 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   const [debugInfo, setDebugInfo] = useState<string>('');
   const [showDebugInfo, setShowDebugInfo] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  
+  // 新增状态：排版方式和选中数据列表
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>('default');
+  const [selectedRecords, setSelectedRecords] = useState<SelectedRecord[]>([]);
+  const [availableRecords, setAvailableRecords] = useState<Record<string, any>[]>([]);
 
   // 加载模板列表
   useEffect(() => {
@@ -341,6 +397,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
         setRecords(formattedRecords);
         setCurrentIndex(0);
+        // 同时更新可用记录列表
+        setAvailableRecords(formattedRecords);
         
         if (showDebugInfo) {
           setDebugInfo(`选中记录: ${JSON.stringify(selRecords.map(r => ({ id: r.id, fields: r.fields })), null, 2)}`);
@@ -350,10 +408,43 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       console.error('[TemplatePreview] 获取选中记录失败:', err);
     }
   }, [setRecords, setCurrentIndex, showDebugInfo]);
+  
+  // 添加记录到选中列表（防重复）
+  const addRecordToSelection = useCallback((record: Record<string, any>) => {
+    setSelectedRecords(prev => {
+      // 检查是否已存在
+      if (prev.some(r => r.id === record.id)) {
+        toast.info('该记录已在列表中');
+        return prev;
+      }
+      // 添加到列表
+      const newRecord: SelectedRecord = {
+        id: record.id,
+        data: record,
+        addedAt: Date.now(),
+      };
+      toast.success('已添加记录');
+      return [...prev, newRecord];
+    });
+  }, []);
+  
+  // 从选中列表移除记录
+  const removeRecordFromSelection = useCallback((recordId: string) => {
+    setSelectedRecords(prev => prev.filter(r => r.id !== recordId));
+    toast.success('已移除记录');
+  }, []);
+  
+  // 清空选中列表
+  const clearSelectedRecords = useCallback(() => {
+    setSelectedRecords([]);
+    toast.success('已清空列表');
+  }, []);
 
   // 处理模板选择
   const handleSelectTemplate = useCallback((template: Template) => {
     setSelectedTemplate(template);
+    // 清空之前选中的数据
+    setSelectedRecords([]);
     
     // 详细的调试信息
     if (showDebugInfo) {
@@ -402,6 +493,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
         setRecords(formattedRecords);
         setCurrentIndex(0);
+        // 更新可用记录列表
+        setAvailableRecords(formattedRecords);
         toast.success(`已加载 ${formattedRecords.length} 条记录`);
         
         if (showDebugInfo) {
@@ -411,6 +504,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         toast.info('未获取到任何记录');
         setRecords([]);
         setCurrentIndex(0);
+        setAvailableRecords([]);
       }
     } catch (err) {
       console.error('[TemplatePreview] 刷新数据失败:', err);
@@ -462,22 +556,22 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       return;
     }
 
-    if (records.length === 0) {
+    if (selectedRecords.length === 0) {
       toast.error('没有可打印的数据');
       return;
     }
 
     window.print();
-  }, [selectedTemplate, records.length]);
+  }, [selectedTemplate, selectedRecords.length]);
 
-  // 处理批量打印（所有记录）
+  // 处理批量打印（所有选中的记录）
   const handleBatchPrint = useCallback(() => {
     if (!selectedTemplate) {
       toast.error('请先选择一个模板');
       return;
     }
 
-    if (records.length === 0) {
+    if (selectedRecords.length === 0) {
       toast.error('没有可打印的数据');
       return;
     }
@@ -489,47 +583,92 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       return;
     }
 
-    // 生成批量打印内容
-    const printContent = records.map((record: any, index: number) => {
-      return `
-      <div class="print-page" style="
-        width: 210mm;
-        height: 297mm;
-        padding: 20mm;
-        margin: 0 auto;
-        box-sizing: border-box;
-        page-break-after: always;
-        position: relative;
-        background: white;
-      ">
-        ${selectedTemplate.data?.components
-          ?.map((comp: any) => {
-            const style = comp.style || {};
-            const processedText = comp.text
-              ? comp.text.replace(/\[([^\]]+)\]/g, (match: string, varName: string) => {
-                  const value = record[varName];
-                  return value !== undefined ? String(value) : match;
-                })
-              : '';
-
-            return `<div style="
-              position: absolute;
-              left: ${style.x || 0}px;
-              top: ${style.y || 0}px;
-              width: ${style.width ? `${style.width}px` : 'auto'};
-              height: ${style.height ? `${style.height}px` : 'auto'};
-              font-size: ${style.fontSize || '16px'};
-              font-weight: ${style.fontWeight || 'normal'};
-              color: ${style.color || '#000'};
-              background-color: ${style.backgroundColor || 'transparent'};
-              padding: ${style.padding || '0'};
-              text-align: ${style.textAlign || 'left'};
-              white-space: pre-wrap;
-            ">${processedText}</div>`;
-          })
-          .join('') || ''}
-      </div>
-    `}).join('');
+    // 根据排版方式生成打印内容
+    let printContent = '';
+    const components = selectedTemplate.data?.components || [];
+    
+    switch (layoutMode) {
+      case 'default':
+        // 默认：每条数据一页
+        printContent = selectedRecords.map((record, index) => {
+          const isLast = index === selectedRecords.length - 1;
+          return `
+          <div class="print-page" style="
+            width: 210mm;
+            min-height: 297mm;
+            padding: 20mm;
+            margin: 0 auto;
+            box-sizing: border-box;
+            page-break-after: ${isLast ? 'auto' : 'always'};
+            position: relative;
+            background: white;
+          ">
+            ${components.map((comp: any) => {
+              const html = renderComponentToHTML(comp, record.data);
+              return html;
+            }).join('')}
+          </div>
+        `}).join('');
+        break;
+        
+      case 'continuous':
+        // 连续：所有数据在一页连续显示
+        printContent = `
+          <div class="print-page" style="
+            width: 210mm;
+            min-height: 297mm;
+            padding: 20mm;
+            margin: 0 auto;
+            box-sizing: border-box;
+            background: white;
+          ">
+            ${selectedRecords.map((record, index) => {
+              const isLast = index === selectedRecords.length - 1;
+              return `
+                <div style="
+                  margin-bottom: ${isLast ? '0' : '40px'};
+                  padding-bottom: ${isLast ? '0' : '40px'};
+                  border-bottom: ${isLast ? 'none' : '1px dashed #e5e7eb'};
+                ">
+                  ${components.map((comp: any) => renderComponentToHTML(comp, record.data)).join('')}
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+        break;
+        
+      case 'label':
+        // 标签：网格布局
+        printContent = `
+          <div class="print-page" style="
+            width: 210mm;
+            min-height: 297mm;
+            padding: 20mm;
+            margin: 0 auto;
+            box-sizing: border-box;
+            background: white;
+          ">
+            <div style="
+              display: grid;
+              grid-template-columns: repeat(auto-fill, minmax(90mm, 1fr));
+              gap: 10mm;
+            ">
+              ${selectedRecords.map((record) => `
+                <div style="
+                  border: 1px solid #e5e7eb;
+                  border-radius: 4px;
+                  padding: 3mm;
+                  break-inside: avoid;
+                ">
+                  ${components.map((comp: any) => renderComponentToHTML(comp, record.data)).join('')}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+        break;
+    }
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -557,13 +696,13 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       printWindow.print();
     }, 500);
 
-    toast.success(`已打开批量打印窗口，共 ${records.length} 条记录`);
-  }, [selectedTemplate, records]);
+    toast.success(`已打开批量打印窗口，共 ${selectedRecords.length} 条记录`);
+  }, [selectedTemplate, selectedRecords, layoutMode]);
 
   return (
     <div className="h-full flex gap-4 p-4 overflow-hidden">
       {/* 左侧：模板列表 */}
-      <Card className="w-72 flex-shrink-0 flex flex-col">
+      <Card className="w-80 flex-shrink-0 flex flex-col">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -572,35 +711,56 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         </CardHeader>
         <CardContent className="flex-1 p-0 overflow-hidden">
           <ScrollArea className="h-full">
-            <div className="space-y-2 p-4 pt-0">
-              {templates.map((template) => (
-                <button
-                  key={template.id}
-                  onClick={() => handleSelectTemplate(template)}
-                  className={`w-full text-left p-3 rounded-lg border transition-all ${
-                    selectedTemplate?.id === template.id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="font-medium text-sm">{template.name}</div>
-                  {template.description && (
-                    <div className="text-xs text-gray-500 mt-1 line-clamp-2">
-                      {template.description}
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2 mt-2">
-                    <Badge variant="outline" className="text-xs">
-                      {template.data?.components?.length || 0} 组件
-                    </Badge>
-                    {template.isPublic && (
-                      <Badge variant="secondary" className="text-xs">
-                        公开
-                      </Badge>
+            <div className="space-y-3 p-4 pt-0">
+              {templates.map((template) => {
+                // 获取该模板的变量
+                const vars = template.data?.components 
+                  ? extractVariables(template.data.components) 
+                  : [];
+                return (
+                  <button
+                    key={template.id}
+                    onClick={() => handleSelectTemplate(template)}
+                    className={`w-full text-left p-3 rounded-lg border transition-all ${
+                      selectedTemplate?.id === template.id
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="font-medium text-sm">{template.name}</div>
+                    {template.description && (
+                      <div className="text-xs text-gray-500 mt-1 line-clamp-2">
+                        {template.description}
+                      </div>
                     )}
-                  </div>
-                </button>
-              ))}
+                    {/* 模板变量显示 */}
+                    {vars.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {vars.slice(0, 3).map((v) => (
+                          <span key={v} className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
+                            {v}
+                          </span>
+                        ))}
+                        {vars.length > 3 && (
+                          <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                            +{vars.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge variant="outline" className="text-xs">
+                        {template.data?.components?.length || 0} 组件
+                      </Badge>
+                      {template.isPublic && (
+                        <Badge variant="secondary" className="text-xs">
+                          公开
+                        </Badge>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
 
               {templates.length === 0 && (
                 <div className="text-center py-8 text-gray-400">
@@ -620,13 +780,27 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         <Card className="mb-4">
           <CardContent className="p-4">
             <div className="flex items-center justify-between flex-wrap gap-4">
-              {/* 左侧：飞书状态 + 编辑按钮 */}
+              {/* 左侧：排版方式切换 */}
               <div className="flex items-center gap-4">
-                {isFromFeishu && (
-                  <Badge variant="secondary" className="text-xs">
-                    已连接飞书（复选框监听中）
-                  </Badge>
-                )}
+                <ToggleGroup 
+                  type="single" 
+                  value={layoutMode}
+                  onValueChange={(v) => v && setLayoutMode(v as LayoutMode)}
+                  className="border rounded-lg p-1"
+                >
+                  <ToggleGroupItem value="default" aria-label="默认排版" className="text-xs px-3">
+                    <LayoutGrid className="h-3.5 w-3.5 mr-1.5" />
+                    默认
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="continuous" aria-label="连续排版" className="text-xs px-3">
+                    <List className="h-3.5 w-3.5 mr-1.5" />
+                    连续
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="label" aria-label="标签排版" className="text-xs px-3">
+                    <Tag className="h-3.5 w-3.5 mr-1.5" />
+                    标签
+                  </ToggleGroupItem>
+                </ToggleGroup>
 
                 {/* 编辑模板按钮 */}
                 <Button
@@ -634,98 +808,68 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                   size="sm"
                   onClick={handleEdit}
                   disabled={!selectedTemplate}
-                  className="ml-4"
                 >
                   <Pencil className="h-4 w-4 mr-2" />
                   编辑模板
                 </Button>
               </div>
 
-              {/* 中间：数据导航 */}
-              {records.length > 0 && (
-                <div className="flex items-center gap-4">
+              {/* 中间：已选数据计数 */}
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-xs">
+                  已选 {selectedRecords.length} 条数据
+                </Badge>
+                {selectedRecords.length > 0 && (
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    onClick={prevRecord}
-                    disabled={currentIndex === 0}
+                    className="h-6 text-xs text-red-500 hover:text-red-600"
+                    onClick={clearSelectedRecords}
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    清空
                   </Button>
-                  <span className="text-sm font-medium">
-                    {currentIndex + 1} / {records.length}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={nextRecord}
-                    disabled={currentIndex === records.length - 1}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* 右侧：打印按钮 */}
               <div className="flex items-center gap-2">
                 {isFeishuEnvironment && (
-                  <>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleRefreshData}
-                            disabled={isLoading}
-                          >
-                            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                            刷新数据
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>优先使用 API 获取，失败后自动扫描 Checkbox 字段</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleScanCheckbox}
-                            disabled={isScanning}
-                          >
-                            <ScanSearch className={`h-4 w-4 mr-2 ${isScanning ? 'animate-spin' : ''}`} />
-                            扫描 Checkbox
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>扫描表格中 Checkbox 字段，获取所有勾选状态的记录</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleRefreshData}
+                          disabled={isLoading}
+                        >
+                          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                          刷新数据
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>从飞书表格获取最新数据</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
                 
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleBatchPrint}
-                  disabled={!selectedTemplate || records.length === 0}
+                  disabled={!selectedTemplate || selectedRecords.length === 0}
                 >
                   <FileText className="h-4 w-4 mr-2" />
-                  批量打印 ({records.length})
+                  批量打印 ({selectedRecords.length})
                 </Button>
                 <Button
                   size="sm"
                   onClick={handlePrint}
-                  disabled={!selectedTemplate || records.length === 0}
+                  disabled={!selectedTemplate || selectedRecords.length === 0}
                 >
                   <Printer className="h-4 w-4 mr-2" />
-                  打印当前
+                  打印
                 </Button>
               </div>
             </div>
@@ -762,49 +906,155 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           </CardContent>
         </Card>
 
-        {/* A4 预览区域 */}
+        {/* A4 预览区域 - 支持三种排版方式 */}
         <div className="flex-1 bg-gray-100 rounded-lg overflow-auto relative">
-          <div className="min-w-max p-4 flex justify-center">
+          <div className="min-w-max p-4">
             {selectedTemplate ? (
-              <div
-                className="bg-white shadow-lg print:shadow-none"
-                style={{
-                  width: '210mm',
-                  minHeight: '297mm',
-                  padding: '20mm',
-                  boxSizing: 'border-box',
-                  position: 'relative',
-                }}
-              >
-                {(() => {
-                  // 有组件时，显示它们
-                  if (selectedTemplate.data?.components?.length > 0) {
-                    // 如果有数据，替换变量；否则原样显示
-                    const dataToUse = records.length > 0 && currentRecord ? currentRecord : {};
-                    return selectedTemplate.data.components.map((component: any, idx: number) => {
-                      return renderComponent(component, dataToUse);
-                    });
-                  }
+              (() => {
+                // 如果没有选中数据，显示空状态
+                if (selectedRecords.length === 0) {
+                  return (
+                    <div className="flex justify-center">
+                      <div
+                        className="bg-white shadow-lg print:shadow-none flex items-center justify-center"
+                        style={{
+                          width: '210mm',
+                          minHeight: '297mm',
+                          padding: '20mm',
+                          boxSizing: 'border-box',
+                        }}
+                      >
+                        <div className="text-center text-gray-400">
+                          <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                          <p className="text-lg">请从右侧添加数据</p>
+                          <p className="text-sm mt-2">点击"可用数据"中的记录添加到预览</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                const components = selectedTemplate.data?.components || [];
+                
+                // 渲染单个数据页面的函数
+                const renderDataPage = (record: SelectedRecord, pageIndex: number, isLast: boolean) => {
+                  const pageContent = components.map((component: any, idx: number) => 
+                    renderComponent(component, record.data)
+                  );
                   
-                  // 没有组件时
-                  else {
+                  return (
+                    <div
+                      key={record.id}
+                      className="bg-white shadow-lg print:shadow-none"
+                      style={{
+                        width: '210mm',
+                        minHeight: layoutMode === 'label' ? 'auto' : '297mm',
+                        padding: '20mm',
+                        boxSizing: 'border-box',
+                        position: 'relative',
+                        marginBottom: layoutMode === 'default' && !isLast ? '20px' : '0',
+                        pageBreakAfter: layoutMode === 'default' && !isLast ? 'always' : 'auto',
+                      }}
+                    >
+                      {/* 页码标记 */}
+                      <div className="absolute top-2 right-2 text-xs text-gray-300 print:hidden">
+                        #{pageIndex + 1}
+                      </div>
+                      {pageContent}
+                    </div>
+                  );
+                };
+
+                // 根据排版方式渲染
+                switch (layoutMode) {
+                  case 'default':
+                    // 默认：每条数据一页
                     return (
-                      <div className="h-full flex items-center justify-center text-gray-400">
-                        <div className="text-center">
-                          <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                          <p className="font-medium">模板数据为空</p>
-                          <p className="text-sm mt-1">请先在编辑器中添加组件</p>
+                      <div className="flex flex-col items-center gap-5">
+                        {selectedRecords.map((record, idx) => 
+                          renderDataPage(record, idx, idx === selectedRecords.length - 1)
+                        )}
+                      </div>
+                    );
+                    
+                  case 'continuous':
+                    // 连续：不间断排版，可能需要分页
+                    return (
+                      <div className="flex flex-col items-center">
+                        <div
+                          className="bg-white shadow-lg print:shadow-none"
+                          style={{
+                            width: '210mm',
+                            minHeight: '297mm',
+                            padding: '20mm',
+                            boxSizing: 'border-box',
+                          }}
+                        >
+                          {selectedRecords.map((record, idx) => (
+                            <div 
+                              key={record.id}
+                              style={{
+                                marginBottom: idx < selectedRecords.length - 1 ? '40px' : '0',
+                                borderBottom: idx < selectedRecords.length - 1 ? '1px dashed #e5e7eb' : 'none',
+                                paddingBottom: idx < selectedRecords.length - 1 ? '40px' : '0',
+                              }}
+                            >
+                              {components.map((component: any, compIdx: number) => 
+                                renderComponent(component, record.data)
+                              )}
+                            </div>
+                          ))}
                         </div>
                       </div>
                     );
-                  }
-                })()}
-              </div>
+                    
+                  case 'label':
+                    // 标签：所有数据在一页，紧凑排列
+                    return (
+                      <div className="flex justify-center">
+                        <div
+                          className="bg-white shadow-lg print:shadow-none"
+                          style={{
+                            width: '210mm',
+                            minHeight: '297mm',
+                            padding: '20mm',
+                            boxSizing: 'border-box',
+                          }}
+                        >
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(90mm, 1fr))',
+                            gap: '10mm',
+                          }}>
+                            {selectedRecords.map((record) => (
+                              <div
+                                key={record.id}
+                                className="border border-gray-200 rounded p-3"
+                                style={{
+                                  breakInside: 'avoid',
+                                }}
+                              >
+                                {components.map((component: any, compIdx: number) => 
+                                  renderComponent(component, record.data)
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                    
+                  default:
+                    return null;
+                }
+              })()
             ) : (
-              <div className="h-96 flex items-center justify-center text-gray-400">
-                <div className="text-center">
-                  <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg">请从左侧选择一个模板</p>
+              <div className="flex justify-center">
+                <div className="h-96 flex items-center justify-center text-gray-400 bg-white rounded-lg shadow-sm" style={{ width: '210mm' }}>
+                  <div className="text-center">
+                    <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg">请从左侧选择一个模板</p>
+                  </div>
                 </div>
               </div>
             )}
@@ -812,93 +1062,106 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         </div>
       </div>
 
-      {/* 右侧：变量映射和数据信息 */}
-      <Card className="w-60 flex-shrink-0 flex flex-col overflow-hidden">
+      {/* 右侧：数据匹配 - 重构为数据卡片列表 */}
+      <Card className="w-72 flex-shrink-0 flex flex-col overflow-hidden">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">数据匹配</CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 overflow-hidden">
+        <CardContent className="flex-1 p-0 overflow-hidden">
           <ScrollArea className="h-full">
-            {selectedTemplate ? (
-              <div className="space-y-4">
-                {/* 模板变量 */}
-                <div>
-                  <h4 className="text-sm font-medium mb-2 text-gray-700">模板变量 ({templateVariables.length})</h4>
-                  {templateVariables.length > 0 ? (
-                    <div className="space-y-1">
-                      {templateVariables.map((varName) => (
-                        <div
-                          key={varName}
-                          className="text-xs px-2 py-1 bg-gray-100 rounded"
-                        >
-                          [{varName}]
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-400">模板中没有变量</p>
-                  )}
-                </div>
-
-                {/* 数据匹配状态 */}
-                {currentRecord && (
+            <div className="p-4 space-y-4">
+              {selectedTemplate ? (
+                <>
+                  {/* 可用数据区域 */}
                   <div>
-                    <h4 className="text-sm font-medium mb-2 text-gray-700">匹配状态</h4>
-                    {variableMapping.length > 0 ? (
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-medium text-gray-700">可用数据</h4>
+                      <Badge variant="outline" className="text-xs">
+                        {availableRecords.length}
+                      </Badge>
+                    </div>
+                    {availableRecords.length > 0 ? (
                       <div className="space-y-2">
-                        {variableMapping.map((mapping) => (
+                        {availableRecords.map((record, idx) => {
+                          const isSelected = selectedRecords.some(r => r.id === record.id);
+                          return (
+                            <button
+                              key={record.id || idx}
+                              onClick={() => addRecordToSelection(record)}
+                              disabled={isSelected}
+                              className={`w-full text-left p-2 rounded border text-xs transition-all ${
+                                isSelected 
+                                  ? 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed' 
+                                  : 'bg-white border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium truncate">
+                                  {record.编号 || record.id || `记录 ${idx + 1}`}
+                                </span>
+                                {!isSelected && <Plus className="h-3 w-3 text-blue-500" />}
+                              </div>
+                              {record.简述 && (
+                                <p className="text-gray-500 truncate mt-1">{String(record.简述).slice(0, 30)}</p>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-400 text-center py-4">
+                        暂无可用数据<br />
+                        点击"刷新数据"获取
+                      </p>
+                    )}
+                  </div>
+
+                  {/* 分割线 */}
+                  {availableRecords.length > 0 && selectedRecords.length > 0 && (
+                    <div className="border-t border-gray-200" />
+                  )}
+
+                  {/* 已选数据区域 */}
+                  {selectedRecords.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-medium text-gray-700">已选数据</h4>
+                        <Badge variant="secondary" className="text-xs">
+                          {selectedRecords.length}
+                        </Badge>
+                      </div>
+                      <div className="space-y-2">
+                        {selectedRecords.map((record, idx) => (
                           <div
-                            key={mapping.name}
-                            className={`text-xs px-2 py-1 rounded flex items-center justify-between ${
-                              mapping.hasValue
-                                ? 'bg-green-50 text-green-700'
-                                : 'bg-red-50 text-red-700'
-                            }`}
+                            key={record.id}
+                            className="relative p-2 rounded border border-blue-200 bg-blue-50 text-xs group"
                           >
-                            <span>{mapping.name}</span>
-                            {mapping.hasValue ? (
-                              <Badge variant="outline" className="text-[10px] h-4">
-                                ✓
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-[10px] h-4">
-                                ✗
-                              </Badge>
+                            <button
+                              onClick={() => removeRecordFromSelection(record.id)}
+                              className="absolute top-1 right-1 p-0.5 rounded hover:bg-red-100 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                            <div className="font-medium truncate pr-5">
+                              {record.data.编号 || record.id || `记录 ${idx + 1}`}
+                            </div>
+                            {record.data.简述 && (
+                              <p className="text-gray-600 truncate mt-1">
+                                {String(record.data.简述).slice(0, 25)}
+                              </p>
                             )}
                           </div>
                         ))}
                       </div>
-                    ) : (
-                      <p className="text-xs text-gray-400">无需变量替换</p>
-                    )}
-                  </div>
-                )}
-
-                {/* 当前数据预览 */}
-                {currentRecord && (
-                  <div>
-                    <h4 className="text-sm font-medium mb-2 text-gray-700">当前数据 (前10项)</h4>
-                    <div className="space-y-1 text-xs">
-                      {Object.entries(currentRecord)
-                        .filter(([key]) => !key.startsWith('_'))
-                        .slice(0, 10)
-                        .map(([key, value]) => (
-                          <div key={key} className="truncate">
-                            <span className="text-gray-500">{key}:</span>{' '}
-                            <span className="text-gray-700">
-                              {String(value).slice(0, 50)}
-                            </span>
-                          </div>
-                        ))}
                     </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-400 text-center py-4">
-                选择模板查看变量信息
-              </p>
-            )}
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-gray-400 text-center py-4">
+                  选择模板后可添加数据
+                </p>
+              )}
+            </div>
           </ScrollArea>
         </CardContent>
       </Card>
