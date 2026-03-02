@@ -102,10 +102,10 @@ const renderTableComponent = (component: any, data: Record<string, any>): React.
     <div 
       key={id}
       style={{
-        position: 'absolute',
-        left: style.x || 0,
-        top: style.y || 0,
-        width: style.width || 'auto',
+        position: 'relative',
+        width: component.layout?.width || '100%',
+        maxWidth: '100%',
+        overflow: 'auto',
         ...style,
       }}
     >
@@ -113,6 +113,7 @@ const renderTableComponent = (component: any, data: Record<string, any>): React.
         style={{
           borderCollapse: 'collapse',
           width: '100%',
+          tableLayout: 'fixed',
           border: showOuterBorder ? `${borderWidth}px solid ${borderColor}` : 'none',
         }}
       >
@@ -175,7 +176,7 @@ const renderComponentToHTML = (component: any, data: Record<string, any>): strin
   
   const styleStr = `
     position: relative;
-    width: ${style.width ? `${style.width}px` : '100%'};
+    width: ${component.layout?.width || '100%'};
     font-size: ${style.fontSize || '16px'};
     font-weight: ${style.fontWeight || 'normal'};
     color: ${style.color || '#000000'};
@@ -190,7 +191,54 @@ const renderComponentToHTML = (component: any, data: Record<string, any>): strin
     case 'text':
       return `<div style="${styleStr}">${processedContent || processedText}</div>`;
     case 'table':
-      // 简化表格渲染
+      // 渲染表格为 HTML
+      if (component.tableConfig) {
+        const { cells = [], borderWidth = 1, borderColor = '#000000', showOuterBorder = true, showInnerBorder = true } = component.tableConfig;
+        const tableHtml = `
+          <table style="
+            border-collapse: collapse;
+            width: 100%;
+            table-layout: fixed;
+            border: ${showOuterBorder ? `${borderWidth}px solid ${borderColor}` : 'none'};
+          ">
+            <tbody>
+              ${cells.map((row: any[], rowIndex: number) => {
+                const visibleCells = row.filter((cell: any) => {
+                  const rowSpan = cell?.rowSpan ?? 1;
+                  const colSpan = cell?.colSpan ?? 1;
+                  return rowSpan > 0 && colSpan > 0;
+                });
+                if (visibleCells.length === 0) return '';
+                return `
+                  <tr>
+                    ${visibleCells.map((cell: any, colIndex: number) => {
+                      if (!cell) return '';
+                      const rowSpan = cell.rowSpan ?? 1;
+                      const colSpan = cell.colSpan ?? 1;
+                      const content = cell.content || '';
+                      const processedContent = replaceVariables(content, data);
+                      return `
+                        <td 
+                          ${rowSpan > 1 ? `rowspan="${rowSpan}"` : ''}
+                          ${colSpan > 1 ? `colspan="${colSpan}"` : ''}
+                          style="
+                            border: ${showInnerBorder ? `${borderWidth}px solid ${borderColor}` : 'none'};
+                            padding: 8px;
+                            vertical-align: top;
+                            white-space: pre-wrap;
+                            word-wrap: break-word;
+                          "
+                        >${processedContent}</td>
+                      `;
+                    }).join('')}
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        `;
+        return `<div style="${styleStr} max-width: 100%; overflow: auto;">${tableHtml}</div>`;
+      }
       return `<div style="${styleStr}">[表格]</div>`;
     case 'qrcode':
       return `<div style="${styleStr}">QR</div>`;
@@ -227,7 +275,7 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
 
 const commonStyle: React.CSSProperties = {
     position: 'relative',
-    width: style.width ? `${style.width}px` : '100%',
+    width: component.layout?.width || '100%',
     fontSize: style.fontSize,
     fontWeight: style.fontWeight,
     color: style.color,
@@ -641,10 +689,10 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           ">
             <div style="
               display: flex;
-              flex-direction: column;
               flex-wrap: wrap;
-              gap: 0;
-              height: 100%;
+              align-content: flex-start;
+              gap: 12px;
+              min-height: 100%;
             ">
               ${components.map((comp: any) => {
                 const html = renderComponentToHTML(comp, record.data);
@@ -676,9 +724,9 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                 ">
                   <div style="
                     display: flex;
-                    flex-direction: column;
                     flex-wrap: wrap;
-                    gap: 0;
+                    align-content: flex-start;
+                    gap: 12px;
                   ">
                     ${components.map((comp: any) => renderComponentToHTML(comp, record.data)).join('')}
                   </div>
@@ -714,9 +762,9 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                 ">
                   <div style="
                     display: flex;
-                    flex-direction: column;
                     flex-wrap: wrap;
-                    gap: 0;
+                    align-content: flex-start;
+                    gap: 8px;
                   ">
                     ${components.map((comp: any) => renderComponentToHTML(comp, record.data)).join('')}
                   </div>
@@ -1022,13 +1070,13 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                       <div className="absolute top-2 right-2 text-xs text-gray-300 print:hidden">
                         #{pageIndex + 1}
                       </div>
-                      {/* 流式布局容器 */}
+                      {/* 流式布局容器 - 与编辑器一致 */}
                       <div style={{
                         display: 'flex',
-                        flexDirection: 'column',
                         flexWrap: 'wrap',
-                        gap: '0',
-                        height: '100%',
+                        alignContent: 'flex-start',
+                        gap: '12px',
+                        minHeight: '100%',
                       }}>
                         {components.map((component: any) => 
                           renderComponent(component, record.data)
@@ -1074,9 +1122,9 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                             >
                               <div style={{
                                 display: 'flex',
-                                flexDirection: 'column',
                                 flexWrap: 'wrap',
-                                gap: '0',
+                                alignContent: 'flex-start',
+                                gap: '12px',
                               }}>
                                 {components.map((component: any) => 
                                   renderComponent(component, record.data)
@@ -1116,9 +1164,9 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                               >
                                 <div style={{
                                   display: 'flex',
-                                  flexDirection: 'column',
                                   flexWrap: 'wrap',
-                                  gap: '0',
+                                  alignContent: 'flex-start',
+                                  gap: '8px',
                                 }}>
                                   {components.map((component: any) => 
                                     renderComponent(component, record.data)
