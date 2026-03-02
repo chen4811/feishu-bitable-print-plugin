@@ -307,15 +307,24 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     });
   }, [fetchTemplates]);
 
-  // 初始化：设置飞书环境状态
+  // 初始化：设置飞书环境状态并初始化 SDK
   useEffect(() => {
-    setIsFromFeishu(isFeishuEnvironment);
+    const init = async () => {
+      // 先初始化 SDK
+      await feishuEnv.init();
+      
+      // 更新状态
+      const isReady = feishuEnv.isFeishuEnvironment();
+      setIsFromFeishu(isReady);
+      
+      // 如果初始化成功，获取一次记录
+      if (isReady) {
+        fetchSelectedRecordsFromEnv();
+      }
+    };
     
-    // 主动获取一次记录（默认获取第一条
-    if (isFeishuEnvironment) {
-      fetchSelectedRecordsFromEnv();
-    }
-  }, [isFeishuEnvironment, setIsFromFeishu]);
+    init();
+  }, [setIsFromFeishu]);
 
   // 从 feishu-env 获取选中记录
   const fetchSelectedRecordsFromEnv = useCallback(async () => {

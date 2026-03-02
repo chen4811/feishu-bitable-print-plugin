@@ -126,17 +126,19 @@ export function EditorPage({ onExit }: EditorPageProps) {
 
   // 从 feishu-env 获取数据并监听点击行
   useEffect(() => {
-    if (!isFeishuEnvironment) {
-      console.log('[EditorPage] 不在飞书环境，跳过');
-      return;
-    }
+    const init = async () => {
+      // 先初始化 SDK
+      const isReady = await feishuEnv.init();
+      
+      if (!isReady) {
+        console.log('[EditorPage] 不在飞书环境，跳过');
+        return;
+      }
 
-    console.log('[EditorPage] ======== 初始化飞书环境 ========');
-    setFeishuEnvironment(true);
+      console.log('[EditorPage] ======== 初始化飞书环境 ========');
+      setFeishuEnvironment(true);
 
-    // 设置是否在飞书环境
-
-    const initData = async () => {
+      // 初始化数据
       try {
         setFeishuLoading(true);
         
@@ -177,39 +179,38 @@ export function EditorPage({ onExit }: EditorPageProps) {
         console.error('[EditorPage] 初始化数据失败:', error);
         setFeishuLoading(false);
       }
-    };
 
-    // 初始化数据
-    initData();
-
-    // 设置点击行监听
-    console.log('[EditorPage] 设置点击行监听...');
-    const unsubscribe = feishuEnv.onSelectionChange(async (event) => {
-      console.log('[EditorPage] ======== 收到点击行事件 ========');
-      console.log('[EditorPage] 事件数据:', event);
-      
-      // 获取新的选中记录
-      try {
-        const records = await feishuEnv.getSelectedRecords();
-        console.log('[EditorPage] 获取到新的选中记录:', records);
+      // 设置点击行监听
+      console.log('[EditorPage] 设置点击行监听...');
+      const unsubscribe = feishuEnv.onSelectionChange(async (event) => {
+        console.log('[EditorPage] ======== 收到点击行事件 ========');
+        console.log('[EditorPage] 事件数据:', event);
         
-        if (records.length > 0) {
-          // 转换记录格式
-          const appRecords = records.map((record, index) => ({
-            id: record.id,
-            ...record.fields,
-            _rowIndex: index,
-          }));
-          setFeishuRecords(records);
-          setRecords(appRecords as unknown as Record<string, unknown>[]);
+        // 获取新的选中记录
+        try {
+          const records = await feishuEnv.getSelectedRecords();
+          console.log('[EditorPage] 获取到新的选中记录:', records);
+          
+          if (records.length > 0) {
+            // 转换记录格式
+            const appRecords = records.map((record, index) => ({
+              id: record.id,
+              ...record.fields,
+              _rowIndex: index,
+            }));
+            setFeishuRecords(records);
+            setRecords(appRecords as unknown as Record<string, unknown>[]);
+          }
+        } catch (error) {
+          console.error('[EditorPage] 获取选中记录失败:', error);
         }
-      } catch (error) {
-        console.error('[EditorPage] 获取选中记录失败:', error);
-      }
-    });
+      });
 
-    return unsubscribe;
-  }, [isFeishuEnvironment, setFeishuEnvironment, setFields, setRecords]);
+      return unsubscribe;
+    };
+    
+    init();
+  }, [setFeishuEnvironment, setFields, setRecords]);
 
   // 初始化当前编辑的模板
   useEffect(() => {
