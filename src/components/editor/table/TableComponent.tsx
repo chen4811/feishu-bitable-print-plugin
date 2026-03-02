@@ -68,27 +68,32 @@ export const TableComponent: React.FC<TableComponentProps> = ({
 
   const addRow = useCallback(() => {
     const newRow = new Array(tableData[0]?.length || 3).fill('');
-    setTableData([...tableData, newRow]);
-  }, [tableData]);
+    const newData = [...tableData, newRow];
+    setTableData(newData);
+    onUpdate({ content: { type: 'simple-table', data: newData } });
+  }, [tableData, onUpdate]);
 
   const addColumn = useCallback(() => {
     const newData = tableData.map(row => [...row, '']);
     setTableData(newData);
-  }, [tableData]);
+    onUpdate({ content: { type: 'simple-table', data: newData } });
+  }, [tableData, onUpdate]);
 
   const deleteRow = useCallback((rowIndex: number) => {
     if (tableData.length > 1) {
       const newData = tableData.filter((_, index) => index !== rowIndex);
       setTableData(newData);
+      onUpdate({ content: { type: 'simple-table', data: newData } });
     }
-  }, [tableData]);
+  }, [tableData, onUpdate]);
 
   const deleteColumn = useCallback((colIndex: number) => {
     if (tableData[0]?.length > 1) {
       const newData = tableData.map(row => row.filter((_, index) => index !== colIndex));
       setTableData(newData);
+      onUpdate({ content: { type: 'simple-table', data: newData } });
     }
-  }, [tableData]);
+  }, [tableData, onUpdate]);
 
   const shouldShowHoverToolbar = isHovered && !isSelected && !isEditing;
   const shouldShowSelectionBorder = isSelected && !isEditing;

@@ -786,14 +786,36 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
   }, [isEditing]);
 
-  // 初始化表格编辑数据
+  // 初始化/同步表格编辑数据
   useEffect(() => {
     if (component.type === 'table') {
       const tableComp = component as any;
       if (tableComp.tableConfig?.cells) {
-        setTableEditData(tableComp.tableConfig.cells.map((row: any[]) => 
-          row.map((cell: any) => cell?.content || '')
-        ));
+        const cells = tableComp.tableConfig.cells;
+        setTableEditData(prev => {
+          // 如果行数或列数不匹配，重新初始化
+          const prevRows = prev.length;
+          const prevCols = prev[0]?.length || 0;
+          const newRows = cells.length;
+          const newCols = cells[0]?.length || 0;
+          
+          if (prevRows !== newRows || prevCols !== newCols) {
+            return cells.map((row: any[]) => 
+              row.map((cell: any) => cell?.content || '')
+            );
+          }
+          
+          // 如果行列数匹配，保留已有编辑数据，只同步新单元格的内容
+          return cells.map((row: any[], rowIdx: number) => 
+            row.map((cell: any, colIdx: number) => {
+              // 如果本地有编辑中的值，优先使用本地值
+              if (prev[rowIdx]?.[colIdx] !== undefined && prev[rowIdx][colIdx] !== (cell?.content || '')) {
+                return prev[rowIdx][colIdx];
+              }
+              return cell?.content || '';
+            })
+          );
+        });
       } else {
         setTableEditData([
           ['', '', ''],
@@ -801,7 +823,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         ]);
       }
     }
-  }, [component.id, component.type]);
+  }, [component.id, component.type, (component as any).tableConfig?.cells?.length, (component as any).tableConfig?.cells?.[0]?.length]);
 
   // 生成二维码
   useEffect(() => {
