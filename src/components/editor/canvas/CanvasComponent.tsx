@@ -511,8 +511,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
   };
 
-  // 文本组件 resize 处理
-  const handleResizeStart = (e: React.MouseEvent) => {
+  // 文本组件 resize 处理 - 从边框拖动
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
     
@@ -526,7 +526,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       width: rect.width,
       height: rect.height,
     });
-  };
+  }, []);
 
   // 表格编辑 - 切换编辑状态
   const handleEditTable = useCallback((e?: React.MouseEvent) => {
@@ -1714,9 +1714,21 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 textDecoration: textComp.textStyle?.underline ? 'underline' : textComp.textStyle?.textDecoration || 'none',
                 textTransform: textComp.textStyle?.textTransform || 'none',
                 whiteSpace: 'pre-wrap',
-                border: isSelected ? '1px solid #3b82f6' : '1px solid transparent',
+                border: isSelected ? '2px solid #3b82f6' : '1px solid transparent',
+                cursor: isSelected ? 'se-resize' : 'text',
               }}
               onDoubleClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => {
+                // 检测是否点击在边框区域（距离边缘8px以内）
+                if (!textComponentRef.current || !isSelected) return;
+                const rect = textComponentRef.current.getBoundingClientRect();
+                const borderThreshold = 8;
+                const isNearRightEdge = e.clientX >= rect.right - borderThreshold;
+                const isNearBottomEdge = e.clientY >= rect.bottom - borderThreshold;
+                if (isNearRightEdge || isNearBottomEdge) {
+                  handleResizeStart(e);
+                }
+              }}
             >
               <textarea
                 ref={textareaRef}
@@ -1760,18 +1772,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 }}
                 placeholder="输入文本..."
               />
-              {/* Resize 手柄 - 仅在选中状态下显示 */}
-              {isSelected && (
-                <div
-                  className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
-                  style={{
-                    background: 'linear-gradient(135deg, transparent 50%, #3b82f6 50%)',
-                    borderRadius: '0 0 2px 0',
-                  }}
-                  onMouseDown={handleResizeStart}
-                  title="拖拽调整大小"
-                />
-              )}
             </div>
           );
         }
@@ -1796,9 +1796,21 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               textDecoration: textComp.textStyle?.underline ? 'underline' : textComp.textStyle?.textDecoration || 'none',
               textTransform: textComp.textStyle?.textTransform || 'none',
               whiteSpace: 'pre-wrap',
-              border: isSelected ? '1px solid #3b82f6' : '1px solid transparent',
+              border: isSelected ? '2px solid #3b82f6' : '1px solid transparent',
+              cursor: isSelected ? 'se-resize' : 'text',
             }}
             onDoubleClick={handleDoubleClickText}
+            onMouseDown={(e) => {
+              // 检测是否点击在边框区域（距离边缘8px以内）
+              if (!textComponentRef.current || !isSelected) return;
+              const rect = textComponentRef.current.getBoundingClientRect();
+              const borderThreshold = 8;
+              const isNearRightEdge = e.clientX >= rect.right - borderThreshold;
+              const isNearBottomEdge = e.clientY >= rect.bottom - borderThreshold;
+              if (isNearRightEdge || isNearBottomEdge) {
+                handleResizeStart(e);
+              }
+            }}
           >
             {/* 注入变量芯片样式 */}
             <style dangerouslySetInnerHTML={{ __html: VARIABLE_CHIP_STYLES }} />
@@ -1881,19 +1893,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   />
                 )}
               </span>
-            )}
-            
-            {/* Resize 手柄 - 仅在选中状态下显示 */}
-            {isSelected && (
-              <div
-                className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
-                style={{
-                  background: 'linear-gradient(135deg, transparent 50%, #3b82f6 50%)',
-                  borderRadius: '0 0 2px 0',
-                }}
-                onMouseDown={handleResizeStart}
-                title="拖拽调整大小"
-              />
             )}
           </div>
         );
