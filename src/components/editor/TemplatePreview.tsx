@@ -714,9 +714,9 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   }, [selectedTemplate, selectedRecords, layoutMode]);
 
   return (
-    <div className="h-full flex gap-4 p-4 overflow-hidden">
-      {/* 左侧：模板列表 */}
-      <Card className="w-80 flex-shrink-0 flex flex-col">
+    <div className="h-full flex gap-3 p-3 overflow-hidden">
+      {/* 左侧：模板列表 - 减小宽度 */}
+      <Card className="w-64 flex-shrink-0 flex flex-col">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -788,8 +788,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         </CardContent>
       </Card>
 
-      {/* 中间：打印预览 */}
-      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+      {/* 中间：打印预览 - 确保最小宽度 */}
+      <div className="flex-1 min-w-[500px] flex flex-col overflow-hidden">
         {/* 工具栏 */}
         <Card className="mb-4">
           <CardContent className="p-4">
@@ -1077,7 +1077,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       </div>
 
       {/* 右侧：数据匹配 - 简化为点击选中模式 */}
-      <Card className="w-72 flex-shrink-0 flex flex-col overflow-hidden">
+      <Card className="w-56 flex-shrink-0 flex flex-col overflow-hidden">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center justify-between">
             <span>数据匹配</span>
