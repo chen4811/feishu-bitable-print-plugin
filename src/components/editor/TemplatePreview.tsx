@@ -301,7 +301,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   const [debugInfo, setDebugInfo] = useState<string>('');
   const [showDebugInfo, setShowDebugInfo] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
-  const [useScanMode, setUseScanMode] = useState(false);
 
   // 加载模板列表
   useEffect(() => {
@@ -422,7 +421,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     onEditTemplate?.(selectedTemplate);
   }, [selectedTemplate, setCurrentTemplate, onEditTemplate]);
 
-  // 刷新数据（优先使用 API，失败后自动使用扫描模式）
+  // 刷新数据（使用 base.getSelection）
   const handleRefreshData = useCallback(async () => {
     if (!isFeishuEnvironment) {
       toast.info('当前不在飞书环境中');
@@ -432,31 +431,9 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     setIsLoading(true);
     
     try {
-      let records: any[] = [];
-      let mode = '';
-
-      // 如果用户明确选择扫描模式，直接使用
-      if (useScanMode) {
-        mode = '扫描模式';
-        records = await feishuEnv.getRecordsByCheckedCheckbox();
-      } else {
-        // 优先尝试 API 模式
-        records = await feishuEnv.getCheckboxSelectedRecords();
-        
-        if (records.length > 0) {
-          mode = 'API模式';
-        } else {
-          // API 模式没有数据，尝试扫描模式
-          mode = '扫描模式';
-          records = await feishuEnv.getRecordsByCheckedCheckbox();
-          
-          if (records.length > 0) {
-            // 如果扫描模式有数据，提示用户
-            toast.success('检测到 Checkbox 字段勾选记录');
-          }
-        }
-      }
-
+      // 使用 getCheckboxSelectedRecords 获取选中记录
+      const records = await feishuEnv.getCheckboxSelectedRecords();
+      
       if (records.length > 0) {
         // 转换格式
         const formattedRecords = records.map((record, index) => ({
@@ -467,10 +444,10 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
         setRecords(formattedRecords);
         setCurrentIndex(0);
-        toast.success(`已加载 ${formattedRecords.length} 条记录 (${mode})`);
+        toast.success(`已加载 ${formattedRecords.length} 条记录`);
         
         if (showDebugInfo) {
-          setDebugInfo(`刷新数据成功 (${mode}):\n${JSON.stringify(records.map(r => ({ id: r.id, fields: r.fields })), null, 2)}`);
+          setDebugInfo(`刷新数据成功:\n${JSON.stringify(records.map(r => ({ id: r.id, fields: r.fields })), null, 2)}`);
         }
       } else {
         // 没有获取到任何记录，尝试点击行选择
@@ -487,7 +464,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           setCurrentIndex(0);
           toast.success(`已加载 ${formattedRecords.length} 条记录 (点击行选择)`);
         } else {
-          toast.info('未获取到任何记录，请勾选复选框或点击选择行');
+          toast.info('未获取到任何记录，请点击选择行');
           setRecords([]);
           setCurrentIndex(0);
         }
@@ -498,44 +475,12 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     } finally {
       setIsLoading(false);
     }
-  }, [isFeishuEnvironment, useScanMode, setRecords, setCurrentIndex, showDebugInfo]);
-
-  // 专门使用扫描模式获取 Checkbox 勾选记录
-  const handleScanCheckbox = useCallback(async () => {
-    if (!isFeishuEnvironment) {
-      toast.info('当前不在飞书环境中');
-      return;
-    }
-
-    setIsScanning(true);
-    
-    try {
-      const records = await feishuEnv.getRecordsByCheckedCheckbox();
-      
-      if (records.length > 0) {
-        const formattedRecords = records.map((record, index) => ({
-          id: record.id,
-          ...record.fields,
-          _rowIndex: index,
-        }));
-
-        setRecords(formattedRecords);
-        setCurrentIndex(0);
-        toast.success(`扫描完成，找到 ${formattedRecords.length} 条 Checkbox 勾选记录`);
-        
-        if (showDebugInfo) {
-          setDebugInfo(`Checkbox 扫描结果:\n${JSON.stringify(records.map(r => ({ id: r.id, fields: r.fields })), null, 2)}`);
-        }
-      } else {
-        toast.info('未找到 Checkbox 勾选记录，请确保表格有 Checkbox 字段且已勾选');
-      }
-    } catch (err) {
-      console.error('[TemplatePreview] 扫描 Checkbox 失败:', err);
-      toast.error('扫描 Checkbox 失败');
-    } finally {
-      setIsScanning(false);
-    }
   }, [isFeishuEnvironment, setRecords, setCurrentIndex, showDebugInfo]);
+
+  // 扫描 Checkbox（功能已移除，显示提示）
+  const handleScanCheckbox = useCallback(async () => {
+    toast.info('Checkbox 扫描功能已移除，请使用"刷新数据"获取选中记录');
+  }, []);
 
   // 获取当前选中的模板
   const currentRecord = getCurrentRecord();
@@ -842,20 +787,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
               </div>
             </div>
 
-            {/* 调试信息和模式开关 */}
-            <div className="mt-2 flex items-center gap-4">
-              {isFeishuEnvironment && (
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="scan-mode"
-                    checked={useScanMode}
-                    onCheckedChange={setUseScanMode}
-                  />
-                  <Label htmlFor="scan-mode" className="text-xs cursor-pointer">
-                    强制扫描模式
-                  </Label>
-                </div>
-              )}
+            {/* 调试信息开关 */}
+            <div className="mt-2 flex items-center gap-2">
               <Button 
                 variant="ghost" 
                 size="sm" 
