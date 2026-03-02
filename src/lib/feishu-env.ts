@@ -976,15 +976,15 @@ export function getDebugInfo(): Record<string, unknown> {
 }
 
 // ============================================
-// 便捷函数：通过 table.getSelectedRecordIds() 获取选中记录
+// 便捷函数：获取选中记录（带降级方案）
 // ============================================
 
 export async function getCheckboxSelectedRecords(): Promise<BitableRecord[]> {
   debugLog('======== getCheckboxSelectedRecords() 开始 ========');
-  debugLog('📋 使用 table.getSelectedRecordIds() 获取选中记录');
+  debugLog('📋 尝试获取选中记录...');
 
   try {
-    // 1. 获取当前激活的表格 ID (base.getSelection() 是可靠的)
+    // 1. 获取当前激活的表格 ID
     debugLog('📍 调用 base.getSelection() 获取 tableId...');
     const selection = await base.getSelection();
     
@@ -1009,12 +1009,11 @@ export async function getCheckboxSelectedRecords(): Promise<BitableRecord[]> {
     const table = await base.getTable(tableId);
     debugLog('✅ 表格实例已获取');
 
-    // 3. 【核心】使用 table.getSelectedRecordIds() 获取选中的行 ID 列表
-    debugLog('📍 调用 table.getSelectedRecordIds()...');
+    // 3. 尝试使用 table.getSelectedRecordIds() 获取选中的行
+    debugLog('📍 尝试调用 table.getSelectedRecordIds()...');
     
     let selectedRecordIds: string[] = [];
     
-    // 检查方法是否存在
     if (typeof (table as any).getSelectedRecordIds === 'function') {
       try {
         selectedRecordIds = await (table as any).getSelectedRecordIds();
@@ -1027,15 +1026,26 @@ export async function getCheckboxSelectedRecords(): Promise<BitableRecord[]> {
       debugLog('⚠️ table.getSelectedRecordIds() 方法不存在');
     }
 
+    // 4. 如果没有选中行，降级到获取第一条记录
     if (selectedRecordIds.length === 0) {
-      debugLog('ℹ️ 用户未选中任何行');
-      debugLog('💡 提示：请点击表格最左侧的【行号】或【复选框】来选中多行');
-      debugLog('======== getCheckboxSelectedRecords() 结束 ========');
-      return [];
+      debugLog('ℹ️ 没有选中行，降级到获取第一条记录...');
+      debugLog('💡 提示：飞书 SDK 限制，插件环境下无法获取勾选行');
+      
+      // 获取第一条记录
+      const recordIdList = await table.getRecordIdList();
+      if (Array.isArray(recordIdList) && recordIdList.length > 0) {
+        const firstRecordId = recordIdList[0];
+        debugLog(`📍 获取第一条记录: ${firstRecordId}`);
+        selectedRecordIds = [firstRecordId];
+      } else {
+        debugLog('❌ 表格为空，没有记录');
+        debugLog('======== getCheckboxSelectedRecords() 结束 ========');
+        return [];
+      }
     }
 
-    // 4. 批量获取这些行的详细数据
-    debugLog('📍 批量获取选中行的详细数据...');
+    // 5. 批量获取记录数据
+    debugLog('📍 批量获取记录数据...');
     const records = await getRecordsByCheckboxIds(tableId, selectedRecordIds);
 
     debugLog(`✅ 获取到记录数据: ${records.length} 条`);

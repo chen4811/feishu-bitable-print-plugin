@@ -379,7 +379,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     onEditTemplate?.(selectedTemplate);
   }, [selectedTemplate, setCurrentTemplate, onEditTemplate]);
 
-  // 刷新数据（使用 base.getSelection）
+  // 刷新数据（使用飞书 SDK 获取记录）
   const handleRefreshData = useCallback(async () => {
     if (!isFeishuEnvironment) {
       toast.info('当前不在飞书环境中');
@@ -389,7 +389,9 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     setIsLoading(true);
     
     try {
-      // 使用 getCheckboxSelectedRecords 获取选中记录
+      // getCheckboxSelectedRecords 会自动处理：
+      // 1. 尝试使用 table.getSelectedRecordIds() 获取选中行
+      // 2. 如果不可用，降级到获取第一条记录
       const records = await feishuEnv.getCheckboxSelectedRecords();
       
       if (records.length > 0) {
@@ -408,24 +410,9 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           setDebugInfo(`刷新数据成功:\n${JSON.stringify(records.map(r => ({ id: r.id, fields: r.fields })), null, 2)}`);
         }
       } else {
-        // 没有获取到任何记录，尝试点击行选择
-        const clickRowRecords = await feishuEnv.getSelectedRecords();
-        
-        if (clickRowRecords.length > 0) {
-          const formattedRecords = clickRowRecords.map((record, index) => ({
-            id: record.id,
-            ...record.fields,
-            _rowIndex: index,
-          }));
-          
-          setRecords(formattedRecords);
-          setCurrentIndex(0);
-          toast.success(`已加载 ${formattedRecords.length} 条记录 (点击行选择)`);
-        } else {
-          toast.info('未获取到任何记录，请点击选择行');
-          setRecords([]);
-          setCurrentIndex(0);
-        }
+        toast.info('未获取到任何记录');
+        setRecords([]);
+        setCurrentIndex(0);
       }
     } catch (err) {
       console.error('[TemplatePreview] 刷新数据失败:', err);
