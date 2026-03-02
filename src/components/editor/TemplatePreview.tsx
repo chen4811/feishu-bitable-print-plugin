@@ -1090,7 +1090,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         </CardHeader>
         <CardContent className="flex-1 p-0 overflow-hidden">
           <ScrollArea className="h-full">
-            <div className="p-4 space-y-2">
+            <div className="px-3 py-3 space-y-2">
               {selectedTemplate ? (
                 availableRecords.length > 0 ? (
                   availableRecords.map((record, idx) => {
@@ -1105,18 +1105,18 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                             addRecordToSelection(record);
                           }
                         }}
-                        className={`w-full text-left p-3 rounded-lg border text-xs transition-all ${
+                        className={`block w-full text-left p-3 rounded-lg border text-xs transition-all box-border ${
                           isSelected 
                             ? 'bg-blue-50 border-blue-400 ring-1 ring-blue-400 shadow-sm' 
                             : 'bg-white border-gray-200 hover:border-blue-300 hover:bg-gray-50'
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <span className={`font-medium truncate ${isSelected ? 'text-blue-700' : 'text-gray-700'}`}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={`font-medium truncate flex-1 min-w-0 ${isSelected ? 'text-blue-700' : 'text-gray-700'}`}>
                             {record.编号 || record.id || `记录 ${idx + 1}`}
                           </span>
                           {isSelected && (
-                            <span className="text-[10px] px-1.5 py-0.5 bg-blue-500 text-white rounded">
+                            <span className="text-[10px] px-1.5 py-0.5 bg-blue-500 text-white rounded flex-shrink-0">
                               已选
                             </span>
                           )}
