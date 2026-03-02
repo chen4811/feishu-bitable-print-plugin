@@ -357,9 +357,37 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   const [selectedRecords, setSelectedRecords] = useState<SelectedRecord[]>([]);
   const [availableRecords, setAvailableRecords] = useState<Record<string, any>[]>([]);
 
+  // 监听 selectedRecords 变化
+  useEffect(() => {
+    console.log('[TemplatePreview] selectedRecords 变化:', {
+      count: selectedRecords.length,
+      ids: selectedRecords.map(r => r.id),
+      编号s: selectedRecords.map(r => r.data?.编号)
+    });
+  }, [selectedRecords]);
+
+  // 监听 availableRecords 变化
+  useEffect(() => {
+    console.log('[TemplatePreview] availableRecords 变化:', {
+      count: availableRecords.length,
+      ids: availableRecords.map(r => r.id),
+      编号s: availableRecords.map(r => r.编号)
+    });
+  }, [availableRecords]);
+
   // 加载模板列表
   useEffect(() => {
-    fetchTemplates().catch(err => {
+    console.log('[TemplatePreview] 开始加载模板列表...');
+    fetchTemplates().then(() => {
+      const loadedTemplates = useTemplateStore.getState().templates;
+      console.log('[TemplatePreview] 模板列表加载完成:', loadedTemplates.map(t => ({ 
+        id: t.id, 
+        name: t.name, 
+        userId: (t as any).user_id,
+        hasComponents: !!t.data?.components?.length,
+        componentCount: t.data?.components?.length || 0
+      })));
+    }).catch(err => {
       console.error('[TemplatePreview] 加载模板列表失败:', err);
     });
   }, [fetchTemplates]);
@@ -367,11 +395,13 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   // 初始化：设置飞书环境状态并初始化 SDK，添加选中变化监听器
   useEffect(() => {
     const init = async () => {
+      console.log('[TemplatePreview] 初始化飞书环境...');
       // 先初始化 SDK
       await feishuEnv.init();
       
       // 更新状态
       const isReady = feishuEnv.isFeishuEnvironment();
+      console.log('[TemplatePreview] 飞书环境状态:', isReady ? '就绪' : '未就绪');
       setIsFromFeishu(isReady);
       
       // 如果初始化成功，获取一次记录
@@ -380,17 +410,23 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         
         // 注册选中变化监听器 - 当用户在多维表格中点击行时自动刷新
         const unsubscribe = onSelectionChange((event) => {
-          console.log('[TemplatePreview] 选中变化事件:', event);
+          console.log('[TemplatePreview] ====== 选中变化事件触发 ======');
+          console.log('[TemplatePreview] 事件数据:', JSON.stringify(event, null, 2));
           if (event?.data?.recordId) {
+            console.log('[TemplatePreview] 检测到 recordId:', event.data.recordId);
             // 延迟一下再获取，确保飞书 SDK 已更新内部状态
             setTimeout(() => {
+              console.log('[TemplatePreview] 延迟执行 fetchSelectedRecordsFromEnv');
               fetchSelectedRecordsFromEnv();
             }, 100);
+          } else {
+            console.log('[TemplatePreview] 事件中没有 recordId，忽略');
           }
         });
         
         // 清理函数
         return () => {
+          console.log('[TemplatePreview] 清理选中变化监听器');
           unsubscribe();
         };
       }
@@ -401,8 +437,10 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
   // 从 feishu-env 获取选中记录
   const fetchSelectedRecordsFromEnv = useCallback(async () => {
+    console.log('[TemplatePreview] fetchSelectedRecordsFromEnv 被调用');
     try {
       const selRecords = await feishuEnv.getSelectedRecords();
+      console.log('[TemplatePreview] 飞书返回记录数:', selRecords.length);
       
       if (selRecords.length > 0) {
         // 转换格式
@@ -411,25 +449,39 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           id: record.id,
           _rowIndex: index,
         }));
+        
+        console.log('[TemplatePreview] 格式化后的记录:', formattedRecords.map((r: any) => ({ 
+          id: r.id, 
+          编号: r.编号,
+          简述: r.简述?.slice(0, 20) 
+        })));
 
         setRecords(formattedRecords);
         setCurrentIndex(0);
         
         // 追加到可用记录列表（而不是替换），避免覆盖之前的数据
         setAvailableRecords(prev => {
+          console.log('[TemplatePreview] 当前 availableRecords 数量:', prev.length);
           const newRecords = [...prev];
+          let addedCount = 0;
           formattedRecords.forEach(record => {
             // 检查是否已存在
             if (!newRecords.some(r => r.id === record.id)) {
               newRecords.push(record);
+              addedCount++;
+            } else {
+              console.log('[TemplatePreview] 记录已存在，跳过:', record.id);
             }
           });
+          console.log('[TemplatePreview] 新增长记录数:', addedCount, '新的 availableRecords 总数:', newRecords.length);
           return newRecords;
         });
         
         if (showDebugInfo) {
           setDebugInfo(`选中记录: ${JSON.stringify(selRecords.map(r => ({ id: r.id, fields: r.fields })), null, 2)}`);
         }
+      } else {
+        console.log('[TemplatePreview] 飞书未返回任何记录');
       }
     } catch (err) {
       console.error('[TemplatePreview] 获取选中记录失败:', err);
@@ -438,9 +490,15 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   
   // 添加记录到选中列表（防重复）
   const addRecordToSelection = useCallback((record: Record<string, any>) => {
+    console.log('[TemplatePreview] 尝试添加记录:', { 
+      id: record.id, 
+      编号: record.编号
+    });
+    
     setSelectedRecords(prev => {
       // 检查是否已存在
       if (prev.some(r => r.id === record.id)) {
+        console.log('[TemplatePreview] 记录已存在，跳过:', record.id);
         return prev;
       }
       // 添加到列表
@@ -449,13 +507,20 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         data: record,
         addedAt: Date.now(),
       };
-      return [...prev, newRecord];
+      const newList = [...prev, newRecord];
+      console.log('[TemplatePreview] 记录已添加，新列表长度:', newList.length, '新记录:', newRecord.id);
+      return newList;
     });
   }, []);
   
   // 从选中列表移除记录
   const removeRecordFromSelection = useCallback((recordId: string) => {
-    setSelectedRecords(prev => prev.filter(r => r.id !== recordId));
+    console.log('[TemplatePreview] 尝试移除记录:', recordId);
+    setSelectedRecords(prev => {
+      const newList = prev.filter(r => r.id !== recordId);
+      console.log('[TemplatePreview] 记录已移除，新列表长度:', newList.length);
+      return newList;
+    });
   }, []);
   
   // 清空选中列表
@@ -1109,6 +1174,12 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                       <button
                         key={record.id || idx}
                         onClick={() => {
+                          console.log('[TemplatePreview] 数据卡片被点击:', { 
+                            id: record.id, 
+                            编号: record.编号,
+                            isSelected,
+                            currentSelectedRecordsCount: selectedRecords.length 
+                          });
                           if (isSelected) {
                             removeRecordFromSelection(record.id);
                           } else {
