@@ -407,8 +407,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       if (selRecords.length > 0) {
         // 转换格式
         const formattedRecords = selRecords.map((record, index) => ({
-          id: record.id,
           ...record.fields,
+          id: record.id,
           _rowIndex: index,
         }));
 
@@ -500,8 +500,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       if (records.length > 0) {
         // 转换格式
         const formattedRecords = records.map((record, index) => ({
-          id: record.id,
           ...record.fields,
+          id: record.id,
           _rowIndex: index,
         }));
 
