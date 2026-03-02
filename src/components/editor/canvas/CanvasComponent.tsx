@@ -236,6 +236,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   
   // 表格 hover 状态 - 用于控制工具栏显示
   const [isTableHovered, setIsTableHovered] = useState(false);
+  // 表格工具栏延迟隐藏定时器
+  const tableToolbarTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // 表格单元格选择状态（用于拖动选择）
   const [cellSelection, setCellSelection] = useState<{
@@ -273,6 +275,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       if (rowMenuTimeoutRef.current) clearTimeout(rowMenuTimeoutRef.current);
       if (colMenuTimeoutRef.current) clearTimeout(colMenuTimeoutRef.current);
       if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
+      if (tableToolbarTimeoutRef.current) clearTimeout(tableToolbarTimeoutRef.current);
     };
   }, []);
 
@@ -1951,8 +1954,20 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
           <div 
             className="relative" 
             onDoubleClick={handleDoubleClickTable}
-            onMouseEnter={() => setIsTableHovered(true)}
-            onMouseLeave={() => setIsTableHovered(false)}
+            onMouseEnter={() => {
+              // 取消之前的隐藏定时器
+              if (tableToolbarTimeoutRef.current) {
+                clearTimeout(tableToolbarTimeoutRef.current);
+                tableToolbarTimeoutRef.current = null;
+              }
+              setIsTableHovered(true);
+            }}
+            onMouseLeave={() => {
+              // 延迟3秒后隐藏工具栏
+              tableToolbarTimeoutRef.current = setTimeout(() => {
+                setIsTableHovered(false);
+              }, 3000);
+            }}
           >
             <div className="absolute -top-9 right-0 z-10">
               <HoverToolbar
