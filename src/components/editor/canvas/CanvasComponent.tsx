@@ -500,7 +500,14 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   const handleTextBlur = () => {
     setIsEditing(false);
     if (component.type === 'text') {
-      updateComponent(component.id, { content: editContent });
+      // 确保保存内容时保留 width 和 height
+      const textComp = component as any;
+      updateComponent(component.id, { 
+        content: editContent,
+        // 显式保留 width 和 height，防止它们被重置
+        ...(textComp.width && { width: textComp.width }),
+        ...(textComp.height && { height: textComp.height }),
+      });
     }
   };
 
@@ -1001,7 +1008,13 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         // 如果正在编辑文本，先退出编辑并保存
         if (isEditing && component.type === 'text') {
           setIsEditing(false);
-          updateComponent(component.id, { content: editContent });
+          const textComp = component as any;
+          updateComponent(component.id, { 
+            content: editContent,
+            // 显式保留 width 和 height，防止它们被重置
+            ...(textComp.width && { width: textComp.width }),
+            ...(textComp.height && { height: textComp.height }),
+          });
         }
         
         // 取消选中当前组件
