@@ -158,6 +158,11 @@ const extractFeishuCellValue = (cellData: any): string => {
 
 // 格式化字段值的通用函数
 const formatFieldValue = (key: string, value: any): string => {
+  // 调试日志：显示字段名和原始值
+  if (key.includes('状态') || key.includes('当前')) {
+    console.log(`[formatFieldValue] 字段: ${key}, 原始值:`, value, '类型:', typeof value, '是否数组:', Array.isArray(value));
+  }
+  
   // 处理日期相关字段
   if (key.includes('日期') || key.includes('date') || key.includes('Date') || key.includes('time') || key.includes('Time')) {
     return formatTimestamp(value);

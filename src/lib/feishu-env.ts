@@ -828,6 +828,7 @@ export async function getSelectedRecords(): Promise<BitableRecord[]> {
 
 // 字段类型常量（根据飞书开放平台文档）
 const FIELD_TYPES = {
+  FLOW_STATUS: 0,     // 流程状态字段（系统字段）
   TEXT: 1,           // 文本
   NUMBER: 2,         // 数字
   SINGLE_SELECT: 3,   // 单选
@@ -855,10 +856,12 @@ function processRecordData(recordData: any, fieldMetaList: any[]): BitableRecord
   
   const { fields } = recordData;
   
-  // 创建字段 ID 到字段名称的映射
+  // 创建字段 ID 到字段元信息的映射
+  const fieldMetaMap: Record<string, any> = {};
   const fieldMap: Record<string, string> = {};
   fieldMetaList?.forEach((field: any) => {
     fieldMap[field.id] = field.name;
+    fieldMetaMap[field.id] = field;
   });
   
   const formattedData: Record<string, unknown> = {};
@@ -867,14 +870,23 @@ function processRecordData(recordData: any, fieldMetaList: any[]): BitableRecord
   // 这样 formatFieldValue 才能正确处理流程字段
   for (const [fieldId, rawValue] of Object.entries(fields)) {
     const fieldName = fieldMap[fieldId] || fieldId;
+    const fieldMeta = fieldMetaMap[fieldId];
     
     // 调试专用：打印特定字段的详细信息
     if (fieldName === '年度' || fieldName === '接收单位' || fieldName === '发送类型' || fieldName === '当前状态') {
-      debugLog(`🔍 [${fieldName}字段调试] 原始数据: ${JSON.stringify(rawValue)}`);
+      debugLog(`🔍 [${fieldName}字段调试] 原始数据: ${JSON.stringify(rawValue)}, 类型: ${fieldMeta?.type}`);
     }
     
-    // 直接保存原始值，让 formatFieldValue 来处理
-    formattedData[fieldName] = rawValue;
+    // 特殊处理 Type 0 流程状态字段
+    if (fieldMeta?.type === FIELD_TYPES.FLOW_STATUS && (rawValue === null || rawValue === undefined)) {
+      debugLog(`⚠️  [${fieldName}] 是流程状态字段(Type 0)但值为空，尝试特殊处理...`);
+      // 对于流程字段，如果不通过标准API返回，我们保留null
+      // 后续在 formatFieldValue 中会显示"未设置"
+      formattedData[fieldName] = null;
+    } else {
+      // 直接保存原始值，让 formatFieldValue 来处理
+      formattedData[fieldName] = rawValue;
+    }
   }
   
   debugLog('processRecordData 处理完成:', formattedData);
