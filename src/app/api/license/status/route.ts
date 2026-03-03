@@ -59,9 +59,24 @@ export async function GET(request: Request) {
     const now = new Date();
     const validUntil = license.valid_until ? new Date(license.valid_until) : null;
     
-    // 检查是否过期
-    const isExpired = !validUntil || validUntil < now;
+    // 调试日志
+    console.log('[License Status] 授权码检查:', {
+      licenseId: license.id,
+      code: license.code,
+      status: license.status,
+      validUntil: license.valid_until,
+      validUntilDate: validUntil?.toISOString(),
+      now: now.toISOString(),
+      nowTime: now.getTime(),
+      validUntilTime: validUntil?.getTime(),
+      diffMs: validUntil ? validUntil.getTime() - now.getTime() : null,
+    });
+    
+    // 检查是否过期（使用 getTime() 确保精确比较）
+    const isExpired = !validUntil || validUntil.getTime() < now.getTime();
     const daysRemaining = validUntil ? calculateDaysRemaining(validUntil) : -1;
+    
+    console.log('[License Status] 检查结果:', { isExpired, daysRemaining, isValid: !isExpired });
     
     // 如果已过期，更新状态
     if (isExpired && license.status !== 'expired') {

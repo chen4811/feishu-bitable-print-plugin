@@ -159,23 +159,25 @@ export async function GET(request: Request) {
     }
     
     // 查询有效授权码（状态为active且未过期）
+    const now = new Date();
+    const nowIsoString = now.toISOString();
+    
     const { data: licenses, error: licenseError } = await client
       .from('plugin_licenses')
       .select('*')
       .eq('bound_user_id', feishuUserId)
       .eq('status', 'active')
-      .gt('valid_until', new Date().toISOString()); // 确保未过期
+      .gt('valid_until', nowIsoString); // 确保未过期
 
     if (licenseError) {
       console.error('[Feishu OAuth Callback API] 检查有效授权码失败:', licenseError);
     }
 
-    // 过滤掉已过期但状态未更新的授权码
-    const now = new Date();
+    // 过滤掉已过期但状态未更新的授权码（双重检查）
     const validLicenses = licenses?.filter(l => {
       if (!l.valid_until) return false;
       const validUntil = new Date(l.valid_until);
-      return validUntil > now;
+      return validUntil.getTime() > now.getTime();
     });
 
     const hasAuthorizations = validLicenses && validLicenses.length > 0;

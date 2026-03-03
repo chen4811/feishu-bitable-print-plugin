@@ -36,7 +36,7 @@ export default function PrintPluginApp() {
     }
   }, [isLoggedIn, hasAuthorizations, router]);
 
-  // 验证授权码状态（确保 hasAuthorizations 是最新的）
+  // 验证授权码状态（确保 hasAuthorizations 是最新的）- 只在登录后检查一次
   useEffect(() => {
     if (!isLoggedIn || !user?.id) {
       return;
@@ -67,7 +67,8 @@ export default function PrintPluginApp() {
     };
 
     checkLicenseStatus();
-  }, [isLoggedIn, user?.id, hasAuthorizations, setHasAuthorizations]);
+    // 注意：只在登录状态变化时检查，不依赖 hasAuthorizations 避免循环
+  }, [isLoggedIn, user?.id]);
 
   // 初始化字段数据并清理旧的 localStorage 数据
   useEffect(() => {
