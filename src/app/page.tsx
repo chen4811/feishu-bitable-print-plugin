@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useEditorStore } from '@/store/editorStore';
 import { useUserStore } from '@/store/userStore';
@@ -24,60 +24,17 @@ export default function PrintPluginApp() {
 
   // 计算登录状态
   const isLoggedIn = !!token && !!user;
-  
-  // 使用 ref 确保授权检查只运行一次
-  const licenseCheckedRef = useRef(false);
 
   // 移除了频繁的 console.log，避免性能问题
 
   // 检查登录状态
   useEffect(() => {
-    // 如果用户退出登录，重置授权检查标记
     if (!isLoggedIn) {
-      licenseCheckedRef.current = false;
       router.push('/login');
     } else if (!hasAuthorizations) {
       router.push('/bind-auth');
     }
   }, [isLoggedIn, hasAuthorizations, router]);
-
-  // 验证授权码状态（确保 hasAuthorizations 是最新的）- 只在登录后检查一次
-  useEffect(() => {
-    if (!isLoggedIn || !user?.id || licenseCheckedRef.current) {
-      return;
-    }
-
-    const checkLicenseStatus = async () => {
-      try {
-        console.log('[PrintPluginApp] 开始检查授权状态');
-        licenseCheckedRef.current = true; // 标记已检查
-        
-        const response = await fetch(`/api/license/status?userId=${user.id}`);
-        const result = await response.json();
-        
-        console.log('[PrintPluginApp] 授权状态检查结果:', result);
-        
-        if (result.success) {
-          const { isValid, isExpired } = result.data;
-          
-          // 如果授权已过期但前端状态显示有授权，则更新状态
-          if (isExpired && hasAuthorizations) {
-            console.log('[PrintPluginApp] 授权已过期，更新状态');
-            setHasAuthorizations(false);
-          }
-          // 如果授权有效但前端状态显示无授权，则更新状态
-          else if (isValid && !hasAuthorizations) {
-            console.log('[PrintPluginApp] 授权有效，更新状态');
-            setHasAuthorizations(true);
-          }
-        }
-      } catch (error) {
-        console.error('[PrintPluginApp] 检查授权状态失败:', error);
-      }
-    };
-
-    checkLicenseStatus();
-  }, [isLoggedIn, user?.id]);
 
   // 初始化字段数据并清理旧的 localStorage 数据
   useEffect(() => {
