@@ -1765,6 +1765,38 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     toast.success(`已打开批量打印窗口，共 ${selectedRecords.length} 条记录`);
   }, [selectedTemplate, selectedRecords, layoutMode, licenseState.isValid]);
 
+  // 处理授权码激活成功
+  const handleLicenseActivated = useCallback(() => {
+    if (feishuUserId) {
+      refreshLicense(feishuUserId);
+    }
+  }, [feishuUserId, refreshLicense]);
+
+  // 如果授权检查尚未完成，显示加载状态
+  if (!isLicenseChecked || isLicenseLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">正在检查授权状态...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 如果需要输入授权码（在飞书环境下且没有有效授权），显示授权码输入界面
+  if (isFeishuEnvironment && licenseState.requireInput) {
+    return (
+      <LicenseGate
+        userId={feishuUserId || 'unknown'}
+        userName={feishuUserName || '飞书用户'}
+        onActivated={handleLicenseActivated}
+        isExpired={licenseState.isExpired}
+        expiredMessage={licenseState.isExpired ? '您的授权已过期，请输入新的授权码继续使用' : '请输入授权码以继续使用插件'}
+      />
+    );
+  }
+
   return (
     <div className="print-wrapper h-full flex gap-3 p-3 overflow-hidden">
       {/* 左侧：模板列表 - 减小宽度 */}
