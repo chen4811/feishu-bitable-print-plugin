@@ -311,8 +311,11 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
     maxWidth: component.layout?.width || '100%',
     whiteSpace: 'pre-wrap',
     wordWrap: 'break-word',
-    overflow: 'hidden',
+    overflowWrap: 'break-word',
+    overflow: 'visible',
     boxSizing: 'border-box',
+    height: 'auto',
+    minHeight: 'auto',
   };
 
   // 安全地添加样式属性 - 同时兼容 style 和 textStyle 的字段命名

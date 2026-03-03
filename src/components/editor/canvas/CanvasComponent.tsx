@@ -1711,7 +1711,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               className="relative cursor-text whitespace-pre-wrap"
               style={{
                 width: textComp.width ? `${textComp.width}px` : '100%',
-                height: textComp.height ? `${textComp.height}px` : 'auto',
+                height: 'auto',
                 minHeight: '40px',
                 padding: '0.5rem',
                 fontSize: `${textComp.textStyle?.fontSize || styleConfig.fontSize}px`,
@@ -1760,7 +1760,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
             >
               <textarea
                 ref={textareaRef}
-                className="w-full border-0 outline-none resize-none bg-transparent overflow-hidden"
+                className="w-full border-0 outline-none resize-none bg-transparent overflow-visible"
                 style={{
                   fontSize: '1em',
                   fontWeight: 'inherit',
@@ -1807,7 +1807,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
             className="relative cursor-text whitespace-pre-wrap"
             style={{
               width: textComp.width ? `${textComp.width}px` : '100%',
-              height: textComp.height ? `${textComp.height}px` : 'auto',
+              height: 'auto',
               minHeight: '40px',
               padding: '0.5rem',
               fontSize: `${textComp.textStyle?.fontSize || styleConfig.fontSize}px`,
