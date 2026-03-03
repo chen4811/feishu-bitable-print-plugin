@@ -30,8 +30,8 @@ async function verifyAdmin(request: Request) {
     return { error: '无管理员权限', status: 403 };
   }
 
-  // 获取管理员ID (adminId)
-  const adminId = decoded.adminId;
+  // 获取管理员ID (兼容新旧格式：优先使用 adminId，回退到 userId)
+  const adminId = (decoded as any).adminId || (decoded as any).userId;
   if (!adminId) {
     return { error: 'Token 格式错误', status: 401 };
   }
