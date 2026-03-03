@@ -108,6 +108,52 @@ const formatTimestamp = (value: any): string => {
   return String(value);
 };
 
+// 通用函数：从飞书 SDK 返回的复杂单元格数据中提取纯文本/值
+const extractFeishuCellValue = (cellData: any): string => {
+  // 1. 处理空值
+  if (cellData === null || cellData === undefined) {
+    return '';
+  }
+
+  // 2. 如果是数组 (飞书最常见的情况：文本、日期、人员、单选、多选等)
+  if (Array.isArray(cellData)) {
+    if (cellData.length === 0) return ''; // 空数组
+    
+    // 多选字段：遍历数组提取每个元素的文本并拼接
+    const values = cellData.map(item => {
+      if (typeof item === 'object' && item !== null) {
+        // 优先级：text > name > value > url > id
+        return item.text || item.name || item.value || item.url || String(item.id || '');
+      }
+      return String(item);
+    });
+    
+    return values.filter(v => v !== '').join(', ');
+  }
+
+  // 3. 如果是对象 (数组里的元素，或者直接返回的对象)
+  if (typeof cellData === 'object' && cellData !== null) {
+    // 优先级：text (文本) > name (选项名) > value (数值/布尔) > enumValue (枚举值) > label (标签) > url (附件) > id
+    if (cellData.text !== undefined && cellData.text !== '') return cellData.text;
+    if (cellData.name !== undefined && cellData.name !== '') return cellData.name;
+    if (cellData.value !== undefined && cellData.value !== '') return String(cellData.value);
+    if (cellData.enumValue !== undefined && cellData.enumValue !== '') return cellData.enumValue;
+    if (cellData.label !== undefined && cellData.label !== '') return cellData.label;
+    if (cellData.url !== undefined) return cellData.url;
+    if (cellData.id !== undefined) return String(cellData.id);
+    
+    // 如果都找不到，返回 JSON 字符串以便调试
+    try {
+      return JSON.stringify(cellData).slice(0, 25);
+    } catch (e) {
+      return '[对象]';
+    }
+  }
+
+  // 4. 基础类型 (字符串、数字、布尔)，直接返回
+  return String(cellData);
+};
+
 // 格式化字段值的通用函数
 const formatFieldValue = (key: string, value: any): string => {
   // 处理日期相关字段
@@ -115,87 +161,20 @@ const formatFieldValue = (key: string, value: any): string => {
     return formatTimestamp(value);
   }
   
-  // 处理状态/流程字段
-  if (key.includes('状态') || key.includes('status') || key.includes('Status') || key.includes('流程') || key.includes('workflow') || key.includes('Workflow')) {
-    if (value === null || value === undefined || value === '') {
+  // 处理所有其他字段（包括状态/流程、单选、多选等）
+  // 使用统一的 extractFeishuCellValue 函数处理所有字段类型
+  const extractedValue = extractFeishuCellValue(value);
+  
+  // 对空值做特殊处理
+  if (extractedValue === null || extractedValue === undefined || extractedValue === '') {
+    // 状态/流程字段显示"未设置"，其他显示"-"
+    if (key.includes('状态') || key.includes('status') || key.includes('Status') || key.includes('流程') || key.includes('workflow') || key.includes('Workflow')) {
       return '未设置';
     }
-    
-    // 根据飞书多维表格流程字段处理
-    // 流程字段通常是单选字段实现，数据格式为数组
-    if (Array.isArray(value) && value.length > 0) {
-      const option = value[0];
-      if (option && typeof option === 'object') {
-        // 优先提取 text，其次 name，最后 id
-        if (option.text !== undefined && option.text !== null && option.text !== '') {
-          return String(option.text);
-        }
-        if (option.name !== undefined && option.name !== null && option.name !== '') {
-          return String(option.name);
-        }
-        if (option.id !== undefined && option.id !== null) {
-          return String(option.id);
-        }
-        // 如果以上都没有，返回选项本身
-        return String(option);
-      }
-      return String(option);
-    }
-    
-    // 如果是对象类型（非数组格式）
-    if (typeof value === 'object' && value !== null) {
-      // 尝试从常见的流程字段结构中提取值
-      if (value.text !== undefined && value.text !== null && value.text !== '') {
-        return String(value.text);
-      }
-      if (value.name !== undefined && value.name !== null && value.name !== '') {
-        return String(value.name);
-      }
-      if (value.label !== undefined && value.label !== null && value.label !== '') {
-        return String(value.label);
-      }
-      if (value.title !== undefined && value.title !== null && value.title !== '') {
-        return String(value.title);
-      }
-      // 如果有值但结构不明确，返回JSON字符串的前20个字符
-      try {
-        return JSON.stringify(value).slice(0, 25);
-      } catch (e) {
-        return '[对象]';
-      }
-    }
-    
-    return String(value);
-  }
-  
-  // 处理其他类型的字段
-  if (value === null || value === undefined || value === '') {
     return '-';
   }
   
-  // 处理数组类型的字段（如多选、人员等）
-  if (Array.isArray(value)) {
-    if (value.length === 0) {
-      return '未设置';
-    }
-    // 处理人员字段
-    return value.map((item: any) => {
-      if (item && typeof item === 'object') {
-        return item.name || item.text || item.id || String(item);
-      }
-      return String(item);
-    }).join(', ');
-  }
-  
-  if (typeof value === 'object') {
-    // 如果是对象，尝试友好显示
-    try {
-      return JSON.stringify(value).slice(0, 25);
-    } catch (e) {
-      return '[对象]';
-    }
-  }
-  return String(value);
+  return extractedValue;
 };
 
 // 检测模板中的变量 - 支持 [字段名] 和 {{字段名}} 两种格式
