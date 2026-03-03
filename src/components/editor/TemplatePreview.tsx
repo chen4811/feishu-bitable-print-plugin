@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Printer, ChevronLeft, ChevronRight, Eye, RefreshCw, FileText, Pencil, Download, ScanSearch, X, Plus, LayoutGrid, List, Tag, Layout } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -710,8 +710,17 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         
         // 注册选中变化监听器
         const unsubscribe = onSelectionChange((event) => {
+          console.log('[TP] 飞书选择变化事件:', event.data);
+          
+          // 表格切换时重新获取表格信息
+          if (event?.data?.tableId) {
+            console.log('[TP] 检测到表格变化，重新获取表格信息:', event.data.tableId);
+            fetchCurrentTableInfo();
+          }
+          
+          // 记录选中变化时获取记录
           if (event?.data?.recordId) {
-            console.log('[TP] 飞书选中变化:', event.data.recordId);
+            console.log('[TP] 记录选中变化:', event.data.recordId);
             setTimeout(() => fetchSelectedRecordsFromEnv(), 100);
           }
         });
@@ -809,10 +818,17 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   }, []);
   
   // 监听模板和表格信息变化，更新匹配状态并处理缓存
+  const prevMatchedRef = useRef<boolean>(true);
+  
   useEffect(() => {
     const matched = checkTableMatch(selectedTemplate, currentTableInfo);
-    const wasMatched = isTableMatched;
-    setIsTableMatched(matched);
+    const wasMatched = prevMatchedRef.current;
+    
+    // 只有匹配状态真正变化时才更新
+    if (matched !== isTableMatched) {
+      setIsTableMatched(matched);
+      prevMatchedRef.current = matched;
+    }
     
     // 如果从不匹配变为匹配，恢复缓存的数据
     if (matched && !wasMatched && cachedRecords.length > 0) {
@@ -831,13 +847,13 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       setSelectedRecords([]);
     }
     
-    if (!matched) {
-      console.log('[TP] 表格不匹配:', {
-        templateTableId: selectedTemplate?.data?.tableId,
-        currentTableId: currentTableInfo.tableId,
-      });
-    }
-  }, [selectedTemplate, currentTableInfo, checkTableMatch, isTableMatched, cachedRecords, availableRecords]);
+    console.log('[TP] 表格匹配检查:', {
+      matched,
+      templateTableId: selectedTemplate?.data?.tableId,
+      currentTableId: currentTableInfo.tableId,
+      currentTableName: currentTableInfo.tableName,
+    });
+  }, [selectedTemplate, currentTableInfo, checkTableMatch]);
   
   // 添加记录到选中列表（防重复，带表格匹配检查）
   const addRecordToSelection = useCallback((record: Record<string, any>) => {
