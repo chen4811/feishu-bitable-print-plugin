@@ -673,6 +673,17 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     tableId: null 
   });
   
+  // 请求锁：防止重复点击导致的数据重复提取
+  const requestLockRef = useRef<{
+    isLocked: boolean;
+    lastRequestTime: number;
+    minInterval: number; // 最小请求间隔（毫秒）
+  }>({
+    isLocked: false,
+    lastRequestTime: 0,
+    minInterval: 500, // 500ms 内不允许重复请求
+  });
+  
   // 忽略列表：存储用户手动删除的记录 ID，避免被飞书事件恢复
   const [ignoredRecordIds, setIgnoredRecordIds] = useState<Set<string>>(new Set());
   
@@ -721,6 +732,24 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
   // 获取单条记录（用于点击行时添加）
   const fetchSingleRecord = useCallback(async (recordId: string, tableId: string) => {
+    // 请求锁检查：防止重复点击
+    const now = Date.now();
+    const lockInfo = requestLockRef.current;
+    
+    if (lockInfo.isLocked) {
+      console.log('[TP] 请求被锁定，跳过重复调用');
+      return;
+    }
+    
+    if (now - lockInfo.lastRequestTime < lockInfo.minInterval) {
+      console.log('[TP] 请求过于频繁，跳过');
+      return;
+    }
+    
+    // 获取锁
+    lockInfo.isLocked = true;
+    lockInfo.lastRequestTime = now;
+    
     console.log('[TP] ========== 获取单条记录开始 ==========');
     console.log('[TP] recordId:', recordId, 'tableId:', tableId);
     
@@ -729,6 +758,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     if (!isMatched && selectedTemplate) {
       console.log('[TP] 表格不匹配，跳过');
       toast.error('当前多维表格与模板不匹配，无法载入数据');
+      lockInfo.isLocked = false;
       return;
     }
     
@@ -853,16 +883,38 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     } catch (err) {
       console.error('[TP] 获取单条记录失败:', err);
       toast.error('获取记录失败');
+    } finally {
+      // 释放锁
+      requestLockRef.current.isLocked = false;
     }
     console.log('[TP] ========== 获取单条记录结束 ==========');
   }, [selectedTemplate, availableRecords, ignoredRecordIds]);
 
   // 从 feishu-env 获取选中记录（多选时使用）
   const fetchSelectedRecordsFromEnv = useCallback(async () => {
+    // 请求锁检查：防止重复点击
+    const now = Date.now();
+    const lockInfo = requestLockRef.current;
+    
+    if (lockInfo.isLocked) {
+      console.log('[TP] 请求被锁定，跳过重复调用');
+      return;
+    }
+    
+    if (now - lockInfo.lastRequestTime < lockInfo.minInterval) {
+      console.log('[TP] 请求过于频繁，跳过');
+      return;
+    }
+    
+    // 获取锁
+    lockInfo.isLocked = true;
+    lockInfo.lastRequestTime = now;
+    
     // 检查表格匹配状态，如果不匹配则不获取记录
     if (!isTableMatched && selectedTemplate) {
       console.log('[TP] 表格不匹配，跳过获取飞书记录');
       toast.error('当前表格与模板不匹配，无法载入数据');
+      lockInfo.isLocked = false;
       return;
     }
     
@@ -949,6 +1001,9 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       }
     } catch (err) {
       console.error('[TP] 获取记录失败:', err);
+    } finally {
+      // 释放锁
+      requestLockRef.current.isLocked = false;
     }
   }, [isTableMatched, selectedTemplate, ignoredRecordIds]);
   
