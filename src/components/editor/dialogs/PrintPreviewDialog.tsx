@@ -99,6 +99,7 @@ const PrintComponentRenderer = ({
               records={record ? [record] : []}
               fields={fields || []}
               tagName="span"
+              textStyle={textStyle}
             />
           </Tag>
         );
@@ -114,6 +115,7 @@ const PrintComponentRenderer = ({
                 records={record ? [record] : []}
                 fields={fields || []}
                 tagName="span"
+                textStyle={textStyle}
               />
             </li>
           </ul>
@@ -129,6 +131,7 @@ const PrintComponentRenderer = ({
                 records={record ? [record] : []}
                 fields={fields || []}
                 tagName="span"
+                textStyle={textStyle}
               />
             </li>
           </ol>
@@ -143,6 +146,7 @@ const PrintComponentRenderer = ({
             records={record ? [record] : []}
             fields={fields || []}
             tagName="span"
+            textStyle={textStyle}
           />
         </div>
       );
@@ -176,6 +180,7 @@ const PrintComponentRenderer = ({
             records={record ? [record] : []}
             fields={fields || []}
             tagName="span"
+            textStyle={textStyle}
           />
         </Tag>
       );
@@ -210,6 +215,7 @@ const PrintComponentRenderer = ({
                 records={record ? [record] : []}
                 fields={fields || []}
                 tagName="span"
+                textStyle={textStyle}
               />
               {index < lines.length - 1 && <br />}
             </React.Fragment>
@@ -244,6 +250,7 @@ const PrintComponentRenderer = ({
                 records={record ? [record] : []}
                 fields={fields || []}
                 tagName="span"
+                textStyle={textStyle}
               />
             </li>
           )) : <li>列表组件</li>}

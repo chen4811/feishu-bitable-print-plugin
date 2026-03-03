@@ -64,6 +64,7 @@ function renderTextComponent(
         records={previewRecord ? [previewRecord] : []}
         fields={fields || []}
         tagName="span"
+        textStyle={textStyle}
       />
     );
     
@@ -87,6 +88,7 @@ function renderTextComponent(
             records={previewRecord ? [previewRecord] : []}
             fields={fields || []}
             tagName="span"
+            textStyle={textStyle}
           />
         </li>
       </ul>
@@ -102,6 +104,7 @@ function renderTextComponent(
             records={previewRecord ? [previewRecord] : []}
             fields={fields || []}
             tagName="span"
+            textStyle={textStyle}
           />
         </li>
       </ol>
@@ -115,6 +118,7 @@ function renderTextComponent(
         records={previewRecord ? [previewRecord] : []}
         fields={fields || []}
         tagName="span"
+        textStyle={textStyle}
       />
     </span>
   );
@@ -149,6 +153,7 @@ function renderHeadingComponent(
       records={previewRecord ? [previewRecord] : []}
       fields={fields || []}
       tagName="span"
+      textStyle={textStyle}
     />
   );
   
@@ -197,6 +202,7 @@ function renderParagraphComponent(
             records={previewRecord ? [previewRecord] : []}
             fields={fields || []}
             tagName="span"
+            textStyle={textStyle}
           />
           {index < lines.length - 1 && <br />}
         </React.Fragment>
@@ -243,6 +249,7 @@ function renderListComponent(
               records={previewRecord ? [previewRecord] : []}
               fields={fields || []}
               tagName="span"
+              textStyle={textStyle}
             />
           </li>
         );

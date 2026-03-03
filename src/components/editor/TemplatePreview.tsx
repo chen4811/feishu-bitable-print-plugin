@@ -215,19 +215,42 @@ const formatFieldValue = (key: string, value: any): string => {
 };
 
 // 格式化字段值为带样式的HTML（用于打印预览）
-const formatFieldValueToHTML = (key: string, value: any): string => {
+const formatFieldValueToHTML = (key: string, value: any, textStyle?: any): string => {
+  // 构建基础样式字符串
+  let baseStyleStr = '';
+  if (textStyle) {
+    const styleParts: string[] = [];
+    if (textStyle.fontSize) styleParts.push(`font-size: ${textStyle.fontSize}px`);
+    if (textStyle.bold) styleParts.push('font-weight: bold');
+    else if (textStyle.fontWeight) styleParts.push(`font-weight: ${textStyle.fontWeight}`);
+    if (textStyle.italic) styleParts.push('font-style: italic');
+    if (textStyle.color) styleParts.push(`color: ${textStyle.color}`);
+    if (textStyle.backgroundColor) styleParts.push(`background-color: ${textStyle.backgroundColor}`);
+    if (textStyle.align) styleParts.push(`text-align: ${textStyle.align}`);
+    if (textStyle.lineHeight) styleParts.push(`line-height: ${textStyle.lineHeight}`);
+    if (textStyle.underline) styleParts.push('text-decoration: underline');
+    else if (textStyle.textDecoration) styleParts.push(`text-decoration: ${textStyle.textDecoration}`);
+    if (textStyle.textTransform) styleParts.push(`text-transform: ${textStyle.textTransform}`);
+    baseStyleStr = styleParts.join('; ');
+  }
+  
   // 对空值做特殊处理
   if (value === null || value === undefined) {
     // 状态/流程字段显示"未设置"，其他显示"-"
+    const emptyStyle = baseStyleStr ? `style="${baseStyleStr}; color: #9ca3af;"` : 'style="color: #9ca3af;"';
     if (key.includes('状态') || key.includes('status') || key.includes('Status') || key.includes('流程') || key.includes('workflow') || key.includes('Workflow')) {
-      return '<span style="color: #9ca3af;">未设置</span>';
+      return `<span ${emptyStyle}>未设置</span>`;
     }
-    return '<span style="color: #9ca3af;">-</span>';
+    return `<span ${emptyStyle}>-</span>`;
   }
   
   // 处理日期相关字段
   if (key.includes('日期') || key.includes('date') || key.includes('Date') || key.includes('time') || key.includes('Time')) {
-    return formatTimestamp(value);
+    const dateValue = formatTimestamp(value);
+    if (baseStyleStr) {
+      return `<span style="${baseStyleStr}">${dateValue}</span>`;
+    }
+    return dateValue;
   }
   
   // 检查是否是流程选项（有颜色信息）
@@ -261,22 +284,30 @@ const formatFieldValueToHTML = (key: string, value: any): string => {
   }
   
   if (isWorkflowOption) {
+    // 合并基础样式和流程选项样式
+    const combinedStyle = [
+      baseStyleStr,
+      'display: inline-block',
+      'padding: 2px 8px',
+      'border-radius: 4px',
+      'font-size: 0.85em',
+      'font-weight: 500',
+      `color: ${optionColor}`,
+      `background-color: ${optionBgColor}`,
+      '-webkit-print-color-adjust: exact',
+      'print-color-adjust: exact'
+    ].filter(Boolean).join('; ');
+    
     // 生成带颜色样式的 HTML（类似 VariableTextRenderer）
-    return `<span style="
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 0.85em;
-      font-weight: 500;
-      color: ${optionColor};
-      background-color: ${optionBgColor};
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    ">${optionText}</span>`;
+    return `<span style="${combinedStyle}">${optionText}</span>`;
   }
   
-  // 对于普通字段，使用纯文本
-  return formatFieldValue(key, value);
+  // 对于普通字段，使用纯文本，但应用样式
+  const plainValue = formatFieldValue(key, value);
+  if (baseStyleStr) {
+    return `<span style="${baseStyleStr}">${plainValue}</span>`;
+  }
+  return plainValue;
 };
 
 // 检测模板中的变量 - 支持 [字段名] 和 {{字段名}} 两种格式
@@ -357,7 +388,7 @@ const replaceVariables = (text: string, data: Record<string, any>): string => {
 };
 
 // 替换文本中的变量为带样式的HTML - 用于打印预览（HTML版本）
-const replaceVariablesToHTML = (text: string, data: Record<string, any>): string => {
+const replaceVariablesToHTML = (text: string, data: Record<string, any>, textStyle?: any): string => {
   if (!text || typeof text !== 'string') return text;
 
   // 支持 [字段名]、[字段名:格式]、{{字段名}}、{{字段名:格式}}
@@ -371,7 +402,7 @@ const replaceVariablesToHTML = (text: string, data: Record<string, any>): string
     }
     
     // 使用 formatFieldValueToHTML 格式化字段值，特别是流程字段的颜色样式
-    return formatFieldValueToHTML(varName, value);
+    return formatFieldValueToHTML(varName, value, textStyle);
   });
 };
 
@@ -457,10 +488,13 @@ const renderTableComponent = (component: any, data: Record<string, any>): React.
 const renderComponentToHTML = (component: any, data: Record<string, any>): string => {
   if (!component) return '';
 
-  const { type, text, content, style = {} } = component;
+  const { type, text, content, style = {}, textStyle = {} } = component;
   
-  const processedText = text ? replaceVariablesToHTML(text, data) : '';
-  const processedContent = content ? replaceVariablesToHTML(content, data) : '';
+  // 兼容处理：编辑器中使用 textStyle，模板预览中可能使用 style
+  const actualTextStyle = Object.keys(textStyle).length > 0 ? textStyle : style;
+  
+  const processedText = text ? replaceVariablesToHTML(text, data, actualTextStyle) : '';
+  const processedContent = content ? replaceVariablesToHTML(content, data, actualTextStyle) : '';
   
   const styleStr = `
     position: relative;
@@ -506,7 +540,8 @@ const renderComponentToHTML = (component: any, data: Record<string, any>): strin
                       const rowSpan = cell.rowSpan ?? 1;
                       const colSpan = cell.colSpan ?? 1;
                       const content = cell.content || '';
-                      const processedContent = replaceVariablesToHTML(content, data);
+                      const cellStyle = cell.style || {};
+                      const processedContent = replaceVariablesToHTML(content, data, cellStyle);
                       return `
                         <td 
                           ${rowSpan > 1 ? `rowspan="${rowSpan}"` : ''}
