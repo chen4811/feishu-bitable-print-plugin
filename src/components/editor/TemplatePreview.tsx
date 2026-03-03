@@ -265,7 +265,9 @@ const replaceVariables = (text: string, data: Record<string, any>): string => {
     if (value === undefined || value === null) {
       return match; // 保留原变量格式
     }
-    return String(value);
+    
+    // 使用 formatFieldValue 格式化字段值，特别是流程字段和日期字段
+    return formatFieldValue(varName, value);
   });
 };
 
