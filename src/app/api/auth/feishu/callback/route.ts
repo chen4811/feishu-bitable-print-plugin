@@ -140,19 +140,24 @@ export async function GET(request: Request) {
     console.log('[Feishu OAuth Callback API] 数据库用户ID:', dbUser.id);
     
     // 查询该飞书用户绑定的所有授权码
+    console.log('[Feishu OAuth Callback API] 开始查询授权码，使用的 bound_user_id:', feishuUserId);
+    
     const { data: allLicenses, error: allError } = await client
       .from('plugin_licenses')
       .select('*')
       .eq('bound_user_id', feishuUserId);
     
-    console.log('[Feishu OAuth Callback API] 用户所有授权码:', allLicenses?.length || 0);
+    console.log('[Feishu OAuth Callback API] 用户所有授权码数量:', allLicenses?.length || 0);
     if (allLicenses && allLicenses.length > 0) {
       console.log('[Feishu OAuth Callback API] 所有授权码详情:', allLicenses.map(l => ({ 
+        id: l.id,
         code: l.code, 
         bound_user_id: l.bound_user_id, 
         status: l.status,
         valid_until: l.valid_until 
       })));
+    } else {
+      console.log('[Feishu OAuth Callback API] 没有找到绑定的授权码！');
     }
     if (allError) {
       console.error('[Feishu OAuth Callback API] 查询所有授权码失败:', allError);
@@ -161,6 +166,8 @@ export async function GET(request: Request) {
     // 查询有效授权码（状态为active且未过期）
     const now = new Date();
     const nowIsoString = now.toISOString();
+    
+    console.log('[Feishu OAuth Callback API] 当前时间:', nowIsoString);
     
     const { data: licenses, error: licenseError } = await client
       .from('plugin_licenses')
@@ -173,17 +180,34 @@ export async function GET(request: Request) {
       console.error('[Feishu OAuth Callback API] 检查有效授权码失败:', licenseError);
     }
 
+    console.log('[Feishu OAuth Callback API] 数据库查询返回的授权码数量:', licenses?.length || 0);
+    if (licenses && licenses.length > 0) {
+      console.log('[Feishu OAuth Callback API] 数据库查询返回的授权码:', licenses.map(l => ({ 
+        id: l.id,
+        code: l.code, 
+        bound_user_id: l.bound_user_id, 
+        status: l.status,
+        valid_until: l.valid_until
+      })));
+    }
+
     // 过滤掉已过期但状态未更新的授权码（双重检查）
     const validLicenses = licenses?.filter(l => {
-      if (!l.valid_until) return false;
+      if (!l.valid_until) {
+        console.log('[Feishu OAuth Callback API] 授权码缺少 valid_until，跳过:', l.code);
+        return false;
+      }
       const validUntil = new Date(l.valid_until);
-      return validUntil.getTime() > now.getTime();
+      const isValid = validUntil.getTime() > now.getTime();
+      console.log('[Feishu OAuth Callback API] 授权码', l.code, 'valid_until:', l.valid_until, '是否有效:', isValid);
+      return isValid;
     });
 
     const hasAuthorizations = validLicenses && validLicenses.length > 0;
-    console.log('[Feishu OAuth Callback API] 用户有效授权码数量:', hasAuthorizations ? validLicenses!.length : 0);
+    console.log('[Feishu OAuth Callback API] 最终有效授权码数量:', validLicenses?.length || 0);
+    console.log('[Feishu OAuth Callback API] hasAuthorizations 最终值:', hasAuthorizations);
     if (validLicenses && validLicenses.length > 0) {
-      console.log('[Feishu OAuth Callback API] 有效授权码详情:', validLicenses.map(l => ({ 
+      console.log('[Feishu OAuth Callback API] 最终有效授权码详情:', validLicenses.map(l => ({ 
         code: l.code, 
         bound_user_id: l.bound_user_id, 
         status: l.status,

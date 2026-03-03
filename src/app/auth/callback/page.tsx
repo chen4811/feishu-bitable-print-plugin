@@ -37,10 +37,12 @@ export default function AuthCallbackPage() {
         const hasAuthorizations = searchParams.get('hasAuthorizations') === 'true';
         const errorParam = searchParams.get('error');
 
+        console.log('[Auth Callback] 完整URL参数:', Object.fromEntries(searchParams.entries()));
         console.log('[Auth Callback] 从 cookie 获取 token:', token ? '存在' : '不存在');
         console.log('[Auth Callback] userId:', userId);
         console.log('[Auth Callback] name:', name);
-        console.log('[Auth Callback] hasAuthorizations:', hasAuthorizations);
+        console.log('[Auth Callback] hasAuthorizations 原始值:', searchParams.get('hasAuthorizations'));
+        console.log('[Auth Callback] hasAuthorizations 转换后:', hasAuthorizations);
 
         if (errorParam) {
           console.error('[Auth Callback] 收到错误:', errorParam);
