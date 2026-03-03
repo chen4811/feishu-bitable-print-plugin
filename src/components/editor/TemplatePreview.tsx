@@ -731,17 +731,18 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
   // 获取单条记录（用于点击行时添加）
   const fetchSingleRecord = useCallback(async (recordId: string, tableId: string) => {
+    console.log('[TP] ========== 获取单条记录开始 ==========');
+    console.log('[TP] recordId:', recordId, 'tableId:', tableId);
+    
     // 实时检查表格匹配状态（避免依赖过期的 isTableMatched 状态）
     const isMatched = checkTableMatch(selectedTemplate, tableId);
     if (!isMatched && selectedTemplate) {
-      console.log('[TP] 表格不匹配，跳过获取记录:', recordId, '当前表格:', tableId, '模板表格:', selectedTemplate.data?.tableId);
+      console.log('[TP] 表格不匹配，跳过');
       toast.error('当前多维表格与模板不匹配，无法载入数据');
       return;
     }
     
     try {
-      console.log('[TP] 获取单条记录:', recordId, '表格:', tableId);
-      
       // 检查是否在忽略列表中（用户手动删除过）
       if (ignoredRecordIds.has(recordId)) {
         console.log('[TP] 记录在忽略列表中，跳过:', recordId);
@@ -750,41 +751,63 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       
       // 检查是否已存在
       const isAlreadyAdded = availableRecords.some(r => r.id === recordId);
+      console.log('[TP] 是否已存在:', isAlreadyAdded, '当前记录数:', availableRecords.length);
+      
       if (isAlreadyAdded) {
         console.log('[TP] 记录已存在，跳过:', recordId);
         toast.info('该记录已在列表中');
         return;
       }
       
+      console.log('[TP] 开始调用 SDK...');
+      
       // 获取单条记录和字段元数据
       const { base } = await import('@lark-base-open/js-sdk');
-      const table = await base.getTable(tableId);
-      const record = await table.getRecordById(recordId);
+      console.log('[TP] SDK 导入成功');
       
-      // 获取字段列表以进行ID到名称的映射
-      const fieldMetaList = await table.getFieldMetaList();
+      const table = await base.getTable(tableId);
+      console.log('[TP] 获取表格成功');
+      
+      const record = await table.getRecordById(recordId);
+      console.log('[TP] 获取记录结果:', record ? '成功' : '为空', '类型:', typeof record);
       
       if (!record) {
         console.warn('[TP] 未找到记录:', recordId);
+        toast.error('未找到记录');
         return;
       }
       
+      console.log('[TP] 记录对象 keys:', Object.keys(record));
+      console.log('[TP] 记录 fields:', record.fields);
+      console.log('[TP] 记录 fields keys:', record.fields ? Object.keys(record.fields) : '无 fields');
+      
+      // 获取字段列表以进行ID到名称的映射
+      console.log('[TP] 开始获取字段元数据...');
+      const fieldMetaList = await table.getFieldMetaList();
+      console.log('[TP] 字段元数据数量:', fieldMetaList?.length || 0);
+      
       // 创建字段 ID 到字段名称的映射
       const fieldMap: Record<string, string> = {};
-      fieldMetaList?.forEach((field: any) => {
-        fieldMap[field.id] = field.name;
-      });
+      if (fieldMetaList && Array.isArray(fieldMetaList)) {
+        fieldMetaList.forEach((field: any) => {
+          fieldMap[field.id] = field.name;
+        });
+      }
+      
+      console.log('[TP] 字段映射表:', fieldMap);
       
       // 转换格式：将字段ID键转换为字段名键
       const formattedFields: Record<string, any> = {};
-      for (const [fieldId, value] of Object.entries(record.fields || {})) {
+      const rawFields = record.fields || {};
+      console.log('[TP] 开始遍历字段，原始字段数:', Object.keys(rawFields).length);
+      
+      for (const [fieldId, value] of Object.entries(rawFields)) {
         const fieldName = fieldMap[fieldId] || fieldId;
         formattedFields[fieldName] = value;
+        console.log(`[TP] 映射: ${fieldId} -> ${fieldName} =`, value);
       }
       
-      console.log('[TP] 字段映射:', fieldMap);
-      console.log('[TP] 原始字段:', record.fields);
-      console.log('[TP] 转换后字段:', formattedFields);
+      console.log('[TP] 转换后所有字段:', formattedFields);
       
       const formattedRecord = {
         ...formattedFields,
@@ -793,17 +816,18 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         _rowIndex: availableRecords.length,
       };
       
-      console.log('[TP] 格式化后记录:', formattedRecord);
+      console.log('[TP] 最终格式化记录:', formattedRecord);
       
       // 添加到列表
       setAvailableRecords(prev => [...prev, formattedRecord]);
-      console.log('[TP] 已添加记录:', recordId, '当前总数:', availableRecords.length + 1);
+      console.log('[TP] 记录已添加到列表');
       toast.success('已添加记录');
       
     } catch (err) {
       console.error('[TP] 获取单条记录失败:', err);
       toast.error('获取记录失败');
     }
+    console.log('[TP] ========== 获取单条记录结束 ==========');
   }, [selectedTemplate, availableRecords, ignoredRecordIds]);
 
   // 从 feishu-env 获取选中记录（多选时使用）
