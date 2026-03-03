@@ -756,22 +756,38 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         return;
       }
       
-      // 获取单条记录
+      // 获取单条记录和字段元数据
       const { base } = await import('@lark-base-open/js-sdk');
       const table = await base.getTable(tableId);
       const record = await table.getRecordById(recordId);
+      
+      // 获取字段列表以进行ID到名称的映射
+      const fieldMetaList = await table.getFieldMetaList();
       
       if (!record) {
         console.warn('[TP] 未找到记录:', recordId);
         return;
       }
       
-      // 转换格式
-      console.log('[TP] 原始记录数据:', record);
-      console.log('[TP] 记录字段:', record.fields);
+      // 创建字段 ID 到字段名称的映射
+      const fieldMap: Record<string, string> = {};
+      fieldMetaList?.forEach((field: any) => {
+        fieldMap[field.id] = field.name;
+      });
+      
+      // 转换格式：将字段ID键转换为字段名键
+      const formattedFields: Record<string, any> = {};
+      for (const [fieldId, value] of Object.entries(record.fields || {})) {
+        const fieldName = fieldMap[fieldId] || fieldId;
+        formattedFields[fieldName] = value;
+      }
+      
+      console.log('[TP] 字段映射:', fieldMap);
+      console.log('[TP] 原始字段:', record.fields);
+      console.log('[TP] 转换后字段:', formattedFields);
       
       const formattedRecord = {
-        ...record.fields,
+        ...formattedFields,
         id: recordId,
         _sourceRecordId: recordId,
         _rowIndex: availableRecords.length,
