@@ -10,9 +10,10 @@ import { useUserStore } from '@/store/userStore';
 
 export default function BindAuthPage() {
   const router = useRouter();
-  const { user, token, setHasAuthorizations } = useUserStore();
-  const [appToken, setAppToken] = useState('');
+  const { user, setHasAuthorizations } = useUserStore();
+  const [licenseCode, setLicenseCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   // 如果用户未登录，跳转到登录页
   useEffect(() => {
@@ -24,69 +25,90 @@ export default function BindAuthPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!token) return;
+    if (!user) {
+      setError('用户未登录');
+      return;
+    }
+
+    if (!licenseCode.trim()) {
+      setError('请输入授权码');
+      return;
+    }
 
     setIsLoading(true);
+    setError('');
+
     try {
-      const response = await fetch('/api/authorizations', {
+      // 调用授权码验证接口
+      const response = await fetch('/api/license/validate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          tableId: 'default', // 使用默认值
-          tableName: '默认表格', // 使用默认值
-          appToken,
+          code: licenseCode.trim(),
+          userId: user.id,
+          userName: user.name,
         }),
       });
 
       const result = await response.json();
       
       if (result.success) {
-        // 更新状态为已绑定
+        // 验证成功，更新状态为已绑定
         setHasAuthorizations(true);
         // 跳转到主页
         router.push('/');
       } else {
-        alert('绑定失败: ' + (result.error || 'Unknown error'));
+        setError(result.error || '授权码验证失败');
       }
-    } catch (error) {
-      console.error('绑定授权码失败:', error);
-      alert('绑定失败，请重试');
+    } catch (err) {
+      console.error('验证授权码失败:', err);
+      setError('验证失败，请重试');
     } finally {
       setIsLoading(false);
     }
   };
 
   if (!user) {
-    return null; // 或者显示加载中
+    return null;
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <Card className="w-full max-w-md mx-4">
         <CardHeader>
-          <CardTitle>绑定飞书多维表格</CardTitle>
+          <CardTitle>绑定授权码</CardTitle>
           <CardDescription>
-            请输入您的飞书多维表格授权码以继续使用
+            请输入您的插件授权码以继续使用
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="appToken">授权码 (App Token)</Label>
+              <Label htmlFor="licenseCode">授权码</Label>
               <Input
-                id="appToken"
-                placeholder="请输入授权码"
-                value={appToken}
-                onChange={(e) => setAppToken(e.target.value)}
+                id="licenseCode"
+                placeholder="请输入16位授权码"
+                value={licenseCode}
+                onChange={(e) => setLicenseCode(e.target.value)}
                 required
+                maxLength={16}
+                disabled={isLoading}
               />
+              <p className="text-xs text-gray-500">
+                授权码为16位字母和数字组合
+              </p>
             </div>
             
+            {error && (
+              <div className="text-sm text-red-600 bg-red-50 p-3 rounded">
+                {error}
+              </div>
+            )}
+            
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? '绑定中...' : '绑定并继续'}
+              {isLoading ? '验证中...' : '验证并继续'}
             </Button>
           </form>
         </CardContent>
