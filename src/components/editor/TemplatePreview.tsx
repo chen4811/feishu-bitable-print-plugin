@@ -798,26 +798,49 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       const fieldMap: Record<string, string> = {};
       if (fieldMetaList && Array.isArray(fieldMetaList)) {
         fieldMetaList.forEach((field: any) => {
-          fieldMap[field.id] = field.name;
+          if (field?.id) {
+            fieldMap[field.id] = field.name;
+          }
         });
       }
       
-      console.log('[TP] 字段映射表:', fieldMap);
+      console.log('[TP] 字段映射表:', Object.keys(fieldMap).length, '个字段');
+      
+      // 提取字段数据 - 处理 SDK 可能返回的不同数据结构
+      let rawFields: Record<string, any> = {};
+      
+      // 方案1: record.fields 存在且是对象
+      if (record.fields && typeof record.fields === 'object' && !Array.isArray(record.fields)) {
+        rawFields = record.fields;
+        console.log('[TP] 从 record.fields 提取字段');
+      } 
+      // 方案2: record 本身包含字段数据（键是字段ID）
+      else {
+        // 排除元数据字段，剩下的就是字段数据
+        const metaKeys = ['id', 'recordId', 'createdTime', 'lastModifiedTime', 'modifiedTime', 'fields'];
+        Object.keys(record).forEach(key => {
+          if (!metaKeys.includes(key)) {
+            rawFields[key] = (record as any)[key];
+          }
+        });
+        console.log('[TP] 从 record 对象本身提取字段');
+      }
+      
+      console.log('[TP] 原始字段数量:', Object.keys(rawFields).length);
+      console.log('[TP] 原始字段ID列表:', Object.keys(rawFields).slice(0, 10)); // 只显示前10个
       
       // 转换格式：将字段ID键转换为字段名键
       const formattedFields: Record<string, any> = {};
-      // 如果 record.fields 不存在，尝试直接使用 record 本身（SDK 可能直接返回字段映射）
-      const rawFields = record.fields || record;
-      console.log('[TP] 开始遍历字段，原始字段数:', Object.keys(rawFields).length);
-      console.log('[TP] 原始字段内容:', JSON.stringify(rawFields, null, 2));
       
       for (const [fieldId, value] of Object.entries(rawFields)) {
+        // 使用字段映射表，如果没有映射则保持原ID
         const fieldName = fieldMap[fieldId] || fieldId;
         formattedFields[fieldName] = value;
-        console.log(`[TP] 映射: ${fieldId} -> ${fieldName} =`, value);
+        console.log(`[TP] 字段映射: ${fieldId} -> ${fieldName}`);
       }
       
-      console.log('[TP] 转换后所有字段:', formattedFields);
+      console.log('[TP] 转换后字段数量:', Object.keys(formattedFields).length);
+      console.log('[TP] 转换后字段名:', Object.keys(formattedFields).slice(0, 10));
       
       // 显示获取到的字段信息（调试用）
       const fieldNames = Object.keys(formattedFields);
