@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useEditorStore } from '@/store/editorStore';
 import { useUserStore } from '@/store/userStore';
@@ -24,12 +24,17 @@ export default function PrintPluginApp() {
 
   // 计算登录状态
   const isLoggedIn = !!token && !!user;
+  
+  // 使用 ref 确保授权检查只运行一次
+  const licenseCheckedRef = useRef(false);
 
   // 移除了频繁的 console.log，避免性能问题
 
   // 检查登录状态
   useEffect(() => {
+    // 如果用户退出登录，重置授权检查标记
     if (!isLoggedIn) {
+      licenseCheckedRef.current = false;
       router.push('/login');
     } else if (!hasAuthorizations) {
       router.push('/bind-auth');
@@ -38,14 +43,19 @@ export default function PrintPluginApp() {
 
   // 验证授权码状态（确保 hasAuthorizations 是最新的）- 只在登录后检查一次
   useEffect(() => {
-    if (!isLoggedIn || !user?.id) {
+    if (!isLoggedIn || !user?.id || licenseCheckedRef.current) {
       return;
     }
 
     const checkLicenseStatus = async () => {
       try {
+        console.log('[PrintPluginApp] 开始检查授权状态');
+        licenseCheckedRef.current = true; // 标记已检查
+        
         const response = await fetch(`/api/license/status?userId=${user.id}`);
         const result = await response.json();
+        
+        console.log('[PrintPluginApp] 授权状态检查结果:', result);
         
         if (result.success) {
           const { isValid, isExpired } = result.data;
@@ -67,7 +77,6 @@ export default function PrintPluginApp() {
     };
 
     checkLicenseStatus();
-    // 注意：只在登录状态变化时检查，不依赖 hasAuthorizations 避免循环
   }, [isLoggedIn, user?.id]);
 
   // 初始化字段数据并清理旧的 localStorage 数据
