@@ -9,12 +9,37 @@
  * 5. 新增：选中变化监听器（onSelectionChange）
  * 6. 新增：详细的调试日志系统
  * 7. 新增：方案A实现（getTableById + getRecordById）
+ * 8. 新增：CoreHR API 集成（流程状态同步）
  */
 
 import { bitable, base } from '@lark-base-open/js-sdk';
+import {
+  CoreHRProcessService,
+  ProcessStatusSync,
+  ProcessStatus,
+  PROCESS_STATUS_MAP,
+  PROCESS_STATUS_COLORS,
+  coreHRService,
+  type ProcessStatusResult,
+  type ProcessStatusSyncConfig,
+  type BatchSyncResult,
+} from './corehr-api';
 
 // 确保轮询函数可在外部控制
 export { startPolling, stopPolling };
+
+// 导出 CoreHR API 类型和常量
+export {
+  CoreHRProcessService,
+  ProcessStatusSync,
+  ProcessStatus,
+  PROCESS_STATUS_MAP,
+  PROCESS_STATUS_COLORS,
+  coreHRService,
+  type ProcessStatusResult,
+  type ProcessStatusSyncConfig,
+  type BatchSyncResult,
+};
 // 调试日志系统
 // ============================================
 const DEBUG = true;
@@ -1204,6 +1229,146 @@ export const feishuEnv = {
   onSelectionChange,
   getSelectedRecords,
   getCheckboxSelectedRecords,
+  
+  // CoreHR API - 流程状态同步
+  ProcessStatusSync,
+  coreHRService,
+  createProcessStatusSync,
+  syncRecordProcessStatus,
+  batchSyncProcessStatus,
 };
+
+// ============================================
+// CoreHR API - 流程状态同步便捷函数
+// ============================================
+
+/**
+ * 创建流程状态同步器实例
+ * @param config 同步配置
+ * @returns ProcessStatusSync 实例
+ */
+export function createProcessStatusSync(config?: ProcessStatusSyncConfig): ProcessStatusSync {
+  return new ProcessStatusSync(config);
+}
+
+/**
+ * 同步单条记录的流程状态
+ * 这是一个便捷函数，用于快速同步指定记录的流程状态
+ * 
+ * @param tableId 表格ID
+ * @param recordId 记录ID
+ * @param processId 流程实例ID（可选，如果不提供则从记录中获取）
+ * @param config 同步配置（可选）
+ * @returns 同步结果（成功返回状态信息，失败返回null）
+ */
+export async function syncRecordProcessStatus(
+  tableId: string,
+  recordId: string,
+  processId?: string,
+  config?: ProcessStatusSyncConfig
+): Promise<ProcessStatusResult | null> {
+  try {
+    debugLog(`同步记录 ${recordId} 的流程状态`);
+    
+    const syncer = createProcessStatusSync(config);
+    const success = await syncer.syncRecordStatus(tableId, recordId, processId);
+    
+    if (success && processId) {
+      // 如果成功且有processId，获取状态结果
+      return coreHRService.fetchProcessStatus(processId);
+    }
+    
+    return null;
+  } catch (error) {
+    debugLog('同步流程状态失败:', error);
+    return null;
+  }
+}
+
+/**
+ * 批量同步流程状态
+ * 这是一个便捷函数，用于批量同步多条记录的流程状态
+ * 
+ * @param tableId 表格ID
+ * @param recordIds 记录ID数组
+ * @param config 同步配置（可选）
+ * @returns 批量同步结果
+ */
+export async function batchSyncProcessStatus(
+  tableId: string,
+  recordIds: string[],
+  config?: ProcessStatusSyncConfig
+): Promise<BatchSyncResult> {
+  try {
+    debugLog(`批量同步 ${recordIds.length} 条记录的流程状态`);
+    
+    const syncer = createProcessStatusSync(config);
+    return await syncer.batchSyncStatus(tableId, recordIds);
+  } catch (error) {
+    debugLog('批量同步流程状态失败:', error);
+    return {
+      total: recordIds.length,
+      success: 0,
+      failed: recordIds.length,
+      errors: recordIds.map(id => ({
+        recordId: id,
+        error: error instanceof Error ? error.message : '未知错误',
+      })),
+    };
+  }
+}
+
+/**
+ * 从记录字段中提取流程ID
+ * 这是一个通用函数，用于从多维表格记录中提取流程实例ID
+ * 
+ * @param record 记录数据
+ * @param fieldName 流程ID字段名（默认：流程实例ID）
+ * @returns 流程ID或null
+ */
+export function extractProcessIdFromRecord(
+  record: { fields: Record<string, unknown> },
+  fieldName: string = '流程实例ID'
+): string | null {
+  const fields = record.fields || {};
+  const fieldValue = fields[fieldName];
+
+  if (!fieldValue) {
+    return null;
+  }
+
+  // 处理数组格式（飞书常见格式）
+  if (Array.isArray(fieldValue)) {
+    if (fieldValue.length === 0) return null;
+    const firstItem = fieldValue[0];
+    return firstItem?.text || firstItem?.id || String(firstItem);
+  }
+
+  // 处理对象格式
+  if (typeof fieldValue === 'object' && fieldValue !== null) {
+    return (fieldValue as any).text || (fieldValue as any).id || String(fieldValue);
+  }
+
+  // 基础类型
+  return String(fieldValue);
+}
+
+/**
+ * 获取流程状态的显示文本
+ * @param status 状态码
+ * @returns 状态显示文本
+ */
+export function getProcessStatusText(status: string): string {
+  return PROCESS_STATUS_MAP[status] || status || '未知状态';
+}
+
+/**
+ * 获取流程状态的颜色
+ * @param status 状态码
+ * @returns 颜色值（十六进制）
+ */
+export function getProcessStatusColor(status: string): string {
+  return PROCESS_STATUS_COLORS[status] || PROCESS_STATUS_COLORS[ProcessStatus.UNKNOWN];
+}
 
 export default feishuEnv;

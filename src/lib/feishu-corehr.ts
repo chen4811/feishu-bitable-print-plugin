@@ -242,3 +242,212 @@ function formatTimestamp(timestamp: string): string {
   }
 }
 
+// ==================== 流程状态查询 ====================
+
+/**
+ * 流程状态查询结果
+ */
+export interface ProcessStatusResult {
+  processId: string;
+  status: string;
+  statusText: string;
+  color: string;
+  rawData?: any;
+}
+
+/**
+ * 状态颜色映射
+ */
+export const PROCESS_STATUS_COLORS: Record<string, string> = {
+  'PENDING': '#FF7D00',     // 橙色 - 待处理
+  'APPROVING': '#3370FF',   // 蓝色 - 审批中
+  'APPROVED': '#00B42A',    // 绿色 - 已通过
+  'REJECTED': '#F53F3F',    // 红色 - 已拒绝
+  'CANCELLED': '#86909C',   // 灰色 - 已取消
+  'COMPLETED': '#00B42A',   // 绿色 - 已完成
+  'IN_PROGRESS': '#3370FF', // 蓝色 - 进行中
+  'WITHDRAWN': '#86909C',   // 灰色 - 已撤回
+  'REVOKED': '#86909C',     // 灰色 - 已撤销
+  'REVOKING': '#FF7D00',    // 橙色 - 撤销中
+  'UNKNOWN': '#86909C',     // 灰色 - 未知
+};
+
+/**
+ * 状态文本映射
+ */
+export const PROCESS_STATUS_TEXTS: Record<string, string> = {
+  'PENDING': '待处理',
+  'APPROVING': '审批中',
+  'APPROVED': '已通过',
+  'REJECTED': '已拒绝',
+  'CANCELLED': '已取消',
+  'COMPLETED': '已完成',
+  'IN_PROGRESS': '进行中',
+  'WITHDRAWN': '已撤回',
+  'REVOKED': '已撤销',
+  'REVOKING': '撤销中',
+  'UNKNOWN': '未知状态',
+};
+
+/**
+ * 飞书 CoreHR 流程变量数据响应
+ */
+interface FeishuFlowVariableResponse {
+  code: number;
+  msg: string;
+  data?: {
+    process_id: string;
+    process_status?: string;
+    status?: string;
+    variables?: Record<string, any>;
+    [key: string]: any;
+  };
+}
+
+/**
+ * 获取流程实例状态
+ * 调用飞书 CoreHR API 获取流程的实时状态
+ * 
+ * @param processId 流程实例ID
+ * @returns 流程状态结果
+ */
+export async function getProcessStatus(processId: string): Promise<ProcessStatusResult | null> {
+  try {
+    console.log('[Feishu CoreHR] 查询流程状态:', processId);
+
+    const appAccessToken = await getAppAccessToken();
+
+    // 调用飞书 CoreHR API 获取流程变量数据
+    const response = await fetch(
+      `https://open.feishu.cn/open-apis/corehr/v2/processes/${processId}/flow_variable_data`,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${appAccessToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data: FeishuFlowVariableResponse = await response.json();
+
+    if (data.code !== 0) {
+      console.error('[Feishu CoreHR] API返回错误:', data.msg);
+      return null;
+    }
+
+    // 提取流程状态
+    const status = extractStatusFromResponse(data);
+    
+    return {
+      processId,
+      status,
+      statusText: PROCESS_STATUS_TEXTS[status] || status,
+      color: PROCESS_STATUS_COLORS[status] || PROCESS_STATUS_COLORS['UNKNOWN'],
+      rawData: data.data,
+    };
+
+  } catch (error) {
+    console.error('[Feishu CoreHR] 查询流程状态失败:', error);
+    return null;
+  }
+}
+
+/**
+ * 从 API 响应中提取状态
+ */
+function extractStatusFromResponse(response: FeishuFlowVariableResponse): string {
+  const data = response.data;
+  if (!data) return 'UNKNOWN';
+
+  // 尝试从多个可能的字段中提取状态
+  const status = data.process_status || data.status;
+  
+  if (status) {
+    return normalizeStatus(status);
+  }
+
+  // 从变量中提取
+  if (data.variables) {
+    return extractStatusFromVariables(data.variables);
+  }
+
+  return 'UNKNOWN';
+}
+
+/**
+ * 从流程变量中提取状态
+ */
+function extractStatusFromVariables(variables: Record<string, any>): string {
+  // 常见的状态字段名
+  const statusFields = ['status', 'process_status', '审批状态', '流程状态', 'state'];
+  
+  for (const field of statusFields) {
+    if (variables[field]) {
+      return normalizeStatus(variables[field]);
+    }
+  }
+
+  // 遍历所有变量查找状态
+  for (const [key, value] of Object.entries(variables)) {
+    if (typeof value === 'string') {
+      const upperValue = value.toUpperCase();
+      if (PROCESS_STATUS_TEXTS[upperValue]) {
+        return upperValue;
+      }
+    }
+  }
+
+  return 'UNKNOWN';
+}
+
+/**
+ * 标准化状态值
+ */
+function normalizeStatus(status: string): string {
+  const upperStatus = status.toUpperCase();
+  
+  // 直接匹配
+  if (PROCESS_STATUS_TEXTS[upperStatus]) {
+    return upperStatus;
+  }
+
+  // 中文状态映射
+  const chineseMap: Record<string, string> = {
+    '待处理': 'PENDING',
+    '审批中': 'APPROVING',
+    '进行中': 'IN_PROGRESS',
+    '已通过': 'APPROVED',
+    '已拒绝': 'REJECTED',
+    '已取消': 'CANCELLED',
+    '已完成': 'COMPLETED',
+    '已撤回': 'WITHDRAWN',
+    '已撤销': 'REVOKED',
+    '撤销中': 'REVOKING',
+  };
+
+  if (chineseMap[status]) {
+    return chineseMap[status];
+  }
+
+  // 数字状态码映射
+  const numericMap: Record<string, string> = {
+    '1': 'IN_PROGRESS',
+    '2': 'REJECTED',
+    '4': 'WITHDRAWN',
+    '8': 'REVOKED',
+    '9': 'COMPLETED',
+    '15': 'REVOKING',
+  };
+
+  if (numericMap[status]) {
+    return numericMap[status];
+  }
+
+  return 'UNKNOWN';
+}
+
