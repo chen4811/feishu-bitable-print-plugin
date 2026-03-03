@@ -86,6 +86,9 @@ export async function POST(request: Request) {
       const startDate = currentValidUntil > now ? currentValidUntil : now;
       const newValidUntil = calculateExpiryDate(startDate, license.duration_days);
       
+      // 确保 userId 是字符串类型
+      const userIdStr = String(userId);
+      
       const { error: updateError } = await client
         .from('plugin_licenses')
         .update({
@@ -105,7 +108,7 @@ export async function POST(request: Request) {
       // 记录绑定历史
       await client.from('user_license_bindings').insert({
         license_id: license.id,
-        user_id: userId,
+        user_id: userIdStr,
         user_name: userName,
         valid_until: newValidUntil.toISOString(),
         status: 'active',
@@ -127,11 +130,14 @@ export async function POST(request: Request) {
     // 5. 新绑定用户
     const validUntil = calculateExpiryDate(new Date(), license.duration_days);
     
+    // 确保 userId 是字符串类型（与登录查询时一致）
+    const userIdStr = String(userId);
+    
     const { error: updateError } = await client
       .from('plugin_licenses')
       .update({
         status: 'active',
-        bound_user_id: userId,
+        bound_user_id: userIdStr,
         bound_user_name: userName,
         bound_at: new Date().toISOString(),
         valid_until: validUntil.toISOString(),

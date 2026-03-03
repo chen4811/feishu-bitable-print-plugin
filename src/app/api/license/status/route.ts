@@ -22,11 +22,14 @@ export async function GET(request: Request) {
     
     const client = getSupabaseClient();
     
+    // 确保 userId 是字符串类型
+    const userIdStr = String(userId);
+    
     // 查询用户当前有效的授权
     const { data: licenses, error } = await client
       .from('plugin_licenses')
       .select('*')
-      .eq('bound_user_id', userId)
+      .eq('bound_user_id', userIdStr)
       .in('status', ['active', 'unused'])
       .order('valid_until', { ascending: false })
       .limit(1);
@@ -72,7 +75,7 @@ export async function GET(request: Request) {
         .from('user_license_bindings')
         .update({ status: 'expired' })
         .eq('license_id', license.id)
-        .eq('user_id', userId);
+        .eq('user_id', userIdStr);
     }
     
     const statusInfo = getLicenseStatusInfo(daysRemaining);
