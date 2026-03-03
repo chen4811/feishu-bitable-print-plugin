@@ -201,10 +201,24 @@ export function EventSafetyLayer() {
                   return obj[prop];
                 }
               });
-              Object.defineProperty(event, 'target', {
-                value: safeTarget,
-                writable: false
-              });
+              
+              // 安全地定义 target 属性：先检查是否可配置
+              try {
+                const descriptor = Object.getOwnPropertyDescriptor(event, 'target');
+                if (!descriptor || descriptor.configurable) {
+                  Object.defineProperty(event, 'target', {
+                    value: safeTarget,
+                    writable: false,
+                    configurable: true
+                  });
+                } else {
+                  // 如果不可配置，就不尝试重新定义，静默处理
+                  console.warn('[EventSafetyLayer] target 属性不可配置，跳过重定义');
+                }
+              } catch (e) {
+                // 捕获任何错误，继续执行
+                console.warn('[EventSafetyLayer] 重定义 target 属性失败，已跳过');
+              }
             }
           }
           
