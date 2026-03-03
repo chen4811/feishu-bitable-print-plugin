@@ -223,7 +223,7 @@ export async function POST(request: Request) {
 
 /**
  * DELETE /api/admin/licenses
- * 作废授权码
+ * 作废授权码或物理删除（当 force=true 时）
  */
 export async function DELETE(request: Request) {
   const auth = await verifyAdmin(request);
@@ -237,6 +237,7 @@ export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
+    const force = searchParams.get('force') === 'true';
     
     if (!id) {
       return NextResponse.json(
@@ -247,7 +248,59 @@ export async function DELETE(request: Request) {
 
     const client = getSupabaseClient();
     
-    // 更新状态为作废
+    // 如果是强制删除，则从数据库中物理删除
+    if (force) {
+      // 先检查授权码是否存在且已作废
+      const { data: license, error: fetchError } = await client
+        .from('plugin_licenses')
+        .select('status')
+        .eq('id', id)
+        .single();
+      
+      if (fetchError) {
+        console.error('[Admin Licenses API] 查询授权码失败:', fetchError);
+        return NextResponse.json(
+          { error: '查询授权码失败' },
+          { status: 500 }
+        );
+      }
+      
+      if (!license) {
+        return NextResponse.json(
+          { error: '授权码不存在' },
+          { status: 404 }
+        );
+      }
+      
+      // 只允许删除已作废或已过期的授权码
+      if (license.status !== 'revoked' && license.status !== 'expired') {
+        return NextResponse.json(
+          { error: '只能删除已作废或过期的授权码' },
+          { status: 400 }
+        );
+      }
+      
+      // 物理删除
+      const { error: deleteError } = await client
+        .from('plugin_licenses')
+        .delete()
+        .eq('id', id);
+
+      if (deleteError) {
+        console.error('[Admin Licenses API] 删除授权码失败:', deleteError);
+        return NextResponse.json(
+          { error: '删除授权码失败' },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: '授权码已永久删除',
+      });
+    }
+    
+    // 否则只是作废（软删除）
     const { error } = await client
       .from('plugin_licenses')
       .update({ 
@@ -269,9 +322,9 @@ export async function DELETE(request: Request) {
       message: '授权码已作废',
     });
   } catch (error) {
-    console.error('[Admin Licenses API] 作废授权码错误:', error);
+    console.error('[Admin Licenses API] 处理授权码错误:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : '作废授权码失败' },
+      { error: error instanceof Error ? error.message : '处理授权码失败' },
       { status: 500 }
     );
   }

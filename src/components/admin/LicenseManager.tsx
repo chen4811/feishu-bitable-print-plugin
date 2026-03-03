@@ -249,6 +249,32 @@ export function LicenseManager({ adminToken }: LicenseManagerProps) {
     }
   };
 
+  // 删除授权码（物理删除，仅适用于已作废/过期的授权码）
+  const handleDelete = async (id: number) => {
+    if (!confirm('确定要永久删除此授权码吗？此操作不可恢复。')) return;
+    
+    try {
+      const response = await fetch(`/api/admin/licenses?id=${id}&force=true`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+        },
+      });
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || '删除失败');
+      }
+      
+      loadLicenses(); // 刷新列表
+      loadStats(); // 刷新统计
+    } catch (err) {
+      console.error('[LicenseManager] 删除授权码失败:', err);
+      setError(err instanceof Error ? err.message : '删除授权码失败');
+    }
+  };
+
   // 复制到剪贴板
   const handleCopy = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -523,12 +549,26 @@ export function LicenseManager({ adminToken }: LicenseManagerProps) {
                           >
                             <Copy className="h-4 w-4" />
                           </Button>
-                          {license.status !== 'revoked' && (
+                          {/* 未作废的授权码显示作废按钮 */}
+                          {license.status !== 'revoked' && license.status !== 'expired' && (
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleRevoke(license.id)}
+                              className="text-orange-600 hover:text-orange-700"
+                              title="作废"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {/* 已作废或过期的授权码显示永久删除按钮 */}
+                          {(license.status === 'revoked' || license.status === 'expired') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(license.id)}
                               className="text-red-600 hover:text-red-700"
+                              title="永久删除"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
