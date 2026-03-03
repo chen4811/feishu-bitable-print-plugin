@@ -33,6 +33,28 @@ type LayoutMode = 'default' | 'continuous' | 'label';
 // 数据源类型
 type DataSourceType = 'bitable' | 'corehr';
 
+// 检测表格是否匹配模板（纯函数，不依赖 React 状态）
+const checkTableMatch = (template: { data?: { tableId?: string } } | null, tableId: string | null): boolean => {
+  if (!template) {
+    return true;
+  }
+  
+  if (!tableId) {
+    return true;
+  }
+  
+  // 获取模板关联的表格ID
+  const templateTableId = template.data?.tableId;
+  
+  // 如果模板没有记录表格ID，说明是旧模板或通用模板，允许任何表格
+  if (!templateTableId) {
+    return true;
+  }
+  
+  // 比较表格ID
+  return templateTableId === tableId;
+};
+
 // 选中的数据记录类型
 interface SelectedRecord {
   id: string;
@@ -700,10 +722,11 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
   // 获取单条记录（用于点击行时添加）
   const fetchSingleRecord = useCallback(async (recordId: string, tableId: string) => {
-    // 检查表格匹配状态
-    if (!isTableMatched && selectedTemplate) {
-      console.log('[TP] 表格不匹配，跳过获取记录:', recordId);
-      toast.error('当前表格与模板不匹配，无法载入数据');
+    // 实时检查表格匹配状态（避免依赖过期的 isTableMatched 状态）
+    const isMatched = checkTableMatch(selectedTemplate, tableId);
+    if (!isMatched && selectedTemplate) {
+      console.log('[TP] 表格不匹配，跳过获取记录:', recordId, '当前表格:', tableId, '模板表格:', selectedTemplate.data?.tableId);
+      toast.error('当前多维表格与模板不匹配，无法载入数据');
       return;
     }
     
@@ -745,7 +768,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       console.error('[TP] 获取单条记录失败:', err);
       toast.error('获取记录失败');
     }
-  }, [isTableMatched, selectedTemplate, availableRecords]);
+  }, [selectedTemplate, availableRecords]);
 
   // 从 feishu-env 获取选中记录（多选时使用）
   const fetchSelectedRecordsFromEnv = useCallback(async () => {
@@ -847,38 +870,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     }
   }, []);
   
-  // 检测表格是否匹配模板
-  const checkTableMatch = useCallback((template: Template | null, tableInfo: typeof currentTableInfo): boolean => {
-    if (!template) {
-      console.log('[TP] 匹配检查: 无模板，默认匹配');
-      return true;
-    }
-    
-    if (!tableInfo.tableId) {
-      console.log('[TP] 匹配检查: 无法获取当前表格ID，默认匹配');
-      return true;
-    }
-    
-    // 获取模板关联的表格ID
-    const templateTableId = template.data?.tableId as string | undefined;
-    
-    // 如果模板没有记录表格ID，说明是旧模板或通用模板，允许任何表格
-    if (!templateTableId) {
-      console.log('[TP] 匹配检查: 模板无表格ID（旧模板），默认匹配');
-      return true;
-    }
-    
-    // 比较表格ID
-    const isMatch = templateTableId === tableInfo.tableId;
-    console.log('[TP] 匹配检查:', {
-      templateTableId,
-      currentTableId: tableInfo.tableId,
-      isMatch,
-      templateName: template.name,
-    });
-    
-    return isMatch;
-  }, []);
 
   // 初始化：设置飞书环境状态并初始化 SDK，添加选中变化监听器，获取当前表格信息
   useEffect(() => {
@@ -921,7 +912,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   const prevMatchedRef = useRef<boolean>(true);
 
   useEffect(() => {
-    const matched = checkTableMatch(selectedTemplate, currentTableInfo);
+    const matched = checkTableMatch(selectedTemplate, currentTableInfo.tableId);
     const wasMatched = prevMatchedRef.current;
 
     // 只有匹配状态真正变化时才更新
@@ -953,7 +944,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       currentTableId: currentTableInfo.tableId,
       currentTableName: currentTableInfo.tableName,
     });
-  }, [selectedTemplate, currentTableInfo, checkTableMatch]);
+  }, [selectedTemplate, currentTableInfo]);
 
   // 添加记录到选中列表（防重复，带表格匹配检查）
   const addRecordToSelection = useCallback((record: Record<string, any>) => {
