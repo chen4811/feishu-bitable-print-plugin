@@ -818,7 +818,14 @@ export async function getSelectedRecords(): Promise<BitableRecord[]> {
     
     debugLog('第五步：处理数据...');
     debugLog('📋 完整原始记录数据:', JSON.stringify(recordData, null, 2));
-    const result = processRecordData(recordData, fieldMetaList);
+    
+    // 确保记录数据包含 ID（飞书 SDK 返回的数据可能没有 id 字段）
+    const recordDataWithId = {
+      ...recordData,
+      id: recordData.id || recordData.recordId || targetRecordId,
+    };
+    
+    const result = processRecordData(recordDataWithId, fieldMetaList);
     debugLog('✅ 数据处理完成');
     debugLog('======== getSelectedRecords() 结束 ========');
     
