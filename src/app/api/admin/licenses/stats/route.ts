@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
-import { verifyToken } from '@/lib/auth';
+import { verifyToken } from '@/lib/auth/jwt';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,19 +20,30 @@ async function verifyAdmin(request: Request) {
     return { error: 'Token 无效', status: 401 };
   }
 
+  // 检查是否是管理员类型
+  if (decoded.type !== 'admin') {
+    return { error: '无管理员权限', status: 403 };
+  }
+
+  // 获取管理员ID (adminId)
+  const adminId = decoded.adminId;
+  if (!adminId) {
+    return { error: 'Token 格式错误', status: 401 };
+  }
+
   // 检查是否是管理员
   const client = getSupabaseClient();
   const { data: admin } = await client
     .from('admins')
     .select('*')
-    .eq('user_id', decoded.userId)
+    .eq('id', adminId)
     .single();
 
   if (!admin) {
     return { error: '无管理员权限', status: 403 };
   }
 
-  return { userId: decoded.userId, admin };
+  return { userId: adminId, admin };
 }
 
 /**
