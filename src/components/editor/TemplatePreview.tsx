@@ -809,6 +809,10 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       
       console.log('[TP] 转换后所有字段:', formattedFields);
       
+      // 显示获取到的字段信息（调试用）
+      const fieldNames = Object.keys(formattedFields);
+      toast.info(`获取到 ${fieldNames.length} 个字段: ${fieldNames.slice(0, 3).join(', ')}${fieldNames.length > 3 ? '...' : ''}`);
+      
       const formattedRecord = {
         ...formattedFields,
         id: recordId,
