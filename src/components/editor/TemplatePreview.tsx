@@ -767,12 +767,17 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       }
       
       // 转换格式
+      console.log('[TP] 原始记录数据:', record);
+      console.log('[TP] 记录字段:', record.fields);
+      
       const formattedRecord = {
         ...record.fields,
         id: recordId,
         _sourceRecordId: recordId,
         _rowIndex: availableRecords.length,
       };
+      
+      console.log('[TP] 格式化后记录:', formattedRecord);
       
       // 添加到列表
       setAvailableRecords(prev => [...prev, formattedRecord]);
@@ -909,7 +914,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       if (isReady) {
         // 获取当前表格信息
         await fetchCurrentTableInfo();
-        fetchSelectedRecordsFromEnv();
+        // 注意：不在初始化时自动获取记录，等待用户点击多维表格行或点击模板
 
         // 注册选中变化监听器
         const unsubscribe = onSelectionChange((event) => {
