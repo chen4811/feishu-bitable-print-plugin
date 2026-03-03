@@ -130,20 +130,21 @@ export async function GET(request: Request) {
     console.log('[Feishu OAuth Callback API] JWT token 生成成功，长度:', jwtToken?.length);
     console.log('[Feishu OAuth Callback API] JWT token 前50字符:', jwtToken?.substring(0, 50));
 
-    // 5. 检查用户是否已有保存的授权码
-    console.log('[Feishu OAuth Callback API] 检查授权码');
-    const { data: authorizations, error: authError } = await client
-      .from('user_table_authorizations')
+    // 5. 检查用户是否已有绑定的有效授权码
+    console.log('[Feishu OAuth Callback API] 检查授权码绑定状态');
+    const { data: licenses, error: licenseError } = await client
+      .from('plugin_licenses')
       .select('*')
-      .eq('user_id', dbUser.id)
-      .eq('is_active', true);
+      .eq('bound_user_id', dbUser.id)
+      .eq('status', 'active')
+      .gt('valid_until', new Date().toISOString());
 
-    if (authError) {
-      console.error('[Feishu OAuth Callback API] 检查授权码失败:', authError);
+    if (licenseError) {
+      console.error('[Feishu OAuth Callback API] 检查授权码失败:', licenseError);
     }
 
-    const hasAuthorizations = authorizations && authorizations.length > 0;
-    console.log('[Feishu OAuth Callback API] 用户授权码数量:', hasAuthorizations ? authorizations.length : 0);
+    const hasAuthorizations = licenses && licenses.length > 0;
+    console.log('[Feishu OAuth Callback API] 用户有效授权码数量:', hasAuthorizations ? licenses.length : 0);
 
     console.log('[Feishu OAuth Callback API] 登录完成，重定向到前端');
     console.log('[Feishu OAuth Callback API] baseUrl:', baseUrl);
