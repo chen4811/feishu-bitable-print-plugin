@@ -923,124 +923,152 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         <title>批量打印 - ${selectedTemplate.name}</title>
         <style>
           /* =========================================
-             打印专用样式修复
+             批量打印专用样式 - 确保A4尺寸和内容完整
              ========================================= */
-          @media print {
-            /* 1. 强制显示背景图形 */
-            * {
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-            }
-
-            /* 2. 重置页面边距 */
-            @page {
-              size: A4 portrait;
-              margin: 0;
-            }
-
-            body {
-              margin: 0;
-              padding: 0;
-              font-size: 12pt;
-              color: #000;
-              background: #fff;
-            }
-
-            /* 3. 打印页面容器 */
-            .print-page {
-              page-break-after: always;
-              width: 210mm !important;
-              min-height: 297mm !important;
-              box-sizing: border-box !important;
-              background: white !important;
-              position: relative !important;
-            }
-            .print-page:last-child {
-              page-break-after: auto;
-            }
-
-            /* 4. 【关键】修复表格样式 */
-            table {
-              width: 100% !important;
-              border-collapse: collapse !important;
-              page-break-inside: avoid;
-              table-layout: fixed !important;
-            }
-
-            th, td {
-              border: 1px solid #000 !important;
-              padding: 8px !important;
-              word-wrap: break-word !important;
-              white-space: pre-wrap !important;
-              color: #000 !important;
-              vertical-align: top !important;
-            }
-
-            /* 5. 修复 Flex 布局容器在打印时的表现 - 只针对直接子元素 */
-            .print-page > div[style*="flex-wrap"] {
-              display: flex !important;
-              flex-wrap: wrap !important;
-              align-content: flex-start !important;
-              width: 100% !important;
-              box-sizing: border-box !important;
-            }
-
-            /* 6. 组件宽度修复 - 只针对 Flex 容器的直接子元素 */
-            .print-page > div[style*="flex-wrap"] > * {
-              flex: 0 0 auto !important;
-              max-width: 100% !important;
-              box-sizing: border-box !important;
-            }
-
-            /* 6.1 根据 layout.width 设置具体宽度 */
-            .print-page > div[style*="flex-wrap"] > [style*="width:100%"],
-            .print-page > div[style*="flex-wrap"] > [style*="width: 100%"] {
-              flex: 0 0 100% !important;
-              width: 100% !important;
-            }
-            .print-page > div[style*="flex-wrap"] > [style*="width:50%"],
-            .print-page > div[style*="flex-wrap"] > [style*="width: 50%"] {
-              flex: 0 0 50% !important;
-              width: 50% !important;
-            }
-            .print-page > div[style*="flex-wrap"] > [style*="width:33%"],
-            .print-page > div[style*="flex-wrap"] > [style*="width: 33%"] {
-              flex: 0 0 33.333% !important;
-              width: 33.333% !important;
-            }
-            .print-page > div[style*="flex-wrap"] > [style*="width:25%"],
-            .print-page > div[style*="flex-wrap"] > [style*="width: 25%"] {
-              flex: 0 0 25% !important;
-              width: 25% !important;
-            }
-
-            /* 7. 确保文本正确换行 */
-            .print-page * {
-              word-wrap: break-word !important;
-              overflow-wrap: break-word !important;
-            }
+          
+          /* 基础样式 */
+          * {
+            box-sizing: border-box !important;
           }
 
-          /* 屏幕预览样式 */
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 210mm !important;
+            height: auto !important;
+            background: #ffffff !important;
+          }
+
           body {
-            margin: 0;
-            padding: 20px;
-            background: #f0f0f0;
             font-family: system-ui, -apple-system, sans-serif;
           }
 
-          .print-page {
-            width: 210mm;
-            min-height: 297mm;
-            margin: 0 auto 20px;
-            background: white;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            box-sizing: border-box;
-            position: relative;
+          /* =========================================
+             打印媒体查询
+             ========================================= */
+          @media print {
+            /* 1. 强制显示背景图形和颜色 */
+            * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
+
+            /* 2. 强制A4纸张尺寸，无边距 */
+            @page {
+              size: A4;
+              margin: 0;
+              padding: 0;
+            }
+
+            /* 3. 完全重置html和body */
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              width: 210mm !important;
+              height: auto !important;
+              overflow: visible !important;
+              background: #ffffff !important;
+            }
+
+            /* 4. 打印页面 - 精确A4尺寸 */
+            .print-page {
+              position: relative !important;
+              width: 210mm !important;
+              min-height: 297mm !important;
+              height: auto !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              page-break-after: always;
+              box-shadow: none !important;
+              background: #ffffff !important;
+              box-sizing: border-box !important;
+            }
+
+            /* 5. 最后一页不加分页符 */
+            .print-page:last-of-type {
+              page-break-after: auto !important;
+            }
+
+            /* 6. 确保所有子元素正确显示 */
+            .print-page > *,
+            .print-page > * > * {
+              display: block !important;
+            }
+
+            /* 7. 保留Flex布局 */
+            .print-page [style*="display: flex"],
+            .print-page [style*="flex-wrap"] {
+              display: flex !important;
+              flex-wrap: wrap !important;
+            }
+
+            /* 8. 表格打印修复 */
+            .print-page table {
+              width: 100% !important;
+              border-collapse: collapse !important;
+              page-break-inside: avoid !important;
+              table-layout: fixed !important;
+            }
+
+            .print-page th,
+            .print-page td {
+              border: 1px solid #000000 !important;
+              padding: 8px !important;
+              word-wrap: break-word !important;
+              overflow-wrap: break-word !important;
+              white-space: pre-wrap !important;
+              color: #000000 !important;
+              background: #ffffff !important;
+              vertical-align: top !important;
+            }
+
+            /* 9. 确保文本正确换行和显示 */
+            .print-page * {
+              word-wrap: break-word !important;
+              overflow-wrap: break-word !important;
+              box-sizing: border-box !important;
+              color: #000000 !important;
+              background: transparent !important;
+            }
+
+            /* 10. 分页控制 - 避免组件内部分页 */
+            .print-page > div,
+            .print-page > div > div {
+              page-break-inside: avoid !important;
+            }
+
+            /* 11. 图片打印修复 */
+            .print-page img {
+              max-width: 100% !important;
+              height: auto !important;
+              page-break-inside: avoid !important;
+            }
           }
 
-          .print-page:last-child {
-            margin-bottom: 0;
+          /* =========================================
+             屏幕预览样式
+             ========================================= */
+          @media screen {
+            body {
+              margin: 0;
+              padding: 20px;
+              background: #f0f0f0;
+            }
+
+            .print-page {
+              width: 210mm;
+              min-height: 297mm;
+              margin: 0 auto 20px;
+              background: white;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+              box-sizing: border-box;
+              position: relative;
+            }
+
+            .print-page:last-child {
+              margin-bottom: 0;
+            }
           }
         </style>
       </head>
@@ -1060,7 +1088,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   }, [selectedTemplate, selectedRecords, layoutMode]);
 
   return (
-    <div className="h-full flex gap-3 p-3 overflow-hidden">
+    <div className="print-container h-full flex gap-3 p-3 overflow-hidden">
       {/* 左侧：模板列表 - 减小宽度 */}
       <Card className="w-64 flex-shrink-0 flex flex-col">
         <CardHeader className="pb-3">
@@ -1559,61 +1587,144 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       {/* 打印样式 */}
       <style jsx global>{`
         @media print {
-          /* 1. 强制显示背景图形 */
+          /* =========================================
+             核心打印修复 - 确保正确的A4尺寸和内容完整
+             ========================================= */
+          
+          /* 1. 强制A4纸张尺寸，无边距 */
+          @page {
+            size: A4;
+            margin: 0;
+            padding: 0;
+          }
+
+          /* 2. 强制显示背景图形和颜色 */
           * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+            color-adjust: exact !important;
           }
 
-          /* 2. 隐藏非打印元素 */
+          /* 3. 完全重置html和body */
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 210mm !important;
+            height: auto !important;
+            overflow: visible !important;
+            background: #ffffff !important;
+          }
+
+          /* 4. 隐藏所有非打印内容 */
           body * {
-            visibility: hidden;
-          }
-          
-          /* 3. 显示打印区域 */
-          .bg-white,
-          .bg-white * {
-            visibility: visible;
-          }
-          
-          /* 4. 打印区域定位 */
-          .bg-white {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
+            display: none !important;
+            visibility: hidden !important;
           }
 
-          /* 5. 修复表格打印样式 */
-          .bg-white table {
-            width: 100% !important;
-            border-collapse: collapse !important;
-            page-break-inside: avoid;
+          /* 5. 只显示打印容器及其内容 */
+          .print-container,
+          .print-container * {
+            display: block !important;
+            visibility: visible !important;
           }
 
-          .bg-white th,
-          .bg-white td {
-            border: 1px solid #000 !important;
-            padding: 8px !important;
-            word-wrap: break-word !important;
-            white-space: pre-wrap !important;
+          /* 6. 打印容器占据整个页面 */
+          .print-container {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 210mm !important;
+            height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
           }
 
-          /* 6. 修复 Flex 布局 */
-          .bg-white > div > div[style*="flex-wrap"] {
+          /* 7. 打印页面 - 精确A4尺寸 */
+          .print-container .bg-white {
+            position: relative !important;
+            width: 210mm !important;
+            min-height: 297mm !important;
+            height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            page-break-after: always;
+            box-shadow: none !important;
+            -webkit-box-shadow: none !important;
+            background: #ffffff !important;
+            box-sizing: border-box !important;
+          }
+
+          /* 8. 最后一页不加分页符 */
+          .print-container .bg-white:last-of-type {
+            page-break-after: auto !important;
+          }
+
+          /* 9. 确保所有子元素正确显示 */
+          .print-container .bg-white > *,
+          .print-container .bg-white > * > * {
+            display: block !important;
+          }
+
+          /* 10. 保留Flex布局 */
+          .print-container .bg-white [style*="display: flex"],
+          .print-container .bg-white [style*="flex-wrap"] {
             display: flex !important;
             flex-wrap: wrap !important;
           }
 
-          /* 7. 确保文本换行 */
-          .bg-white * {
-            word-wrap: break-word !important;
-            overflow-wrap: break-word !important;
+          /* 11. 表格打印修复 */
+          .print-container .bg-white table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            page-break-inside: avoid !important;
+            table-layout: fixed !important;
           }
 
-          /* 8. 分页控制 */
-          .bg-white > div {
-            page-break-inside: avoid;
+          .print-container .bg-white th,
+          .print-container .bg-white td {
+            border: 1px solid #000000 !important;
+            padding: 8px !important;
+            word-wrap: break-word !important;
+            overflow-wrap: break-word !important;
+            white-space: pre-wrap !important;
+            color: #000000 !important;
+            background: #ffffff !important;
+          }
+
+          /* 12. 确保文本正确换行和显示 */
+          .print-container .bg-white * {
+            word-wrap: break-word !important;
+            overflow-wrap: break-word !important;
+            box-sizing: border-box !important;
+            color: #000000 !important;
+            background: transparent !important;
+          }
+
+          /* 13. 分页控制 - 避免组件内部分页 */
+          .print-container .bg-white > div,
+          .print-container .bg-white > div > div {
+            page-break-inside: avoid !important;
+          }
+
+          /* 14. 图片打印修复 */
+          .print-container .bg-white img {
+            max-width: 100% !important;
+            height: auto !important;
+            page-break-inside: avoid !important;
+          }
+
+          /* 15. 隐藏打印时的装饰元素 */
+          .print-container .print\\:hidden,
+          .print-container [class*="print:hidden"],
+          .print-container [style*="print:hidden"] {
+            display: none !important;
+          }
+
+          /* 16. 隐藏页码等装饰 */
+          .print-container .absolute,
+          .print-container [class*="absolute"] {
+            display: none !important;
           }
         }
       `}</style>
