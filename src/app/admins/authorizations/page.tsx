@@ -51,8 +51,6 @@ export default function AuthorizationsPage() {
 
   // 过滤授权码
   const filteredAuthorizations = authorizations.filter((auth) =>
-    auth.tableName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    auth.tableId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     auth.userName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     auth.feishuUserId?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -129,8 +127,7 @@ export default function AuthorizationsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>用户信息</TableHead>
-                  <TableHead>表格名称</TableHead>
-                  <TableHead>表格 ID</TableHead>
+                  <TableHead>飞书ID</TableHead>
                   <TableHead>授权码</TableHead>
                   <TableHead>状态</TableHead>
                   <TableHead>最后使用</TableHead>
@@ -141,7 +138,7 @@ export default function AuthorizationsPage() {
               <TableBody>
                 {filteredAuthorizations.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       暂无授权码数据
                     </TableCell>
                   </TableRow>
@@ -164,17 +161,9 @@ export default function AuthorizationsPage() {
                         </div>
                       </TableCell>
 
-                      {/* 表格名称 */}
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <Key className="h-4 w-4 text-muted-foreground" />
-                          {auth.tableName || '未命名表格'}
-                        </div>
-                      </TableCell>
-
-                      {/* 表格 ID */}
+                      {/* 飞书ID */}
                       <TableCell className="font-mono text-sm">
-                        {auth.tableId}
+                        {auth.feishuUserId || '-'}
                       </TableCell>
 
                       {/* 授权码（掩码显示） */}
