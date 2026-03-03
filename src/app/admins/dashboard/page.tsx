@@ -3,6 +3,7 @@
 import { useAdminStore } from '@/store/adminStore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import {
   Key,
   FileText,
@@ -101,22 +102,30 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="grid grid-cols-2 gap-2">
-              <Button className="justify-start">
-                <Plus className="h-4 w-4 mr-2" />
-                新增授权码
-              </Button>
-              <Button className="justify-start">
-                <Plus className="h-4 w-4 mr-2" />
-                新增模板
-              </Button>
-              <Button className="justify-start">
-                <Key className="h-4 w-4 mr-2" />
-                查看授权码
-              </Button>
-              <Button className="justify-start">
-                <FileText className="h-4 w-4 mr-2" />
-                查看模板
-              </Button>
+              <Link href="/admins/licenses">
+                <Button className="justify-start w-full">
+                  <Plus className="h-4 w-4 mr-2" />
+                  新增授权码
+                </Button>
+              </Link>
+              <Link href="/admins/templates">
+                <Button className="justify-start w-full">
+                  <Plus className="h-4 w-4 mr-2" />
+                  新增模板
+                </Button>
+              </Link>
+              <Link href="/admins/licenses">
+                <Button className="justify-start w-full" variant="outline">
+                  <Key className="h-4 w-4 mr-2" />
+                  查看授权码
+                </Button>
+              </Link>
+              <Link href="/admins/templates">
+                <Button className="justify-start w-full" variant="outline">
+                  <FileText className="h-4 w-4 mr-2" />
+                  查看模板
+                </Button>
+              </Link>
             </div>
           </CardContent>
         </Card>
@@ -160,28 +169,26 @@ export default function AdminDashboardPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>授权码概览</CardTitle>
-              <CardDescription>最近使用情况</CardDescription>
+              <CardDescription>插件授权码使用情况</CardDescription>
             </div>
-            <Button variant="ghost" size="sm">
-              查看全部
-              <ArrowRight className="h-4 w-4 ml-1" />
-            </Button>
+            <Link href="/admins/licenses">
+              <Button variant="ghost" size="sm">
+                查看全部
+                <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+            </Link>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {authorizations.slice(0, 3).map((auth) => (
-                <div key={auth.id} className="flex items-center justify-between p-3 rounded-lg border">
-                  <div>
-                    <p className="font-medium">{auth.tableName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {auth.tableId}
-                    </p>
-                  </div>
-                  <div className={`px-2 py-1 rounded-full text-xs font-medium`}>
-                    {auth.isActive ? '活跃' : '未激活'}
-                  </div>
-                </div>
-              ))}
+              <div className="text-sm text-muted-foreground">
+                请前往「插件授权码」页面查看和管理授权码
+              </div>
+              <Link href="/admins/licenses">
+                <Button variant="outline" className="w-full">
+                  <Key className="h-4 w-4 mr-2" />
+                  进入授权码管理
+                </Button>
+              </Link>
             </div>
           </CardContent>
         </Card>
@@ -193,10 +200,12 @@ export default function AdminDashboardPage() {
               <CardTitle>模板概览</CardTitle>
               <CardDescription>已创建的模板</CardDescription>
             </div>
-            <Button variant="ghost" size="sm">
-              查看全部
-              <ArrowRight className="h-4 w-4 ml-1" />
-            </Button>
+            <Link href="/admins/templates">
+              <Button variant="ghost" size="sm">
+                查看全部
+                <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+            </Link>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
