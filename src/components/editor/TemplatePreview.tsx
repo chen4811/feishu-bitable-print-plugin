@@ -822,20 +822,22 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           return `
           <div class="print-page" style="
             width: 210mm;
-            min-height: 297mm;
+            height: 297mm;
             padding: ${padding};
             margin: 0 auto;
             box-sizing: border-box;
             page-break-after: ${isLast ? 'auto' : 'always'};
             position: relative;
             background: white;
+            overflow: hidden;
           ">
             <div style="
               display: flex;
               flex-wrap: wrap;
               align-content: flex-start;
               gap: 12px;
-              min-height: 100%;
+              height: 100%;
+              overflow: hidden;
             ">
               ${components.map((comp: any) => {
                 const html = renderComponentToHTML(comp, record.data);
@@ -851,7 +853,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         printContent = `
           <div class="print-page" style="
             width: 210mm;
-            min-height: 297mm;
+            height: auto;
             padding: ${padding};
             margin: 0 auto;
             box-sizing: border-box;
@@ -885,7 +887,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         printContent = `
           <div class="print-page" style="
             width: 210mm;
-            min-height: 297mm;
+            height: auto;
             padding: ${padding};
             margin: 0 auto;
             box-sizing: border-box;
@@ -978,14 +980,14 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
             .print-page {
               position: relative !important;
               width: 210mm !important;
-              min-height: 297mm !important;
-              height: auto !important;
+              height: 297mm !important;
               margin: 0 !important;
               padding: 0 !important;
               page-break-after: always;
               box-shadow: none !important;
               background: #ffffff !important;
               box-sizing: border-box !important;
+              overflow: hidden !important;
             }
 
             /* 5. 最后一页不加分页符 */
@@ -1353,7 +1355,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                         className="bg-white shadow-lg print:shadow-none print-area-page flex items-center justify-center"
                         style={{
                           width: `${actualWidth}mm`,
-                          minHeight: `${actualHeight}mm`,
+                          height: `${actualHeight}mm`,
                           padding,
                           boxSizing: 'border-box',
                         }}
@@ -1378,12 +1380,13 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                       className="bg-white shadow-lg print:shadow-none print-area-page"
                       style={{
                         width: `${actualWidth}mm`,
-                        minHeight: layoutMode === 'label' ? 'auto' : `${actualHeight}mm`,
+                        height: layoutMode === 'label' ? 'auto' : `${actualHeight}mm`,
                         padding,
                         boxSizing: 'border-box',
                         position: 'relative',
                         marginBottom: layoutMode === 'default' && !isLast ? '20px' : '0',
                         pageBreakAfter: layoutMode === 'default' && !isLast ? 'always' : 'auto',
+                        overflow: layoutMode === 'label' ? 'visible' : 'hidden',
                       }}
                     >
                       {/* 页码标记 */}
@@ -1426,7 +1429,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                           className="bg-white shadow-lg print:shadow-none print-area-page"
                           style={{
                             width: `${actualWidth}mm`,
-                            minHeight: `${actualHeight}mm`,
+                            height: 'auto',
                             padding,
                             boxSizing: 'border-box',
                           }}
@@ -1639,11 +1642,12 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           /* 7. 确保打印页面尺寸正确 */
           .print-content-area .print-area-page {
             width: 210mm !important;
-            min-height: 297mm !important;
+            height: 297mm !important;
             page-break-after: always;
             box-shadow: none !important;
             box-sizing: border-box !important;
             margin: 0 auto !important;
+            overflow: hidden !important;
           }
 
           .print-content-area .print-area-page:last-of-type {
