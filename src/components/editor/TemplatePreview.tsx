@@ -677,6 +677,12 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   const [isTableMatched, setIsTableMatched] = useState<boolean>(true);
   const [cachedRecords, setCachedRecords] = useState<Record<string, any>[]>([]);
   
+  // 用于事件去重：缓存上一次处理的 recordId 和 tableId
+  const lastProcessedEventRef = useRef<{ recordId: string | null; tableId: string | null }>({ 
+    recordId: null, 
+    tableId: null 
+  });
+  
   // 页面设置状态
   const [isPageSettingsOpen, setIsPageSettingsOpen] = useState(false);
   const [localPageConfig, setLocalPageConfig] = useState<PageConfig>({
@@ -831,6 +837,11 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       const { base } = await import('@lark-base-open/js-sdk');
       const selection = await base.getSelection();
       
+      // 如果表格ID没有变化，跳过更新
+      if (selection?.tableId && selection.tableId === currentTableInfo.tableId) {
+        return;
+      }
+      
       console.log('[TP] base.getSelection() 返回:', selection);
       
       if (!selection?.tableId) {
@@ -868,7 +879,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     } catch (err) {
       console.error('[TP] 获取表格信息失败:', err);
     }
-  }, []);
+  }, [currentTableInfo.tableId]);
   
 
   // 初始化：设置飞书环境状态并初始化 SDK，添加选中变化监听器，获取当前表格信息
@@ -885,19 +896,33 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
         // 注册选中变化监听器
         const unsubscribe = onSelectionChange((event) => {
-          console.log('[TP] 飞书选择变化事件:', event.data);
+          const { recordId, tableId } = event?.data || {};
+          
+          // 状态比对：如果记录和表格都没变，直接返回，不执行后续逻辑
+          if (recordId && tableId && 
+              recordId === lastProcessedEventRef.current.recordId && 
+              tableId === lastProcessedEventRef.current.tableId) {
+            return;
+          }
+          
+          // 更新缓存
+          if (recordId && tableId) {
+            lastProcessedEventRef.current = { recordId, tableId };
+          }
+          
+          console.log('[TP] 飞书选择变化事件（已去重）:', event.data);
 
           // 表格切换时重新获取表格信息
-          if (event?.data?.tableId) {
-            console.log('[TP] 检测到表格变化，重新获取表格信息:', event.data.tableId);
+          if (tableId) {
+            console.log('[TP] 检测到表格变化，重新获取表格信息:', tableId);
             fetchCurrentTableInfo();
           }
 
           // 记录选中变化时获取记录
-          if (event?.data?.recordId && event?.data?.tableId) {
-            console.log('[TP] 记录选中变化:', event.data.recordId);
+          if (recordId && tableId) {
+            console.log('[TP] 记录选中变化:', recordId);
             // 使用 recordId 直接获取单条记录，支持连续点击添加
-            fetchSingleRecord(event.data.recordId, event.data.tableId);
+            fetchSingleRecord(recordId, tableId);
           }
         });
 
