@@ -11,11 +11,13 @@ import {
   Settings,
   LogOut,
   Home,
+  Ticket,
 } from 'lucide-react';
 
 const navItems = [
   { href: '/admins/dashboard', label: '仪表板', icon: LayoutDashboard },
   { href: '/admins/authorizations', label: '授权码管理', icon: Key },
+  { href: '/admins/licenses', label: '插件授权码', icon: Ticket },
   { href: '/admins/templates', label: '模板管理', icon: FileText },
   { href: '/admins/settings', label: '系统设置', icon: Settings },
 ];
