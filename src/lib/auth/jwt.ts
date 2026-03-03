@@ -39,6 +39,7 @@ export function verifyToken(token: string): JwtPayload | null {
     const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
     return decoded;
   } catch (error) {
+    console.error('[JWT] Token 验证失败:', error instanceof Error ? error.message : '未知错误');
     return null;
   }
 }
