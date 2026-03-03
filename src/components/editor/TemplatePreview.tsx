@@ -1845,27 +1845,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
               {/* 右侧：打印按钮 */}
               <div className="flex items-center gap-2">
-                {isFeishuEnvironment && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleRefreshData}
-                          disabled={isLoading}
-                        >
-                          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                          刷新数据
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>从飞书表格获取最新数据</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-                
                 <Button
                   variant="outline"
                   size="sm"
@@ -2197,20 +2176,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
             </div>
           )}
           
-          {/* 数据源刷新按钮 */}
+          {/* 数据源刷新按钮 - 点击多维表格行自动载入数据，无需手动刷新 */}
           <div className="mt-3 flex gap-2">
-            {dataSource === 'bitable' && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 text-xs h-8"
-                onClick={handleRefreshData}
-                disabled={isLoading || !isFeishuEnvironment}
-              >
-                <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
-                刷新数据
-              </Button>
-            )}
             {dataSource === 'corehr' && (
               <Button
                 variant="outline"
@@ -2234,7 +2201,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                   <p className="text-sm mb-2">暂无数据</p>
                   <p className="text-xs">
                     {dataSource === 'bitable' 
-                      ? '在多维表格中选中行\n或点击"刷新数据"'
+                      ? '请在多维表格中点击行以载入数据'
                       : '点击"查询流程"获取审批数据'
                     }
                   </p>
