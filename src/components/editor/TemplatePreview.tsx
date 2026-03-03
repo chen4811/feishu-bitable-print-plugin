@@ -1997,33 +1997,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
             {/* 调试信息开关 */}
             <div className="no-print mt-2 flex items-center gap-2">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-6 text-xs"
-                onClick={() => setShowDebugInfo(!showDebugInfo)}
-              >
-                {showDebugInfo ? '隐藏调试' : '显示调试'}
-              </Button>
             </div>
-
-            {/* 调试信息 */}
-            {showDebugInfo && debugInfo && (
-              <div className="no-print mt-2 p-3 bg-gray-100 rounded text-xs font-mono max-h-32 overflow-auto">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold">调试信息:</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2"
-                    onClick={() => setDebugInfo('')}
-                  >
-                    清除
-                  </Button>
-                </div>
-                <pre className="whitespace-pre-wrap">{debugInfo}</pre>
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -2345,16 +2319,10 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                           
                           {/* 显示更多预览字段 */}
                           <div className="mt-2 space-y-1">
-                            {/* 调试信息 - 显示原始记录结构 */}
-                            <div className="text-[10px] text-orange-500 bg-orange-50 p-1 rounded">
-                              <div>字段数: {Object.entries(record).filter(([k]) => !k.startsWith('_') && k !== 'id').length}</div>
-                              <div>所有Keys: {Object.keys(record).join(', ')}</div>
-                            </div>
                             {Object.entries(record)
                               .filter(([key]) => key !== 'id' && key !== '_rowIndex' && !key.startsWith('_'))
                               .slice(0, 4)
                               .map(([key, value]) => {
-                                // 调试原始值
                                 const displayValue = formatFieldValue(key, value);
                                 const rawType = typeof value;
                                 return (
