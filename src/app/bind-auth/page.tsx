@@ -89,15 +89,15 @@ export default function BindAuthPage() {
               <Label htmlFor="licenseCode">授权码</Label>
               <Input
                 id="licenseCode"
-                placeholder="请输入16位授权码"
+                placeholder="例如: EJKD-86WP-S5F6-MENT"
                 value={licenseCode}
-                onChange={(e) => setLicenseCode(e.target.value)}
+                onChange={(e) => setLicenseCode(e.target.value.toUpperCase())}
                 required
-                maxLength={16}
+                maxLength={19}
                 disabled={isLoading}
               />
               <p className="text-xs text-gray-500">
-                授权码为16位字母和数字组合
+                授权码为16位字母和数字组合，支持带连字符格式 (XXXX-XXXX-XXXX-XXXX)
               </p>
             </div>
             
