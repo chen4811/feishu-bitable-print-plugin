@@ -703,11 +703,13 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       if (selRecords.length > 0) {
         // 转换格式 - 确保每条记录都有唯一 ID
         const formattedRecords = selRecords.map((record, index) => {
-          // 生成唯一 ID：优先使用 record.id，其次是 recordId，最后使用索引
-          const uniqueId = record.id || (record as any).recordId || `record_${Date.now()}_${index}`;
+          // 生成唯一 ID：优先使用 record.id，其次是 recordId
+          // 注意：不使用 Date.now()，确保同一记录多次点击生成相同 ID
+          const uniqueId = record.id || (record as any).recordId || `record_${index}`;
           return {
             ...record.fields,
             id: uniqueId,
+            _sourceRecordId: record.id || (record as any).recordId, // 保存原始记录ID用于调试
             _rowIndex: index,
           };
         });
@@ -716,18 +718,30 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         setAvailableRecords(prev => {
           const newRecords = [...prev];
           let addedCount = 0;
+          let skippedCount = 0;
+          
           formattedRecords.forEach(record => {
-            if (!newRecords.some(r => r.id === record.id)) {
+            // 严格去重：检查是否已存在相同 ID 的记录
+            const isDuplicate = newRecords.some(r => r.id === record.id);
+            if (!isDuplicate) {
               newRecords.push(record);
               addedCount++;
+            } else {
+              skippedCount++;
+              console.log('[TP] 跳过重复记录:', record.id);
             }
           });
-          if (addedCount > 0) {
-            console.log('[TP] 新增记录:', addedCount, '总记录:', newRecords.length);
+          
+          if (addedCount > 0 || skippedCount > 0) {
+            console.log(`[TP] 新增: ${addedCount}, 跳过: ${skippedCount}, 总记录: ${newRecords.length}`);
           }
           return newRecords;
         });
       }
+    } catch (err) {
+      console.error('[TP] 获取记录失败:', err);
+    }
+  }, []);
     } catch (err) {
       console.error('[TP] 获取记录失败:', err);
     }
