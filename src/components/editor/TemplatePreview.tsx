@@ -785,18 +785,40 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     try {
       const { base } = await import('@lark-base-open/js-sdk');
       const selection = await base.getSelection();
-      const tableName = await feishuEnv.fetchTableName();
+      
+      console.log('[TP] base.getSelection() 返回:', selection);
+      
+      if (!selection?.tableId) {
+        console.warn('[TP] 无法获取表格ID');
+        setCurrentTableInfo({
+          tableId: null,
+          tableName: '未知表格',
+          baseId: selection?.baseId || null,
+        });
+        return;
+      }
+      
+      // 尝试获取表格名称
+      let tableName = '多维表格';
+      try {
+        const table = await base.getTable(selection.tableId);
+        tableName = (table as any).name || selection.tableId;
+        console.log('[TP] 获取到表格:', { id: selection.tableId, name: tableName });
+      } catch (tableErr) {
+        console.warn('[TP] 获取表格名称失败，使用ID作为名称:', selection.tableId);
+        tableName = selection.tableId; // 使用ID作为名称
+      }
       
       setCurrentTableInfo({
-        tableId: selection?.tableId || null,
+        tableId: selection.tableId,
         tableName: tableName,
-        baseId: selection?.baseId || null,
+        baseId: selection.baseId || null,
       });
       
-      console.log('[TP] 当前表格信息:', {
-        tableId: selection?.tableId,
+      console.log('[TP] 当前表格信息已更新:', {
+        tableId: selection.tableId,
         tableName,
-        baseId: selection?.baseId,
+        baseId: selection.baseId,
       });
     } catch (err) {
       console.error('[TP] 获取表格信息失败:', err);
@@ -805,16 +827,35 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   
   // 检测表格是否匹配模板
   const checkTableMatch = useCallback((template: Template | null, tableInfo: typeof currentTableInfo): boolean => {
-    if (!template || !tableInfo.tableId) return true; // 如果没有模板或无法获取表格信息，默认允许
+    if (!template) {
+      console.log('[TP] 匹配检查: 无模板，默认匹配');
+      return true;
+    }
+    
+    if (!tableInfo.tableId) {
+      console.log('[TP] 匹配检查: 无法获取当前表格ID，默认匹配');
+      return true;
+    }
     
     // 获取模板关联的表格ID
     const templateTableId = template.data?.tableId as string | undefined;
     
     // 如果模板没有记录表格ID，说明是旧模板或通用模板，允许任何表格
-    if (!templateTableId) return true;
+    if (!templateTableId) {
+      console.log('[TP] 匹配检查: 模板无表格ID（旧模板），默认匹配');
+      return true;
+    }
     
     // 比较表格ID
-    return templateTableId === tableInfo.tableId;
+    const isMatch = templateTableId === tableInfo.tableId;
+    console.log('[TP] 匹配检查:', {
+      templateTableId,
+      currentTableId: tableInfo.tableId,
+      isMatch,
+      templateName: template.name,
+    });
+    
+    return isMatch;
   }, []);
   
   // 监听模板和表格信息变化，更新匹配状态并处理缓存
@@ -899,6 +940,14 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     setSelectedTemplate(template);
     // 清空之前选中的数据
     setSelectedRecords([]);
+    
+    console.log('[TemplatePreview] 选择模板:', {
+      name: template.name,
+      id: template.id,
+      tableId: template.data?.tableId,
+      tableName: template.data?.tableName,
+      hasData: !!template.data,
+    });
     
     // 从模板数据中读取页面配置
     if (template.data?.pageConfig) {
@@ -1884,18 +1933,20 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                   {isTableMatched ? '匹配' : '不匹配'}
                 </Badge>
               </div>
-              {currentTableInfo.tableName && (
-                <div className="mt-1 text-xs text-gray-600 truncate">
-                  当前: {currentTableInfo.tableName}
+              <div className="mt-1 text-xs text-gray-600 truncate" title={currentTableInfo.tableId || ''}>
+                当前: {currentTableInfo.tableName || currentTableInfo.tableId || '未知'}
+              </div>
+              {selectedTemplate.data?.tableId ? (
+                <div className="mt-1 text-[10px] text-gray-400 truncate" title={selectedTemplate.data.tableId as string}>
+                  模板绑定: {(selectedTemplate.data.tableName as string) || (selectedTemplate.data.tableId as string)}
                 </div>
-              )}
-              {selectedTemplate.data?.tableId && (
-                <div className="mt-1 text-[10px] text-gray-400 truncate">
-                  模板绑定: {(selectedTemplate.data.tableName as string) || selectedTemplate.data.tableId}
+              ) : (
+                <div className="mt-1 text-[10px] text-amber-600">
+                  模板未绑定表格（旧模板）
                 </div>
               )}
               {!isTableMatched && (
-                <div className="mt-2 text-[10px] text-amber-600">
+                <div className="mt-2 text-[10px] text-red-600 font-medium">
                   当前表格与模板不匹配，无法添加数据
                 </div>
               )}
