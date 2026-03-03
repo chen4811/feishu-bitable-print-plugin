@@ -19,7 +19,7 @@ export default function PrintPluginApp() {
   const router = useRouter();
   const [view, setView] = useState<AppView>('home');
   const { setFields, setSystemFields, setTemplateName } = useEditorStore();
-  const { user, token, hasAuthorizations, logout } = useUserStore();
+  const { user, token, hasAuthorizations, logout, setHasAuthorizations } = useUserStore();
   const { fetchTemplates, setCurrentTemplate, saveTemplate } = useTemplateStore();
 
   // 计算登录状态
@@ -35,6 +35,39 @@ export default function PrintPluginApp() {
       router.push('/bind-auth');
     }
   }, [isLoggedIn, hasAuthorizations, router]);
+
+  // 验证授权码状态（确保 hasAuthorizations 是最新的）
+  useEffect(() => {
+    if (!isLoggedIn || !user?.id) {
+      return;
+    }
+
+    const checkLicenseStatus = async () => {
+      try {
+        const response = await fetch(`/api/license/status?userId=${user.id}`);
+        const result = await response.json();
+        
+        if (result.success) {
+          const { isValid, isExpired } = result.data;
+          
+          // 如果授权已过期但前端状态显示有授权，则更新状态
+          if (isExpired && hasAuthorizations) {
+            console.log('[PrintPluginApp] 授权已过期，更新状态');
+            setHasAuthorizations(false);
+          }
+          // 如果授权有效但前端状态显示无授权，则更新状态
+          else if (isValid && !hasAuthorizations) {
+            console.log('[PrintPluginApp] 授权有效，更新状态');
+            setHasAuthorizations(true);
+          }
+        }
+      } catch (error) {
+        console.error('[PrintPluginApp] 检查授权状态失败:', error);
+      }
+    };
+
+    checkLicenseStatus();
+  }, [isLoggedIn, user?.id, hasAuthorizations, setHasAuthorizations]);
 
   // 初始化字段数据并清理旧的 localStorage 数据
   useEffect(() => {

@@ -158,21 +158,30 @@ export async function GET(request: Request) {
       console.error('[Feishu OAuth Callback API] 查询所有授权码失败:', allError);
     }
     
-    // 查询有效授权码（状态为active）
+    // 查询有效授权码（状态为active且未过期）
     const { data: licenses, error: licenseError } = await client
       .from('plugin_licenses')
       .select('*')
       .eq('bound_user_id', feishuUserId)
-      .eq('status', 'active');
+      .eq('status', 'active')
+      .gt('valid_until', new Date().toISOString()); // 确保未过期
 
     if (licenseError) {
       console.error('[Feishu OAuth Callback API] 检查有效授权码失败:', licenseError);
     }
 
-    const hasAuthorizations = licenses && licenses.length > 0;
-    console.log('[Feishu OAuth Callback API] 用户有效授权码数量:', hasAuthorizations ? licenses!.length : 0);
-    if (licenses && licenses.length > 0) {
-      console.log('[Feishu OAuth Callback API] 有效授权码详情:', licenses.map(l => ({ 
+    // 过滤掉已过期但状态未更新的授权码
+    const now = new Date();
+    const validLicenses = licenses?.filter(l => {
+      if (!l.valid_until) return false;
+      const validUntil = new Date(l.valid_until);
+      return validUntil > now;
+    });
+
+    const hasAuthorizations = validLicenses && validLicenses.length > 0;
+    console.log('[Feishu OAuth Callback API] 用户有效授权码数量:', hasAuthorizations ? validLicenses!.length : 0);
+    if (validLicenses && validLicenses.length > 0) {
+      console.log('[Feishu OAuth Callback API] 有效授权码详情:', validLicenses.map(l => ({ 
         code: l.code, 
         bound_user_id: l.bound_user_id, 
         status: l.status,
