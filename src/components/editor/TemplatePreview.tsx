@@ -18,8 +18,7 @@ import { PageSettingsDialog } from '@/components/editor/dialogs/PageSettingsDial
 import { PAGE_SIZES, PageConfig } from '@/types/editor';
 import { feishuEnv } from '@/lib/feishu-env';
 import { onSelectionChange } from '@/lib/feishu-env';
-import { useLicense } from '@/hooks/useLicense';
-import { LicenseGate, LicenseStatus } from '@/components/license';
+
 
 interface TemplatePreviewProps {
   baseId?: string;
@@ -689,21 +688,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   // 忽略列表：存储用户手动删除的记录 ID，避免被飞书事件恢复
   const [ignoredRecordIds, setIgnoredRecordIds] = useState<Set<string>>(new Set());
   
-  // 授权码状态管理
-  const [feishuUserId, setFeishuUserId] = useState<string>('');
-  const [feishuUserName, setFeishuUserName] = useState<string>('');
-  const [isLicenseChecked, setIsLicenseChecked] = useState(false);
-  
-  // 授权码 Hook
-  const {
-    licenseState,
-    isLoading: isLicenseLoading,
-    isActivating,
-    error: licenseError,
-    checkLicense,
-    activateLicense,
-    refresh: refreshLicense,
-  } = useLicense();
+
   
   // 页面设置状态
   const [isPageSettingsOpen, setIsPageSettingsOpen] = useState(false);
@@ -746,36 +731,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     });
   }, [fetchTemplates]);
 
-  // 获取飞书用户信息并检查授权
-  useEffect(() => {
-    if (!isFeishuEnvironment) {
-      setIsLicenseChecked(true);
-      return;
-    }
 
-    const initLicenseCheck = async () => {
-      try {
-        // 从飞书 SDK 获取用户信息
-        const { bitable } = await import('@lark-base-open/js-sdk');
-        const userId = await bitable.bridge.getUserId();
-        
-        if (userId) {
-          setFeishuUserId(userId);
-          setFeishuUserName('飞书用户'); // getUserId 只返回 ID，名称需要其他方式获取
-          
-          // 检查授权状态
-          await checkLicense(userId);
-        }
-      } catch (err) {
-        console.error('[TP] 获取飞书用户信息失败:', err);
-        // 非飞书环境或获取失败，跳过授权检查
-      } finally {
-        setIsLicenseChecked(true);
-      }
-    };
-
-    initLicenseCheck();
-  }, [isFeishuEnvironment, checkLicense]);
 
 
 
@@ -1437,12 +1393,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
   // 处理打印
   const handlePrint = useCallback(() => {
-    // 授权码检查
-    if (!licenseState.isValid) {
-      toast.error('授权码无效或已过期，无法使用打印功能');
-      return;
-    }
-
     if (!selectedTemplate) {
       toast.error('请先选择一个模板');
       return;
@@ -1454,16 +1404,10 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     }
 
     window.print();
-  }, [selectedTemplate, selectedRecords.length, licenseState.isValid]);
+  }, [selectedTemplate, selectedRecords.length]);
 
   // 处理批量打印（所有选中的记录）
   const handleBatchPrint = useCallback(() => {
-    // 授权码检查
-    if (!licenseState.isValid) {
-      toast.error('授权码无效或已过期，无法使用打印功能');
-      return;
-    }
-
     if (!selectedTemplate) {
       toast.error('请先选择一个模板');
       return;
@@ -1763,39 +1707,9 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     }, 500);
 
     toast.success(`已打开批量打印窗口，共 ${selectedRecords.length} 条记录`);
-  }, [selectedTemplate, selectedRecords, layoutMode, licenseState.isValid]);
+  }, [selectedTemplate, selectedRecords, layoutMode]);
 
-  // 处理授权码激活成功
-  const handleLicenseActivated = useCallback(() => {
-    if (feishuUserId) {
-      refreshLicense(feishuUserId);
-    }
-  }, [feishuUserId, refreshLicense]);
 
-  // 如果授权检查尚未完成，显示加载状态
-  if (!isLicenseChecked || isLicenseLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">正在检查授权状态...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // 如果需要输入授权码（在飞书环境下且没有有效授权），显示授权码输入界面
-  if (isFeishuEnvironment && licenseState.requireInput) {
-    return (
-      <LicenseGate
-        userId={feishuUserId || 'unknown'}
-        userName={feishuUserName || '飞书用户'}
-        onActivated={handleLicenseActivated}
-        isExpired={licenseState.isExpired}
-        expiredMessage={licenseState.isExpired ? '您的授权已过期，请输入新的授权码继续使用' : '请输入授权码以继续使用插件'}
-      />
-    );
-  }
 
   return (
     <div className="print-wrapper h-full flex gap-3 p-3 overflow-hidden">

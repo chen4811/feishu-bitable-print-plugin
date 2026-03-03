@@ -27,18 +27,17 @@ export default function PrintPluginApp() {
 
   // 移除了频繁的 console.log，避免性能问题
 
-  // 检查登录状态
+  // 检查登录状态（只检查登录，不再检查授权码状态）
   useEffect(() => {
     if (!isLoggedIn) {
       router.push('/login');
-    } else if (!hasAuthorizations) {
-      router.push('/bind-auth');
     }
-  }, [isLoggedIn, hasAuthorizations, router]);
+    // 授权码状态只在飞书登录回调时检查，之后直接依赖 localStorage 中保存的状态
+  }, [isLoggedIn, router]);
 
   // 初始化字段数据并清理旧的 localStorage 数据
   useEffect(() => {
-    if (!isLoggedIn || !hasAuthorizations) {
+    if (!isLoggedIn) {
       return;
     }
 
@@ -72,7 +71,7 @@ export default function PrintPluginApp() {
 
     setFields(fields);
     setSystemFields(systemFields);
-  }, [setFields, setSystemFields, isLoggedIn, hasAuthorizations, fetchTemplates]);
+  }, [setFields, setSystemFields, isLoggedIn, fetchTemplates]);
 
   // 处理创建新排版
   const handleCreateNew = async () => {
@@ -149,8 +148,8 @@ export default function PrintPluginApp() {
     }
   };
 
-  // 如果未登录或未绑定授权码，显示加载状态
-  if (!isLoggedIn || !hasAuthorizations) {
+  // 如果未登录，显示加载状态
+  if (!isLoggedIn) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="text-center">
