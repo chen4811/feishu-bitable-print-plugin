@@ -12,22 +12,6 @@ interface AdminUser {
   updatedAt: string;
 }
 
-// 授权码类型（包含用户信息）
-interface Authorization {
-  id: number;
-  userId: number;
-  userName: string;
-  userAvatar: string;
-  feishuUserId: string;
-  tableId: string;
-  tableName: string;
-  appTokenEncrypted: string;
-  isActive: boolean;
-  lastUsedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
 // 模板类型
 interface Template {
   id: number;
@@ -52,18 +36,11 @@ interface AdminState {
   token: string | null;
 
   // 数据
-  authorizations: Authorization[];
   templates: Template[];
 
   // 操作方法
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
-
-  // 授权码管理
-  fetchAuthorizations: () => Promise<void>;
-  addAuthorization: (data: { tableId: string; tableName: string; appToken: string }) => Promise<void>;
-  updateAuthorization: (id: number, data: { isActive?: boolean }) => Promise<void>;
-  deleteAuthorization: (id: number) => Promise<void>;
 
   // 模板管理
   fetchTemplates: () => Promise<void>;
@@ -79,7 +56,6 @@ export const useAdminStore = create<AdminState>()(
       isLoggedIn: false,
       adminUser: null,
       token: null,
-      authorizations: [],
       templates: [],
 
       // 登录
@@ -120,98 +96,8 @@ export const useAdminStore = create<AdminState>()(
           isLoggedIn: false,
           adminUser: null,
           token: null,
-          authorizations: [],
           templates: [],
         });
-      },
-
-      // 授权码管理 - 从真实 API 获取
-      fetchAuthorizations: async () => {
-        const { token } = get();
-        if (!token) {
-          console.error('[adminStore] 未登录，无法获取授权码');
-          return;
-        }
-
-        try {
-          console.log('[adminStore] 获取授权码列表...');
-          const response = await fetch('/api/admin/authorizations', {
-            headers: { 'Authorization': `Bearer ${token}` },
-          });
-
-          const result = await response.json();
-
-          if (result.success && result.data) {
-            console.log('[adminStore] 获取到', result.data.length, '条授权码');
-            set({ authorizations: result.data });
-          } else {
-            console.error('[adminStore] 获取授权码失败:', result.error);
-          }
-        } catch (error) {
-          console.error('[adminStore] 获取授权码请求失败:', error);
-        }
-      },
-
-      addAuthorization: async (data: { tableId: string; tableName: string; appToken: string }) => {
-        // 管理员后台不直接添加授权码，由用户在前端绑定
-        console.log('[adminStore] 管理员后台不支持直接添加授权码');
-      },
-
-      updateAuthorization: async (id: number, data: { isActive?: boolean }) => {
-        const { token, authorizations } = get();
-        if (!token) return;
-
-        try {
-          const response = await fetch('/api/admin/authorizations', {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify({ id, ...data }),
-          });
-
-          const result = await response.json();
-
-          if (result.success) {
-            // 更新本地状态
-            set({
-              authorizations: authorizations.map(auth =>
-                auth.id === id ? { ...auth, ...data } : auth
-              ),
-            });
-          } else {
-            console.error('[adminStore] 更新授权码失败:', result.error);
-          }
-        } catch (error) {
-          console.error('[adminStore] 更新授权码请求失败:', error);
-        }
-      },
-
-      deleteAuthorization: async (id: number) => {
-        const { token, authorizations } = get();
-        if (!token) return;
-
-        try {
-          const response = await fetch(`/api/admin/authorizations?id=${id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` },
-          });
-
-          const result = await response.json();
-
-          if (result.success) {
-            // 从本地状态中移除
-            set({
-              authorizations: authorizations.filter(auth => auth.id !== id),
-            });
-            console.log('[adminStore] 授权码已删除');
-          } else {
-            console.error('[adminStore] 删除授权码失败:', result.error);
-          }
-        } catch (error) {
-          console.error('[adminStore] 删除授权码请求失败:', error);
-        }
       },
 
       // 模板管理

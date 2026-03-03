@@ -1,11 +1,12 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useAdminStore } from '@/store/adminStore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import {
-  Key,
+  Ticket,
   FileText,
   Users,
   Activity,
@@ -15,22 +16,55 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 
+interface LicenseStats {
+  status: {
+    total: number;
+    unused: number;
+    active: number;
+    expired: number;
+    revoked: number;
+  };
+}
+
 export default function AdminDashboardPage() {
-  const { adminUser, authorizations, templates } = useAdminStore();
+  const { adminUser, templates, token } = useAdminStore();
+  const [licenseStats, setLicenseStats] = useState<LicenseStats | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+
+  // 获取授权码统计数据
+  useEffect(() => {
+    const fetchLicenseStats = async () => {
+      if (!token) return;
+      try {
+        const response = await fetch('/api/admin/licenses/stats', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        const result = await response.json();
+        if (result.success && result.data) {
+          setLicenseStats(result.data);
+        }
+      } catch (error) {
+        console.error('获取授权码统计失败:', error);
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+    fetchLicenseStats();
+  }, [token]);
 
   const stats = [
     {
       title: '授权码总数',
-      value: authorizations.length,
-      icon: Key,
-      description: '已配置的授权码数量',
+      value: licenseStats?.status.total ?? 0,
+      icon: Ticket,
+      description: '已生成的授权码数量',
       color: 'from-blue-500 to-blue-600',
     },
     {
       title: '活跃授权码',
-      value: authorizations.filter((a) => a.isActive).length,
+      value: licenseStats?.status.active ?? 0,
       icon: CheckCircle2,
-      description: '当前可用的授权码',
+      description: '当前已绑定的授权码',
       color: 'from-green-500 to-green-600',
     },
     {
@@ -116,7 +150,7 @@ export default function AdminDashboardPage() {
               </Link>
               <Link href="/admins/licenses">
                 <Button className="justify-start w-full" variant="outline">
-                  <Key className="h-4 w-4 mr-2" />
+                  <Ticket className="h-4 w-4 mr-2" />
                   查看授权码
                 </Button>
               </Link>
@@ -185,7 +219,7 @@ export default function AdminDashboardPage() {
               </div>
               <Link href="/admins/licenses">
                 <Button variant="outline" className="w-full">
-                  <Key className="h-4 w-4 mr-2" />
+                  <Ticket className="h-4 w-4 mr-2" />
                   进入授权码管理
                 </Button>
               </Link>
