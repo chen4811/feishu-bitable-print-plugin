@@ -822,22 +822,20 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           return `
           <div class="print-page" style="
             width: 210mm;
-            height: 297mm;
+            min-height: 297mm;
+            height: auto;
             padding: ${padding};
             margin: 0 auto;
             box-sizing: border-box;
             page-break-after: ${isLast ? 'auto' : 'always'};
             position: relative;
             background: white;
-            overflow: hidden;
           ">
             <div style="
               display: flex;
               flex-wrap: wrap;
               align-content: flex-start;
               gap: 12px;
-              height: 100%;
-              overflow: hidden;
             ">
               ${components.map((comp: any) => {
                 const html = renderComponentToHTML(comp, record.data);
@@ -973,21 +971,21 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
               width: 210mm !important;
               height: auto !important;
               overflow: visible !important;
-              background: #ffffff !important;
+              background: transparent !important;
             }
 
             /* 4. 打印页面 - 精确A4尺寸 */
             .print-page {
               position: relative !important;
               width: 210mm !important;
-              height: 297mm !important;
+              min-height: 297mm !important;
+              height: auto !important;
               margin: 0 !important;
               padding: 0 !important;
               page-break-after: always;
               box-shadow: none !important;
               background: #ffffff !important;
               box-sizing: border-box !important;
-              overflow: hidden !important;
             }
 
             /* 5. 最后一页不加分页符 */
@@ -1355,7 +1353,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                         className="bg-white shadow-lg print:shadow-none print-area-page flex items-center justify-center"
                         style={{
                           width: `${actualWidth}mm`,
-                          height: `${actualHeight}mm`,
+                          minHeight: `${actualHeight}mm`,
+                          height: 'auto',
                           padding,
                           boxSizing: 'border-box',
                         }}
@@ -1380,13 +1379,13 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                       className="bg-white shadow-lg print:shadow-none print-area-page"
                       style={{
                         width: `${actualWidth}mm`,
-                        height: layoutMode === 'label' ? 'auto' : `${actualHeight}mm`,
+                        minHeight: layoutMode === 'label' ? 'auto' : `${actualHeight}mm`,
+                        height: 'auto',
                         padding,
                         boxSizing: 'border-box',
                         position: 'relative',
                         marginBottom: layoutMode === 'default' && !isLast ? '20px' : '0',
                         pageBreakAfter: layoutMode === 'default' && !isLast ? 'always' : 'auto',
-                        overflow: layoutMode === 'label' ? 'visible' : 'hidden',
                       }}
                     >
                       {/* 页码标记 */}
@@ -1399,7 +1398,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                         flexWrap: 'wrap',
                         alignContent: 'flex-start',
                         gap: '12px',
-                        minHeight: '100%',
                       }}>
                         {components.map((component: any) => 
                           renderComponent(component, record.data)
@@ -1642,12 +1640,12 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           /* 7. 确保打印页面尺寸正确 */
           .print-content-area .print-area-page {
             width: 210mm !important;
-            height: 297mm !important;
+            min-height: 297mm !important;
+            height: auto !important;
             page-break-after: always;
             box-shadow: none !important;
             box-sizing: border-box !important;
             margin: 0 auto !important;
-            overflow: hidden !important;
           }
 
           .print-content-area .print-area-page:last-of-type {
