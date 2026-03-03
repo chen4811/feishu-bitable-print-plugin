@@ -419,18 +419,6 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
     setScale(1);
   };
 
-  // 鼠标滚轮缩放
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      setScale(prev => {
-        const newScale = Math.max(0.5, Math.min(2, prev + delta));
-        return Math.round(newScale * 10) / 10;
-      });
-    }
-  }, []);
-
   // 获取预览记录
   const previewRecords = selectedRecordIds.length > 0
     ? records.filter(r => selectedRecordIds.includes(r.id as string))
@@ -633,7 +621,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
             </div>
 
             {/* 预览内容 */}
-            <ScrollArea className="flex-1" onWheel={handleWheel}>
+            <ScrollArea className="flex-1">
               <div className="p-8 flex flex-col items-center gap-8">
                 {printError && (
                   <Alert variant="destructive" className="max-w-lg">

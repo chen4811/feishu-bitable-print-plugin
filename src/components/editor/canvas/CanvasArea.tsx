@@ -68,7 +68,6 @@ export function CanvasArea() {
   
   // 缩放状态
   const [scale, setScale] = useState(1);
-  const [isCtrlPressed, setIsCtrlPressed] = useState(false);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
 
   // 传感器设置
@@ -96,40 +95,7 @@ export function CanvasArea() {
     ? null 
     : components.find((c) => c.id === activeId);
 
-  // 监听键盘事件 - Ctrl键状态
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Control' || e.key === 'Meta') {
-        setIsCtrlPressed(true);
-      }
-    };
 
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === 'Control' || e.key === 'Meta') {
-        setIsCtrlPressed(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, []);
-
-  // 监听鼠标滚轮 - Ctrl+滚轮缩放
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      setScale(prev => {
-        const newScale = Math.max(0.5, Math.min(2, prev + delta));
-        return Math.round(newScale * 10) / 10;
-      });
-    }
-  }, []);
 
   // 缩放控制
   const handleZoomIn = () => {
@@ -306,16 +272,12 @@ export function CanvasArea() {
         >
           <RotateCcw className="w-4 h-4" />
         </Button>
-        <span className="text-xs text-gray-500 ml-2">
-          Ctrl+滚轮缩放
-        </span>
       </div>
 
-      {/* 画布容器 - 支持滚轮缩放 */}
+      {/* 画布容器 */}
       <div 
         ref={canvasContainerRef}
         className="flex items-start justify-center overflow-auto"
-        onWheel={handleWheel}
         style={{ 
           maxWidth: '100vw',
           maxHeight: 'calc(100vh - 200px)',
