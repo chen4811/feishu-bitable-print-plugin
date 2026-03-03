@@ -19,6 +19,7 @@ import { PageSettingsDialog } from '@/components/editor/dialogs/PageSettingsDial
 import { PAGE_SIZES, PageConfig } from '@/types/editor';
 import { feishuEnv } from '@/lib/feishu-env';
 import { onSelectionChange } from '@/lib/feishu-env';
+import { formatProcessForTemplate, type ProcessInstance } from '@/lib/feishu-corehr';
 
 interface TemplatePreviewProps {
   baseId?: string;
@@ -28,6 +29,9 @@ interface TemplatePreviewProps {
 
 // 排版方式类型
 type LayoutMode = 'default' | 'continuous' | 'label';
+
+// 数据源类型
+type DataSourceType = 'bitable' | 'corehr';
 
 // 选中的数据记录类型
 interface SelectedRecord {
@@ -639,6 +643,11 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   const [selectedRecords, setSelectedRecords] = useState<SelectedRecord[]>([]);
   const [availableRecords, setAvailableRecords] = useState<Record<string, any>[]>([]);
   
+  // 数据源选择状态
+  const [dataSource, setDataSource] = useState<DataSourceType>('bitable');
+  const [isLoadingProcesses, setIsLoadingProcesses] = useState(false);
+  const [processInstances, setProcessInstances] = useState<ProcessInstance[]>([]);
+  
   // 页面设置状态
   const [isPageSettingsOpen, setIsPageSettingsOpen] = useState(false);
   const [localPageConfig, setLocalPageConfig] = useState<PageConfig>({
@@ -902,6 +911,43 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   // 扫描 Checkbox（功能已移除，显示提示）
   const handleScanCheckbox = useCallback(async () => {
     toast.info('Checkbox 扫描功能已移除，请使用"刷新数据"获取选中记录');
+  }, []);
+
+  // 从飞书 CoreHR 查询流程实例
+  const handleFetchProcesses = useCallback(async () => {
+    setIsLoadingProcesses(true);
+    
+    try {
+      console.log('[TP] 从 CoreHR 查询流程实例...');
+      
+      const response = await fetch('/api/feishu/corehr/processes?mode=recent&limit=50&days=30');
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || '查询流程实例失败');
+      }
+      
+      const processes = result.data as ProcessInstance[];
+      console.log('[TP] 获取到流程实例:', processes.length, '条');
+      
+      // 格式化流程实例数据
+      const formattedRecords = processes.map((process, index) => ({
+        ...formatProcessForTemplate(process),
+        id: process.process_id,
+        _processId: process.process_id,
+        _rowIndex: index,
+      }));
+      
+      setProcessInstances(processes);
+      setAvailableRecords(formattedRecords);
+      toast.success(`已加载 ${formattedRecords.length} 条流程数据`);
+      
+    } catch (err) {
+      console.error('[TP] 查询流程实例失败:', err);
+      toast.error(err instanceof Error ? err.message : '查询流程数据失败');
+    } finally {
+      setIsLoadingProcesses(false);
+    }
   }, []);
 
   // 获取当前选中的模板
@@ -1691,10 +1737,76 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
               </Badge>
             )}
           </CardTitle>
+          
+          {/* 数据源选择 */}
+          <div className="mt-3">
+            <Label className="text-xs text-gray-500 mb-2 block">数据源</Label>
+            <ToggleGroup 
+              type="single" 
+              value={dataSource}
+              onValueChange={(v) => {
+                if (v) {
+                  setDataSource(v as DataSourceType);
+                  // 切换数据源时清空记录
+                  setAvailableRecords([]);
+                  setSelectedRecords([]);
+                }
+              }}
+              className="border rounded-lg p-1 w-full"
+            >
+              <ToggleGroupItem value="bitable" aria-label="多维表格" className="text-xs px-2 flex-1">
+                多维表格
+              </ToggleGroupItem>
+              <ToggleGroupItem value="corehr" aria-label="审批流程" className="text-xs px-2 flex-1">
+                审批流程
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+          
+          {/* 数据源刷新按钮 */}
+          <div className="mt-3 flex gap-2">
+            {dataSource === 'bitable' && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 text-xs h-8"
+                onClick={handleRefreshData}
+                disabled={isLoading || !isFeishuEnvironment}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
+                刷新数据
+              </Button>
+            )}
+            {dataSource === 'corehr' && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 text-xs h-8"
+                onClick={handleFetchProcesses}
+                disabled={isLoadingProcesses}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isLoadingProcesses ? 'animate-spin' : ''}`} />
+                查询流程
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="flex-1 p-0 overflow-hidden">
           <ScrollArea className="h-full">
             <div className="px-3 py-3 space-y-2">
+              {/* 空状态提示 - 根据数据源显示不同提示 */}
+              {selectedTemplate && availableRecords.length === 0 && (
+                <div className="text-center py-8 text-gray-400">
+                  <p className="text-sm mb-2">暂无数据</p>
+                  <p className="text-xs">
+                    {dataSource === 'bitable' 
+                      ? '在多维表格中选中行\n或点击"刷新数据"'
+                      : '点击"查询流程"获取审批数据'
+                    }
+                  </p>
+                </div>
+              )}
+              
               {selectedTemplate ? (
                 availableRecords.length > 0 ? (
                   availableRecords.map((record, idx) => {
@@ -1734,7 +1846,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                         >
                           <div className="flex items-center justify-between gap-2">
                             <span className={`font-medium truncate flex-1 min-w-0 ${isSelected ? 'text-blue-700' : 'text-gray-700'}`}>
-                              {record.编号 || record.id || `记录 ${idx + 1}`}
+                              {/* 流程数据显示流程名称，多维表格显示编号或ID */}
+                              {record['流程名称'] || record.编号 || record.id || `记录 ${idx + 1}`}
                             </span>
                             {isSelected && (
                               <span className="text-[10px] px-1.5 py-0.5 bg-blue-500 text-white rounded flex-shrink-0">
@@ -1761,12 +1874,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                       </div>
                     );
                   })
-                ) : (
-                  <div className="text-center py-8 text-gray-400">
-                    <p className="text-sm mb-2">暂无数据</p>
-                    <p className="text-xs">在多维表格中选中行<br/>或点击"刷新数据"</p>
-                  </div>
-                )
+                ) : null
               ) : (
                 <p className="text-sm text-gray-400 text-center py-4">
                   选择模板后可添加数据
