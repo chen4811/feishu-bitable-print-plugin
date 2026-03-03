@@ -1017,11 +1017,10 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
             fetchCurrentTableInfo();
           }
 
-          // 记录选中变化时获取记录
-          if (recordId && tableId) {
-            console.log('[TP] 记录选中变化:', recordId);
-            // 使用 recordId 直接获取单条记录，支持连续点击添加
-            fetchSingleRecord(recordId, tableId);
+          // 记录选中变化时获取记录 - 使用 fetchSelectedRecordsFromEnv 复用完整的字段处理逻辑
+          if (recordId) {
+            console.log('[TP] 记录选中变化，调用 fetchSelectedRecordsFromEnv');
+            fetchSelectedRecordsFromEnv();
           }
         });
 
