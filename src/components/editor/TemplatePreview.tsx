@@ -42,17 +42,34 @@ const formatTimestamp = (value: any): string => {
     return '-';
   }
   
+  // 处理数组格式的日期字段（飞书多维表格格式）
+  if (Array.isArray(value) && value.length > 0) {
+    return formatTimestamp(value[0]);
+  }
+  
+  // 如果是对象格式，尝试提取时间值
+  if (typeof value === 'object' && value !== null) {
+    // 尝试从常见的时间字段中提取
+    if (value.text !== undefined) return formatTimestamp(value.text);
+    if (value.name !== undefined) return formatTimestamp(value.name);
+    if (value.value !== undefined) return formatTimestamp(value.value);
+    if (value.id !== undefined) return formatTimestamp(value.id);
+  }
+  
   // 如果是数字且是13位时间戳（毫秒）
   if (typeof value === 'number' && value.toString().length === 13) {
     try {
       const date = new Date(value);
-      // 格式化为 YYYY-MM-DD
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
+      // 验证日期有效性
+      if (!isNaN(date.getTime())) {
+        // 格式化为 YYYY-MM-DD
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
     } catch (e) {
-      return String(value);
+      // 继续尝试其他格式
     }
   }
   
@@ -60,18 +77,28 @@ const formatTimestamp = (value: any): string => {
   if (typeof value === 'number' && value.toString().length === 10) {
     try {
       const date = new Date(value * 1000);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
+      if (!isNaN(date.getTime())) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
     } catch (e) {
-      return String(value);
+      // 继续尝试其他格式
     }
   }
   
   // 如果已经是日期字符串，直接返回
-  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
-    return value;
+  if (typeof value === 'string') {
+    // 已经是 YYYY-MM-DD 格式
+    if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
+      return value;
+    }
+    // 尝试从字符串中解析时间戳
+    const numValue = Number(value);
+    if (!isNaN(numValue)) {
+      return formatTimestamp(numValue);
+    }
   }
   
   return String(value);
@@ -84,21 +111,56 @@ const formatFieldValue = (key: string, value: any): string => {
     return formatTimestamp(value);
   }
   
-  // 处理状态字段
-  if (key.includes('状态') || key.includes('status') || key.includes('Status')) {
+  // 处理状态/流程字段
+  if (key.includes('状态') || key.includes('status') || key.includes('Status') || key.includes('流程') || key.includes('workflow') || key.includes('Workflow')) {
     if (value === null || value === undefined || value === '') {
       return '未设置';
     }
-    // 如果是对象类型（流程字段），尝试提取显示值
+    
+    // 根据飞书多维表格流程字段处理
+    // 流程字段通常是单选字段实现，数据格式为数组
+    if (Array.isArray(value) && value.length > 0) {
+      const option = value[0];
+      if (option && typeof option === 'object') {
+        // 优先提取 text，其次 name，最后 id
+        if (option.text !== undefined && option.text !== null && option.text !== '') {
+          return String(option.text);
+        }
+        if (option.name !== undefined && option.name !== null && option.name !== '') {
+          return String(option.name);
+        }
+        if (option.id !== undefined && option.id !== null) {
+          return String(option.id);
+        }
+        // 如果以上都没有，返回选项本身
+        return String(option);
+      }
+      return String(option);
+    }
+    
+    // 如果是对象类型（非数组格式）
     if (typeof value === 'object' && value !== null) {
       // 尝试从常见的流程字段结构中提取值
-      if (value.text !== undefined) return String(value.text);
-      if (value.name !== undefined) return String(value.name);
-      if (value.label !== undefined) return String(value.label);
-      if (value.title !== undefined) return String(value.title);
+      if (value.text !== undefined && value.text !== null && value.text !== '') {
+        return String(value.text);
+      }
+      if (value.name !== undefined && value.name !== null && value.name !== '') {
+        return String(value.name);
+      }
+      if (value.label !== undefined && value.label !== null && value.label !== '') {
+        return String(value.label);
+      }
+      if (value.title !== undefined && value.title !== null && value.title !== '') {
+        return String(value.title);
+      }
       // 如果有值但结构不明确，返回JSON字符串的前20个字符
-      return JSON.stringify(value).slice(0, 20);
+      try {
+        return JSON.stringify(value).slice(0, 25);
+      } catch (e) {
+        return '[对象]';
+      }
     }
+    
     return String(value);
   }
   
@@ -106,6 +168,21 @@ const formatFieldValue = (key: string, value: any): string => {
   if (value === null || value === undefined || value === '') {
     return '-';
   }
+  
+  // 处理数组类型的字段（如多选、人员等）
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return '未设置';
+    }
+    // 处理人员字段
+    return value.map((item: any) => {
+      if (item && typeof item === 'object') {
+        return item.name || item.text || item.id || String(item);
+      }
+      return String(item);
+    }).join(', ');
+  }
+  
   if (typeof value === 'object') {
     // 如果是对象，尝试友好显示
     try {
