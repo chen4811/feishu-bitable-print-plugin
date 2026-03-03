@@ -145,12 +145,12 @@ export function validateLicenseFormat(code: string): boolean {
 }
 
 /**
- * 标准化授权码（移除空格，转为大写）
+ * 标准化授权码（移除空格和连字符，转为大写）
  * @param code 输入的授权码
  * @returns 标准化后的授权码
  */
 export function normalizeLicenseCode(code: string): string {
-  return code.replace(/\s/g, '').toUpperCase();
+  return code.replace(/[\s-]/g, '').toUpperCase();
 }
 
 /**
