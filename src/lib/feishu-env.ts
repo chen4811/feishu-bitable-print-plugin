@@ -768,20 +768,30 @@ export async function getSelectedRecords(): Promise<BitableRecord[]> {
     // 尝试获取流程字段的值（Type 0）
     debugLog('尝试获取流程字段的值...');
     try {
-      // 获取当前状态字段的ID
-      const statusFieldMeta = fieldMetaList.find((f: any) => f.name === '当前状态' || f.type === 0);
-      if (statusFieldMeta) {
-        debugLog('找到当前状态字段:', statusFieldMeta.id);
-        // 尝试通过字段对象获取值
-        if (typeof table.getFieldById === 'function') {
-          const statusField = await table.getFieldById(statusFieldMeta.id);
-          debugLog('获取到字段对象:', statusField);
-          if (statusField && typeof statusField.getValue === 'function') {
-            const statusValue = await statusField.getValue(targetRecordId);
-            debugLog('通过字段对象获取的值:', statusValue);
+      // 使用 base.getActiveTable() 获取当前活动表格
+      if (typeof base.getActiveTable === 'function') {
+        debugLog('使用 base.getActiveTable() 获取当前活动表格');
+        const activeTable = await base.getActiveTable();
+        
+        if (activeTable) {
+          // 获取当前状态字段的ID
+          const statusFieldId = 'fldwMmazk5'; // 当前状态字段ID
+          debugLog('尝试读取流程字段:', statusFieldId);
+          
+          // 从活动表格获取记录
+          const activeRecord = await activeTable.getRecordById(targetRecordId);
+          debugLog('从活动表格获取的记录:', activeRecord);
+          
+          if (activeRecord && activeRecord.fields) {
+            const statusValue = activeRecord.fields[statusFieldId];
+            debugLog('流程字段原始值:', statusValue);
+            
             // 如果获取到值，更新 recordData
             if (statusValue !== undefined && statusValue !== null) {
-              recordData.fields[statusFieldMeta.id] = statusValue;
+              recordData.fields[statusFieldId] = statusValue;
+              debugLog('✅ 成功获取流程字段值:', statusValue);
+            } else {
+              debugLog('⚠️ 流程字段值为空');
             }
           }
         }
