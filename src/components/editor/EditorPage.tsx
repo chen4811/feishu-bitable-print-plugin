@@ -100,6 +100,13 @@ export function EditorPage({ onExit }: EditorPageProps) {
   const [feishuRecords, setFeishuRecords] = useState<any[]>([]);
   const [feishuFields, setFeishuFields] = useState<any[]>([]);
   const [feishuLoading, setFeishuLoading] = useState(false);
+  
+  // 当前表格信息
+  const [currentTableInfo, setCurrentTableInfo] = useState<{
+    tableId: string | null;
+    tableName: string | null;
+    baseId: string | null;
+  }>({ tableId: null, tableName: null, baseId: null });
 
   const {
     templateName,
@@ -143,6 +150,17 @@ export function EditorPage({ onExit }: EditorPageProps) {
       // 初始化数据
       try {
         setFeishuLoading(true);
+        
+        // 获取当前表格信息
+        const { base } = await import('@lark-base-open/js-sdk');
+        const selection = await base.getSelection();
+        const tableName = await feishuEnv.fetchTableName();
+        setCurrentTableInfo({
+          tableId: selection?.tableId || null,
+          tableName: tableName,
+          baseId: selection?.baseId || null,
+        });
+        console.log('[EditorPage] 当前表格信息:', { tableId: selection?.tableId, tableName });
         
         // 1. 获取字段
         console.log('[EditorPage] 获取字段...');
@@ -306,6 +324,10 @@ export function EditorPage({ onExit }: EditorPageProps) {
           components,
           history,
           historyIndex,
+          // 保存当前表格信息，用于后续匹配校验
+          tableId: currentTableInfo.tableId,
+          tableName: currentTableInfo.tableName,
+          baseId: currentTableInfo.baseId,
         };
         
         // 使用 updateTemplate 更新现有模板
@@ -1162,6 +1184,10 @@ export function EditorPage({ onExit }: EditorPageProps) {
                       components,
                       history,
                       historyIndex,
+                      // 保存当前表格信息，用于后续匹配校验
+                      tableId: currentTableInfo.tableId,
+                      tableName: currentTableInfo.tableName,
+                      baseId: currentTableInfo.baseId,
                     };
                     await updateTemplate(currentTemplate.id, {
                       name: templateName,
@@ -1466,6 +1492,10 @@ export function EditorPage({ onExit }: EditorPageProps) {
                       components,
                       history,
                       historyIndex,
+                      // 保存当前表格信息，用于后续匹配校验
+                      tableId: currentTableInfo.tableId,
+                      tableName: currentTableInfo.tableName,
+                      baseId: currentTableInfo.baseId,
                     };
                     await updateTemplate(currentTemplate!.id, {
                       name: templateName,

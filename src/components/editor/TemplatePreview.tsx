@@ -133,20 +133,21 @@ const extractFeishuCellValue = (cellData: any): string => {
 
   // 3. 如果是对象 (数组里的元素，或者直接返回的对象)
   if (typeof cellData === 'object' && cellData !== null) {
-    // 优先级：text (文本) > name (选项名) > value (数值/布尔) > enumValue (枚举值) > label (标签) > title (标题) > status (状态) > url (附件) > id
-    if (cellData.text !== undefined && cellData.text !== '') return cellData.text;
-    if (cellData.name !== undefined && cellData.name !== '') return cellData.name;
-    if (cellData.title !== undefined && cellData.title !== '') return cellData.title;
-    if (cellData.label !== undefined && cellData.label !== '') return cellData.label;
-    if (cellData.status !== undefined && cellData.status !== '') return cellData.status;
+    // 飞书某些字段格式为 {type: 'text', text: '实际内容'}
+    // 优先处理这种格式
+    if (cellData.text !== undefined) return String(cellData.text);
+    if (cellData.name !== undefined && cellData.name !== '') return String(cellData.name);
+    if (cellData.title !== undefined && cellData.title !== '') return String(cellData.title);
+    if (cellData.label !== undefined && cellData.label !== '') return String(cellData.label);
+    if (cellData.status !== undefined && cellData.status !== '') return String(cellData.status);
     if (cellData.value !== undefined && cellData.value !== '') return String(cellData.value);
-    if (cellData.enumValue !== undefined && cellData.enumValue !== '') return cellData.enumValue;
-    if (cellData.url !== undefined) return cellData.url;
+    if (cellData.enumValue !== undefined && cellData.enumValue !== '') return String(cellData.enumValue);
+    if (cellData.url !== undefined) return String(cellData.url);
     if (cellData.id !== undefined) return String(cellData.id);
     
     // 如果都找不到，返回 JSON 字符串以便调试
     try {
-      return JSON.stringify(cellData).slice(0, 25);
+      return JSON.stringify(cellData).slice(0, 50);
     } catch (e) {
       return '[对象]';
     }
@@ -167,6 +168,22 @@ const formatFieldValue = (key: string, value: any): string => {
   // 使用统一的 extractFeishuCellValue 函数处理所有字段类型
   const extractedValue = extractFeishuCellValue(value);
   
+  // 确保返回字符串，防止对象直接渲染导致错误
+  // 注意：虽然 extractFeishuCellValue 声明返回 string，但运行时可能返回对象
+  const valueAsAny = extractedValue as any;
+  if (typeof valueAsAny === 'object' && valueAsAny !== null) {
+    // 尝试从对象中提取可读的文本
+    if (valueAsAny.text !== undefined) return String(valueAsAny.text);
+    if (valueAsAny.name !== undefined) return String(valueAsAny.name);
+    if (valueAsAny.value !== undefined) return String(valueAsAny.value);
+    // 兜底：返回 JSON 字符串
+    try {
+      return JSON.stringify(valueAsAny).slice(0, 50);
+    } catch {
+      return '[对象]';
+    }
+  }
+  
   // 对空值做特殊处理
   if (extractedValue === null || extractedValue === undefined || extractedValue === '') {
     // 状态/流程字段显示"未设置"，其他显示"-"
@@ -176,7 +193,7 @@ const formatFieldValue = (key: string, value: any): string => {
     return '-';
   }
   
-  return extractedValue;
+  return String(extractedValue);
 };
 
 // 检测模板中的变量 - 支持 [字段名] 和 {{字段名}} 两种格式
@@ -629,6 +646,15 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   const [isLoadingProcesses, setIsLoadingProcesses] = useState(false);
   const [processInstances, setProcessInstances] = useState<ProcessInstance[]>([]);
   
+  // 表格匹配状态
+  const [currentTableInfo, setCurrentTableInfo] = useState<{
+    tableId: string | null;
+    tableName: string | null;
+    baseId: string | null;
+  }>({ tableId: null, tableName: null, baseId: null });
+  const [isTableMatched, setIsTableMatched] = useState<boolean>(true);
+  const [cachedRecords, setCachedRecords] = useState<Record<string, any>[]>([]);
+  
   // 页面设置状态
   const [isPageSettingsOpen, setIsPageSettingsOpen] = useState(false);
   const [localPageConfig, setLocalPageConfig] = useState<PageConfig>({
@@ -670,7 +696,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     });
   }, [fetchTemplates]);
 
-  // 初始化：设置飞书环境状态并初始化 SDK，添加选中变化监听器
+  // 初始化：设置飞书环境状态并初始化 SDK，添加选中变化监听器，获取当前表格信息
   useEffect(() => {
     const init = async () => {
       await feishuEnv.init();
@@ -678,6 +704,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       setIsFromFeishu(isReady);
       
       if (isReady) {
+        // 获取当前表格信息
+        await fetchCurrentTableInfo();
         fetchSelectedRecordsFromEnv();
         
         // 注册选中变化监听器
@@ -743,8 +771,82 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     }
   }, []);
   
-  // 添加记录到选中列表（防重复）
+  // 获取当前表格信息
+  const fetchCurrentTableInfo = useCallback(async () => {
+    try {
+      const { base } = await import('@lark-base-open/js-sdk');
+      const selection = await base.getSelection();
+      const tableName = await feishuEnv.fetchTableName();
+      
+      setCurrentTableInfo({
+        tableId: selection?.tableId || null,
+        tableName: tableName,
+        baseId: selection?.baseId || null,
+      });
+      
+      console.log('[TP] 当前表格信息:', {
+        tableId: selection?.tableId,
+        tableName,
+        baseId: selection?.baseId,
+      });
+    } catch (err) {
+      console.error('[TP] 获取表格信息失败:', err);
+    }
+  }, []);
+  
+  // 检测表格是否匹配模板
+  const checkTableMatch = useCallback((template: Template | null, tableInfo: typeof currentTableInfo): boolean => {
+    if (!template || !tableInfo.tableId) return true; // 如果没有模板或无法获取表格信息，默认允许
+    
+    // 获取模板关联的表格ID
+    const templateTableId = template.data?.tableId as string | undefined;
+    
+    // 如果模板没有记录表格ID，说明是旧模板或通用模板，允许任何表格
+    if (!templateTableId) return true;
+    
+    // 比较表格ID
+    return templateTableId === tableInfo.tableId;
+  }, []);
+  
+  // 监听模板和表格信息变化，更新匹配状态并处理缓存
+  useEffect(() => {
+    const matched = checkTableMatch(selectedTemplate, currentTableInfo);
+    const wasMatched = isTableMatched;
+    setIsTableMatched(matched);
+    
+    // 如果从不匹配变为匹配，恢复缓存的数据
+    if (matched && !wasMatched && cachedRecords.length > 0) {
+      console.log('[TP] 表格恢复匹配，恢复缓存记录:', cachedRecords.length);
+      setAvailableRecords(cachedRecords);
+      setCachedRecords([]);
+      toast.success(`已恢复 ${cachedRecords.length} 条缓存记录`);
+    }
+    
+    // 如果从匹配变为不匹配，清空可用记录并缓存
+    if (!matched && wasMatched && availableRecords.length > 0) {
+      console.log('[TP] 表格不匹配，缓存当前记录:', availableRecords.length);
+      setCachedRecords(availableRecords);
+      setAvailableRecords([]);
+      // 清空已选记录，因为它们来自不匹配的表格
+      setSelectedRecords([]);
+    }
+    
+    if (!matched) {
+      console.log('[TP] 表格不匹配:', {
+        templateTableId: selectedTemplate?.data?.tableId,
+        currentTableId: currentTableInfo.tableId,
+      });
+    }
+  }, [selectedTemplate, currentTableInfo, checkTableMatch, isTableMatched, cachedRecords, availableRecords]);
+  
+  // 添加记录到选中列表（防重复，带表格匹配检查）
   const addRecordToSelection = useCallback((record: Record<string, any>) => {
+    // 检查表格匹配状态
+    if (!isTableMatched && selectedTemplate) {
+      toast.error('当前多维表格与模板不匹配，无法添加数据');
+      return;
+    }
+    
     setSelectedRecords(prev => {
       if (prev.some(r => r.id === record.id)) {
         console.log('[TP] 记录已在选中列表:', record.id);
@@ -754,7 +856,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       console.log('[TP] 已添加到选中列表:', record.id, '总数:', newList.length);
       return newList;
     });
-  }, []);
+  }, [isTableMatched, selectedTemplate]);
   
   // 从选中列表和可用列表移除记录
   const removeRecordFromSelection = useCallback((recordId: string) => {
@@ -1753,6 +1855,36 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
               </ToggleGroupItem>
             </ToggleGroup>
           </div>
+          
+          {/* 表格匹配状态显示 */}
+          {dataSource === 'bitable' && selectedTemplate && (
+            <div className="mt-3 p-2 rounded-lg bg-gray-50 border">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">表格匹配</span>
+                <Badge 
+                  variant={isTableMatched ? "default" : "destructive"}
+                  className={`text-[10px] ${isTableMatched ? 'bg-green-100 text-green-700 hover:bg-green-100' : ''}`}
+                >
+                  {isTableMatched ? '匹配' : '不匹配'}
+                </Badge>
+              </div>
+              {currentTableInfo.tableName && (
+                <div className="mt-1 text-xs text-gray-600 truncate">
+                  当前: {currentTableInfo.tableName}
+                </div>
+              )}
+              {selectedTemplate.data?.tableId && (
+                <div className="mt-1 text-[10px] text-gray-400 truncate">
+                  模板绑定: {(selectedTemplate.data.tableName as string) || selectedTemplate.data.tableId}
+                </div>
+              )}
+              {!isTableMatched && (
+                <div className="mt-2 text-[10px] text-amber-600">
+                  当前表格与模板不匹配，无法添加数据
+                </div>
+              )}
+            </div>
+          )}
           
           {/* 数据源刷新按钮 */}
           <div className="mt-3 flex gap-2">
