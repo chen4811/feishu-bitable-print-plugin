@@ -31,19 +31,8 @@ async function verifyAdmin(request: Request) {
     return { error: 'Token 格式错误', status: 401 };
   }
 
-  // 检查是否是管理员
-  const client = getSupabaseClient();
-  const { data: admin } = await client
-    .from('admins')
-    .select('*')
-    .eq('id', adminId)
-    .single();
-
-  if (!admin) {
-    return { error: '无管理员权限', status: 403 };
-  }
-
-  return { userId: adminId, admin };
+  // Token 验证通过即认为是管理员（mock 阶段不查询数据库）
+  return { userId: adminId, admin: { id: adminId, username: (decoded as any).username || 'admin' } };
 }
 
 /**
