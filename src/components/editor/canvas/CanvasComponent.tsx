@@ -223,9 +223,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
-  // 文本组件 resize 状态
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizeStart, setResizeStart] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const textComponentRef = useRef<HTMLDivElement>(null);
   
   // 组件容器 ref - 用于检测点击外部
@@ -511,22 +508,24 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
   };
 
-  // 文本组件 resize 处理 - 从边框拖动
-  const handleResizeStart = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    
-    if (!textComponentRef.current) return;
-    
-    const rect = textComponentRef.current.getBoundingClientRect();
-    setIsResizing(true);
-    setResizeStart({
-      x: e.clientX,
-      y: e.clientY,
-      width: rect.width,
-      height: rect.height,
-    });
-  }, []);
+  // 监听文本内容变化，自动计算并保存高度
+  useEffect(() => {
+    if (isEditing && component.type === 'text' && textComponentRef.current) {
+      // 使用 setTimeout 确保 DOM 已更新
+      setTimeout(() => {
+        if (textComponentRef.current) {
+          const textComp = component as any;
+          const newHeight = textComponentRef.current.scrollHeight;
+          // 只在高度变化时更新
+          if (textComp.height !== newHeight) {
+            updateComponent(component.id, {
+              height: newHeight,
+            });
+          }
+        }
+      }, 0);
+    }
+  }, [editContent, isEditing, component.id, component.type, updateComponent]);
 
   // 表格编辑 - 切换编辑状态
   const handleEditTable = useCallback((e?: React.MouseEvent) => {
@@ -921,19 +920,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   // 🔥 处理全局鼠标移动（用于拖动调整）
   useEffect(() => {
     const handleGlobalMouseMove = (e: MouseEvent) => {
-      // 处理文本组件 resize
-      if (isResizing && resizeStart && component.type === 'text') {
-        const deltaX = e.clientX - resizeStart.x;
-        const deltaY = e.clientY - resizeStart.y;
-        const newWidth = Math.max(100, resizeStart.width + deltaX); // 最小宽度100px
-        const newHeight = Math.max(40, resizeStart.height + deltaY); // 最小高度40px
-        
-        updateComponent(component.id, {
-          width: newWidth,
-          height: newHeight,
-        });
-        return;
-      }
 
       if (resizingRow) {
         const deltaY = e.clientY - resizingRow.startY;
@@ -971,11 +957,9 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     const handleGlobalMouseUp = () => {
       setResizingRow(null);
       setResizingCol(null);
-      setIsResizing(false);
-      setResizeStart(null);
     };
 
-    if (resizingRow || resizingCol || isResizing) {
+    if (resizingRow || resizingCol) {
       document.addEventListener('mousemove', handleGlobalMouseMove);
       document.addEventListener('mouseup', handleGlobalMouseUp);
     }
@@ -984,7 +968,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       document.removeEventListener('mousemove', handleGlobalMouseMove);
       document.removeEventListener('mouseup', handleGlobalMouseUp);
     };
-  }, [resizingRow, resizingCol, isResizing, resizeStart, component, updateComponent]);
+  }, [resizingRow, resizingCol, component, updateComponent]);
 
   // 全局点击监听 - 点击画布空白区域时退出编辑并取消选中
   useEffect(() => {
@@ -1728,62 +1712,13 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 border: '1px solid transparent',
               }}
               onDoubleClick={(e) => e.stopPropagation()}
-              onMouseMove={(e) => {
-                // 动态改变光标：当靠近右/下边缘时显示 resize 光标
-                if (!textComponentRef.current) return;
-                const rect = textComponentRef.current.getBoundingClientRect();
-                const borderThreshold = 6;
-                const isNearRightEdge = e.clientX >= rect.right - borderThreshold;
-                const isNearBottomEdge = e.clientY >= rect.bottom - borderThreshold;
-                if (isNearRightEdge || isNearBottomEdge) {
-                  textComponentRef.current.style.cursor = 'se-resize';
-                } else {
-                  textComponentRef.current.style.cursor = 'text';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (textComponentRef.current) {
-                  textComponentRef.current.style.cursor = 'text';
-                }
-              }}
-              onMouseDown={(e) => {
-                // 检测是否点击在边框附近（距离边缘6px以内）开始拖动
-                if (!textComponentRef.current) return;
-                const rect = textComponentRef.current.getBoundingClientRect();
-                const borderThreshold = 6;
-                const isNearRightEdge = e.clientX >= rect.right - borderThreshold;
-                const isNearBottomEdge = e.clientY >= rect.bottom - borderThreshold;
-                if (isNearRightEdge || isNearBottomEdge) {
-                  handleResizeStart(e);
-                }
-              }}
             >
-              <textarea
-                ref={textareaRef}
-                className="w-full border-0 outline-none resize-none bg-transparent overflow-visible"
-                style={{
-                  fontSize: '1em',
-                  fontWeight: 'inherit',
-                  fontStyle: 'inherit',
-                  color: 'inherit',
-                  textAlign: 'inherit',
-                  lineHeight: 'inherit',
-                  whiteSpace: 'pre-wrap',
-                  backgroundColor: 'transparent',
-                  width: '100%',
-                  height: 'auto',
-                  minHeight: '1.5em',
-                  fontFamily: 'inherit',
-                  cursor: 'text',
-                  border: 'none',
-                  outline: 'none',
-                  resize: 'none',
-                  padding: '0',
-                  margin: '0',
-                }}
+              <AutoResizingTextarea
                 value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                onBlur={handleTextBlur}
+                onChange={(value) => {
+                  setEditContent(value);
+                }}
+                onClick={(e) => {}}
                 onKeyDown={(e) => {
                   // Ctrl+Enter 或 Cmd+Enter 保存并退出编辑
                   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -1795,7 +1730,17 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     setIsEditing(false);
                   }
                 }}
-                placeholder="输入文本..."
+                style={{
+                  fontSize: '1em',
+                  fontWeight: 'inherit',
+                  fontStyle: 'inherit',
+                  color: 'inherit',
+                  textAlign: 'inherit',
+                  lineHeight: 'inherit',
+                  backgroundColor: 'transparent',
+                  fontFamily: 'inherit',
+                  cursor: 'text',
+                }}
               />
             </div>
           );
@@ -1824,35 +1769,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               border: '1px solid transparent',
             }}
             onDoubleClick={handleDoubleClickText}
-            onMouseMove={(e) => {
-              // 动态改变光标：当靠近右/下边缘时显示 resize 光标
-              if (!textComponentRef.current) return;
-              const rect = textComponentRef.current.getBoundingClientRect();
-              const borderThreshold = 6;
-              const isNearRightEdge = e.clientX >= rect.right - borderThreshold;
-              const isNearBottomEdge = e.clientY >= rect.bottom - borderThreshold;
-              if (isNearRightEdge || isNearBottomEdge) {
-                textComponentRef.current.style.cursor = 'se-resize';
-              } else {
-                textComponentRef.current.style.cursor = 'text';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (textComponentRef.current) {
-                textComponentRef.current.style.cursor = 'text';
-              }
-            }}
-            onMouseDown={(e) => {
-              // 检测是否点击在边框附近（距离边缘6px以内）开始拖动
-              if (!textComponentRef.current) return;
-              const rect = textComponentRef.current.getBoundingClientRect();
-              const borderThreshold = 6;
-              const isNearRightEdge = e.clientX >= rect.right - borderThreshold;
-              const isNearBottomEdge = e.clientY >= rect.bottom - borderThreshold;
-              if (isNearRightEdge || isNearBottomEdge) {
-                handleResizeStart(e);
-              }
-            }}
           >
             {/* 注入变量芯片样式 */}
             <style dangerouslySetInnerHTML={{ __html: VARIABLE_CHIP_STYLES }} />
