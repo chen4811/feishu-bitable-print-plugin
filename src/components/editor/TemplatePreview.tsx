@@ -1538,38 +1538,67 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                   availableRecords.map((record, idx) => {
                     const isSelected = selectedRecords.some(r => r.id === record.id);
                     return (
-                      <button
+                      <div
                         key={record.id || idx}
-                        onClick={() => {
-                          console.log('[TP] 点击卡片:', record.id, isSelected ? '取消选中' : '选中');
-                          if (isSelected) {
-                            removeRecordFromSelection(record.id);
-                          } else {
-                            addRecordToSelection(record);
-                          }
-                        }}
-                        className={`block w-full text-left p-3 rounded-lg border text-xs transition-all box-border ${
+                        className={`relative w-full text-left p-3 rounded-lg border text-xs transition-all box-border ${
                           isSelected 
                             ? 'bg-blue-50 border-blue-400 ring-1 ring-blue-400 shadow-sm' 
                             : 'bg-white border-gray-200 hover:border-blue-300 hover:bg-gray-50'
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className={`font-medium truncate flex-1 min-w-0 ${isSelected ? 'text-blue-700' : 'text-gray-700'}`}>
-                            {record.编号 || record.id || `记录 ${idx + 1}`}
-                          </span>
-                          {isSelected && (
-                            <span className="text-[10px] px-1.5 py-0.5 bg-blue-500 text-white rounded flex-shrink-0">
-                              已选
-                            </span>
-                          )}
-                        </div>
-                        {record.简述 && (
-                          <p className={`truncate mt-1.5 ${isSelected ? 'text-blue-600' : 'text-gray-500'}`}>
-                            {String(record.简述).slice(0, 35)}
-                          </p>
+                        {/* 删除按钮 - 仅在已选中时显示 */}
+                        {isSelected && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              console.log('[TP] 点击删除:', record.id);
+                              removeRecordFromSelection(record.id);
+                            }}
+                            className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10"
+                          >
+                            ×
+                          </button>
                         )}
-                      </button>
+                        
+                        {/* 卡片内容 - 可点击选中/取消选中 */}
+                        <button
+                          onClick={() => {
+                            console.log('[TP] 点击卡片:', record.id, isSelected ? '取消选中' : '选中');
+                            if (isSelected) {
+                              removeRecordFromSelection(record.id);
+                            } else {
+                              addRecordToSelection(record);
+                            }
+                          }}
+                          className="w-full text-left"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={`font-medium truncate flex-1 min-w-0 ${isSelected ? 'text-blue-700' : 'text-gray-700'}`}>
+                              {record.编号 || record.id || `记录 ${idx + 1}`}
+                            </span>
+                            {isSelected && (
+                              <span className="text-[10px] px-1.5 py-0.5 bg-blue-500 text-white rounded flex-shrink-0">
+                                已选
+                              </span>
+                            )}
+                          </div>
+                          
+                          {/* 显示更多预览字段 */}
+                          <div className="mt-2 space-y-1">
+                            {Object.entries(record)
+                              .filter(([key]) => key !== 'id' && key !== '_rowIndex')
+                              .slice(0, 3)
+                              .map(([key, value]) => (
+                                <div key={key} className="flex gap-1">
+                                  <span className="text-gray-400 shrink-0">{key}:</span>
+                                  <span className={`truncate flex-1 ${isSelected ? 'text-blue-600' : 'text-gray-600'}`}>
+                                    {value !== null && value !== undefined ? String(value).slice(0, 20) : '-'}
+                                  </span>
+                                </div>
+                              ))}
+                          </div>
+                        </button>
+                      </div>
                     );
                   })
                 ) : (
