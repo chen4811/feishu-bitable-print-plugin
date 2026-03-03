@@ -286,6 +286,7 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
     text,
     content,
     style = {},
+    textStyle = {},
     children = [],
   } = component;
 
@@ -294,11 +295,14 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
     return renderTableComponent(component, data);
   }
 
-  // 替换变量
-  const processedText = text ? replaceVariables(text, data) : undefined;
-  const processedContent = content ? replaceVariables(content, data) : undefined;
+  // 替换变量 - 优先使用 content，其次使用 text
+  const sourceText = content || text;
+  const processedContent = sourceText ? replaceVariables(sourceText, data) : undefined;
 
-const baseStyle: React.CSSProperties = {
+  // 兼容处理：编辑器中使用 textStyle，模板预览中可能使用 style
+  const actualStyle = Object.keys(textStyle).length > 0 ? textStyle : style;
+
+  const baseStyle: React.CSSProperties = {
     position: 'relative',
     width: component.layout?.width || '100%',
     flex: `0 0 ${component.layout?.width || '100%'}`,
@@ -309,25 +313,27 @@ const baseStyle: React.CSSProperties = {
     boxSizing: 'border-box',
   };
 
-// 安全地添加样式属性
-const commonStyle: React.CSSProperties = buildSafeStyle(baseStyle, {
-    fontSize: style.fontSize,
-    fontWeight: style.fontWeight,
-    color: style.color,
-    backgroundColor: style.backgroundColor,
-    borderWidth: style.borderWidth,
-    borderColor: style.borderColor,
-    borderStyle: style.borderWidth ? 'solid' : undefined,
-    borderRadius: style.borderRadius,
-    padding: style.padding,
-    textAlign: style.textAlign,
+  // 安全地添加样式属性 - 同时兼容 style 和 textStyle 的字段命名
+  const commonStyle: React.CSSProperties = buildSafeStyle(baseStyle, {
+    fontSize: actualStyle.fontSize,
+    fontWeight: actualStyle.fontWeight || (actualStyle.bold ? 'bold' : 'normal'),
+    color: actualStyle.color,
+    backgroundColor: actualStyle.backgroundColor,
+    borderWidth: actualStyle.borderWidth,
+    borderColor: actualStyle.borderColor,
+    borderStyle: actualStyle.borderWidth ? 'solid' : undefined,
+    borderRadius: actualStyle.borderRadius,
+    padding: actualStyle.padding,
+    textAlign: actualStyle.textAlign || actualStyle.align,
   });
 
   switch (type) {
     case 'text':
+    case 'paragraph':
+    case 'heading':
       return (
         <div key={id} style={commonStyle}>
-          {processedText}
+          {processedContent}
         </div>
       );
     case 'qrcode':
@@ -339,8 +345,9 @@ const commonStyle: React.CSSProperties = buildSafeStyle(baseStyle, {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: style.backgroundColor || '#fff',
+            backgroundColor: actualStyle.backgroundColor || '#fff',
             border: '1px solid #e2e8f0',
+            minHeight: '80px',
           }}
         >
           <div
@@ -367,8 +374,9 @@ const commonStyle: React.CSSProperties = buildSafeStyle(baseStyle, {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: style.backgroundColor || '#fff',
+            backgroundColor: actualStyle.backgroundColor || '#fff',
             border: '1px solid #e2e8f0',
+            minHeight: '50px',
           }}
         >
           <div
@@ -392,10 +400,46 @@ const commonStyle: React.CSSProperties = buildSafeStyle(baseStyle, {
           {children.map((child: any) => renderComponent(child, data))}
         </div>
       );
+    case 'line':
+      return (
+        <div 
+          key={id} 
+          style={{
+            ...commonStyle,
+            height: `${component.thickness || 1}px`,
+            backgroundColor: component.color || '#000000',
+            margin: '8px 0',
+          }} 
+        />
+      );
+    case 'image':
+      return (
+        <div
+          key={id}
+          style={{
+            ...commonStyle,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: '#f9fafb',
+            border: '1px dashed #d1d5db',
+            minHeight: component.minHeight || '150px',
+          }}
+        >
+          <div
+            style={{
+              fontSize: '12px',
+              color: '#9ca3af',
+            }}
+          >
+            图片
+          </div>
+        </div>
+      );
     default:
       return (
         <div key={id} style={commonStyle}>
-          {processedContent || processedText}
+          {processedContent}
         </div>
       );
   }
@@ -558,16 +602,36 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     setSelectedRecords([]);
     
     // 详细的调试信息
-    if (showDebugInfo) {
-      const dataStr = template.data ? JSON.stringify(template.data).slice(0, 800) : '(empty)';
-      const debugText = `选中模板: ${template.name}\n` +
-        `模板ID: ${template.id}\n` +
-        `有数据: ${!!template.data}\n` +
-        `数据类型: ${typeof template.data}\n` +
-        `数据内容: ${dataStr}`;
-      setDebugInfo(debugText);
-    }
-  }, [showDebugInfo]);
+    const components = template.data?.components || [];
+    const dataStr = template.data ? JSON.stringify(template.data, null, 2).slice(0, 3000) : '(empty)';
+    const componentsInfo = components.map((comp: any, idx: number) => 
+      `[${idx}] type=${comp.type}, id=${comp.id}, content=${!!comp.content}, text=${!!comp.text}, textStyle=${!!comp.textStyle}, style=${!!comp.style}`
+    ).join('\n');
+    
+    const debugText = `选中模板: ${template.name}\n` +
+      `模板ID: ${template.id}\n` +
+      `有数据: ${!!template.data}\n` +
+      `数据类型: ${typeof template.data}\n` +
+      `组件数量: ${components.length}\n` +
+      `组件详情:\n${componentsInfo}\n\n` +
+      `完整数据:\n${dataStr}`;
+    setDebugInfo(debugText);
+    
+    console.log('[TemplatePreview] 选中模板详情:', {
+      templateName: template.name,
+      templateId: template.id,
+      hasData: !!template.data,
+      componentCount: components.length,
+      components: components.map((c: any) => ({
+        type: c.type,
+        id: c.id,
+        hasContent: !!c.content,
+        hasText: !!c.text,
+        hasTextStyle: !!c.textStyle,
+        hasStyle: !!c.style,
+      }))
+    });
+  }, []);
 
   // 处理编辑模板
   const handleEdit = useCallback(() => {
