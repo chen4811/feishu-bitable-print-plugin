@@ -877,24 +877,35 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     }
     
     try {
+      console.log('[TP] ========== fetchSelectedRecordsFromEnv 开始 ==========');
       const selRecords = await feishuEnv.getSelectedRecords();
+      console.log('[TP] getSelectedRecords 返回:', selRecords.length, '条记录');
       
       if (selRecords.length > 0) {
+        // 打印第一条记录的结构
+        console.log('[TP] 第一条记录结构:', JSON.stringify(selRecords[0], null, 2));
+        console.log('[TP] 第一条记录 fields:', JSON.stringify(selRecords[0].fields, null, 2));
+        
         // 转换格式 - 确保每条记录都有唯一 ID
         const formattedRecords = selRecords.map((record, index) => {
           // 生成唯一 ID：优先使用 record.id，其次是 recordId
           // 注意：不使用 Date.now()，确保同一记录多次点击生成相同 ID
           const uniqueId = record.id || (record as any).recordId || `record_${index}`;
-          return {
+          const formattedRecord = {
             ...record.fields,
             id: uniqueId,
             _sourceRecordId: record.id || (record as any).recordId, // 保存原始记录ID用于调试
             _rowIndex: index,
           };
+          console.log(`[TP] 格式化记录 ${index}:`, { id: uniqueId, fields: Object.keys(record.fields || {}) });
+          return formattedRecord;
         });
+        
+        console.log('[TP] 格式化后记录数:', formattedRecords.length);
         
         // 只追加到可用记录列表，不自动设置为当前记录
         setAvailableRecords(prev => {
+          console.log('[TP] setAvailableRecords 回调，当前记录数:', prev.length);
           const newRecords = [...prev];
           let addedCount = 0;
           let skippedCount = 0;
@@ -913,17 +924,19 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
             if (!isDuplicate) {
               newRecords.push(record);
               addedCount++;
+              console.log('[TP] 添加记录:', record.id, '字段:', Object.keys(record).slice(0, 5));
             } else {
               skippedCount++;
               console.log('[TP] 跳过重复记录:', record.id);
             }
           });
           
-          if (addedCount > 0 || skippedCount > 0 || ignoredCount > 0) {
-            console.log(`[TP] 新增: ${addedCount}, 跳过: ${skippedCount}, 忽略: ${ignoredCount}, 总记录: ${newRecords.length}`);
-          }
+          console.log(`[TP] 新增: ${addedCount}, 跳过: ${skippedCount}, 忽略: ${ignoredCount}, 总记录: ${newRecords.length}`);
+          console.log('[TP] ========== fetchSelectedRecordsFromEnv 结束 ==========');
           return newRecords;
         });
+      } else {
+        console.log('[TP] getSelectedRecords 返回空数组');
       }
     } catch (err) {
       console.error('[TP] 获取记录失败:', err);
@@ -1221,29 +1234,40 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     setIsLoading(true);
     
     try {
+      console.log('[TP] ========== handleRefreshData 开始 ==========');
       // getCheckboxSelectedRecords 会自动处理：
       // 1. 尝试使用 table.getSelectedRecordIds() 获取选中行
       // 2. 如果不可用，降级到获取第一条记录
       const records = await feishuEnv.getCheckboxSelectedRecords();
+      console.log('[TP] getCheckboxSelectedRecords 返回:', records.length, '条记录');
       
       if (records.length > 0) {
+        console.log('[TP] 第一条记录:', JSON.stringify(records[0], null, 2));
+        
         // 转换格式
-        const formattedRecords = records.map((record, index) => ({
-          ...record.fields,
-          id: record.id,
-          _rowIndex: index,
-        }));
+        const formattedRecords = records.map((record, index) => {
+          const formatted = {
+            ...record.fields,
+            id: record.id,
+            _rowIndex: index,
+          };
+          console.log(`[TP] 格式化记录 ${index}:`, { id: record.id, fieldKeys: Object.keys(record.fields || {}) });
+          return formatted;
+        });
 
+        console.log('[TP] 设置 records:', formattedRecords.length, '条');
         setRecords(formattedRecords);
         setCurrentIndex(0);
         // 更新可用记录列表
         setAvailableRecords(formattedRecords);
+        console.log('[TP] ========== handleRefreshData 结束 ==========');
         toast.success(`已加载 ${formattedRecords.length} 条记录`);
         
         if (showDebugInfo) {
           setDebugInfo(`刷新数据成功:\n${JSON.stringify(records.map(r => ({ id: r.id, fields: r.fields })), null, 2)}`);
         }
       } else {
+        console.log('[TP] 未获取到任何记录');
         toast.info('未获取到任何记录');
         setRecords([]);
         setCurrentIndex(0);
