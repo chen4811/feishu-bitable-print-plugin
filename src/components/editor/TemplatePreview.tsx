@@ -742,10 +742,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       console.error('[TP] 获取记录失败:', err);
     }
   }, []);
-    } catch (err) {
-      console.error('[TP] 获取记录失败:', err);
-    }
-  }, []);
   
   // 添加记录到选中列表（防重复）
   const addRecordToSelection = useCallback((record: Record<string, any>) => {
