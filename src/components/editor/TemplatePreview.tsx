@@ -719,9 +719,10 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           }
           
           // 记录选中变化时获取记录
-          if (event?.data?.recordId) {
+          if (event?.data?.recordId && event?.data?.tableId) {
             console.log('[TP] 记录选中变化:', event.data.recordId);
-            setTimeout(() => fetchSelectedRecordsFromEnv(), 100);
+            // 使用 recordId 直接获取单条记录，支持连续点击添加
+            fetchSingleRecord(event.data.recordId, event.data.tableId);
           }
         });
         
@@ -730,9 +731,58 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     };
     
     init();
-  }, [setIsFromFeishu]);
+  }, [setIsFromFeishu, fetchCurrentTableInfo, fetchSelectedRecordsFromEnv, fetchSingleRecord]);
 
-  // 从 feishu-env 获取选中记录
+  // 获取单条记录（用于点击行时添加）
+  const fetchSingleRecord = useCallback(async (recordId: string, tableId: string) => {
+    // 检查表格匹配状态
+    if (!isTableMatched && selectedTemplate) {
+      console.log('[TP] 表格不匹配，跳过获取记录:', recordId);
+      toast.error('当前表格与模板不匹配，无法载入数据');
+      return;
+    }
+    
+    try {
+      console.log('[TP] 获取单条记录:', recordId, '表格:', tableId);
+      
+      // 检查是否已存在
+      const isAlreadyAdded = availableRecords.some(r => r.id === recordId);
+      if (isAlreadyAdded) {
+        console.log('[TP] 记录已存在，跳过:', recordId);
+        toast.info('该记录已在列表中');
+        return;
+      }
+      
+      // 获取单条记录
+      const { base } = await import('@lark-base-open/js-sdk');
+      const table = await base.getTable(tableId);
+      const record = await table.getRecordById(recordId);
+      
+      if (!record) {
+        console.warn('[TP] 未找到记录:', recordId);
+        return;
+      }
+      
+      // 转换格式
+      const formattedRecord = {
+        ...record.fields,
+        id: recordId,
+        _sourceRecordId: recordId,
+        _rowIndex: availableRecords.length,
+      };
+      
+      // 添加到列表
+      setAvailableRecords(prev => [...prev, formattedRecord]);
+      console.log('[TP] 已添加记录:', recordId, '当前总数:', availableRecords.length + 1);
+      toast.success('已添加记录');
+      
+    } catch (err) {
+      console.error('[TP] 获取单条记录失败:', err);
+      toast.error('获取记录失败');
+    }
+  }, [isTableMatched, selectedTemplate, availableRecords]);
+
+  // 从 feishu-env 获取选中记录（多选时使用）
   const fetchSelectedRecordsFromEnv = useCallback(async () => {
     // 检查表格匹配状态，如果不匹配则不获取记录
     if (!isTableMatched && selectedTemplate) {
