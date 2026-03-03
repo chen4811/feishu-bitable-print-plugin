@@ -71,6 +71,27 @@ const extractVariables = (components: any[]): string[] => {
   return variables;
 };
 
+// 安全地构建样式对象，避免不合法的 CSS 属性
+const buildSafeStyle = (baseStyle: any, additionalStyle: any): React.CSSProperties => {
+  const safeStyle: React.CSSProperties = { ...baseStyle };
+  
+  // 只添加合法的 CSS 属性，避免索引属性
+  if (additionalStyle && typeof additionalStyle === 'object') {
+    Object.keys(additionalStyle).forEach(key => {
+      // 跳过数字索引属性（如 [0], [1] 等）
+      if (!/^\d+$/.test(key)) {
+        const value = additionalStyle[key];
+        // 只添加有意义的值
+        if (value !== undefined && value !== null && value !== '') {
+          (safeStyle as any)[key] = value;
+        }
+      }
+    });
+  }
+  
+  return safeStyle;
+};
+
 // 替换文本中的变量为实际值 - 支持 [字段名] 和 {{字段名}} 两种格式
 const replaceVariables = (text: string, data: Record<string, any>): string => {
   if (!text || typeof text !== 'string') return text;
@@ -98,17 +119,19 @@ const renderTableComponent = (component: any, data: Record<string, any>): React.
 
   const { cells = [], borderWidth = 1, borderColor = '#000000', showOuterBorder = true, showInnerBorder = true } = tableConfig;
 
+  // 安全构建表格容器样式
+  const tableContainerStyle = buildSafeStyle({
+    position: 'relative',
+    width: component.layout?.width || '100%',
+    flex: `0 0 ${component.layout?.width || '100%'}`,
+    maxWidth: component.layout?.width || '100%',
+    boxSizing: 'border-box',
+  }, style);
+
   return (
     <div 
       key={id}
-      style={{
-        position: 'relative',
-        width: component.layout?.width || '100%',
-        flex: `0 0 ${component.layout?.width || '100%'}`,
-        maxWidth: component.layout?.width || '100%',
-        boxSizing: 'border-box',
-        ...style,
-      }}
+      style={tableContainerStyle}
     >
       <table 
         style={{
@@ -143,14 +166,13 @@ const renderTableComponent = (component: any, data: Record<string, any>): React.
                       key={`${rowIndex}-${colIndex}`}
                       rowSpan={rowSpan > 1 ? rowSpan : undefined}
                       colSpan={colSpan > 1 ? colSpan : undefined}
-                      style={{
+                      style={buildSafeStyle({
                         border: showInnerBorder ? `${borderWidth}px solid ${borderColor}` : 'none',
                         padding: '8px',
                         verticalAlign: 'top',
                         whiteSpace: 'pre-wrap',
                         wordWrap: 'break-word',
-                        ...cell.style,
-                      }}
+                      }, cell.style)}
                     >
                       {processedContent}
                     </td>
@@ -276,11 +298,19 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
   const processedText = text ? replaceVariables(text, data) : undefined;
   const processedContent = content ? replaceVariables(content, data) : undefined;
 
-const commonStyle: React.CSSProperties = {
+const baseStyle: React.CSSProperties = {
     position: 'relative',
     width: component.layout?.width || '100%',
     flex: `0 0 ${component.layout?.width || '100%'}`,
     maxWidth: component.layout?.width || '100%',
+    whiteSpace: 'pre-wrap',
+    wordWrap: 'break-word',
+    overflow: 'hidden',
+    boxSizing: 'border-box',
+  };
+
+// 安全地添加样式属性
+const commonStyle: React.CSSProperties = buildSafeStyle(baseStyle, {
     fontSize: style.fontSize,
     fontWeight: style.fontWeight,
     color: style.color,
@@ -291,12 +321,7 @@ const commonStyle: React.CSSProperties = {
     borderRadius: style.borderRadius,
     padding: style.padding,
     textAlign: style.textAlign,
-    whiteSpace: 'pre-wrap',
-    wordWrap: 'break-word',
-    overflow: 'hidden',
-    boxSizing: 'border-box',
-    ...style,
-  };
+  });
 
   switch (type) {
     case 'text':
