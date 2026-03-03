@@ -131,17 +131,17 @@ export async function GET(request: Request) {
     console.log('[Feishu OAuth Callback API] JWT token 前50字符:', jwtToken?.substring(0, 50));
 
     // 5. 检查用户是否已有绑定的有效授权码
+    // 使用飞书 union_id 查询（与前端绑定授权码时使用的ID一致）
+    const feishuUserId = feishuUserInfo.union_id;
     console.log('[Feishu OAuth Callback API] 检查授权码绑定状态');
-    console.log('[Feishu OAuth Callback API] 用户ID:', dbUser.id, '类型:', typeof dbUser.id);
+    console.log('[Feishu OAuth Callback API] 飞书用户ID:', feishuUserId);
+    console.log('[Feishu OAuth Callback API] 数据库用户ID:', dbUser.id);
     
-    const userIdStr = String(dbUser.id);
-    const now = new Date().toISOString();
-    
-    // 先查询该用户绑定的所有授权码（不看状态）
+    // 查询该飞书用户绑定的所有授权码
     const { data: allLicenses, error: allError } = await client
       .from('plugin_licenses')
       .select('*')
-      .eq('bound_user_id', userIdStr);
+      .eq('bound_user_id', feishuUserId);
     
     console.log('[Feishu OAuth Callback API] 用户所有授权码:', allLicenses?.length || 0);
     if (allLicenses && allLicenses.length > 0) {
@@ -160,7 +160,7 @@ export async function GET(request: Request) {
     const { data: licenses, error: licenseError } = await client
       .from('plugin_licenses')
       .select('*')
-      .eq('bound_user_id', userIdStr)
+      .eq('bound_user_id', feishuUserId)
       .eq('status', 'active');
 
     if (licenseError) {
