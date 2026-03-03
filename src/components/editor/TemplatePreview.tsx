@@ -2207,17 +2207,26 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                           
                           {/* 显示更多预览字段 */}
                           <div className="mt-2 space-y-1">
+                            {/* 调试信息 - 显示原始字段数 */}
+                            <div className="text-[10px] text-orange-500">
+                              调试: 共{Object.entries(record).filter(([k]) => !k.startsWith('_') && k !== 'id').length}个字段
+                            </div>
                             {Object.entries(record)
-                              .filter(([key]) => key !== 'id' && key !== '_rowIndex')
+                              .filter(([key]) => key !== 'id' && key !== '_rowIndex' && !key.startsWith('_'))
                               .slice(0, 4)
-                              .map(([key, value]) => (
-                                <div key={key} className="flex gap-1">
-                                  <span className="text-gray-400 shrink-0">{key}:</span>
-                                  <span className={`truncate flex-1 ${isSelected ? 'text-blue-600' : 'text-gray-600'}`}>
-                                    {formatFieldValue(key, value)}
-                                  </span>
-                                </div>
-                              ))}
+                              .map(([key, value]) => {
+                                // 调试原始值
+                                const displayValue = formatFieldValue(key, value);
+                                const rawType = typeof value;
+                                return (
+                                  <div key={key} className="flex gap-1 text-[11px]">
+                                    <span className="text-gray-400 shrink-0">{key}:</span>
+                                    <span className={`truncate flex-1 ${isSelected ? 'text-blue-600' : 'text-gray-600'}`}>
+                                      {displayValue || `[${rawType}]`}
+                                    </span>
+                                  </div>
+                                );
+                              })}
                           </div>
                         </button>
                       </div>
