@@ -111,8 +111,14 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
                 flex: `0 0 ${widthPercent}%`,
                 maxWidth: `${widthPercent}%`,
                 padding: '4px',
+                border: '1px dashed #ccc',
+                backgroundColor: component.type === 'table' ? '#f0f0f0' : '#fff',
               }}
             >
+              {/* 调试信息 */}
+              <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>
+                Type: {component.type} | ID: {component.id}
+              </div>
               {renderComponent(component, record)}
             </div>
           );
@@ -146,50 +152,63 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
       case 'text':
         const textComp = component as any;
         const textStyle = getBaseTextStyles(textComp.textStyle);
+        const textContent = textComp.content || textComp.text || '';
+        const displayContent = resolveVariables(textContent);
+        
+        // 强制设置可见的样式，确保文本一定显示
+        const safeTextStyle: React.CSSProperties = {
+          ...textStyle,
+          color: '#000000', // 强制黑色
+          minHeight: '20px',
+          display: 'block',
+          visibility: 'visible',
+          opacity: 1,
+          position: 'relative',
+          zIndex: 1,
+        };
         
         // 标题样式
         if (textComp.textStyle?.headingLevel) {
           const headingSizes: Record<number, number> = { 1: 24, 2: 20, 3: 18, 4: 16, 5: 14, 6: 12 };
-          const headingStyle = {
-            ...textStyle,
+          const headingStyle: React.CSSProperties = {
+            ...safeTextStyle,
             fontSize: `${headingSizes[textComp.textStyle.headingLevel] || 18}px`,
             fontWeight: 'bold',
             marginBottom: '0.5em',
             marginTop: '0.5em',
           };
-          const headingContent = resolveVariables(textComp.content || '');
           
           switch (textComp.textStyle.headingLevel) {
-            case 1: return <h1 style={headingStyle}>{headingContent}</h1>;
-            case 2: return <h2 style={headingStyle}>{headingContent}</h2>;
-            case 3: return <h3 style={headingStyle}>{headingContent}</h3>;
-            case 4: return <h4 style={headingStyle}>{headingContent}</h4>;
-            case 5: return <h5 style={headingStyle}>{headingContent}</h5>;
-            case 6: return <h6 style={headingStyle}>{headingContent}</h6>;
-            default: return <h1 style={headingStyle}>{headingContent}</h1>;
+            case 1: return <h1 style={headingStyle}>{displayContent || '文本组件1'}</h1>;
+            case 2: return <h2 style={headingStyle}>{displayContent || '文本组件2'}</h2>;
+            case 3: return <h3 style={headingStyle}>{displayContent || '文本组件3'}</h3>;
+            case 4: return <h4 style={headingStyle}>{displayContent || '文本组件4'}</h4>;
+            case 5: return <h5 style={headingStyle}>{displayContent || '文本组件5'}</h5>;
+            case 6: return <h6 style={headingStyle}>{displayContent || '文本组件6'}</h6>;
+            default: return <h1 style={headingStyle}>{displayContent || '文本组件'}</h1>;
           }
         }
         
         // 列表样式
         if (textComp.textStyle?.listType === 'unordered') {
           return (
-            <ul style={{ ...textStyle, marginLeft: '1.5rem', listStyleType: 'disc' }}>
-              <li>{resolveVariables(textComp.content || '')}</li>
+            <ul style={{ ...safeTextStyle, marginLeft: '1.5rem', listStyleType: 'disc' }}>
+              <li>{displayContent || '列表文本'}</li>
             </ul>
           );
         }
         
         if (textComp.textStyle?.listType === 'ordered') {
           return (
-            <ol style={{ ...textStyle, marginLeft: '1.5rem', listStyleType: 'decimal' }}>
-              <li>{resolveVariables(textComp.content || '')}</li>
+            <ol style={{ ...safeTextStyle, marginLeft: '1.5rem', listStyleType: 'decimal' }}>
+              <li>{displayContent || '有序列表文本'}</li>
             </ol>
           );
         }
         
         return (
-          <div style={textStyle}>
-            {resolveVariables(textComp.content || '')}
+          <div style={safeTextStyle}>
+            {displayContent || `文本组件 (${textComp.id})`}
           </div>
         );
         
@@ -197,6 +216,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
         const headingComp = component as any;
         const level = headingComp.level || 1;
         const headingSizes: Record<number, number> = { 1: 24, 2: 20, 3: 18, 4: 16, 5: 14, 6: 12 };
+        const headingContent = resolveVariables(headingComp.content || '');
         const headingStyle = {
           fontFamily: styleConfig.fontFamily,
           fontSize: headingComp.textStyle?.fontSize ? `${headingComp.textStyle.fontSize}px` : `${headingSizes[level]}px`,
@@ -206,61 +226,67 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
           lineHeight: headingComp.textStyle?.lineHeight || 1.5,
           margin: '0 0 16px 0',
           padding: '8px 0',
+          minHeight: '1em',
         };
-        const headingContent = resolveVariables(headingComp.content || '');
         
         switch (level) {
-          case 1: return <h1 style={headingStyle}>{headingContent}</h1>;
-          case 2: return <h2 style={headingStyle}>{headingContent}</h2>;
-          case 3: return <h3 style={headingStyle}>{headingContent}</h3>;
-          case 4: return <h4 style={headingStyle}>{headingContent}</h4>;
-          case 5: return <h5 style={headingStyle}>{headingContent}</h5>;
-          case 6: return <h6 style={headingStyle}>{headingContent}</h6>;
-          default: return <h1 style={headingStyle}>{headingContent}</h1>;
+          case 1: return <h1 style={headingStyle}>{headingContent || ' '}</h1>;
+          case 2: return <h2 style={headingStyle}>{headingContent || ' '}</h2>;
+          case 3: return <h3 style={headingStyle}>{headingContent || ' '}</h3>;
+          case 4: return <h4 style={headingStyle}>{headingContent || ' '}</h4>;
+          case 5: return <h5 style={headingStyle}>{headingContent || ' '}</h5>;
+          case 6: return <h6 style={headingStyle}>{headingContent || ' '}</h6>;
+          default: return <h1 style={headingStyle}>{headingContent || ' '}</h1>;
         }
         
       case 'paragraph':
         const paraComp = component as any;
-        const lines = resolveVariables(paraComp.content || '').split('\n');
+        const paraContent = resolveVariables(paraComp.content || '');
+        const paraLines = paraContent.split('\n');
+        const paraStyle = {
+          fontFamily: styleConfig.fontFamily,
+          fontSize: paraComp.textStyle?.fontSize ? `${paraComp.textStyle.fontSize}px` : `${styleConfig.fontSize}px`,
+          fontWeight: paraComp.textStyle?.bold ? 'bold' : 'normal',
+          color: paraComp.textStyle?.color || '#000000',
+          textAlign: (paraComp.textStyle?.align as any) || 'justify',
+          lineHeight: paraComp.textStyle?.lineHeight || 1.8,
+          textIndent: `${(paraComp.indent || 2) * 2}em`,
+          margin: '0 0 12px 0',
+          padding: '4px 0',
+          minHeight: '1em',
+        };
         return (
-          <p style={{
-            fontFamily: styleConfig.fontFamily,
-            fontSize: paraComp.textStyle?.fontSize ? `${paraComp.textStyle.fontSize}px` : `${styleConfig.fontSize}px`,
-            fontWeight: paraComp.textStyle?.bold ? 'bold' : 'normal',
-            color: paraComp.textStyle?.color || '#000000',
-            textAlign: (paraComp.textStyle?.align as any) || 'justify',
-            lineHeight: paraComp.textStyle?.lineHeight || 1.8,
-            textIndent: `${(paraComp.indent || 2) * 2}em`,
-            margin: '0 0 12px 0',
-            padding: '4px 0',
-          }}>
-            {lines.map((line, index) => (
+          <p style={paraStyle}>
+            {paraLines.length > 0 ? paraLines.map((line, index) => (
               <React.Fragment key={index}>
                 {line}
-                {index < lines.length - 1 && <br />}
+                {index < paraLines.length - 1 && <br />}
               </React.Fragment>
-            ))}
+            )) : ' '}
           </p>
         );
         
       case 'list':
         const listComp = component as any;
         const ListTag = listComp.listType === 'ordered' ? 'ol' : 'ul';
+        const listItems = listComp.items || [];
+        const listStyle = {
+          fontFamily: styleConfig.fontFamily,
+          fontSize: listComp.textStyle?.fontSize ? `${listComp.textStyle.fontSize}px` : `${styleConfig.fontSize}px`,
+          fontWeight: listComp.textStyle?.bold ? 'bold' : 'normal',
+          color: listComp.textStyle?.color || '#000000',
+          lineHeight: listComp.textStyle?.lineHeight || 1.8,
+          margin: '0 0 12px 0',
+          paddingLeft: '2em',
+          minHeight: '1em',
+        };
         return (
-          <ListTag style={{
-            fontFamily: styleConfig.fontFamily,
-            fontSize: listComp.textStyle?.fontSize ? `${listComp.textStyle.fontSize}px` : `${styleConfig.fontSize}px`,
-            fontWeight: listComp.textStyle?.bold ? 'bold' : 'normal',
-            color: listComp.textStyle?.color || '#000000',
-            lineHeight: listComp.textStyle?.lineHeight || 1.8,
-            margin: '0 0 12px 0',
-            paddingLeft: '2em',
-          }}>
-            {(listComp.items || []).map((item: string, index: number) => (
+          <ListTag style={listStyle}>
+            {listItems.length > 0 ? listItems.map((item: string, index: number) => (
               <li key={index} style={{ marginBottom: '4px' }}>
                 {resolveVariables(item)}
               </li>
-            ))}
+            )) : <li> </li>}
           </ListTag>
         );
       case 'line':
