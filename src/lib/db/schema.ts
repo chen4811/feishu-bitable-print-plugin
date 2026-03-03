@@ -69,31 +69,3 @@ export const admins = pgTable('admins', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
-
-
-// ========== 飞书应用凭证表 ==========
-// 用于存储 CoreHR API 调用的应用凭证
-export const feishuAppCredentials = pgTable('feishu_app_credentials', {
-  id: serial('id').primaryKey(),
-  // 应用名称（便于识别）
-  appName: varchar('app_name', { length: 100 }).notNull(),
-  // 应用 ID（飞书开放平台获取）
-  appId: varchar('app_id', { length: 100 }).notNull(),
-  // 应用密钥（加密存储）
-  appSecret: text('app_secret').notNull(),
-  // 应用类型：internal（自建应用）/ marketplace（应用商店应用）
-  appType: varchar('app_type', { length: 20 }).default('internal'),
-  // 是否启用
-  isActive: boolean('is_active').default(true),
-  // 最后使用时间
-  lastUsedAt: timestamp('last_used_at'),
-  // 备注
-  description: text('description'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-}, (table) => {
-  return {
-    // 唯一约束：一个应用ID只能有一条记录
-    appIdUnique: uniqueIndex('app_id_unique').on(table.appId),
-  };
-});

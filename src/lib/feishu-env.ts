@@ -766,67 +766,34 @@ export async function getSelectedRecords(): Promise<BitableRecord[]> {
     debugLog('📋 完整 recordData:', JSON.stringify(recordData, null, 2));
     
     // 尝试获取流程字段的值（Type 0）
-    debugLog('======== 流程字段排查开始 ========');
+    debugLog('尝试获取流程字段的值...');
     try {
-      // 1. 打印所有字段信息，确认正确的字段 ID
-      debugLog('=== 所有字段信息 ===');
-      fieldMetaList.forEach((field: any) => {
-        debugLog(`ID: ${field.id}, 名称: ${field.name}, 类型: ${field.type}`);
-      });
+      // 直接使用已获取的 recordData，不再额外调用 API
+      const statusFieldId = 'fldwMmazk5'; // 当前状态字段ID
+      debugLog('尝试读取流程字段:', statusFieldId);
       
-      // 2. 查找包含"状态"的所有字段
-      const statusFields = fieldMetaList.filter((f: any) => 
-        f.name.includes('状态') || f.name.includes('Status') || f.name.includes('status')
-      );
-      debugLog('=== 可能的状态字段 ===');
-      statusFields.forEach((f: any) => {
-        debugLog(`ID: ${f.id}, 名称: ${f.name}, 类型: ${f.type}`);
-      });
+      // 直接从 recordData.fields 读取字段值
+      const statusValue = recordData.fields[statusFieldId];
+      debugLog('流程字段原始值:', statusValue);
+      debugLog('流程字段类型:', typeof statusValue);
       
-      // 3. 检查目标字段的详细属性
-      const targetField = fieldMetaList.find((f: any) => f.id === 'fldwMmazk5');
-      if (targetField) {
-        debugLog('=== 目标字段详细信息 ===');
-        debugLog(`ID: ${targetField.id}`);
-        debugLog(`名称: ${targetField.name}`);
-        debugLog(`类型: ${targetField.type}`);
-        debugLog(`属性: ${JSON.stringify(targetField.property)}`);
-        debugLog(`是否主字段: ${targetField.isPrimary}`);
-        debugLog(`描述: ${targetField.description}`);
-      } else {
-        debugLog('❌ 未找到字段 fldwMmazk5');
-      }
-      
-      // 4. 尝试从 recordData.fields 读取所有字段值
-      debugLog('=== 记录中的所有字段值 ===');
-      const { fields } = recordData;
-      for (const [fieldId, value] of Object.entries(fields)) {
-        const fieldMeta = fieldMetaList.find((f: any) => f.id === fieldId);
-        const fieldName = fieldMeta ? fieldMeta.name : fieldId;
-        debugLog(`${fieldName}(${fieldId}): ${JSON.stringify(value)}`);
-      }
-      
-      // 5. 特别关注流程字段的值
-      const statusFieldId = 'fldwMmazk5';
-      const statusValue = fields[statusFieldId];
-      debugLog('=== 流程字段值详情 ===');
-      debugLog(`字段ID: ${statusFieldId}`);
-      debugLog(`原始值: ${JSON.stringify(statusValue)}`);
-      debugLog(`值类型: ${typeof statusValue}`);
-      debugLog(`是否为null: ${statusValue === null}`);
-      debugLog(`是否为undefined: ${statusValue === undefined}`);
-      
+      // 如果字段值是数组，打印数组内容
       if (Array.isArray(statusValue)) {
-        debugLog(`数组长度: ${statusValue.length}`);
+        debugLog('流程字段是数组，长度:', statusValue.length);
         statusValue.forEach((item, index) => {
-          debugLog(`  [${index}]: ${JSON.stringify(item)}`);
+          debugLog(`  [${index}]:`, JSON.stringify(item));
         });
       }
       
+      // 如果获取到值，保持不变；如果为空，记录日志
+      if (statusValue !== undefined && statusValue !== null) {
+        debugLog('✅ 成功读取流程字段值:', statusValue);
+      } else {
+        debugLog('⚠️ 流程字段值为空或不存在');
+      }
     } catch (e) {
-      debugLog('流程字段排查失败:', e);
+      debugLog('获取流程字段值失败:', e);
     }
-    debugLog('======== 流程字段排查结束 ========');
     
     debugLog('第四步：获取字段元信息...');
     let fieldMetaList: any[] = [];
