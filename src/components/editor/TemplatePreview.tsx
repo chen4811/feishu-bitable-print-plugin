@@ -912,22 +912,41 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           let ignoredCount = 0;
           
           formattedRecords.forEach(record => {
+            // 获取所有可能的ID用于去重检查
+            const recordId = record.id;
+            const sourceRecordId = record._sourceRecordId;
+            
             // 检查是否在忽略列表中（用户手动删除过）
-            if (ignoredRecordIds.has(record.id)) {
+            // 同时检查 id 和 _sourceRecordId
+            if (ignoredRecordIds.has(recordId) || (sourceRecordId && ignoredRecordIds.has(sourceRecordId))) {
               ignoredCount++;
-              console.log('[TP] 跳过已忽略记录:', record.id);
+              console.log('[TP] 跳过已忽略记录:', { recordId, sourceRecordId });
               return;
             }
             
-            // 严格去重：检查是否已存在相同 ID 的记录
-            const isDuplicate = newRecords.some(r => r.id === record.id);
+            // 严格去重：检查是否已存在相同 ID 或相同源记录 ID 的记录
+            const isDuplicate = newRecords.some(r => {
+              // 检查主ID是否相同
+              if (r.id === recordId) return true;
+              // 检查源记录ID是否相同（如果都有的话）
+              if (sourceRecordId && r._sourceRecordId === sourceRecordId) return true;
+              // 检查源记录ID是否匹配主ID（兼容旧数据）
+              if (sourceRecordId && r.id === sourceRecordId) return true;
+              if (r._sourceRecordId === recordId) return true;
+              return false;
+            });
+            
             if (!isDuplicate) {
               newRecords.push(record);
               addedCount++;
-              console.log('[TP] 添加记录:', record.id, '字段:', Object.keys(record).slice(0, 5));
+              console.log('[TP] 添加记录:', { 
+                id: recordId, 
+                sourceRecordId,
+                fields: Object.keys(record).filter(k => !k.startsWith('_') && k !== 'id').slice(0, 5)
+              });
             } else {
               skippedCount++;
-              console.log('[TP] 跳过重复记录:', record.id);
+              console.log('[TP] 跳过重复记录:', { recordId, sourceRecordId });
             }
           });
           
@@ -1118,10 +1137,20 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       return newList;
     });
     
-    // 3. 从可用列表移除
+    // 3. 从可用列表移除（同时检查 id 和 _sourceRecordId）
     setAvailableRecords(prev => {
-      const newList = prev.filter(r => r.id !== recordId);
-      console.log('[TP] 从可用列表移除:', recordId, '剩余:', newList.length);
+      const removedRecord = prev.find(r => r.id === recordId || r._sourceRecordId === recordId);
+      const actualRecordId = removedRecord?.id || recordId;
+      const actualSourceId = removedRecord?._sourceRecordId;
+      
+      const newList = prev.filter(r => r.id !== recordId && r._sourceRecordId !== recordId);
+      console.log('[TP] 从可用列表移除:', { 
+        searchId: recordId, 
+        actualRecordId, 
+        actualSourceId,
+        removedCount: prev.length - newList.length,
+        remaining: newList.length 
+      });
       return newList;
     });
     
