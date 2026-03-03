@@ -42,7 +42,7 @@ async function verifyAdmin(request: Request) {
 
 /**
  * GET /api/admin/licenses
- * 获取授权码列表
+ * 获取授权码列表（支持分页、搜索、筛选）
  */
 export async function GET(request: Request) {
   const auth = await verifyAdmin(request);
@@ -57,23 +57,42 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const type = searchParams.get('type');
+    const search = searchParams.get('search');
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const pageSize = parseInt(searchParams.get('pageSize') || '20', 10);
     
     const client = getSupabaseClient();
     
+    // 构建查询
     let query = client
       .from('plugin_licenses')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .select('*', { count: 'exact' });
     
-    if (status) {
+    // 状态筛选
+    if (status && status !== 'all') {
       query = query.eq('status', status);
     }
     
-    if (type) {
+    // 类型筛选
+    if (type && type !== 'all') {
       query = query.eq('type', type);
     }
     
-    const { data: licenses, error } = await query;
+    // 搜索功能（支持授权码、绑定用户ID、绑定用户名）
+    if (search) {
+      const searchTerm = search.trim().toUpperCase().replace(/-/g, '');
+      query = query.or(
+        `code.ilike.%${searchTerm}%,bound_user_id.ilike.%${searchTerm}%,bound_user_name.ilike.%${searchTerm}%`
+      );
+    }
+    
+    // 分页
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    
+    const { data: licenses, error, count } = await query
+      .order('created_at', { ascending: false })
+      .range(from, to);
 
     if (error) {
       console.error('[Admin Licenses API] 查询失败:', error);
@@ -84,8 +103,8 @@ export async function GET(request: Request) {
     }
 
     // 处理数据，计算剩余天数等
+    const now = new Date();
     const processedLicenses = licenses?.map(license => {
-      const now = new Date();
       const validUntil = license.valid_until ? new Date(license.valid_until) : null;
       
       let daysRemaining = null;
@@ -95,6 +114,9 @@ export async function GET(request: Request) {
 
       return {
         ...license,
+        code_formatted: license.code ? 
+          license.code.match(/.{1,4}/g)?.join('-') || license.code : 
+          '',
         days_remaining: daysRemaining,
         is_expired: daysRemaining !== null && daysRemaining < 0,
       };
@@ -103,6 +125,12 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       data: processedLicenses,
+      pagination: {
+        page,
+        pageSize,
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / pageSize),
+      },
     });
   } catch (error) {
     console.error('[Admin Licenses API] 获取授权码列表错误:', error);
@@ -128,7 +156,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { count = 1, type = 'month', prefix = '' } = body;
+    const { count = 1, type = 'month', prefix = '', note = '' } = body;
     
     // 验证参数
     if (count < 1 || count > 100) {
@@ -157,6 +185,7 @@ export async function POST(request: Request) {
       type,
       duration_days: durationDays,
       status: 'unused',
+      note: note || null,
       created_by: auth.userId,
     }));
     
@@ -180,6 +209,7 @@ export async function POST(request: Request) {
         count: codes.length,
         type,
         duration_days: durationDays,
+        note,
       },
     });
   } catch (error) {
