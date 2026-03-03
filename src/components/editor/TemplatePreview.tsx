@@ -696,42 +696,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     });
   }, [fetchTemplates]);
 
-  // 初始化：设置飞书环境状态并初始化 SDK，添加选中变化监听器，获取当前表格信息
-  useEffect(() => {
-    const init = async () => {
-      await feishuEnv.init();
-      const isReady = feishuEnv.isFeishuEnvironment();
-      setIsFromFeishu(isReady);
-      
-      if (isReady) {
-        // 获取当前表格信息
-        await fetchCurrentTableInfo();
-        fetchSelectedRecordsFromEnv();
-        
-        // 注册选中变化监听器
-        const unsubscribe = onSelectionChange((event) => {
-          console.log('[TP] 飞书选择变化事件:', event.data);
-          
-          // 表格切换时重新获取表格信息
-          if (event?.data?.tableId) {
-            console.log('[TP] 检测到表格变化，重新获取表格信息:', event.data.tableId);
-            fetchCurrentTableInfo();
-          }
-          
-          // 记录选中变化时获取记录
-          if (event?.data?.recordId && event?.data?.tableId) {
-            console.log('[TP] 记录选中变化:', event.data.recordId);
-            // 使用 recordId 直接获取单条记录，支持连续点击添加
-            fetchSingleRecord(event.data.recordId, event.data.tableId);
-          }
-        });
-        
-        return () => unsubscribe();
-      }
-    };
-    
-    init();
-  }, [setIsFromFeishu, fetchCurrentTableInfo, fetchSelectedRecordsFromEnv, fetchSingleRecord]);
+
 
   // 获取单条记录（用于点击行时添加）
   const fetchSingleRecord = useCallback(async (recordId: string, tableId: string) => {
@@ -914,20 +879,57 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     
     return isMatch;
   }, []);
-  
+
+  // 初始化：设置飞书环境状态并初始化 SDK，添加选中变化监听器，获取当前表格信息
+  useEffect(() => {
+    const init = async () => {
+      await feishuEnv.init();
+      const isReady = feishuEnv.isFeishuEnvironment();
+      setIsFromFeishu(isReady);
+
+      if (isReady) {
+        // 获取当前表格信息
+        await fetchCurrentTableInfo();
+        fetchSelectedRecordsFromEnv();
+
+        // 注册选中变化监听器
+        const unsubscribe = onSelectionChange((event) => {
+          console.log('[TP] 飞书选择变化事件:', event.data);
+
+          // 表格切换时重新获取表格信息
+          if (event?.data?.tableId) {
+            console.log('[TP] 检测到表格变化，重新获取表格信息:', event.data.tableId);
+            fetchCurrentTableInfo();
+          }
+
+          // 记录选中变化时获取记录
+          if (event?.data?.recordId && event?.data?.tableId) {
+            console.log('[TP] 记录选中变化:', event.data.recordId);
+            // 使用 recordId 直接获取单条记录，支持连续点击添加
+            fetchSingleRecord(event.data.recordId, event.data.tableId);
+          }
+        });
+
+        return () => unsubscribe();
+      }
+    };
+
+    init();
+  }, [setIsFromFeishu, fetchCurrentTableInfo, fetchSelectedRecordsFromEnv, fetchSingleRecord]);
+
   // 监听模板和表格信息变化，更新匹配状态并处理缓存
   const prevMatchedRef = useRef<boolean>(true);
-  
+
   useEffect(() => {
     const matched = checkTableMatch(selectedTemplate, currentTableInfo);
     const wasMatched = prevMatchedRef.current;
-    
+
     // 只有匹配状态真正变化时才更新
     if (matched !== isTableMatched) {
       setIsTableMatched(matched);
       prevMatchedRef.current = matched;
     }
-    
+
     // 如果从不匹配变为匹配，恢复缓存的数据
     if (matched && !wasMatched && cachedRecords.length > 0) {
       console.log('[TP] 表格恢复匹配，恢复缓存记录:', cachedRecords.length);
@@ -935,7 +937,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       setCachedRecords([]);
       toast.success(`已恢复 ${cachedRecords.length} 条缓存记录`);
     }
-    
+
     // 如果从匹配变为不匹配，清空可用记录并缓存
     if (!matched && wasMatched && availableRecords.length > 0) {
       console.log('[TP] 表格不匹配，缓存当前记录:', availableRecords.length);
@@ -944,7 +946,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       // 清空已选记录，因为它们来自不匹配的表格
       setSelectedRecords([]);
     }
-    
+
     console.log('[TP] 表格匹配检查:', {
       matched,
       templateTableId: selectedTemplate?.data?.tableId,
@@ -952,7 +954,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       currentTableName: currentTableInfo.tableName,
     });
   }, [selectedTemplate, currentTableInfo, checkTableMatch]);
-  
+
   // 添加记录到选中列表（防重复，带表格匹配检查）
   const addRecordToSelection = useCallback((record: Record<string, any>) => {
     // 检查表格匹配状态
