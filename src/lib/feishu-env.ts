@@ -768,33 +768,28 @@ export async function getSelectedRecords(): Promise<BitableRecord[]> {
     // 尝试获取流程字段的值（Type 0）
     debugLog('尝试获取流程字段的值...');
     try {
-      // 使用 base.getActiveTable() 获取当前活动表格
-      if (typeof base.getActiveTable === 'function') {
-        debugLog('使用 base.getActiveTable() 获取当前活动表格');
-        const activeTable = await base.getActiveTable();
-        
-        if (activeTable) {
-          // 获取当前状态字段的ID
-          const statusFieldId = 'fldwMmazk5'; // 当前状态字段ID
-          debugLog('尝试读取流程字段:', statusFieldId);
-          
-          // 从活动表格获取记录
-          const activeRecord = await activeTable.getRecordById(targetRecordId);
-          debugLog('从活动表格获取的记录:', activeRecord);
-          
-          if (activeRecord && activeRecord.fields) {
-            const statusValue = activeRecord.fields[statusFieldId];
-            debugLog('流程字段原始值:', statusValue);
-            
-            // 如果获取到值，更新 recordData
-            if (statusValue !== undefined && statusValue !== null) {
-              recordData.fields[statusFieldId] = statusValue;
-              debugLog('✅ 成功获取流程字段值:', statusValue);
-            } else {
-              debugLog('⚠️ 流程字段值为空');
-            }
-          }
-        }
+      // 直接使用已获取的 recordData，不再额外调用 API
+      const statusFieldId = 'fldwMmazk5'; // 当前状态字段ID
+      debugLog('尝试读取流程字段:', statusFieldId);
+      
+      // 直接从 recordData.fields 读取字段值
+      const statusValue = recordData.fields[statusFieldId];
+      debugLog('流程字段原始值:', statusValue);
+      debugLog('流程字段类型:', typeof statusValue);
+      
+      // 如果字段值是数组，打印数组内容
+      if (Array.isArray(statusValue)) {
+        debugLog('流程字段是数组，长度:', statusValue.length);
+        statusValue.forEach((item, index) => {
+          debugLog(`  [${index}]:`, JSON.stringify(item));
+        });
+      }
+      
+      // 如果获取到值，保持不变；如果为空，记录日志
+      if (statusValue !== undefined && statusValue !== null) {
+        debugLog('✅ 成功读取流程字段值:', statusValue);
+      } else {
+        debugLog('⚠️ 流程字段值为空或不存在');
       }
     } catch (e) {
       debugLog('获取流程字段值失败:', e);
