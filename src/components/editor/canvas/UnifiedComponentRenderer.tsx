@@ -58,7 +58,7 @@ function renderTextComponent(
     
     const headingContent = (
       <VariableTextRenderer
-        text={displayContent || (isPrint ? '' : '显示')}
+        text={displayContent || ''}
         records={previewRecord ? [previewRecord] : []}
         fields={fields || []}
         tagName="span"
@@ -86,7 +86,7 @@ function renderTextComponent(
       }}>
         <li>
           <VariableTextRenderer
-            text={displayContent || (isPrint ? '' : '显示')}
+            text={displayContent || ''}
             records={previewRecord ? [previewRecord] : []}
             fields={fields || []}
             tagName="span"
@@ -105,7 +105,7 @@ function renderTextComponent(
       }}>
         <li>
           <VariableTextRenderer
-            text={displayContent || (isPrint ? '' : '显示')}
+            text={displayContent || ''}
             records={previewRecord ? [previewRecord] : []}
             fields={fields || []}
             tagName="span"
@@ -129,7 +129,7 @@ function renderTextComponent(
         }}
       >
         <VariableTextRenderer
-          text={displayContent || (isPrint ? '' : '显示')}
+          text={displayContent || ''}
           records={previewRecord ? [previewRecord] : []}
           fields={fields || []}
           tagName="span"
@@ -142,7 +142,7 @@ function renderTextComponent(
   return (
     <span style={baseStyles}>
       <VariableTextRenderer
-        text={displayContent || (isPrint ? '' : '显示')}
+        text={displayContent || ''}
         records={previewRecord ? [previewRecord] : []}
         fields={fields || []}
         tagName="span"
