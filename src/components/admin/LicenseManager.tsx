@@ -481,6 +481,7 @@ export function LicenseManager({ adminToken }: LicenseManagerProps) {
                   <TableHead>类型</TableHead>
                   <TableHead>状态</TableHead>
                   <TableHead>绑定用户</TableHead>
+                  <TableHead>飞书ID</TableHead>
                   <TableHead>到期时间</TableHead>
                   <TableHead>创建时间</TableHead>
                   <TableHead className="text-right">操作</TableHead>
@@ -489,13 +490,13 @@ export function LicenseManager({ adminToken }: LicenseManagerProps) {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={9} className="text-center py-8">
                       <Spinner className="mx-auto h-6 w-6" />
                     </TableCell>
                   </TableRow>
                 ) : licenses.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                       暂无授权码数据
                     </TableCell>
                   </TableRow>
@@ -511,7 +512,16 @@ export function LicenseManager({ adminToken }: LicenseManagerProps) {
                         {getStatusBadge(license.status, license.is_expired)}
                       </TableCell>
                       <TableCell>
-                        {license.bound_user_name || license.bound_user_id || '-'}
+                        {license.bound_user_name || '-'}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {license.bound_user_id ? (
+                          <div className="max-w-[150px] truncate" title={license.bound_user_id}>
+                            {license.bound_user_id}
+                          </div>
+                        ) : (
+                          '-'
+                        )}
                       </TableCell>
                       <TableCell>
                         {license.valid_until ? (
@@ -770,7 +780,7 @@ export function LicenseManager({ adminToken }: LicenseManagerProps) {
                       <p className="font-medium">{selectedLicense.bound_user_name || '-'}</p>
                     </div>
                     <div>
-                      <Label className="text-muted-foreground">用户ID</Label>
+                      <Label className="text-muted-foreground">飞书ID</Label>
                       <p className="font-medium text-xs break-all">{selectedLicense.bound_user_id}</p>
                     </div>
                   </div>
