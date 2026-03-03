@@ -14,32 +14,24 @@ export const dynamic = 'force-dynamic';
  */
 async function verifyAdmin(request: Request) {
   const authHeader = request.headers.get('Authorization');
-  console.log('[verifyAdmin] Authorization header:', authHeader?.substring(0, 30) + '...');
-  
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return { error: '未授权', status: 401 };
   }
 
   const token = authHeader.substring(7);
-  console.log('[verifyAdmin] Token 长度:', token.length);
-  
   const decoded = verifyToken(token);
-  console.log('[verifyAdmin] Decoded:', decoded);
   
   if (!decoded) {
     return { error: 'Token 无效', status: 401 };
   }
 
   // 检查是否是管理员类型
-  console.log('[verifyAdmin] Token type:', decoded.type);
   if (decoded.type !== 'admin') {
     return { error: '无管理员权限', status: 403 };
   }
 
   // 获取管理员ID (兼容新旧格式：优先使用 adminId，回退到 userId)
   const adminId = (decoded as any).adminId || (decoded as any).userId;
-  console.log('[verifyAdmin] AdminId:', adminId);
-  
   if (!adminId) {
     return { error: 'Token 格式错误', status: 401 };
   }
