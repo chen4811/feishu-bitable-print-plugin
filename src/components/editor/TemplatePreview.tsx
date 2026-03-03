@@ -1088,9 +1088,9 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   }, [selectedTemplate, selectedRecords, layoutMode]);
 
   return (
-    <div className="print-container h-full flex gap-3 p-3 overflow-hidden">
+    <div className="print-wrapper h-full flex gap-3 p-3 overflow-hidden">
       {/* 左侧：模板列表 - 减小宽度 */}
-      <Card className="no-print w-64 flex-shrink-0 flex flex-col">
+      <Card className="sidebar-left no-print w-64 flex-shrink-0 flex flex-col">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -1163,7 +1163,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       </Card>
 
       {/* 中间：打印预览 - 确保最小宽度 */}
-      <div className="flex-1 min-w-[500px] flex flex-col overflow-hidden">
+      <div className="print-content-area flex-1 min-w-[500px] flex flex-col overflow-hidden">
         {/* 工具栏 */}
         <Card className="no-print mb-4">
           <CardContent className="p-4">
@@ -1515,7 +1515,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       </div>
 
       {/* 右侧：数据匹配 - 简化为点击选中模式 */}
-      <Card className="no-print w-56 flex-shrink-0 flex flex-col overflow-hidden">
+      <Card className="sidebar-right no-print w-56 flex-shrink-0 flex flex-col overflow-hidden">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center justify-between">
             <span>数据匹配</span>
@@ -1584,9 +1584,13 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         </CardContent>
       </Card>
 
-      {/* 打印样式 - 最简单最可靠版本 */}
+      {/* 打印样式 - 只打印画布内容 */}
       <style jsx global>{`
         @media print {
+          /* =========================================
+             精确打印控制 - 只打印中间画布内容
+             ========================================= */
+          
           /* 1. 强制A4纸张 */
           @page {
             size: A4;
@@ -1606,42 +1610,66 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
             background: white !important;
           }
 
-          /* 4. 确保打印页面尺寸正确 */
-          .print-area-page {
+          /* 4. 隐藏左右侧边栏 */
+          .print-wrapper > :not(.print-content-area) {
+            display: none !important;
+          }
+
+          /* 5. 隐藏打印内容区域内的no-print元素 */
+          .print-content-area .no-print {
+            display: none !important;
+          }
+
+          /* 6. 打印内容区域占据整个页面 */
+          .print-content-area {
+            display: block !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+          }
+
+          /* 7. 确保打印页面尺寸正确 */
+          .print-content-area .print-area-page {
             width: 210mm !important;
             min-height: 297mm !important;
             page-break-after: always;
             box-shadow: none !important;
             box-sizing: border-box !important;
+            margin: 0 auto !important;
           }
 
-          .print-area-page:last-of-type {
+          .print-content-area .print-area-page:last-of-type {
             page-break-after: auto !important;
           }
 
-          /* 5. 表格打印 */
-          .print-area-page table {
+          /* 8. 表格打印 */
+          .print-content-area .print-area-page table {
             width: 100% !important;
             border-collapse: collapse !important;
             page-break-inside: avoid;
           }
 
-          .print-area-page th,
-          .print-area-page td {
+          .print-content-area .print-area-page th,
+          .print-content-area .print-area-page td {
             border: 1px solid #000 !important;
             padding: 8px !important;
           }
 
-          /* 6. 确保Flex布局 */
-          .print-area-page [style*="display: flex"],
-          .print-area-page [style*="flex-wrap"] {
+          /* 9. 确保Flex布局 */
+          .print-content-area .print-area-page [style*="display: flex"],
+          .print-content-area .print-area-page [style*="flex-wrap"] {
             display: flex !important;
             flex-wrap: wrap !important;
           }
 
-          /* 7. 隐藏打印装饰 */
-          .print-area-page .print\\:hidden,
-          .print-area-page .absolute {
+          /* 10. 隐藏打印装饰 */
+          .print-content-area .print-area-page .print\\:hidden,
+          .print-content-area .print-area-page .absolute {
             display: none !important;
           }
         }
