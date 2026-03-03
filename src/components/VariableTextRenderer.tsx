@@ -30,7 +30,7 @@ export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
   tagName: Tag = 'span',
 }) => {
   if (!text) {
-    return <Tag className={className} />;
+    return <Tag className={className}>&nbsp;</Tag>;
   }
 
   // 检查是否包含变量

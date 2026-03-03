@@ -109,7 +109,7 @@ function renderTextComponent(
   }
 
   return (
-    <span style={baseStyles}>
+    <span style={{...baseStyles, minHeight: '1em', display: 'inline-block'}}>
       <VariableTextRenderer
         text={displayContent || ''}
         records={previewRecord ? [previewRecord] : []}
