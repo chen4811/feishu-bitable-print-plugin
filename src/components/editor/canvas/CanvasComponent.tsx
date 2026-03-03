@@ -1694,7 +1694,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               ref={textComponentRef}
               className="relative cursor-text whitespace-pre-wrap"
               style={{
-                width: textComp.width ? `${textComp.width}px` : '100%',
+                width: '100%', // 修复：文本组件应该占满容器宽度，而不是使用固定像素宽度
                 height: 'auto',
                 minHeight: '40px',
                 padding: '0.5rem',
@@ -1751,7 +1751,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
             ref={textComponentRef}
             className="relative cursor-text whitespace-pre-wrap"
             style={{
-              width: textComp.width ? `${textComp.width}px` : '100%',
+              width: '100%', // 修复：文本组件应该占满容器宽度，而不是使用固定像素宽度
               height: 'auto',
               minHeight: '40px',
               padding: '0.5rem',
