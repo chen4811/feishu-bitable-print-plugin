@@ -570,16 +570,19 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
           <div className="flex-1 flex flex-col overflow-hidden bg-gray-100">
             {/* 预览模式切换 */}
             <div className="p-4 border-b bg-background">
-              <div className="flex items-center justify-between">
-                <Tabs value={previewMode} onValueChange={(v: any) => setPreviewMode(v)}>
-                  <TabsList>
-                    <TabsTrigger value="default">单页模式</TabsTrigger>
-                    <TabsTrigger value="continuous">连续模式</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-                
-                {/* 缩放控制 */}
-                <div className="flex items-center gap-2">
+              <Tabs value={previewMode} onValueChange={(v: any) => setPreviewMode(v)}>
+                <TabsList>
+                  <TabsTrigger value="default">单页模式</TabsTrigger>
+                  <TabsTrigger value="continuous">连续模式</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+
+            {/* 预览内容 */}
+            <ScrollArea className="flex-1">
+              <div className="p-8 flex flex-col items-center gap-8">
+                {/* 缩放控制栏 - 跟模板编辑一样 */}
+                <div className="flex items-center gap-2 bg-white rounded-lg shadow-sm border p-2">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -601,21 +604,17 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
                   >
                     <ZoomIn className="w-4 h-4" />
                   </Button>
+                  <div className="w-px h-4 bg-gray-300 mx-1" />
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={handleResetZoom}
                     className="h-8 w-8"
+                    title="重置缩放"
                   >
                     <RotateCcw className="w-4 h-4" />
                   </Button>
                 </div>
-              </div>
-            </div>
-
-            {/* 预览内容 */}
-            <ScrollArea className="flex-1">
-              <div className="p-8 flex flex-col items-center gap-8">
                 {printError && (
                   <Alert variant="destructive" className="max-w-lg">
                     <AlertCircle className="h-4 w-4" />
