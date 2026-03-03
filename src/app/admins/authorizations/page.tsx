@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAdminStore } from '@/store/adminStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,7 @@ import {
   XCircle,
   Eye,
   RefreshCw,
+  AlertCircle,
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
@@ -32,6 +34,7 @@ function maskToken(token: string): string {
 }
 
 export default function AuthorizationsPage() {
+  const router = useRouter();
   const { authorizations, fetchAuthorizations, updateAuthorization, deleteAuthorization } = useAdminStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -80,6 +83,28 @@ export default function AuthorizationsPage() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* 废弃提示 */}
+      <Card className="border-orange-200 bg-orange-50">
+        <CardHeader>
+          <CardTitle className="text-orange-800 flex items-center gap-2">
+            <AlertCircle className="h-5 w-5" />
+            页面已迁移
+          </CardTitle>
+          <CardDescription className="text-orange-700">
+            此页面（旧版表格授权管理）已不再使用。请前往新版插件授权码管理页面查看和管理授权码。
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button 
+            onClick={() => router.push('/admins/licenses')}
+            className="bg-orange-600 hover:bg-orange-700"
+          >
+            <Key className="h-4 w-4 mr-2" />
+            前往新版授权码管理
+          </Button>
+        </CardContent>
+      </Card>
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">授权码管理</h1>
