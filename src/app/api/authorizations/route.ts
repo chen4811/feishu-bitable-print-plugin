@@ -70,6 +70,14 @@ export async function POST(request: Request) {
 
     const token = authHeader.substring(7);
     const decoded = verifyToken(token);
+    
+    if (!decoded) {
+      return NextResponse.json(
+        { error: '无效的授权令牌' },
+        { status: 401 }
+      );
+    }
+    
     const body = await request.json();
     const { tableId, tableName, appToken } = body;
 

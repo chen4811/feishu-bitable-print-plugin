@@ -33,6 +33,10 @@ interface FeishuApiResponse<T> {
   code: number;
   msg: string;
   data: T;
+  // 飞书 API 有时会直接在根级别返回数据
+  app_access_token?: string;
+  expire?: number;
+  tenant_access_token?: string;
 }
 
 let appAccessTokenCache: AppAccessTokenCache | null = null;
@@ -80,13 +84,13 @@ export async function getAppAccessToken(): Promise<string> {
   }
 
   // 飞书 API 响应格式：app_access_token 直接在根级别
-  if (result.app_access_token) {
+  if (result.app_access_token && result.expire) {
     // 缓存 token，expire 单位是秒，转换为毫秒
     appAccessTokenCache = {
       token: result.app_access_token,
       expireAt: now + result.expire * 1000,
     };
-  } else if (result.data && result.data.app_access_token) {
+  } else if (result.data && result.data.app_access_token && result.data.expire) {
     // 兼容旧格式
     appAccessTokenCache = {
       token: result.data.app_access_token,

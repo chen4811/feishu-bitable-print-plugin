@@ -91,7 +91,7 @@ const PrintComponentRenderer = ({
           marginTop: '0.5em',
         };
         
-        const Tag = `h${textStyle.headingLevel}` as keyof JSX.IntrinsicElements;
+        const Tag = `h${textStyle.headingLevel}` as React.ElementType;
         return (
           <Tag style={headingStyle}>
             <VariableTextRenderer
@@ -168,7 +168,7 @@ const PrintComponentRenderer = ({
         minHeight: '1em',
       };
 
-      const Tag = `h${level}` as keyof JSX.IntrinsicElements;
+      const Tag = `h${level}` as React.ElementType;
       return (
         <Tag style={style}>
           <VariableTextRenderer
