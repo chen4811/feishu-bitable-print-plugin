@@ -832,19 +832,18 @@ function processRecordData(recordData: any, fieldMetaList: any[]): BitableRecord
   
   const formattedData: Record<string, unknown> = {};
   
-  // 处理每个字段
+  // 处理每个字段 - 关键是：保留原始值，不提前转换！
+  // 这样 formatFieldValue 才能正确处理流程字段
   for (const [fieldId, rawValue] of Object.entries(fields)) {
     const fieldName = fieldMap[fieldId] || fieldId;
     
-    // 使用通用提取器
-    const cleanValue = extractFeishuCellValue(rawValue);
-    
-    // 调试专用：如果是特定字段，打印详细对比
-    if (fieldName === '年度' || fieldName === '接收单位' || fieldName === '发送类型') {
-      debugLog(`🔍 [${fieldName}字段调试] 原始数据: ${JSON.stringify(rawValue)} -> 提取后: ${cleanValue}`);
+    // 调试专用：打印特定字段的详细信息
+    if (fieldName === '年度' || fieldName === '接收单位' || fieldName === '发送类型' || fieldName === '当前状态') {
+      debugLog(`🔍 [${fieldName}字段调试] 原始数据: ${JSON.stringify(rawValue)}`);
     }
     
-    formattedData[fieldName] = cleanValue;
+    // 直接保存原始值，让 formatFieldValue 来处理
+    formattedData[fieldName] = rawValue;
   }
   
   debugLog('processRecordData 处理完成:', formattedData);
@@ -887,10 +886,12 @@ function extractFeishuCellValue(cellData: any): any {
 
   // 3. 如果是对象 (数组里的元素，或者直接返回的对象)
   if (typeof cellData === 'object' && cellData !== null) {
-    // 优先级：text (文本) > name (选项名) > value (数值/布尔) > url (附件) > id
-    if (cellData.text !== undefined) return cellData.text;
-    if (cellData.name !== undefined) return cellData.name;
-    if (cellData.value !== undefined) return cellData.value;
+    // 优先级：text (文本) > name (选项名) > value (数值/布尔) > enumValue (枚举值) > label (标签) > url (附件) > id
+    if (cellData.text !== undefined && cellData.text !== '') return cellData.text;
+    if (cellData.name !== undefined && cellData.name !== '') return cellData.name;
+    if (cellData.value !== undefined && cellData.value !== '') return String(cellData.value);
+    if (cellData.enumValue !== undefined && cellData.enumValue !== '') return cellData.enumValue;
+    if (cellData.label !== undefined && cellData.label !== '') return cellData.label;
     if (cellData.url !== undefined) return cellData.url;
     if (cellData.id !== undefined) return String(cellData.id);
     
