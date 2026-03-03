@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Printer, ChevronLeft, ChevronRight, Eye, RefreshCw, FileText, Pencil, Download, ScanSearch, X, Plus, LayoutGrid, List, Tag } from 'lucide-react';
+import { Printer, ChevronLeft, ChevronRight, Eye, RefreshCw, FileText, Pencil, Download, ScanSearch, X, Plus, LayoutGrid, List, Tag, Layout } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,8 @@ import { toast } from 'sonner';
 import { useTemplateStore, type Template } from '@/store/templateStore';
 import { useSelectedDataStore } from '@/store/selectedDataStore';
 import { useEditorStore } from '@/store/editorStore';
+import { PageSettingsDialog } from '@/components/editor/dialogs/PageSettingsDialog';
+import { PAGE_SIZES, PageConfig } from '@/types/editor';
 import { feishuEnv } from '@/lib/feishu-env';
 import { onSelectionChange } from '@/lib/feishu-env';
 
@@ -473,6 +475,20 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('default');
   const [selectedRecords, setSelectedRecords] = useState<SelectedRecord[]>([]);
   const [availableRecords, setAvailableRecords] = useState<Record<string, any>[]>([]);
+  
+  // 页面设置状态
+  const [isPageSettingsOpen, setIsPageSettingsOpen] = useState(false);
+  const [localPageConfig, setLocalPageConfig] = useState<PageConfig>({
+    size: 'A4',
+    orientation: 'portrait',
+    margins: {
+      top: 20,
+      bottom: 20,
+      left: 20,
+      right: 20,
+    },
+    continuous: false,
+  });
 
   // 监听 selectedRecords 变化
   useEffect(() => {
@@ -601,6 +617,25 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     // 清空之前选中的数据
     setSelectedRecords([]);
     
+    // 从模板数据中读取页面配置
+    if (template.data?.pageConfig) {
+      setLocalPageConfig(template.data.pageConfig);
+      console.log('[TemplatePreview] 从模板加载页面配置:', template.data.pageConfig);
+    } else {
+      // 使用默认配置
+      setLocalPageConfig({
+        size: 'A4',
+        orientation: 'portrait',
+        margins: {
+          top: 20,
+          bottom: 20,
+          left: 20,
+          right: 20,
+        },
+        continuous: false,
+      });
+    }
+    
     // 详细的调试信息
     const components = template.data?.components || [];
     const dataStr = template.data ? JSON.stringify(template.data, null, 2).slice(0, 3000) : '(empty)';
@@ -608,11 +643,19 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       `[${idx}] type=${comp.type}, id=${comp.id}, content=${!!comp.content}, text=${!!comp.text}, textStyle=${!!comp.textStyle}, style=${!!comp.style}`
     ).join('\n');
     
+    const pageConfigInfo = template.data?.pageConfig || { size: 'A4', orientation: 'portrait' };
+    const pageSize = PAGE_SIZES[pageConfigInfo.size] || PAGE_SIZES.A4;
+    const actualWidth = pageConfigInfo.orientation === 'portrait' ? pageSize.width : pageSize.height;
+    const actualHeight = pageConfigInfo.orientation === 'portrait' ? pageSize.height : pageSize.width;
+    
     const debugText = `选中模板: ${template.name}\n` +
       `模板ID: ${template.id}\n` +
       `有数据: ${!!template.data}\n` +
       `数据类型: ${typeof template.data}\n` +
       `组件数量: ${components.length}\n` +
+      `页面尺寸: ${pageConfigInfo.size} ${pageConfigInfo.orientation === 'portrait' ? '纵向' : '横向'}\n` +
+      `画布尺寸: ${actualWidth}mm × ${actualHeight}mm\n` +
+      `页边距: 上${pageConfigInfo.margins?.top || 20}mm 下${pageConfigInfo.margins?.bottom || 20}mm 左${pageConfigInfo.margins?.left || 20}mm 右${pageConfigInfo.margins?.right || 20}mm\n` +
       `组件详情:\n${componentsInfo}\n\n` +
       `完整数据:\n${dataStr}`;
     setDebugInfo(debugText);
@@ -622,6 +665,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       templateId: template.id,
       hasData: !!template.data,
       componentCount: components.length,
+      pageConfig: pageConfigInfo,
+      canvasSize: `${actualWidth}mm × ${actualHeight}mm`,
       components: components.map((c: any) => ({
         type: c.type,
         id: c.id,
@@ -1117,6 +1162,17 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                   </ToggleGroupItem>
                 </ToggleGroup>
 
+                {/* 页面设置按钮 */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsPageSettingsOpen(true)}
+                  disabled={!selectedTemplate}
+                >
+                  <Layout className="h-4 w-4 mr-2" />
+                  页面设置
+                </Button>
+                
                 {/* 编辑模板按钮 */}
                 <Button
                   variant="outline"
@@ -1223,22 +1279,50 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
         {/* A4 预览区域 - 支持三种排版方式 */}
         <div className="flex-1 bg-gray-100 rounded-lg overflow-auto relative">
+          {/* 页面尺寸信息显示 */}
+          {selectedTemplate && (
+            <div className="bg-white border-b p-2 flex items-center justify-between print:hidden">
+              <div className="flex items-center gap-4 text-sm">
+                <span className="font-medium">画布尺寸:</span>
+                <Badge variant="outline">
+                  {localPageConfig.size} {localPageConfig.orientation === 'portrait' ? '纵向' : '横向'}
+                </Badge>
+                <Badge variant="secondary">
+                  {(localPageConfig.orientation === 'portrait' 
+                    ? PAGE_SIZES[localPageConfig.size]?.width || 210 
+                    : PAGE_SIZES[localPageConfig.size]?.height || 297
+                  )}mm × {(localPageConfig.orientation === 'portrait' 
+                    ? PAGE_SIZES[localPageConfig.size]?.height || 297 
+                    : PAGE_SIZES[localPageConfig.size]?.width || 210
+                  )}mm
+                </Badge>
+                <span className="text-muted-foreground">
+                  边距: 上{localPageConfig.margins.top}mm 下{localPageConfig.margins.bottom}mm 
+                  左{localPageConfig.margins.left}mm 右{localPageConfig.margins.right}mm
+                </span>
+              </div>
+            </div>
+          )}
+          
           <div className="min-w-max p-4">
             {selectedTemplate ? (
               (() => {
+                // 使用本地页面配置
+                const pageConfig = localPageConfig;
+                const pageSize = PAGE_SIZES[pageConfig.size] || PAGE_SIZES.A4;
+                const actualWidth = pageConfig.orientation === 'portrait' ? pageSize.width : pageSize.height;
+                const actualHeight = pageConfig.orientation === 'portrait' ? pageSize.height : pageSize.width;
+                const padding = `${pageConfig.margins.top}mm ${pageConfig.margins.right}mm ${pageConfig.margins.bottom}mm ${pageConfig.margins.left}mm`;
+                
                 // 如果没有选中数据，显示空状态
                 if (selectedRecords.length === 0) {
-                  const pageConfig = selectedTemplate?.data?.pageConfig;
-                  const padding = pageConfig?.margins
-                    ? `${pageConfig.margins.top || 20}mm ${pageConfig.margins.right || 20}mm ${pageConfig.margins.bottom || 20}mm ${pageConfig.margins.left || 20}mm`
-                    : '20mm';
                   return (
                     <div className="flex justify-center">
                       <div
                         className="bg-white shadow-lg print:shadow-none flex items-center justify-center"
                         style={{
-                          width: '210mm',
-                          minHeight: '297mm',
+                          width: `${actualWidth}mm`,
+                          minHeight: `${actualHeight}mm`,
                           padding,
                           boxSizing: 'border-box',
                         }}
@@ -1254,10 +1338,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                 }
 
                 const components = selectedTemplate?.data?.components || [];
-                const pageConfig = selectedTemplate?.data?.pageConfig;
-                const padding = pageConfig?.margins
-                  ? `${pageConfig.margins.top || 20}mm ${pageConfig.margins.right || 20}mm ${pageConfig.margins.bottom || 20}mm ${pageConfig.margins.left || 20}mm`
-                  : '20mm';
 
                 // 渲染单个数据页面的函数
                 const renderDataPage = (record: SelectedRecord, pageIndex: number, isLast: boolean) => {
@@ -1266,8 +1346,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                       key={record.id}
                       className="bg-white shadow-lg print:shadow-none"
                       style={{
-                        width: '210mm',
-                        minHeight: layoutMode === 'label' ? 'auto' : '297mm',
+                        width: `${actualWidth}mm`,
+                        minHeight: layoutMode === 'label' ? 'auto' : `${actualHeight}mm`,
                         padding,
                         boxSizing: 'border-box',
                         position: 'relative',
@@ -1314,8 +1394,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                         <div
                           className="bg-white shadow-lg print:shadow-none"
                           style={{
-                            width: '210mm',
-                            minHeight: '297mm',
+                            width: `${actualWidth}mm`,
+                            minHeight: `${actualHeight}mm`,
                             padding,
                             boxSizing: 'border-box',
                           }}
@@ -1352,8 +1432,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                         <div
                           className="bg-white shadow-lg print:shadow-none"
                           style={{
-                            width: '210mm',
-                            minHeight: '297mm',
+                            width: `${actualWidth}mm`,
+                            minHeight: `${actualHeight}mm`,
                             padding,
                             boxSizing: 'border-box',
                           }}
@@ -1537,6 +1617,17 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           }
         }
       `}</style>
+      
+      {/* 页面设置对话框 */}
+      <PageSettingsDialog
+        open={isPageSettingsOpen}
+        onOpenChange={setIsPageSettingsOpen}
+        pageConfig={localPageConfig}
+        onPageConfigChange={(config) => {
+          setLocalPageConfig(config);
+          console.log('[TemplatePreview] 页面配置已更新:', config);
+        }}
+      />
     </div>
   );
 }

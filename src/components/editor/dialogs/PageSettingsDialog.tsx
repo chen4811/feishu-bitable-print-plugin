@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import {
   Dialog,
   DialogContent,
@@ -25,14 +26,31 @@ import { useState } from 'react';
 interface PageSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  pageConfig?: PageConfig;
+  onPageConfigChange?: (config: PageConfig) => void;
 }
 
-export function PageSettingsDialog({ open, onOpenChange }: PageSettingsDialogProps) {
-  const { pageConfig, setPageConfig } = useEditorStore();
+export function PageSettingsDialog({ 
+  open, 
+  onOpenChange, 
+  pageConfig: propPageConfig,
+  onPageConfigChange 
+}: PageSettingsDialogProps) {
+  const editorStore = useEditorStore();
+  const pageConfig = propPageConfig || editorStore.pageConfig;
   const [localConfig, setLocalConfig] = useState<PageConfig>(pageConfig);
 
+  // 当外部配置变化时更新本地状态
+  React.useEffect(() => {
+    setLocalConfig(pageConfig);
+  }, [pageConfig]);
+
   const handleSave = () => {
-    setPageConfig(localConfig);
+    if (onPageConfigChange) {
+      onPageConfigChange(localConfig);
+    } else {
+      editorStore.setPageConfig(localConfig);
+    }
     onOpenChange(false);
   };
 
