@@ -1090,7 +1090,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   return (
     <div className="print-container h-full flex gap-3 p-3 overflow-hidden">
       {/* 左侧：模板列表 - 减小宽度 */}
-      <Card className="w-64 flex-shrink-0 flex flex-col">
+      <Card className="no-print w-64 flex-shrink-0 flex flex-col">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -1165,7 +1165,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       {/* 中间：打印预览 - 确保最小宽度 */}
       <div className="flex-1 min-w-[500px] flex flex-col overflow-hidden">
         {/* 工具栏 */}
-        <Card className="mb-4">
+        <Card className="no-print mb-4">
           <CardContent className="p-4">
             <div className="flex items-center justify-between flex-wrap gap-4">
               {/* 左侧：排版方式切换 */}
@@ -1274,7 +1274,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
             </div>
 
             {/* 调试信息开关 */}
-            <div className="mt-2 flex items-center gap-2">
+            <div className="no-print mt-2 flex items-center gap-2">
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -1287,7 +1287,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
             {/* 调试信息 */}
             {showDebugInfo && debugInfo && (
-              <div className="mt-2 p-3 bg-gray-100 rounded text-xs font-mono max-h-32 overflow-auto">
+              <div className="no-print mt-2 p-3 bg-gray-100 rounded text-xs font-mono max-h-32 overflow-auto">
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-bold">调试信息:</span>
                   <Button
@@ -1309,7 +1309,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         <div className="flex-1 bg-gray-100 rounded-lg overflow-auto relative">
           {/* 页面尺寸信息显示 */}
           {selectedTemplate && (
-            <div className="bg-white border-b p-2 flex items-center justify-between print:hidden">
+            <div className="no-print bg-white border-b p-2 flex items-center justify-between print:hidden">
               <div className="flex items-center gap-4 text-sm">
                 <span className="font-medium">画布尺寸:</span>
                 <Badge variant="outline">
@@ -1347,7 +1347,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                   return (
                     <div className="flex justify-center">
                       <div
-                        className="bg-white shadow-lg print:shadow-none flex items-center justify-center"
+                        className="bg-white shadow-lg print:shadow-none print-area-page flex items-center justify-center"
                         style={{
                           width: `${actualWidth}mm`,
                           minHeight: `${actualHeight}mm`,
@@ -1372,7 +1372,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                   return (
                     <div
                       key={record.id}
-                      className="bg-white shadow-lg print:shadow-none"
+                      className="bg-white shadow-lg print:shadow-none print-area-page"
                       style={{
                         width: `${actualWidth}mm`,
                         minHeight: layoutMode === 'label' ? 'auto' : `${actualHeight}mm`,
@@ -1420,7 +1420,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                     return (
                       <div className="flex flex-col items-center">
                         <div
-                          className="bg-white shadow-lg print:shadow-none"
+                          className="bg-white shadow-lg print:shadow-none print-area-page"
                           style={{
                             width: `${actualWidth}mm`,
                             minHeight: `${actualHeight}mm`,
@@ -1458,7 +1458,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                     return (
                       <div className="flex justify-center">
                         <div
-                          className="bg-white shadow-lg print:shadow-none"
+                          className="bg-white shadow-lg print:shadow-none print-area-page"
                           style={{
                             width: `${actualWidth}mm`,
                             minHeight: `${actualHeight}mm`,
@@ -1502,7 +1502,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
               })()
             ) : (
               <div className="flex justify-center">
-                <div className="h-96 flex items-center justify-center text-gray-400 bg-white rounded-lg shadow-sm" style={{ width: '210mm' }}>
+                <div className="h-96 flex items-center justify-center text-gray-400 bg-white rounded-lg shadow-sm print-area-page" style={{ width: '210mm' }}>
                   <div className="text-center">
                     <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
                     <p className="text-lg">请从左侧选择一个模板</p>
@@ -1515,7 +1515,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       </div>
 
       {/* 右侧：数据匹配 - 简化为点击选中模式 */}
-      <Card className="w-56 flex-shrink-0 flex flex-col overflow-hidden">
+      <Card className="no-print w-56 flex-shrink-0 flex flex-col overflow-hidden">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center justify-between">
             <span>数据匹配</span>
@@ -1584,146 +1584,64 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         </CardContent>
       </Card>
 
-      {/* 打印样式 */}
+      {/* 打印样式 - 最简单最可靠版本 */}
       <style jsx global>{`
         @media print {
-          /* =========================================
-             核心打印修复 - 确保正确的A4尺寸和内容完整
-             ========================================= */
-          
-          /* 1. 强制A4纸张尺寸，无边距 */
+          /* 1. 强制A4纸张 */
           @page {
             size: A4;
             margin: 0;
-            padding: 0;
           }
 
-          /* 2. 强制显示背景图形和颜色 */
+          /* 2. 强制显示背景图形 */
           * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
-            color-adjust: exact !important;
           }
 
-          /* 3. 完全重置html和body */
+          /* 3. 重置页面 */
           html, body {
             margin: 0 !important;
             padding: 0 !important;
-            width: 210mm !important;
-            height: auto !important;
-            overflow: visible !important;
-            background: #ffffff !important;
+            background: white !important;
           }
 
-          /* 4. 隐藏所有非打印内容 */
-          body * {
-            display: none !important;
-            visibility: hidden !important;
-          }
-
-          /* 5. 只显示打印容器及其内容 */
-          .print-container,
-          .print-container * {
-            display: block !important;
-            visibility: visible !important;
-          }
-
-          /* 6. 打印容器占据整个页面 */
-          .print-container {
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 210mm !important;
-            height: auto !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: #ffffff !important;
-          }
-
-          /* 7. 打印页面 - 精确A4尺寸 */
-          .print-container .bg-white {
-            position: relative !important;
+          /* 4. 确保打印页面尺寸正确 */
+          .print-area-page {
             width: 210mm !important;
             min-height: 297mm !important;
-            height: auto !important;
-            margin: 0 !important;
-            padding: 0 !important;
             page-break-after: always;
             box-shadow: none !important;
-            -webkit-box-shadow: none !important;
-            background: #ffffff !important;
             box-sizing: border-box !important;
           }
 
-          /* 8. 最后一页不加分页符 */
-          .print-container .bg-white:last-of-type {
+          .print-area-page:last-of-type {
             page-break-after: auto !important;
           }
 
-          /* 9. 确保所有子元素正确显示 */
-          .print-container .bg-white > *,
-          .print-container .bg-white > * > * {
-            display: block !important;
+          /* 5. 表格打印 */
+          .print-area-page table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            page-break-inside: avoid;
           }
 
-          /* 10. 保留Flex布局 */
-          .print-container .bg-white [style*="display: flex"],
-          .print-container .bg-white [style*="flex-wrap"] {
+          .print-area-page th,
+          .print-area-page td {
+            border: 1px solid #000 !important;
+            padding: 8px !important;
+          }
+
+          /* 6. 确保Flex布局 */
+          .print-area-page [style*="display: flex"],
+          .print-area-page [style*="flex-wrap"] {
             display: flex !important;
             flex-wrap: wrap !important;
           }
 
-          /* 11. 表格打印修复 */
-          .print-container .bg-white table {
-            width: 100% !important;
-            border-collapse: collapse !important;
-            page-break-inside: avoid !important;
-            table-layout: fixed !important;
-          }
-
-          .print-container .bg-white th,
-          .print-container .bg-white td {
-            border: 1px solid #000000 !important;
-            padding: 8px !important;
-            word-wrap: break-word !important;
-            overflow-wrap: break-word !important;
-            white-space: pre-wrap !important;
-            color: #000000 !important;
-            background: #ffffff !important;
-          }
-
-          /* 12. 确保文本正确换行和显示 */
-          .print-container .bg-white * {
-            word-wrap: break-word !important;
-            overflow-wrap: break-word !important;
-            box-sizing: border-box !important;
-            color: #000000 !important;
-            background: transparent !important;
-          }
-
-          /* 13. 分页控制 - 避免组件内部分页 */
-          .print-container .bg-white > div,
-          .print-container .bg-white > div > div {
-            page-break-inside: avoid !important;
-          }
-
-          /* 14. 图片打印修复 */
-          .print-container .bg-white img {
-            max-width: 100% !important;
-            height: auto !important;
-            page-break-inside: avoid !important;
-          }
-
-          /* 15. 隐藏打印时的装饰元素 */
-          .print-container .print\\:hidden,
-          .print-container [class*="print:hidden"],
-          .print-container [style*="print:hidden"] {
-            display: none !important;
-          }
-
-          /* 16. 隐藏页码等装饰 */
-          .print-container .absolute,
-          .print-container [class*="absolute"] {
+          /* 7. 隐藏打印装饰 */
+          .print-area-page .print\\:hidden,
+          .print-area-page .absolute {
             display: none !important;
           }
         }
