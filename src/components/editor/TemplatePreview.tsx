@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Printer, ChevronLeft, ChevronRight, Eye, RefreshCw, FileText, Pencil, Download, ScanSearch, X, Plus, LayoutGrid, List, Tag, Layout, Zap } from 'lucide-react';
+import { Printer, ChevronLeft, ChevronRight, Eye, RefreshCw, FileText, Pencil, Download, ScanSearch, X, Plus, LayoutGrid, List, Tag, Layout } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +10,6 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 import { toast } from 'sonner';
 import { useTemplateStore, type Template } from '@/store/templateStore';
@@ -18,15 +17,8 @@ import { useSelectedDataStore } from '@/store/selectedDataStore';
 import { useEditorStore } from '@/store/editorStore';
 import { PageSettingsDialog } from '@/components/editor/dialogs/PageSettingsDialog';
 import { PAGE_SIZES, PageConfig } from '@/types/editor';
-import { 
-  feishuEnv, 
-  onSelectionChange,
-  type ProcessStatusResult,
-  PROCESS_STATUS_MAP,
-  PROCESS_STATUS_COLORS,
-  getProcessStatusText,
-  getProcessStatusColor,
-} from '@/lib/feishu-env';
+import { feishuEnv } from '@/lib/feishu-env';
+import { onSelectionChange } from '@/lib/feishu-env';
 import { formatProcessForTemplate, type ProcessInstance } from '@/lib/feishu-corehr';
 
 interface TemplatePreviewProps {
@@ -166,11 +158,6 @@ const extractFeishuCellValue = (cellData: any): string => {
 
 // 格式化字段值的通用函数
 const formatFieldValue = (key: string, value: any): string => {
-  // 调试日志：显示字段名和原始值
-  if (key.includes('状态') || key.includes('当前')) {
-    console.log(`[formatFieldValue] 字段: ${key}, 原始值:`, value, '类型:', typeof value, '是否数组:', Array.isArray(value));
-  }
-  
   // 处理日期相关字段
   if (key.includes('日期') || key.includes('date') || key.includes('Date') || key.includes('time') || key.includes('Time')) {
     return formatTimestamp(value);
@@ -656,12 +643,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     continuous: false,
   });
 
-  // 流程状态同步相关状态
-  const [isSyncingStatus, setIsSyncingStatus] = useState(false);
-  const [processStatusMap, setProcessStatusMap] = useState<Record<string, ProcessStatusResult>>({});
-  const [showSyncDialog, setShowSyncDialog] = useState(false);
-  const [syncResults, setSyncResults] = useState<{ success: number; failed: number; total: number } | null>(null);
-
   // 监听 selectedRecords 变化
   useEffect(() => {
     console.log('[TP] 选中记录变化:', selectedRecords.length, '条');
@@ -949,87 +930,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       setIsLoadingProcesses(false);
     }
   }, []);
-
-  // 同步流程状态
-  const handleSyncProcessStatus = useCallback(async () => {
-    if (selectedRecords.length === 0) {
-      toast.info('没有选中的记录需要同步');
-      return;
-    }
-
-    setIsSyncingStatus(true);
-    setSyncResults(null);
-    
-    try {
-      console.log('[TP] 开始同步流程状态...');
-      let success = 0;
-      let failed = 0;
-      const newStatusMap: Record<string, ProcessStatusResult> = {};
-
-      // 遍历所有选中的记录，查找包含流程ID的记录
-      for (const record of selectedRecords) {
-        const data = record.data;
-        
-        // 尝试从多个可能的字段中获取流程ID
-        const processId = data['流程实例ID'] || data['process_id'] || data['_processId'] || data['流程ID'];
-        
-        if (!processId) {
-          console.log(`[TP] 记录 ${record.id} 没有流程ID，跳过`);
-          continue;
-        }
-
-        try {
-          // 调用 CoreHR API 获取流程状态
-          const response = await fetch(`/api/feishu/corehr/processes/${processId}/status`);
-          const result = await response.json();
-
-          if (result.success && result.data) {
-            const statusResult: ProcessStatusResult = {
-              processId,
-              status: result.data.status || 'UNKNOWN',
-              statusText: result.data.statusText || getProcessStatusText(result.data.status),
-              color: result.data.color || getProcessStatusColor(result.data.status),
-              rawData: result.data.rawData,
-            };
-            
-            newStatusMap[record.id] = statusResult;
-            success++;
-            
-            // 更新记录中的流程状态字段
-            record.data['当前状态'] = statusResult.statusText;
-          } else {
-            failed++;
-          }
-        } catch (error) {
-          console.error(`[TP] 同步记录 ${record.id} 的流程状态失败:`, error);
-          failed++;
-        }
-
-        // 添加延迟避免API限制
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-
-      setProcessStatusMap(newStatusMap);
-      setSyncResults({ success, failed, total: success + failed });
-      
-      if (success > 0) {
-        toast.success(`成功同步 ${success} 条记录的流程状态`);
-      }
-      if (failed > 0) {
-        toast.error(`${failed} 条记录同步失败`);
-      }
-      
-      // 刷新显示以更新状态
-      setSelectedRecords([...selectedRecords]);
-      
-    } catch (err) {
-      console.error('[TP] 同步流程状态失败:', err);
-      toast.error('同步流程状态失败');
-    } finally {
-      setIsSyncingStatus(false);
-      setShowSyncDialog(true);
-    }
-  }, [selectedRecords]);
 
   // 获取当前选中的模板
   const currentRecord = getCurrentRecord();
@@ -1503,26 +1403,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                   <Pencil className="h-4 w-4 mr-2" />
                   编辑模板
                 </Button>
-                
-                {/* 同步流程状态按钮 */}
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleSyncProcessStatus}
-                        disabled={isSyncingStatus || selectedRecords.length === 0}
-                      >
-                        <Zap className={`h-4 w-4 mr-2 ${isSyncingStatus ? 'animate-pulse' : ''}`} />
-                        同步流程状态
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>从 CoreHR 同步流程审批状态</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
               </div>
 
               {/* 中间：已选数据计数 */}
@@ -2088,81 +1968,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           console.log('[TemplatePreview] 页面配置已更新:', config);
         }}
       />
-      
-      {/* 流程状态同步结果对话框 */}
-      <Dialog open={showSyncDialog} onOpenChange={setShowSyncDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-yellow-500" />
-              流程状态同步结果
-            </DialogTitle>
-            <DialogDescription>
-              已从 CoreHR 获取最新的流程审批状态
-            </DialogDescription>
-          </DialogHeader>
-          
-          {syncResults && (
-            <div className="space-y-4">
-              {/* 统计信息 */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-blue-50 p-3 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-blue-600">{syncResults.total}</div>
-                  <div className="text-xs text-blue-600">总计</div>
-                </div>
-                <div className="bg-green-50 p-3 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-green-600">{syncResults.success}</div>
-                  <div className="text-xs text-green-600">成功</div>
-                </div>
-                <div className="bg-red-50 p-3 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-red-600">{syncResults.failed}</div>
-                  <div className="text-xs text-red-600">失败</div>
-                </div>
-              </div>
-              
-              {/* 状态列表 */}
-              {Object.keys(processStatusMap).length > 0 && (
-                <div className="border rounded-lg overflow-hidden">
-                  <div className="bg-gray-50 px-4 py-2 text-sm font-medium border-b">
-                    同步详情
-                  </div>
-                  <div className="max-h-60 overflow-y-auto">
-                    {Object.entries(processStatusMap).map(([recordId, status]) => (
-                      <div key={recordId} className="flex items-center justify-between px-4 py-2 border-b last:border-b-0">
-                        <span className="text-sm text-gray-600 truncate max-w-[150px]">
-                          {selectedRecords.find(r => r.id === recordId)?.data['流程名称'] || recordId.slice(0, 8)}
-                        </span>
-                        <Badge 
-                          style={{ 
-                            backgroundColor: status.color + '20',
-                            color: status.color,
-                            borderColor: status.color,
-                          }}
-                          variant="outline"
-                          className="text-xs"
-                        >
-                          {status.statusText}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* 说明 */}
-              <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded">
-                <p>流程状态说明：</p>
-                <ul className="mt-1 space-y-1 list-disc list-inside">
-                  <li><span className="text-orange-500">待处理</span> - 流程尚未开始审批</li>
-                  <li><span className="text-blue-500">审批中</span> - 流程正在审批过程中</li>
-                  <li><span className="text-green-500">已通过</span> - 流程已审批通过</li>
-                  <li><span className="text-red-500">已拒绝</span> - 流程已被拒绝</li>
-                </ul>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
