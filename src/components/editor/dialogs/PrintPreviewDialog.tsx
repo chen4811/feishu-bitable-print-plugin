@@ -441,14 +441,8 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
                 flex: `0 0 ${widthPercent}%`,
                 maxWidth: `${widthPercent}%`,
                 padding: '4px',
-                border: '1px dashed #ccc',
-                backgroundColor: component.type === 'table' ? '#f0f0f0' : '#fff',
               }}
             >
-              {/* 调试信息 */}
-              <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>
-                Type: {component.type} | ID: {component.id}
-              </div>
               <PrintComponentRenderer
                 component={component}
                 record={record}
@@ -514,44 +508,8 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
           <div className="flex items-center justify-between">
             <DialogTitle>打印预览</DialogTitle>
             
-            {/* 缩放控制 + 操作按钮 */}
+            {/* 操作按钮 */}
             <div className="flex items-center gap-4">
-              {/* 缩放控制 */}
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleZoomOut}
-                  disabled={scale <= 0.5}
-                  className="h-8 w-8"
-                >
-                  <ZoomOut className="w-4 h-4" />
-                </Button>
-                <span className="text-sm font-medium min-w-[60px] text-center">
-                  {Math.round(scale * 100)}%
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleZoomIn}
-                  disabled={scale >= 2}
-                  className="h-8 w-8"
-                >
-                  <ZoomIn className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleResetZoom}
-                  className="h-8 w-8"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                </Button>
-              </div>
-              
-              <div className="w-px h-6 bg-gray-300" />
-              
-              {/* 操作按钮 */}
               <Button
                 size="sm"
                 onClick={handleExportPDF}
@@ -612,12 +570,47 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
           <div className="flex-1 flex flex-col overflow-hidden bg-gray-100">
             {/* 预览模式切换 */}
             <div className="p-4 border-b bg-background">
-              <Tabs value={previewMode} onValueChange={(v: any) => setPreviewMode(v)}>
-                <TabsList>
-                  <TabsTrigger value="default">单页模式</TabsTrigger>
-                  <TabsTrigger value="continuous">连续模式</TabsTrigger>
-                </TabsList>
-              </Tabs>
+              <div className="flex items-center justify-between">
+                <Tabs value={previewMode} onValueChange={(v: any) => setPreviewMode(v)}>
+                  <TabsList>
+                    <TabsTrigger value="default">单页模式</TabsTrigger>
+                    <TabsTrigger value="continuous">连续模式</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                
+                {/* 缩放控制 */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleZoomOut}
+                    disabled={scale <= 0.5}
+                    className="h-8 w-8"
+                  >
+                    <ZoomOut className="w-4 h-4" />
+                  </Button>
+                  <span className="text-sm font-medium min-w-[60px] text-center">
+                    {Math.round(scale * 100)}%
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleZoomIn}
+                    disabled={scale >= 2}
+                    className="h-8 w-8"
+                  >
+                    <ZoomIn className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleResetZoom}
+                    className="h-8 w-8"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
 
             {/* 预览内容 */}
