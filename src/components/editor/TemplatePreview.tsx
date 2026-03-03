@@ -36,6 +36,87 @@ interface SelectedRecord {
   addedAt: number;
 }
 
+// 日期时间戳转换函数
+const formatTimestamp = (value: any): string => {
+  if (value === null || value === undefined || value === '') {
+    return '-';
+  }
+  
+  // 如果是数字且是13位时间戳（毫秒）
+  if (typeof value === 'number' && value.toString().length === 13) {
+    try {
+      const date = new Date(value);
+      // 格式化为 YYYY-MM-DD
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch (e) {
+      return String(value);
+    }
+  }
+  
+  // 如果是数字且是10位时间戳（秒）
+  if (typeof value === 'number' && value.toString().length === 10) {
+    try {
+      const date = new Date(value * 1000);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch (e) {
+      return String(value);
+    }
+  }
+  
+  // 如果已经是日期字符串，直接返回
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    return value;
+  }
+  
+  return String(value);
+};
+
+// 格式化字段值的通用函数
+const formatFieldValue = (key: string, value: any): string => {
+  // 处理日期相关字段
+  if (key.includes('日期') || key.includes('date') || key.includes('Date') || key.includes('time') || key.includes('Time')) {
+    return formatTimestamp(value);
+  }
+  
+  // 处理状态字段
+  if (key.includes('状态') || key.includes('status') || key.includes('Status')) {
+    if (value === null || value === undefined || value === '') {
+      return '未设置';
+    }
+    // 如果是对象类型（流程字段），尝试提取显示值
+    if (typeof value === 'object' && value !== null) {
+      // 尝试从常见的流程字段结构中提取值
+      if (value.text !== undefined) return String(value.text);
+      if (value.name !== undefined) return String(value.name);
+      if (value.label !== undefined) return String(value.label);
+      if (value.title !== undefined) return String(value.title);
+      // 如果有值但结构不明确，返回JSON字符串的前20个字符
+      return JSON.stringify(value).slice(0, 20);
+    }
+    return String(value);
+  }
+  
+  // 处理其他类型的字段
+  if (value === null || value === undefined || value === '') {
+    return '-';
+  }
+  if (typeof value === 'object') {
+    // 如果是对象，尝试友好显示
+    try {
+      return JSON.stringify(value).slice(0, 25);
+    } catch (e) {
+      return '[对象]';
+    }
+  }
+  return String(value);
+};
+
 // 检测模板中的变量 - 支持 [字段名] 和 {{字段名}} 两种格式
 const extractVariables = (components: any[]): string[] => {
   const variables: string[] = [];
@@ -1587,12 +1668,12 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                           <div className="mt-2 space-y-1">
                             {Object.entries(record)
                               .filter(([key]) => key !== 'id' && key !== '_rowIndex')
-                              .slice(0, 3)
+                              .slice(0, 4)
                               .map(([key, value]) => (
                                 <div key={key} className="flex gap-1">
                                   <span className="text-gray-400 shrink-0">{key}:</span>
                                   <span className={`truncate flex-1 ${isSelected ? 'text-blue-600' : 'text-gray-600'}`}>
-                                    {value !== null && value !== undefined ? String(value).slice(0, 20) : '-'}
+                                    {formatFieldValue(key, value)}
                                   </span>
                                 </div>
                               ))}
