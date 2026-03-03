@@ -777,9 +777,17 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         return;
       }
       
+      // 检查 record 的实际结构
+      console.log('[TP] 记录完整内容:', JSON.stringify(record, null, 2));
       console.log('[TP] 记录对象 keys:', Object.keys(record));
-      console.log('[TP] 记录 fields:', record.fields);
-      console.log('[TP] 记录 fields keys:', record.fields ? Object.keys(record.fields) : '无 fields');
+      console.log('[TP] record.fields 是否存在:', 'fields' in record);
+      console.log('[TP] record.fields:', record.fields);
+      console.log('[TP] record.fields keys:', record.fields ? Object.keys(record.fields) : '无 fields');
+      
+      // 如果 record.fields 不存在，尝试直接使用 record 本身
+      const actualFields = record.fields || record;
+      console.log('[TP] 实际使用的字段对象:', actualFields);
+      console.log('[TP] 实际字段数:', Object.keys(actualFields).length);
       
       // 获取字段列表以进行ID到名称的映射
       console.log('[TP] 开始获取字段元数据...');
@@ -798,8 +806,10 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       
       // 转换格式：将字段ID键转换为字段名键
       const formattedFields: Record<string, any> = {};
-      const rawFields = record.fields || {};
+      // 如果 record.fields 不存在，尝试直接使用 record 本身（SDK 可能直接返回字段映射）
+      const rawFields = record.fields || record;
       console.log('[TP] 开始遍历字段，原始字段数:', Object.keys(rawFields).length);
+      console.log('[TP] 原始字段内容:', JSON.stringify(rawFields, null, 2));
       
       for (const [fieldId, value] of Object.entries(rawFields)) {
         const fieldName = fieldMap[fieldId] || fieldId;
@@ -2207,9 +2217,10 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                           
                           {/* 显示更多预览字段 */}
                           <div className="mt-2 space-y-1">
-                            {/* 调试信息 - 显示原始字段数 */}
-                            <div className="text-[10px] text-orange-500">
-                              调试: 共{Object.entries(record).filter(([k]) => !k.startsWith('_') && k !== 'id').length}个字段
+                            {/* 调试信息 - 显示原始记录结构 */}
+                            <div className="text-[10px] text-orange-500 bg-orange-50 p-1 rounded">
+                              <div>字段数: {Object.entries(record).filter(([k]) => !k.startsWith('_') && k !== 'id').length}</div>
+                              <div>所有Keys: {Object.keys(record).join(', ')}</div>
                             </div>
                             {Object.entries(record)
                               .filter(([key]) => key !== 'id' && key !== '_rowIndex' && !key.startsWith('_'))
