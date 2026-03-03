@@ -280,7 +280,21 @@ export async function DELETE(request: Request) {
         );
       }
       
-      // 物理删除
+      // 先删除关联的用户绑定记录（外键约束）
+      const { error: deleteBindingsError } = await client
+        .from('user_license_bindings')
+        .delete()
+        .eq('license_id', id);
+      
+      if (deleteBindingsError) {
+        console.error('[Admin Licenses API] 删除绑定记录失败:', deleteBindingsError);
+        return NextResponse.json(
+          { error: '删除关联绑定记录失败' },
+          { status: 500 }
+        );
+      }
+      
+      // 物理删除授权码
       const { error: deleteError } = await client
         .from('plugin_licenses')
         .delete()
