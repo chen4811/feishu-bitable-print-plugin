@@ -642,11 +642,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
             _rowIndex: index,
           };
         });
-
-        setRecords(formattedRecords);
-        setCurrentIndex(0);
         
-        // 追加到可用记录列表
+        // 只追加到可用记录列表，不自动设置为当前记录
         setAvailableRecords(prev => {
           const newRecords = [...prev];
           let addedCount = 0;
@@ -665,7 +662,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     } catch (err) {
       console.error('[TP] 获取记录失败:', err);
     }
-  }, [setRecords, setCurrentIndex]);
+  }, []);
   
   // 添加记录到选中列表（防重复）
   const addRecordToSelection = useCallback((record: Record<string, any>) => {
@@ -680,11 +677,16 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     });
   }, []);
   
-  // 从选中列表移除记录
+  // 从选中列表和可用列表移除记录
   const removeRecordFromSelection = useCallback((recordId: string) => {
     setSelectedRecords(prev => {
       const newList = prev.filter(r => r.id !== recordId);
       console.log('[TP] 从选中列表移除:', recordId, '剩余:', newList.length);
+      return newList;
+    });
+    setAvailableRecords(prev => {
+      const newList = prev.filter(r => r.id !== recordId);
+      console.log('[TP] 从可用列表移除:', recordId, '剩余:', newList.length);
       return newList;
     });
   }, []);
@@ -1627,19 +1629,17 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                             : 'bg-white border-gray-200 hover:border-blue-300 hover:bg-gray-50'
                         }`}
                       >
-                        {/* 删除按钮 - 仅在已选中时显示 */}
-                        {isSelected && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              console.log('[TP] 点击删除:', record.id);
-                              removeRecordFromSelection(record.id);
-                            }}
-                            className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10"
-                          >
-                            ×
-                          </button>
-                        )}
+                        {/* 删除按钮 - 始终显示 */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            console.log('[TP] 点击删除:', record.id);
+                            removeRecordFromSelection(record.id);
+                          }}
+                          className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10"
+                        >
+                          ×
+                        </button>
                         
                         {/* 卡片内容 - 可点击选中/取消选中 */}
                         <button
