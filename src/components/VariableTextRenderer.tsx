@@ -8,7 +8,7 @@ import {
   containsVariables,
   type VariableMatch 
 } from '@/utils/smartVariableRenderer';
-import { Field } from '@/types/editor';
+import { Field, ComponentTextStyle } from '@/types/editor';
 
 interface VariableTextRendererProps {
   text: string;
@@ -16,11 +16,13 @@ interface VariableTextRendererProps {
   fields: Field[];
   className?: string;
   tagName?: 'p' | 'div' | 'span' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+  textStyle?: Partial<ComponentTextStyle>;
 }
 
 /**
  * 变量文本渲染组件
  * 将文本中的 {{字段名}} 替换为带样式的变量芯片
+ * 支持继承父组件的文本样式（字体大小、颜色等）
  */
 export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
   text,
@@ -28,6 +30,7 @@ export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
   fields,
   className = '',
   tagName: Tag = 'span',
+  textStyle,
 }) => {
   if (!text) {
     return <Tag className={className}>&nbsp;</Tag>;
@@ -64,6 +67,7 @@ export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
         key={`var-${index}`}
         fieldName={variable.fieldName}
         value={value}
+        textStyle={textStyle}
       />
     );
     

@@ -1553,6 +1553,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                 records={records || []}
                                 fields={fields || []}
                                 tagName="span"
+                                textStyle={cellStyle}
                               />
                             </h1>
                           );
@@ -1569,6 +1570,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                 records={records || []}
                                 fields={fields || []}
                                 tagName="span"
+                                textStyle={cellStyle}
                               />
                             </h2>
                           );
@@ -1594,6 +1596,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                   records={records || []}
                                   fields={fields || []}
                                   tagName="span"
+                                  textStyle={cellStyle}
                                 />
                               </li>
                             </ul>
@@ -1619,6 +1622,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                   records={records || []}
                                   fields={fields || []}
                                   tagName="span"
+                                  textStyle={cellStyle}
                                 />
                               </li>
                             </ol>
@@ -1644,6 +1648,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                 records={records || []}
                                 fields={fields || []}
                                 tagName="span"
+                                textStyle={cellStyle}
                               />
                             </a>
                           );
@@ -1656,6 +1661,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                               records={records || []}
                               fields={fields || []}
                               tagName="span"
+                              textStyle={cellStyle}
                             />
                           </span>
                         );
@@ -1784,6 +1790,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   records={records || []}
                   fields={fields || []}
                   tagName="span"
+                  textStyle={textComp.textStyle}
                 />
               </h1>
             )}
@@ -1798,6 +1805,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   records={records || []}
                   fields={fields || []}
                   tagName="span"
+                  textStyle={textComp.textStyle}
                 />
               </h2>
             )}
@@ -1809,6 +1817,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     records={records || []}
                     fields={fields || []}
                     tagName="span"
+                    textStyle={textComp.textStyle}
                   />
                 </li>
               </ul>
@@ -1821,6 +1830,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     records={records || []}
                     fields={fields || []}
                     tagName="span"
+                    textStyle={textComp.textStyle}
                   />
                 </li>
               </ol>
@@ -1840,6 +1850,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       records={records || []}
                       fields={fields || []}
                       tagName="span"
+                      textStyle={textComp.textStyle}
                     />
                   </a>
                 ) : (
@@ -1848,6 +1859,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     records={records || []}
                     fields={fields || []}
                     tagName="span"
+                    textStyle={textComp.textStyle}
                   />
                 )}
               </span>
