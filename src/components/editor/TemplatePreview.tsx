@@ -176,6 +176,9 @@ const formatFieldValue = (key: string, value: any): string => {
   if (extractedValue === null || extractedValue === undefined || extractedValue === '') {
     // 状态/流程字段显示"未设置"，其他显示"-"
     if (key.includes('状态') || key.includes('status') || key.includes('Status') || key.includes('流程') || key.includes('workflow') || key.includes('Workflow')) {
+      if (key.includes('状态') || key.includes('当前')) {
+        console.log(`[formatFieldValue] ${key} 为空，返回"未设置"`);
+      }
       return '未设置';
     }
     return '-';
