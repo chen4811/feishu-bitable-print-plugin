@@ -131,11 +131,11 @@ export async function GET(request: Request) {
     console.log('[Feishu OAuth Callback API] JWT token 前50字符:', jwtToken?.substring(0, 50));
 
     // 5. 检查用户是否已有绑定的有效授权码
-    // 使用飞书 open_id 查询（与前端 bitable.bridge.getUserId() 返回的ID一致）
-    const feishuUserId = feishuUserInfo.open_id || feishuUserInfo.union_id;
+    // 使用飞书 union_id 查询（与前端保持一致）
+    const feishuUserId = feishuUserInfo.union_id;
     console.log('[Feishu OAuth Callback API] 检查授权码绑定状态');
-    console.log('[Feishu OAuth Callback API] 飞书open_id:', feishuUserInfo.open_id);
-    console.log('[Feishu OAuth Callback API] 飞书union_id:', feishuUserInfo.union_id);
+    console.log('[Feishu OAuth Callback API] 飞书 union_id:', feishuUserInfo.union_id);
+    console.log('[Feishu OAuth Callback API] 飞书 open_id:', feishuUserInfo.open_id);
     console.log('[Feishu OAuth Callback API] 实际使用ID:', feishuUserId);
     console.log('[Feishu OAuth Callback API] 数据库用户ID:', dbUser.id);
     
@@ -187,12 +187,12 @@ export async function GET(request: Request) {
     console.log('[Feishu OAuth Callback API] hasAuthorizations:', hasAuthorizations);
 
     // 6. 创建响应，设置 Cookie 并重定向到前端回调页面
-    // 使用飞书ID（open_id）作为用户ID，确保与前端 bitable.bridge.getUserId() 一致
-    const feishuId = feishuUserInfo.open_id || feishuUserInfo.union_id;
+    // 使用飞书 union_id 作为用户ID，确保与前端一致
+    const feishuId = feishuUserInfo.union_id;
     const callbackUrl = `/auth/callback?userId=${feishuId}&name=${encodeURIComponent(dbUser.name || '')}&hasAuthorizations=${hasAuthorizations}`;
     
     console.log('[Feishu OAuth Callback API] 回调URL:', callbackUrl);
-    console.log('[Feishu OAuth Callback API] 传递给前端的用户ID:', feishuId);
+    console.log('[Feishu OAuth Callback API] 传递给前端的用户ID (union_id):', feishuId);
     
     const fullUrl = new URL(callbackUrl, baseUrl);
     console.log('[Feishu OAuth Callback API] 完整重定向URL:', fullUrl.toString());
