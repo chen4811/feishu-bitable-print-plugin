@@ -140,10 +140,6 @@ export default function AdminLoginPage() {
               )}
             </Button>
           </form>
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            <p>默认账号：fsadmins</p>
-            <p>默认密码：Xxy94128866</p>
-          </div>
         </CardContent>
       </Card>
     </div>
