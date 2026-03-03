@@ -760,6 +760,36 @@ export async function getSelectedRecords(): Promise<BitableRecord[]> {
       return [];
     }
     
+    // 打印完整的记录数据结构
+    debugLog('📋 完整记录对象键:', Object.keys(recordData));
+    debugLog('📋 记录 fields 键:', Object.keys(recordData.fields || {}));
+    debugLog('📋 完整 recordData:', JSON.stringify(recordData, null, 2));
+    
+    // 尝试获取流程字段的值（Type 0）
+    debugLog('尝试获取流程字段的值...');
+    try {
+      // 获取当前状态字段的ID
+      const statusFieldMeta = fieldMetaList.find((f: any) => f.name === '当前状态' || f.type === 0);
+      if (statusFieldMeta) {
+        debugLog('找到当前状态字段:', statusFieldMeta.id);
+        // 尝试通过字段对象获取值
+        if (typeof table.getFieldById === 'function') {
+          const statusField = await table.getFieldById(statusFieldMeta.id);
+          debugLog('获取到字段对象:', statusField);
+          if (statusField && typeof statusField.getValue === 'function') {
+            const statusValue = await statusField.getValue(targetRecordId);
+            debugLog('通过字段对象获取的值:', statusValue);
+            // 如果获取到值，更新 recordData
+            if (statusValue !== undefined && statusValue !== null) {
+              recordData.fields[statusFieldMeta.id] = statusValue;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugLog('获取流程字段值失败:', e);
+    }
+    
     debugLog('第四步：获取字段元信息...');
     let fieldMetaList: any[] = [];
     
@@ -782,6 +812,7 @@ export async function getSelectedRecords(): Promise<BitableRecord[]> {
     }
     
     debugLog('第五步：处理数据...');
+    debugLog('📋 完整原始记录数据:', JSON.stringify(recordData, null, 2));
     const result = processRecordData(recordData, fieldMetaList);
     debugLog('✅ 数据处理完成');
     debugLog('======== getSelectedRecords() 结束 ========');

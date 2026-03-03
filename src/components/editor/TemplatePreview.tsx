@@ -133,12 +133,14 @@ const extractFeishuCellValue = (cellData: any): string => {
 
   // 3. 如果是对象 (数组里的元素，或者直接返回的对象)
   if (typeof cellData === 'object' && cellData !== null) {
-    // 优先级：text (文本) > name (选项名) > value (数值/布尔) > enumValue (枚举值) > label (标签) > url (附件) > id
+    // 优先级：text (文本) > name (选项名) > value (数值/布尔) > enumValue (枚举值) > label (标签) > title (标题) > status (状态) > url (附件) > id
     if (cellData.text !== undefined && cellData.text !== '') return cellData.text;
     if (cellData.name !== undefined && cellData.name !== '') return cellData.name;
+    if (cellData.title !== undefined && cellData.title !== '') return cellData.title;
+    if (cellData.label !== undefined && cellData.label !== '') return cellData.label;
+    if (cellData.status !== undefined && cellData.status !== '') return cellData.status;
     if (cellData.value !== undefined && cellData.value !== '') return String(cellData.value);
     if (cellData.enumValue !== undefined && cellData.enumValue !== '') return cellData.enumValue;
-    if (cellData.label !== undefined && cellData.label !== '') return cellData.label;
     if (cellData.url !== undefined) return cellData.url;
     if (cellData.id !== undefined) return String(cellData.id);
     
