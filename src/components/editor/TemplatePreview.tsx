@@ -683,6 +683,9 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     tableId: null 
   });
   
+  // 忽略列表：存储用户手动删除的记录 ID，避免被飞书事件恢复
+  const [ignoredRecordIds, setIgnoredRecordIds] = useState<Set<string>>(new Set());
+  
   // 页面设置状态
   const [isPageSettingsOpen, setIsPageSettingsOpen] = useState(false);
   const [localPageConfig, setLocalPageConfig] = useState<PageConfig>({
@@ -739,6 +742,12 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     try {
       console.log('[TP] 获取单条记录:', recordId, '表格:', tableId);
       
+      // 检查是否在忽略列表中（用户手动删除过）
+      if (ignoredRecordIds.has(recordId)) {
+        console.log('[TP] 记录在忽略列表中，跳过:', recordId);
+        return;
+      }
+      
       // 检查是否已存在
       const isAlreadyAdded = availableRecords.some(r => r.id === recordId);
       if (isAlreadyAdded) {
@@ -774,7 +783,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       console.error('[TP] 获取单条记录失败:', err);
       toast.error('获取记录失败');
     }
-  }, [selectedTemplate, availableRecords]);
+  }, [selectedTemplate, availableRecords, ignoredRecordIds]);
 
   // 从 feishu-env 获取选中记录（多选时使用）
   const fetchSelectedRecordsFromEnv = useCallback(async () => {
@@ -807,8 +816,16 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           const newRecords = [...prev];
           let addedCount = 0;
           let skippedCount = 0;
+          let ignoredCount = 0;
           
           formattedRecords.forEach(record => {
+            // 检查是否在忽略列表中（用户手动删除过）
+            if (ignoredRecordIds.has(record.id)) {
+              ignoredCount++;
+              console.log('[TP] 跳过已忽略记录:', record.id);
+              return;
+            }
+            
             // 严格去重：检查是否已存在相同 ID 的记录
             const isDuplicate = newRecords.some(r => r.id === record.id);
             if (!isDuplicate) {
@@ -820,8 +837,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
             }
           });
           
-          if (addedCount > 0 || skippedCount > 0) {
-            console.log(`[TP] 新增: ${addedCount}, 跳过: ${skippedCount}, 总记录: ${newRecords.length}`);
+          if (addedCount > 0 || skippedCount > 0 || ignoredCount > 0) {
+            console.log(`[TP] 新增: ${addedCount}, 跳过: ${skippedCount}, 忽略: ${ignoredCount}, 总记录: ${newRecords.length}`);
           }
           return newRecords;
         });
@@ -829,7 +846,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     } catch (err) {
       console.error('[TP] 获取记录失败:', err);
     }
-  }, [isTableMatched, selectedTemplate]);
+  }, [isTableMatched, selectedTemplate, ignoredRecordIds]);
   
   // 获取当前表格信息
   const fetchCurrentTableInfo = useCallback(async () => {
@@ -990,31 +1007,49 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     });
   }, [isTableMatched, selectedTemplate]);
   
-  // 从选中列表和可用列表移除记录
+  // 从选中列表和可用列表移除记录（同时加入忽略列表，防止被飞书事件恢复）
   const removeRecordFromSelection = useCallback((recordId: string) => {
+    // 1. 将 ID 加入忽略集合
+    setIgnoredRecordIds(prev => {
+      const newSet = new Set(prev);
+      newSet.add(recordId);
+      console.log('[TP] 加入忽略列表:', recordId, '忽略总数:', newSet.size);
+      return newSet;
+    });
+    
+    // 2. 从选中列表移除
     setSelectedRecords(prev => {
       const newList = prev.filter(r => r.id !== recordId);
       console.log('[TP] 从选中列表移除:', recordId, '剩余:', newList.length);
       return newList;
     });
+    
+    // 3. 从可用列表移除
     setAvailableRecords(prev => {
       const newList = prev.filter(r => r.id !== recordId);
       console.log('[TP] 从可用列表移除:', recordId, '剩余:', newList.length);
       return newList;
     });
+    
+    toast.success('已删除记录');
   }, []);
   
-  // 清空选中列表
+  // 清空选中列表（同时清空忽略列表）
   const clearSelectedRecords = useCallback(() => {
     setSelectedRecords([]);
+    setAvailableRecords([]);
+    setIgnoredRecordIds(new Set());
+    console.log('[TP] 已清空所有列表和忽略集合');
     toast.success('已清空列表');
   }, []);
 
   // 处理模板选择
   const handleSelectTemplate = useCallback((template: Template) => {
     setSelectedTemplate(template);
-    // 清空之前选中的数据
+    // 清空之前选中的数据和忽略列表（新模板上下文）
     setSelectedRecords([]);
+    setIgnoredRecordIds(new Set());
+    setAvailableRecords([]);
     
     console.log('[TemplatePreview] 选择模板:', {
       name: template.name,
