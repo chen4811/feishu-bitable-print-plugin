@@ -578,43 +578,46 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
               </Tabs>
             </div>
 
+            {/* 缩放控制栏 - 跟模板编辑一样，位于画布上方 */}
+            <div className="flex items-center justify-center p-4 border-b bg-background">
+              <div className="flex items-center gap-2 bg-white rounded-lg shadow-sm border p-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleZoomOut}
+                  disabled={scale <= 0.5}
+                  className="h-8 w-8"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </Button>
+                <span className="text-sm font-medium min-w-[60px] text-center">
+                  {Math.round(scale * 100)}%
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleZoomIn}
+                  disabled={scale >= 2}
+                  className="h-8 w-8"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </Button>
+                <div className="w-px h-4 bg-gray-300 mx-1" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleResetZoom}
+                  className="h-8 w-8"
+                  title="重置缩放"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
             {/* 预览内容 */}
             <ScrollArea className="flex-1">
               <div className="p-8 flex flex-col items-center gap-8">
-                {/* 缩放控制栏 - 跟模板编辑一样 */}
-                <div className="flex items-center gap-2 bg-white rounded-lg shadow-sm border p-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleZoomOut}
-                    disabled={scale <= 0.5}
-                    className="h-8 w-8"
-                  >
-                    <ZoomOut className="w-4 h-4" />
-                  </Button>
-                  <span className="text-sm font-medium min-w-[60px] text-center">
-                    {Math.round(scale * 100)}%
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleZoomIn}
-                    disabled={scale >= 2}
-                    className="h-8 w-8"
-                  >
-                    <ZoomIn className="w-4 h-4" />
-                  </Button>
-                  <div className="w-px h-4 bg-gray-300 mx-1" />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleResetZoom}
-                    className="h-8 w-8"
-                    title="重置缩放"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                  </Button>
-                </div>
                 {printError && (
                   <Alert variant="destructive" className="max-w-lg">
                     <AlertCircle className="h-4 w-4" />
