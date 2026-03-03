@@ -734,6 +734,13 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
   // 从 feishu-env 获取选中记录
   const fetchSelectedRecordsFromEnv = useCallback(async () => {
+    // 检查表格匹配状态，如果不匹配则不获取记录
+    if (!isTableMatched && selectedTemplate) {
+      console.log('[TP] 表格不匹配，跳过获取飞书记录');
+      toast.error('当前表格与模板不匹配，无法载入数据');
+      return;
+    }
+    
     try {
       const selRecords = await feishuEnv.getSelectedRecords();
       
@@ -778,7 +785,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     } catch (err) {
       console.error('[TP] 获取记录失败:', err);
     }
-  }, []);
+  }, [isTableMatched, selectedTemplate]);
   
   // 获取当前表格信息
   const fetchCurrentTableInfo = useCallback(async () => {
@@ -1934,7 +1941,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                 </Badge>
               </div>
               <div className="mt-1 text-xs text-gray-600 truncate" title={currentTableInfo.tableId || ''}>
-                当前: {currentTableInfo.tableName || currentTableInfo.tableId || '未知'}
+                表格ID: {currentTableInfo.tableId || '未知'}
               </div>
               {selectedTemplate.data?.tableId ? (
                 <div className="mt-1 text-[10px] text-gray-400 truncate" title={selectedTemplate.data.tableId as string}>
