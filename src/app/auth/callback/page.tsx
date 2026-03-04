@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useUserStore } from '@/store/userStore';
@@ -17,7 +17,8 @@ function getCookie(name: string): string | null {
   return null;
 }
 
-export default function AuthCallbackPage() {
+// 实际的回调处理组件
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setUser, setToken, setHasAuthorizations } = useUserStore();
@@ -97,39 +98,65 @@ export default function AuthCallbackPage() {
   }, [searchParams, router, setToken, setUser, setHasAuthorizations, fetchTemplates]);
 
   return (
+    <Card className="w-full max-w-md mx-4">
+      <CardHeader className="text-center">
+        <CardTitle className="text-2xl">
+          {status === 'loading' && '登录中...'}
+          {status === 'success' && '登录成功！'}
+          {status === 'error' && '登录失败'}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="text-center">
+        {status === 'loading' && (
+          <div className="py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">正在处理登录...</p>
+          </div>
+        )}
+        
+        {status === 'success' && (
+          <div className="py-8">
+            <div className="text-green-600 text-4xl mb-4">✓</div>
+            <p className="text-gray-600">正在跳转...</p>
+          </div>
+        )}
+        
+        {status === 'error' && (
+          <div className="py-8">
+            <div className="text-red-600 text-4xl mb-4">✗</div>
+            <p className="text-red-600">{error}</p>
+            <p className="text-gray-500 mt-2">正在返回登录页...</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// 加载状态组件
+function AuthCallbackLoading() {
+  return (
+    <Card className="w-full max-w-md mx-4">
+      <CardHeader className="text-center">
+        <CardTitle className="text-2xl">登录中...</CardTitle>
+      </CardHeader>
+      <CardContent className="text-center">
+        <div className="py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">正在处理登录...</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// 主页面组件 - 使用 Suspense 包裹
+export default function AuthCallbackPage() {
+  return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md mx-4">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">
-            {status === 'loading' && '登录中...'}
-            {status === 'success' && '登录成功！'}
-            {status === 'error' && '登录失败'}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-center">
-          {status === 'loading' && (
-            <div className="py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">正在处理登录...</p>
-            </div>
-          )}
-          
-          {status === 'success' && (
-            <div className="py-8">
-              <div className="text-green-600 text-4xl mb-4">✓</div>
-              <p className="text-gray-600">正在跳转...</p>
-            </div>
-          )}
-          
-          {status === 'error' && (
-            <div className="py-8">
-              <div className="text-red-600 text-4xl mb-4">✗</div>
-              <p className="text-red-600">{error}</p>
-              <p className="text-gray-500 mt-2">正在返回登录页...</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <Suspense fallback={<AuthCallbackLoading />}>
+        <AuthCallbackContent />
+      </Suspense>
     </div>
   );
 }
