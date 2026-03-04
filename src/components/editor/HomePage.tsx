@@ -120,7 +120,7 @@ export function HomePage({ onCreateNew, onSelectTemplate, onSelectUserTemplate, 
   };
 
   return (
-    <div className="min-h-screen bg-background flex h-screen overflow-hidden">
+    <div className="min-h-screen bg-background flex flex-col md:flex-row h-screen overflow-hidden">
       {/* 左侧边栏 */}
       <TemplateSidebar
         onSelectTemplate={onSelectUserTemplate}
@@ -130,32 +130,32 @@ export function HomePage({ onCreateNew, onSelectTemplate, onSelectUserTemplate, 
       />
 
       {/* 主内容区域 */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* 顶部导航栏 */}
         <header className="border-b bg-background/95 backdrop-blur flex-shrink-0">
-          <div className="flex items-center justify-between px-6 py-4">
-            <div className="flex items-center gap-3">
-              <h1 className="text-lg font-semibold">欢迎使用排版打印</h1>
+          <div className="flex items-center justify-between px-3 sm:px-4 md:px-6 py-3 md:py-4">
+            <div className="flex items-center gap-2 md:gap-3">
+              <h1 className="text-base md:text-lg font-semibold truncate">欢迎使用排版打印</h1>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 sm:gap-2 md:gap-3 flex-wrap">
               {/* 环境状态 */}
               <EnvStatusBadge status={envStatus} isFeishuEnvironment={isFeishuEnvironment} />
               
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={refreshData} title="刷新数据">
-                <RefreshCw className="w-3 h-3" />
+              <Button variant="ghost" size="icon" className="h-7 w-7 md:h-6 md:w-6" onClick={refreshData} title="刷新数据">
+                <RefreshCw className="w-3.5 h-3.5 md:w-3 md:h-3" />
               </Button>
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-6 w-6" 
+                className="h-7 w-7 md:h-6 md:w-6" 
                 onClick={() => setShowDebug(!showDebug)} 
                 title="显示调试信息"
               >
-                <Bug className="w-3 h-3" />
+                <Bug className="w-3.5 h-3.5 md:w-3 md:h-3" />
               </Button>
-              <Button size="sm" onClick={onCreateNew}>
-                <Plus className="w-4 h-4 mr-1" />
-                创建排版
+              <Button size="sm" onClick={onCreateNew} className="text-xs sm:text-sm">
+                <Plus className="w-3.5 h-3.5 md:w-4 md:h-4 mr-0.5 md:mr-1" />
+                <span className="hidden sm:inline">创建排版</span>
               </Button>
             </div>
           </div>
@@ -179,25 +179,25 @@ export function HomePage({ onCreateNew, onSelectTemplate, onSelectUserTemplate, 
           )}
         </header>
 
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto px-3 sm:px-4 md:px-6 py-4 md:py-6">
         {/* 欢迎区域 */}
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold mb-2">
+        <div className="text-center mb-6 md:mb-8">
+          <h2 className="text-xl sm:text-2xl font-bold mb-2 px-2">
             把{tableName || '多维表格'}的数据快速转化为各类文档、单据、合同
           </h2>
-          <p className="text-muted-foreground">
-            {fields.length} 个字段 · {records.length} 条记录
+          <p className="text-sm md:text-base text-muted-foreground px-2 flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-center gap-1">
+            <span>{fields.length} 个字段 · {records.length} 条记录</span>
             {isFeishuEnvironment && (
-              <span className="ml-2 text-green-600 dark:text-green-400">
+              <span className="text-green-600 dark:text-green-400">
                 · 已连接飞书多维表格
               </span>
             )}
             {!isFeishuEnvironment && !isLoading && (
-              <span className="ml-2 text-amber-600 dark:text-amber-400">
+              <span className="text-amber-600 dark:text-amber-400">
                 · 使用模拟数据
               </span>
             )}
-            <Button variant="link" className="p-0 ml-2 h-auto">查看最佳实践案例</Button>
+            <Button variant="link" className="p-0 h-auto text-xs md:text-sm">查看最佳实践案例</Button>
           </p>
         </div>
 
@@ -254,20 +254,20 @@ export function HomePage({ onCreateNew, onSelectTemplate, onSelectUserTemplate, 
         )}
 
         {/* 创建方式卡片 */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-12">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-8 md:mb-12">
           {createOptions.map((option) => (
             <Card
               key={option.action}
-              className="p-4 cursor-pointer hover:border-primary hover:shadow-md transition-all group"
+              className="p-3 md:p-4 cursor-pointer hover:border-primary hover:shadow-md transition-all group"
               onClick={() => handleCreateAction(option.action)}
             >
               <div className="flex flex-col items-center text-center gap-2">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                  <option.icon className="w-6 h-6 text-primary" />
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  <option.icon className="w-5 h-5 md:w-6 md:h-6 text-primary" />
                 </div>
                 <div>
-                  <p className="font-medium text-sm">{option.title}</p>
-                  <p className="text-xs text-muted-foreground">{option.description}</p>
+                  <p className="font-medium text-xs md:text-sm">{option.title}</p>
+                  <p className="text-[10px] md:text-xs text-muted-foreground line-clamp-2">{option.description}</p>
                 </div>
               </div>
             </Card>
@@ -275,32 +275,32 @@ export function HomePage({ onCreateNew, onSelectTemplate, onSelectUserTemplate, 
         </div>
 
         {/* 模板选择区域 */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
+        <div className="space-y-3 md:space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-yellow-500" />
-              <h3 className="text-lg font-semibold">从模版开始</h3>
+              <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-yellow-500" />
+              <h3 className="text-base md:text-lg font-semibold">从模版开始</h3>
             </div>
-            <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+            <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 text-[10px] md:text-xs w-fit">
               还没有使用过排版打印？强烈建议从模版开始
             </Badge>
           </div>
 
           {/* 搜索和分类 */}
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <div className="flex flex-col md:flex-row md:items-center gap-3">
+            <div className="relative flex-1 max-w-full md:max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground" />
               <Input
                 placeholder="搜索模板..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-9 md:pl-10 text-sm"
               />
             </div>
-            <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-              <TabsList className="h-9">
-                {templateCategories.slice(0, 8).map((cat) => (
-                  <TabsTrigger key={cat.id} value={cat.id} className="text-xs px-3">
+            <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full md:w-auto">
+              <TabsList className="h-8 md:h-9 w-full md:w-auto overflow-x-auto justify-start md:justify-center">
+                {templateCategories.slice(0, 6).map((cat) => (
+                  <TabsTrigger key={cat.id} value={cat.id} className="text-[10px] md:text-xs px-2 md:px-3 flex-shrink-0">
                     {cat.name}
                   </TabsTrigger>
                 ))}
@@ -309,7 +309,7 @@ export function HomePage({ onCreateNew, onSelectTemplate, onSelectUserTemplate, 
           </div>
 
           {/* 模板网格 */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 mt-4 md:mt-6">
             {filteredTemplates.map((template) => (
               <Card
                 key={template.id}
@@ -318,26 +318,26 @@ export function HomePage({ onCreateNew, onSelectTemplate, onSelectUserTemplate, 
               >
                 <div className="aspect-[3/4] bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 relative">
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <FileText className="w-12 h-12 text-slate-300 dark:text-slate-600" />
+                    <FileText className="w-8 h-8 md:w-12 md:h-12 text-slate-300 dark:text-slate-600" />
                   </div>
-                  <Badge className="absolute bottom-2 right-2 text-xs" variant="secondary">
+                  <Badge className="absolute bottom-1.5 right-1.5 md:bottom-2 md:right-2 text-[10px] md:text-xs" variant="secondary">
                     {template.format}
                   </Badge>
                   {template.isPremium && (
-                    <div className="absolute top-2 left-2">
-                      <Crown className="w-4 h-4 text-yellow-500" />
+                    <div className="absolute top-1.5 left-1.5 md:top-2 md:left-2">
+                      <Crown className="w-3 h-3 md:w-4 md:h-4 text-yellow-500" />
                     </div>
                   )}
                   <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <Button size="sm" variant="secondary">
+                    <Button size="sm" variant="secondary" className="text-xs px-2 py-1">
                       使用模板
-                      <ChevronRight className="w-4 h-4 ml-1" />
+                      <ChevronRight className="w-3 h-3 ml-1" />
                     </Button>
                   </div>
                 </div>
-                <div className="p-3">
-                  <h4 className="font-medium text-sm truncate">{template.name}</h4>
-                  <p className="text-xs text-muted-foreground truncate">{template.description}</p>
+                <div className="p-2 md:p-3">
+                  <h4 className="font-medium text-xs md:text-sm truncate">{template.name}</h4>
+                  <p className="text-[10px] md:text-xs text-muted-foreground truncate">{template.description}</p>
                 </div>
               </Card>
             ))}

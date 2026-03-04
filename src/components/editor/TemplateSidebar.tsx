@@ -69,7 +69,7 @@ function TemplateItem({
   return (
     <div 
       className={`
-        group relative p-3 rounded-lg cursor-pointer transition-all
+        group relative p-2.5 md:p-3 rounded-lg cursor-pointer transition-all
         ${isActive 
           ? 'bg-blue-50 border border-blue-200' 
           : 'hover:bg-gray-50 border border-transparent hover:border-gray-200'
@@ -77,17 +77,17 @@ function TemplateItem({
       `}
       onClick={onSelect}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2 md:gap-3">
         <div className={`
-          w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0
+          w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center flex-shrink-0
           ${isActive ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'}
         `}>
-          <FileText className="w-5 h-5" />
+          <FileText className="w-4 h-4 md:w-5 md:h-5" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <h4 className={`
-              font-medium text-sm truncate
+              font-medium text-xs md:text-sm truncate
               ${isActive ? 'text-blue-900' : 'text-gray-900'}
             `}>
               {template.name}
@@ -96,37 +96,37 @@ function TemplateItem({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="h-6 w-6 md:h-7 md:w-7 opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowMenu(!showMenu);
                 }}
               >
-                <MoreVertical className="w-4 h-4" />
+                <MoreVertical className="w-3.5 h-3.5 md:w-4 md:h-4" />
               </Button>
               
               {showMenu && (
-                <div className="absolute right-0 top-full mt-1 w-32 bg-white border rounded-lg shadow-lg z-10">
+                <div className="absolute right-0 top-full mt-1 w-28 md:w-32 bg-white border rounded-lg shadow-lg z-10">
                   <button
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 rounded-t-lg"
+                    className="w-full px-2.5 md:px-3 py-1.5 md:py-2 text-left text-xs md:text-sm hover:bg-gray-50 flex items-center gap-1.5 md:gap-2 rounded-t-lg"
                     onClick={(e) => {
                       e.stopPropagation();
                       onEdit();
                       setShowMenu(false);
                     }}
                   >
-                    <Edit className="w-4 h-4" />
+                    <Edit className="w-3.5 h-3.5 md:w-4 md:h-4" />
                     编辑
                   </button>
                   <button
-                    className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 rounded-b-lg"
+                    className="w-full px-2.5 md:px-3 py-1.5 md:py-2 text-left text-xs md:text-sm text-red-600 hover:bg-red-50 flex items-center gap-1.5 md:gap-2 rounded-b-lg"
                     onClick={(e) => {
                       e.stopPropagation();
                       onDelete();
                       setShowMenu(false);
                     }}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
                     删除
                   </button>
                 </div>
@@ -134,19 +134,19 @@ function TemplateItem({
             </div>
           </div>
           {template.description && (
-            <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+            <p className="text-[10px] md:text-xs text-gray-500 mt-0.5 md:mt-1 line-clamp-2">
               {template.description}
             </p>
           )}
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex items-center gap-1.5 md:gap-2 mt-1.5 md:mt-2 flex-wrap">
             {isActive && (
-              <span className="inline-flex items-center gap-1 text-xs text-blue-600">
-                <CheckCircle2 className="w-3 h-3" />
+              <span className="inline-flex items-center gap-0.5 md:gap-1 text-[10px] md:text-xs text-blue-600">
+                <CheckCircle2 className="w-2.5 h-2.5 md:w-3 md:h-3" />
                 使用中
               </span>
             )}
-            <span className="inline-flex items-center gap-1 text-xs text-gray-400">
-              <Clock className="w-3 h-3" />
+            <span className="inline-flex items-center gap-0.5 md:gap-1 text-[10px] md:text-xs text-gray-400">
+              <Clock className="w-2.5 h-2.5 md:w-3 md:h-3" />
               {formatDistanceToNow(new Date(template.updatedAt), { 
                 addSuffix: true,
                 locale: zhCN 
@@ -277,56 +277,56 @@ export function TemplateSidebar({ onSelectTemplate, onCreateNew, onLogout, onDel
 
   return (
     <>
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col h-full">
+      <div className="w-full md:w-72 lg:w-80 bg-white border-r border-gray-200 flex flex-col h-full">
         {/* 顶部标题栏 */}
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-              <FileText className="w-4 h-4 text-white" />
+        <div className="p-3 md:p-4 border-b border-gray-200">
+          <div className="flex items-center gap-2 mb-3 md:mb-4">
+            <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+              <FileText className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
             </div>
-            <h2 className="text-lg font-semibold text-gray-900">排版打印</h2>
+            <h2 className="text-base md:text-lg font-semibold text-gray-900">排版打印</h2>
           </div>
 
           {/* 创建模板按钮 */}
           <Button 
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white"
+            className="w-full bg-blue-500 hover:bg-blue-600 text-white text-sm"
             onClick={() => {
               setNewTemplateName('');
               setNewTemplateDesc('');
               setShowCreateDialog(true);
             }}
           >
-            <Plus className="w-4 h-4 mr-2" />
+            <Plus className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1.5 md:mr-2" />
             创建排版
           </Button>
         </div>
 
         {/* 模板管理区域 */}
         <div className="flex-1 overflow-hidden flex flex-col">
-          <div className="p-4 border-b border-gray-100">
-            <div className="flex items-center gap-2 mb-3">
-              <Folder className="w-4 h-4 text-gray-500" />
-              <h3 className="text-sm font-medium text-gray-700">模板管理</h3>
+          <div className="p-3 md:p-4 border-b border-gray-100">
+            <div className="flex items-center gap-2 mb-2 md:mb-3">
+              <Folder className="w-3.5 h-3.5 md:w-4 md:h-4 text-gray-500" />
+              <h3 className="text-xs md:text-sm font-medium text-gray-700">模板管理</h3>
             </div>
 
             {/* 搜索框 */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 md:w-4 md:h-4 text-gray-400" />
               <Input
                 placeholder="搜索模板..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-9 text-sm"
+                className="pl-8 md:pl-10 h-8 md:h-9 text-xs md:text-sm"
               />
             </div>
           </div>
 
           {/* 模板列表 */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-1.5 md:space-y-2">
             {filteredTemplates.length === 0 ? (
-              <div className="text-center py-8">
-                <FileText className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                <p className="text-sm text-gray-500">
+              <div className="text-center py-6 md:py-8">
+                <FileText className="w-8 h-8 md:w-10 md:h-10 text-gray-300 mx-auto mb-2 md:mb-3" />
+                <p className="text-xs md:text-sm text-gray-500">
                   {searchQuery ? '没有找到匹配的模板' : '还没有创建模板'}
                 </p>
               </div>
@@ -346,43 +346,43 @@ export function TemplateSidebar({ onSelectTemplate, onCreateNew, onLogout, onDel
         </div>
 
         {/* 底部区域 - 显示用户信息 */}
-        <div className="p-4 border-t border-gray-200 bg-gray-50">
+        <div className="p-3 md:p-4 border-t border-gray-200 bg-gray-50">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               {user?.avatar ? (
                 <img 
                   src={user.avatar} 
                   alt={user.name}
-                  className="w-8 h-8 rounded-full object-cover"
+                  className="w-7 h-7 md:w-8 md:h-8 rounded-full object-cover flex-shrink-0"
                 />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                  <span className="text-white text-xs font-medium">
+                <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-[10px] md:text-xs font-medium">
                     {user?.name?.charAt(0) || 'U'}
                   </span>
                 </div>
               )}
-              <div>
-                <p className="text-sm font-medium text-gray-900">{user?.name || '用户'}</p>
-                <p className="text-xs text-gray-500">{user?.email || ''}</p>
+              <div className="min-w-0">
+                <p className="text-xs md:text-sm font-medium text-gray-900 truncate">{user?.name || '用户'}</p>
+                <p className="text-[10px] md:text-xs text-gray-500 truncate">{user?.email || ''}</p>
               </div>
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <Settings className="w-4 h-4 text-gray-500" />
+                <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0">
+                  <Settings className="w-3.5 h-3.5 md:w-4 md:h-4 text-gray-500" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={onLogout} className="cursor-pointer">
-                  <LogOut className="w-4 h-4 mr-2" />
+                <DropdownMenuItem onClick={onLogout} className="cursor-pointer text-xs md:text-sm">
+                  <LogOut className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1.5 md:mr-2" />
                   退出登录
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={() => setShowDeleteAccountDialog(true)} 
-                  className="text-red-600 cursor-pointer"
+                  className="text-red-600 cursor-pointer text-xs md:text-sm"
                 >
-                  <Trash2 className="w-4 h-4 mr-2" />
+                  <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1.5 md:mr-2" />
                   删除账号
                 </DropdownMenuItem>
               </DropdownMenuContent>
