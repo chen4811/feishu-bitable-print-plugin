@@ -568,50 +568,50 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
 
           {/* 中间：预览区域 */}
           <div className="flex-1 flex flex-col overflow-hidden bg-gray-100">
-            {/* 预览模式切换 + 缩放控制 */}
+            {/* 预览模式切换 */}
             <div className="p-4 border-b bg-background">
-              <div className="flex items-center justify-between">
-                <Tabs value={previewMode} onValueChange={(v: any) => setPreviewMode(v)}>
-                  <TabsList>
-                    <TabsTrigger value="default">单页模式</TabsTrigger>
-                    <TabsTrigger value="continuous">连续模式</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-                
-                {/* 缩放控制栏 - 跟模板编辑一样 */}
-                <div className="flex items-center gap-2 bg-white rounded-lg shadow-sm border p-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleZoomOut}
-                    disabled={scale <= 0.5}
-                    className="h-8 w-8"
-                  >
-                    <ZoomOut className="w-4 h-4" />
-                  </Button>
-                  <span className="text-sm font-medium min-w-[60px] text-center">
-                    {Math.round(scale * 100)}%
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleZoomIn}
-                    disabled={scale >= 2}
-                    className="h-8 w-8"
-                  >
-                    <ZoomIn className="w-4 h-4" />
-                  </Button>
-                  <div className="w-px h-4 bg-gray-300 mx-1" />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleResetZoom}
-                    className="h-8 w-8"
-                    title="重置缩放"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                  </Button>
-                </div>
+              <Tabs value={previewMode} onValueChange={(v: any) => setPreviewMode(v)}>
+                <TabsList>
+                  <TabsTrigger value="default">单页模式</TabsTrigger>
+                  <TabsTrigger value="continuous">连续模式</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+
+            {/* 缩放控制栏 - 跟模板编辑一样，位于画布上方 */}
+            <div className="flex items-center justify-center p-4 border-b bg-background">
+              <div className="flex items-center gap-2 bg-white rounded-lg shadow-sm border p-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleZoomOut}
+                  disabled={scale <= 0.5}
+                  className="h-8 w-8"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </Button>
+                <span className="text-sm font-medium min-w-[60px] text-center">
+                  {Math.round(scale * 100)}%
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleZoomIn}
+                  disabled={scale >= 2}
+                  className="h-8 w-8"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </Button>
+                <div className="w-px h-4 bg-gray-300 mx-1" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleResetZoom}
+                  className="h-8 w-8"
+                  title="重置缩放"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </Button>
               </div>
             </div>
 
