@@ -270,3 +270,154 @@ export async function listAllBitableFields(params: Omit<ListFieldsParams, 'page_
   console.log('[Feishu Bitable] 获取所有字段完成，总数:', allFields.length);
   return allFields;
 }
+
+// ==================== 记录操作 ====================
+
+/**
+ * 筛选条件
+ */
+export interface FilterCondition {
+  field_name: string;
+  operator: 'is' | 'isNot' | 'contains' | 'doesNotContain' | 'isEmpty' | 'isNotEmpty' | 'isGreater' | 'isGreaterEqual' | 'isLess' | 'isLessEqual';
+  value?: any;
+}
+
+/**
+ * 筛选条件组
+ */
+export interface Filter {
+  conjunction: 'and' | 'or';
+  conditions: FilterCondition[];
+}
+
+/**
+ * 多维表格记录
+ */
+export interface BitableRecord {
+  record_id: string;
+  fields: Record<string, any>;
+  created_time: number;
+  updated_time: number;
+}
+
+/**
+ * 搜索记录参数
+ */
+export interface SearchRecordsParams {
+  app_token: string;
+  table_id: string;
+  field_names?: string[];
+  filter?: Filter;
+  page_token?: string;
+  page_size?: number;
+}
+
+/**
+ * 搜索记录响应
+ */
+export interface SearchRecordsResponse {
+  items: BitableRecord[];
+  total: number;
+  has_more: boolean;
+  page_token?: string;
+}
+
+/**
+ * 根据记录ID批量获取记录
+ * @param appToken 多维表格 App Token
+ * @param tableId 数据表 ID
+ * @param recordIds 记录ID数组
+ * @returns 记录列表
+ */
+export async function getRecordsByIds(
+  appToken: string,
+  tableId: string,
+  recordIds: string[]
+): Promise<BitableRecord[]> {
+  console.log('[Feishu Bitable] 根据ID批量获取记录:', { appToken, tableId, recordCount: recordIds.length });
+
+  const tenantAccessToken = await getTenantAccessToken();
+
+  const url = `https://open.feishu.cn/open-apis/bitable/v1/apps/${appToken}/tables/${tableId}/records/search`;
+
+  const payload = {
+    field_names: [], // 空数组表示获取所有字段
+    filter: {
+      conjunction: 'and' as const,
+      conditions: [
+        {
+          field_name: 'record_id',
+          operator: 'is' as const,
+          value: recordIds,
+        },
+      ],
+    },
+  };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${tenantAccessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const result = await response.json();
+
+  if (result.code !== 0) {
+    console.error('[Feishu Bitable] 获取记录失败:', result);
+    throw new Error(`获取记录失败: ${result.msg} (错误码: ${result.code})`);
+  }
+
+  console.log('[Feishu Bitable] 获取记录成功:', {
+    total: result.data?.total,
+    itemCount: result.data?.items?.length,
+  });
+
+  return result.data?.items || [];
+}
+
+/**
+ * 搜索记录
+ * @param params 搜索参数
+ * @returns 记录列表
+ */
+export async function searchRecords(params: SearchRecordsParams): Promise<SearchRecordsResponse> {
+  const { app_token, table_id, field_names, filter, page_token, page_size = 100 } = params;
+
+  console.log('[Feishu Bitable] 搜索记录:', { app_token, table_id, page_size });
+
+  const tenantAccessToken = await getTenantAccessToken();
+
+  const url = `https://open.feishu.cn/open-apis/bitable/v1/apps/${app_token}/tables/${table_id}/records/search`;
+
+  const payload: any = {};
+  if (field_names) payload.field_names = field_names;
+  if (filter) payload.filter = filter;
+  if (page_token) payload.page_token = page_token;
+  if (page_size) payload.page_size = page_size;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${tenantAccessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const result = await response.json();
+
+  if (result.code !== 0) {
+    console.error('[Feishu Bitable] 搜索记录失败:', result);
+    throw new Error(`搜索记录失败: ${result.msg} (错误码: ${result.code})`);
+  }
+
+  return {
+    items: result.data?.items || [],
+    total: result.data?.total || 0,
+    has_more: result.data?.has_more || false,
+    page_token: result.data?.page_token,
+  };
+}
