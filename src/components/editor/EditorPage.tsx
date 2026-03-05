@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -27,7 +26,6 @@ import {
   Undo2,
   Redo2,
   FileText,
-  Pencil,
   Save,
   Download,
   Eye,
@@ -75,7 +73,6 @@ export function EditorPage({ onExit }: EditorPageProps) {
   const [activeTab, setActiveTab] = useState<LeftPanelTab>('data');
   const [isPageSettingsOpen, setIsPageSettingsOpen] = useState(false);
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
-  const [isEditingName, setIsEditingName] = useState(false);
   const [draggedItem, setDraggedItem] = useState<{ type: string; data?: unknown } | null>(null);
   const [currentTemplate, setCurrentTemplate] = useState<UserTemplate | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -83,8 +80,6 @@ export function EditorPage({ onExit }: EditorPageProps) {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [initialEditorState, setInitialEditorState] = useState<string | null>(null);
-  // 模板名称编辑本地状态，避免输入过程中触发自动保存
-  const [editingTemplateName, setEditingTemplateName] = useState('');
   
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { 
@@ -295,8 +290,8 @@ export function EditorPage({ onExit }: EditorPageProps) {
 
   // 自动保存逻辑 - 防抖，只在有未保存修改时触发
   useEffect(() => {
-    if (!currentTemplate?.id || !hasUnsavedChanges || isEditingName) {
-      return; // 没有模板、没有修改，或正在编辑名称时，不自动保存
+    if (!currentTemplate?.id || !hasUnsavedChanges) {
+      return; // 没有模板、没有修改时，不自动保存
     }
 
     console.log('[EditorPage] 检测到未保存修改，计划自动保存', { 
@@ -380,7 +375,6 @@ export function EditorPage({ onExit }: EditorPageProps) {
   }, [
     currentTemplate,
     hasUnsavedChanges, // 只依赖 hasUnsavedChanges，避免频繁触发
-    isEditingName, // 编辑状态变化时需要重新评估是否保存
   ]);
 
   // 获取当前正在编辑的表格
@@ -1085,50 +1079,6 @@ export function EditorPage({ onExit }: EditorPageProps) {
                   <span className="ml-1 text-orange-500">●</span>
                 )}
               </Button>
-              
-              {/* 模板名称 */}
-              <div className="flex items-center gap-2">
-                {isEditingName ? (
-                  <Input
-                    value={editingTemplateName}
-                    onChange={(e) => setEditingTemplateName(e.target.value)}
-                    onBlur={() => {
-                      // 退出编辑状态时才同步到 store，触发保存
-                      if (editingTemplateName.trim()) {
-                        setTemplateName(editingTemplateName.trim());
-                      }
-                      setIsEditingName(false);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        // 按 Enter 时同步到 store并退出编辑
-                        if (editingTemplateName.trim()) {
-                          setTemplateName(editingTemplateName.trim());
-                        }
-                        setIsEditingName(false);
-                      }
-                    }}
-                    className="w-48 h-8"
-                    autoFocus
-                  />
-                ) : (
-                  <>
-                    <span className="font-medium">{templateName}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => {
-                        // 开始编辑时，将当前名称复制到本地状态
-                        setEditingTemplateName(templateName);
-                        setIsEditingName(true);
-                      }}
-                    >
-                      <Pencil className="w-3 h-3" />
-                    </Button>
-                  </>
-                )}
-              </div>
               
               {/* 数据源状态（新 feishu-env） */}
               {feishuLoading ? (
