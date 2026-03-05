@@ -1,11 +1,43 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { systemConfigs } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
+
+// 表是否存在的缓存
+let tableChecked = false;
+
+/**
+ * 检查并创建 system_configs 表
+ */
+async function ensureTableExists() {
+  if (tableChecked) return;
+  
+  try {
+    // 尝试查询表，如果失败则创建表
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS system_configs (
+        id SERIAL PRIMARY KEY,
+        key VARCHAR(100) UNIQUE NOT NULL,
+        value TEXT NOT NULL,
+        description TEXT,
+        is_encrypted BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+      )
+    `);
+    console.log('[System Config API] system_configs 表已创建或已存在');
+    tableChecked = true;
+  } catch (error) {
+    console.error('[System Config API] 创建表失败:', error);
+    throw error;
+  }
+}
 
 // 获取系统配置
 export async function GET(request: Request) {
   try {
+    await ensureTableExists();
+    
     const { searchParams } = new URL(request.url);
     const key = searchParams.get('key');
 
@@ -49,6 +81,8 @@ export async function GET(request: Request) {
 // 更新或创建系统配置
 export async function POST(request: Request) {
   try {
+    await ensureTableExists();
+    
     const body = await request.json();
     const { key, value, description, isEncrypted } = body;
 
@@ -101,6 +135,8 @@ export async function POST(request: Request) {
 // 批量更新配置
 export async function PUT(request: Request) {
   try {
+    await ensureTableExists();
+    
     const body = await request.json();
     const { configs } = body;
 

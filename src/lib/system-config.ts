@@ -1,10 +1,31 @@
 import { db } from '@/lib/db';
 import { systemConfigs } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 // 配置缓存
 const configCache: Map<string, { value: string; expireAt: number }> = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5分钟缓存
+
+// 表是否存在的标记
+let tableExists: boolean | null = null;
+
+/**
+ * 检查表是否存在
+ */
+async function checkTableExists(): Promise<boolean> {
+  if (tableExists !== null) return tableExists;
+  
+  try {
+    // 尝试查询表
+    await db.execute(sql`SELECT 1 FROM system_configs LIMIT 1`);
+    tableExists = true;
+    return true;
+  } catch (error) {
+    console.log('[System Config] system_configs 表不存在，将使用环境变量');
+    tableExists = false;
+    return false;
+  }
+}
 
 /**
  * 获取系统配置
@@ -20,23 +41,27 @@ export async function getSystemConfig(key: string): Promise<string | null> {
     return cached.value;
   }
 
-  try {
-    // 2. 从数据库读取
-    const config = await db.query.systemConfigs.findFirst({
-      where: eq(systemConfigs.key, key),
-    });
-
-    if (config) {
-      console.log(`[System Config] 从数据库读取配置: ${key}`);
-      // 更新缓存
-      configCache.set(key, {
-        value: config.value,
-        expireAt: now + CACHE_TTL,
+  // 2. 检查表是否存在，如果存在则从数据库读取
+  const hasTable = await checkTableExists();
+  
+  if (hasTable) {
+    try {
+      const config = await db.query.systemConfigs.findFirst({
+        where: eq(systemConfigs.key, key),
       });
-      return config.value;
+
+      if (config) {
+        console.log(`[System Config] 从数据库读取配置: ${key}`);
+        // 更新缓存
+        configCache.set(key, {
+          value: config.value,
+          expireAt: now + CACHE_TTL,
+        });
+        return config.value;
+      }
+    } catch (error) {
+      console.error(`[System Config] 从数据库读取配置失败: ${key}`, error);
     }
-  } catch (error) {
-    console.error(`[System Config] 从数据库读取配置失败: ${key}`, error);
   }
 
   // 3. 从环境变量读取
