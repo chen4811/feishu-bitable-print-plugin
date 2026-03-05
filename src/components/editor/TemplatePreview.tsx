@@ -421,8 +421,9 @@ const renderTableComponent = (component: any, data: Record<string, any>): React.
     position: 'relative',
     width: component.layout?.width || '100%',
     flex: `0 0 ${component.layout?.width || '100%'}`,
-    maxWidth: component.layout?.width || '100%',
+    maxWidth: '100%',
     boxSizing: 'border-box',
+    overflowX: 'auto',
   }, style);
 
   return (
@@ -500,7 +501,7 @@ const renderComponentToHTML = (component: any, data: Record<string, any>): strin
     position: relative;
     width: ${component.layout?.width || '100%'};
     flex: 0 0 ${component.layout?.width || '100%'};
-    max-width: ${component.layout?.width || '100%'};
+    max-width: 100%;
     font-size: ${style.fontSize || '16px'};
     font-weight: ${style.fontWeight || 'normal'};
     color: ${style.color || '#000000'};
@@ -510,6 +511,7 @@ const renderComponentToHTML = (component: any, data: Record<string, any>): strin
     white-space: pre-wrap;
     word-wrap: break-word;
     box-sizing: border-box;
+    overflow-x: auto;
   `;
 
   switch (type) {
