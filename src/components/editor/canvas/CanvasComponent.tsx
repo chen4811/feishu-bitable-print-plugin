@@ -489,6 +489,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   const handleDoubleClickText = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (component.type === 'text') {
+      // 双击时先选中组件，确保全局工具栏显示
+      onSelect();
       setIsEditing(true);
       setEditContent((component as any).content && (component as any).content !== '显示' ? (component as any).content : '');
     }
