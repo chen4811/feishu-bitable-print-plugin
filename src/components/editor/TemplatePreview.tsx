@@ -1887,7 +1887,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
               
               {/* 模板列表 Tab */}
               <TabsContent value="templates" className="flex-1 overflow-hidden mt-2">
-                <ScrollArea className="h-full px-4">
+                <ScrollArea className="h-full px-4 scrollbar-thin">
                   <div className="space-y-3 pb-4">
                     {templates.map((template) => {
                       // 获取该模板的变量
@@ -1952,7 +1952,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
               
               {/* 数据匹配 Tab */}
               <TabsContent value="data" className="flex-1 overflow-hidden mt-2">
-                <ScrollArea className="h-full px-4">
+                <ScrollArea className="h-full px-4 scrollbar-thin">
                   <div className="space-y-3 pb-4">
                     {/* 表格匹配状态显示 */}
                     {selectedTemplate && (
@@ -2215,8 +2215,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           )}
           
           {/* 滚动容器 - 包含画布 */}
-          <div className="flex-1 overflow-auto">
-            <div className="min-w-max min-h-full p-4 inline-block">
+          <div className="flex-1 overflow-x-auto overflow-y-auto scrollbar-thin">
+            <div className="w-fit min-h-full p-4">
               {selectedTemplate ? (
               (() => {
                 // 使用本地页面配置
@@ -2267,8 +2267,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                         position: 'relative',
                         marginBottom: layoutMode === 'default' && !isLast ? '20px' : '0',
                         pageBreakAfter: layoutMode === 'default' && !isLast ? 'always' : 'auto',
-                        marginLeft: 'auto',
-                        marginRight: 'auto',
                       }}
                     >
                       {/* 页码标记 */}
@@ -2389,7 +2387,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
               })()
             ) : (
               <div className="flex justify-start">
-                <div className="h-96 flex items-center justify-center text-gray-400 bg-white rounded-lg shadow-sm print-area-page" style={{ width: '210mm', marginLeft: 'auto', marginRight: 'auto' }}>
+                <div className="h-96 flex items-center justify-center text-gray-400 bg-white rounded-lg shadow-sm print-area-page" style={{ width: '210mm' }}>
                   <div className="text-center">
                     <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
                     <p className="text-lg">请从左侧选择一个模板</p>
