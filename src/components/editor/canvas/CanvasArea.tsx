@@ -279,10 +279,9 @@ export function CanvasArea() {
       {/* 画布容器 */}
       <div 
         ref={canvasContainerRef}
-        className="flex items-start justify-start overflow-auto"
+        className="flex items-start justify-start"
         style={{ 
           maxWidth: '100%',
-          maxHeight: 'calc(100vh - 200px)',
         }}
       >
         <DndContext
