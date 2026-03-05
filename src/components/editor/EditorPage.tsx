@@ -1086,6 +1086,50 @@ export function EditorPage({ onExit }: EditorPageProps) {
                 )}
               </Button>
               
+              {/* 模板名称 */}
+              <div className="flex items-center gap-2">
+                {isEditingName ? (
+                  <Input
+                    value={editingTemplateName}
+                    onChange={(e) => setEditingTemplateName(e.target.value)}
+                    onBlur={() => {
+                      // 退出编辑状态时才同步到 store，触发保存
+                      if (editingTemplateName.trim()) {
+                        setTemplateName(editingTemplateName.trim());
+                      }
+                      setIsEditingName(false);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        // 按 Enter 时同步到 store并退出编辑
+                        if (editingTemplateName.trim()) {
+                          setTemplateName(editingTemplateName.trim());
+                        }
+                        setIsEditingName(false);
+                      }
+                    }}
+                    className="w-48 h-8"
+                    autoFocus
+                  />
+                ) : (
+                  <>
+                    <span className="font-medium">{templateName}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => {
+                        // 开始编辑时，将当前名称复制到本地状态
+                        setEditingTemplateName(templateName);
+                        setIsEditingName(true);
+                      }}
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </Button>
+                  </>
+                )}
+              </div>
+              
               {/* 数据源状态（新 feishu-env） */}
               {feishuLoading ? (
                 <Badge variant="secondary">
@@ -1258,49 +1302,6 @@ export function EditorPage({ onExit }: EditorPageProps) {
         <div className="flex-1 flex overflow-hidden">
           {/* 左侧面板 */}
           <aside className="w-56 border-r flex flex-col bg-muted/30">
-            {/* 模板名称 - 移到左侧面板顶部 */}
-            <div className="p-3 border-b bg-background">
-              {isEditingName ? (
-                <Input
-                  value={editingTemplateName}
-                  onChange={(e) => setEditingTemplateName(e.target.value)}
-                  onBlur={() => {
-                    if (editingTemplateName.trim()) {
-                      setTemplateName(editingTemplateName.trim());
-                    }
-                    setIsEditingName(false);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      if (editingTemplateName.trim()) {
-                        setTemplateName(editingTemplateName.trim());
-                      }
-                      setIsEditingName(false);
-                    }
-                  }}
-                  className="w-full h-8"
-                  autoFocus
-                />
-              ) : (
-                <div className="flex items-center gap-2">
-                  <h2 className="font-medium text-sm truncate whitespace-nowrap overflow-hidden flex-1">
-                    {templateName}
-                  </h2>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 shrink-0"
-                    onClick={() => {
-                      setEditingTemplateName(templateName);
-                      setIsEditingName(true);
-                    }}
-                  >
-                    <Pencil className="w-3 h-3" />
-                  </Button>
-                </div>
-              )}
-            </div>
-
             {/* 标签切换 */}
             <Tabs
               value={activeTab}
