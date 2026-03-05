@@ -122,11 +122,6 @@ export async function getOAuthUrl(state: string): Promise<string> {
     throw new Error('FEISHU_APP_ID 或 FEISHU_REDIRECT_URI 未配置');
   }
 
-  console.log('[Feishu OAuth] 生成授权 URL:');
-  console.log('[Feishu OAuth]   APP_ID:', appId);
-  console.log('[Feishu OAuth]   Redirect URI:', redirectUri);
-  console.log('[Feishu OAuth] 提示: 请确保此 URL 与飞书开放平台应用设置中的"重定向URL"完全一致');
-
   const params = new URLSearchParams({
     app_id: appId,
     redirect_uri: redirectUri,
