@@ -46,17 +46,17 @@ export async function requestAuthCode(scope: string = 'contact:user.base:readonl
     
     // 输出 bitable 的所有顶层属性
     console.log('[BitableAuth] bitable 对象属性:', Object.keys(bitable));
-    console.log('[BitableAuth] bitable.bridge:', (bitable as any).bridge ? '存在' : '不存在');
+    console.log('[BitableAuth] bitable.base:', (bitable as any).base ? '存在' : '不存在');
     console.log('[BitableAuth] bitable.auth:', (bitable as any).auth ? '存在' : '不存在');
 
-    // 等待 SDK 就绪
-    console.log('[BitableAuth] 等待 SDK 就绪...');
+    // 等待基础库加载完成 (bitable.base.ready)
+    console.log('[BitableAuth] 等待 bitable.base.ready...');
     try {
-      await (bitable as any).bridge?.onReady?.();
-      console.log('[BitableAuth] SDK 就绪成功');
+      await (bitable as any).base?.ready;
+      console.log('[BitableAuth] bitable.base.ready 成功');
     } catch (readyError) {
-      console.error('[BitableAuth] SDK 就绪失败:', readyError);
-      // 继续尝试，有些版本可能不需要等待 onReady
+      console.error('[BitableAuth] bitable.base.ready 失败:', readyError);
+      // 继续尝试
     }
 
     // 检查 auth 模块
@@ -75,32 +75,27 @@ export async function requestAuthCode(scope: string = 'contact:user.base:readonl
       throw new Error('bitable.auth.requestAuthCode 不可用');
     }
 
-    console.log('[BitableAuth] 使用 bitable.auth.requestAuthCode 获取授权码');
-    console.log('[BitableAuth] requestAuthCode 方法类型:', typeof auth.requestAuthCode);
+    console.log('[BitableAuth] 调用 bitable.auth.requestAuthCode，参数:', { scope });
 
     // 使用 bitable.auth.requestAuthCode 获取授权码
-    console.log('[BitableAuth] 调用 requestAuthCode，参数:', { scope });
-    const authResult = await auth.requestAuthCode({
-      scope,
+    // 注意：返回的是字符串（授权码），不是对象
+    const authCode = await auth.requestAuthCode({ scope });
+
+    console.log('[BitableAuth] requestAuthCode 返回:', {
+      authCode,
+      type: typeof authCode,
+      hasValue: !!authCode,
     });
 
-    console.log('[BitableAuth] requestAuthCode 返回结果:', {
-      hasResult: !!authResult,
-      resultType: typeof authResult,
-      resultKeys: authResult ? Object.keys(authResult) : 'N/A',
-      hasCode: !!(authResult as any)?.code,
-      fullResult: authResult,
-    });
-
-    if (!authResult || !(authResult as any).code) {
-      console.error('[BitableAuth] 返回结果中没有 code');
-      throw new Error('获取授权码失败：返回结果中没有 code');
+    if (!authCode || typeof authCode !== 'string') {
+      console.error('[BitableAuth] 返回的授权码无效:', authCode);
+      throw new Error('获取授权码失败：返回的授权码无效');
     }
 
-    console.log('[BitableAuth] 授权码获取成功，code 长度:', (authResult as any).code.length);
+    console.log('[BitableAuth] 授权码获取成功，长度:', authCode.length);
     return {
       success: true,
-      code: (authResult as any).code,
+      code: authCode,
     };
   } catch (error) {
     console.error('[BitableAuth] ========== 获取授权码失败 ==========');
