@@ -2080,7 +2080,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       )}
 
       {/* 中间：打印预览 - 确保最小宽度 */}
-      <div className="print-content-area flex-1 min-w-[500px] flex flex-col overflow-hidden">
+      <div className="print-content-area flex-1 min-w-[500px] flex flex-col">
         {/* 工具栏 */}
         <Card className="no-print mb-4">
           <CardContent className="p-4">
