@@ -425,6 +425,12 @@ const renderTableComponent = (component: any, data: Record<string, any>): React.
     flexShrink: 0,             // 【关键】拒绝被压缩
     display: 'block',          // 【关键】确保 block 元素行为
     boxSizing: 'border-box',
+    // 【关键修复】强制重置左侧间距，解决横向滚动无法显示完整内容的问题
+    marginLeft: '0px',
+    marginRight: '0px',
+    transform: 'none',
+    left: 'auto',
+    right: 'auto',
   }, style);
 
   return (
@@ -2216,8 +2222,21 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           )}
           
           {/* 滚动容器 - 包含画布 */}
-          <div className="flex-1 overflow-x-auto overflow-y-auto scrollbar-thin">
-            <div className="w-fit min-h-full p-4">
+          <div 
+            className="flex-1 overflow-x-auto overflow-y-auto scrollbar-thin"
+            style={{
+              paddingLeft: '0px',
+              paddingRight: '0px',
+              boxSizing: 'border-box',
+            }}
+          >
+            <div 
+              className="w-fit min-h-full p-4"
+              style={{
+                marginLeft: '0px',
+                marginRight: '0px',
+              }}
+            >
               {selectedTemplate ? (
               (() => {
                 // 使用本地页面配置
