@@ -5,7 +5,26 @@
  * 无需配置重定向 URL，适合插件场景
  */
 
-import { bitable } from '@lark-base-open/js-sdk';
+import { bitable as importedBitable } from '@lark-base-open/js-sdk';
+
+// 尝试从多个来源获取 bitable 对象
+function getBitable() {
+  if (typeof window === 'undefined') return null;
+  
+  // 1. 优先使用 window.bitable（插件环境自动注入）
+  if ((window as any).bitable) {
+    console.log('[BitableAuth] 使用 window.bitable');
+    return (window as any).bitable;
+  }
+  
+  // 2. 使用导入的 SDK
+  if (importedBitable) {
+    console.log('[BitableAuth] 使用导入的 @lark-base-open/js-sdk');
+    return importedBitable;
+  }
+  
+  return null;
+}
 
 /**
  * 检查是否在多维表格插件环境
@@ -19,6 +38,7 @@ export function isBitablePlugin(): boolean {
     hasWindow,
     isIframe,
     isLarkFeishu,
+    hasWindowBitable: hasWindow && !!(window as any).bitable,
     userAgent: hasWindow ? navigator.userAgent.slice(0, 50) : 'N/A',
     result: hasWindow && (isIframe || isLarkFeishu),
   });
@@ -38,51 +58,57 @@ export async function requestAuthCode(scope: string = 'contact:user.base:readonl
   try {
     console.log('[BitableAuth] ========== 开始请求客户端授权码 ==========');
     console.log('[BitableAuth] 请求的 scope:', scope);
-    console.log('[BitableAuth] bitable SDK:', bitable ? '已加载' : '未加载');
+
+    const bitable = getBitable();
+    console.log('[BitableAuth] bitable SDK:', bitable ? '已获取' : '未获取');
     
     if (!bitable) {
-      throw new Error('bitable SDK 未加载，请检查 @lark-base-open/js-sdk 是否正确导入');
+      throw new Error('无法获取 bitable SDK，请确保在多维表格插件环境中运行');
     }
     
     // 输出 bitable 的所有顶层属性
     console.log('[BitableAuth] bitable 对象属性:', Object.keys(bitable));
-    console.log('[BitableAuth] bitable.base:', (bitable as any).base ? '存在' : '不存在');
-    console.log('[BitableAuth] bitable.auth:', (bitable as any).auth ? '存在' : '不存在');
+    console.log('[BitableAuth] bitable.base:', bitable.base ? '存在' : '不存在');
+    console.log('[BitableAuth] bitable.auth:', bitable.auth ? '存在' : '不存在');
 
-    // 等待基础库加载完成 (bitable.base.ready)
-    console.log('[BitableAuth] 等待 bitable.base.ready...');
-    try {
-      await (bitable as any).base?.ready;
-      console.log('[BitableAuth] bitable.base.ready 成功');
-    } catch (readyError) {
-      console.error('[BitableAuth] bitable.base.ready 失败:', readyError);
-      // 继续尝试
+    // 等待基础库加载完成
+    if (bitable.base?.ready) {
+      console.log('[BitableAuth] 等待 bitable.base.ready...');
+      try {
+        await bitable.base.ready;
+        console.log('[BitableAuth] bitable.base.ready 成功');
+      } catch (readyError) {
+        console.error('[BitableAuth] bitable.base.ready 失败:', readyError);
+      }
     }
 
     // 检查 auth 模块
-    const auth = (bitable as any).auth;
-    console.log('[BitableAuth] auth 模块:', auth ? '存在' : '不存在');
-    
-    if (!auth) {
+    if (!bitable.auth) {
       console.error('[BitableAuth] bitable.auth 不存在');
       console.error('[BitableAuth] bitable 完整对象:', bitable);
-      throw new Error('bitable.auth 不存在，请检查 SDK 版本和权限配置');
+      
+      // 检查是否是权限问题
+      console.error('[BitableAuth] 可能原因:');
+      console.error('1. 飞书应用后台未开启"获取用户授权码"权限');
+      console.error('2. SDK 版本过低');
+      console.error('3. 不在正确的插件环境中运行');
+      
+      throw new Error('bitable.auth 不存在，请在飞书开发者后台申请"获取用户授权码"权限');
     }
     
-    if (typeof auth.requestAuthCode !== 'function') {
+    if (typeof bitable.auth.requestAuthCode !== 'function') {
       console.error('[BitableAuth] bitable.auth.requestAuthCode 不是函数');
-      console.error('[BitableAuth] auth 模块方法:', Object.keys(auth));
+      console.error('[BitableAuth] auth 模块方法:', Object.keys(bitable.auth));
       throw new Error('bitable.auth.requestAuthCode 不可用');
     }
 
     console.log('[BitableAuth] 调用 bitable.auth.requestAuthCode，参数:', { scope });
 
-    // 使用 bitable.auth.requestAuthCode 获取授权码
-    // 注意：返回的是字符串（授权码），不是对象
-    const authCode = await auth.requestAuthCode({ scope });
+    // 调用授权方法
+    const authCode = await bitable.auth.requestAuthCode({ scope });
 
     console.log('[BitableAuth] requestAuthCode 返回:', {
-      authCode,
+      authCode: authCode ? `${authCode.slice(0, 10)}...` : null,
       type: typeof authCode,
       hasValue: !!authCode,
     });
@@ -101,13 +127,6 @@ export async function requestAuthCode(scope: string = 'contact:user.base:readonl
     console.error('[BitableAuth] ========== 获取授权码失败 ==========');
     console.error('[BitableAuth] 错误类型:', error?.constructor?.name);
     console.error('[BitableAuth] 错误信息:', error);
-    console.error('[BitableAuth] 错误堆栈:', error instanceof Error ? error.stack : 'N/A');
-    
-    // 检查是否是权限错误
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    if (errorMsg.includes('permission') || errorMsg.includes('denied')) {
-      console.error('[BitableAuth] 可能是权限问题，请检查应用权限设置');
-    }
     
     return {
       success: false,
@@ -145,7 +164,6 @@ export async function loginWithClientAuth(): Promise<{
 
     // 2. 调用后端 API 换取用户信息、JWT token
     console.log('[BitableAuth] 步骤 2: 调用后端 API 换取 token');
-    console.log('[BitableAuth] API 地址:', '/api/auth/feishu/client-token');
     
     const response = await fetch('/api/auth/feishu/client-token', {
       method: 'POST',
@@ -153,10 +171,10 @@ export async function loginWithClientAuth(): Promise<{
       body: JSON.stringify({ code: authResult.code }),
     });
 
-    console.log('[BitableAuth] API 响应状态:', response.status, response.statusText);
+    console.log('[BitableAuth] API 响应状态:', response.status);
     
     const result = await response.json();
-    console.log('[BitableAuth] API 响应结果:', { 
+    console.log('[BitableAuth] API 响应:', { 
       success: result.success, 
       hasUserInfo: !!result.userInfo, 
       hasToken: !!result.token,
@@ -164,19 +182,16 @@ export async function loginWithClientAuth(): Promise<{
     });
 
     if (!result.success) {
-      console.error('[BitableAuth] 后端返回错误:', result.error);
       return { success: false, error: result.error };
     }
 
-    console.log('[BitableAuth] 客户端授权登录成功');
     return {
       success: true,
       userInfo: result.userInfo,
       token: result.token,
     };
   } catch (error) {
-    console.error('[BitableAuth] ========== 客户端授权登录流程失败 ==========');
-    console.error('[BitableAuth] 错误:', error);
+    console.error('[BitableAuth] 登录流程失败:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : '登录失败',
