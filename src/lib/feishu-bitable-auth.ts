@@ -47,6 +47,57 @@ export function isBitablePlugin(): boolean {
 }
 
 /**
+ * 通过 bitable.bridge 调用授权
+ * 侧边栏插件环境下 auth 可能在 bridge 中
+ */
+async function requestAuthCodeViaBridge(scope: string): Promise<string> {
+  const bitable = getBitable();
+  if (!bitable?.bridge) {
+    throw new Error('bitable.bridge 不可用');
+  }
+
+  console.log('[BitableAuth] 尝试通过 bitable.bridge 调用授权...');
+
+  // 尝试多种调用方式
+  const methods = [
+    // 方式1: 直接调用 bridge.callFunction
+    async () => {
+      console.log('[BitableAuth] 尝试方式1: bridge.callFunction("requestAuthCode")');
+      const result = await bitable.bridge.callFunction('requestAuthCode', { scope });
+      return result?.data?.code || result?.code || result;
+    },
+    // 方式2: 调用 bridge 上的 auth 方法
+    async () => {
+      console.log('[BitableAuth] 尝试方式2: bridge.auth.requestAuthCode');
+      if (bitable.bridge.auth?.requestAuthCode) {
+        return await bitable.bridge.auth.requestAuthCode({ scope });
+      }
+      throw new Error('bridge.auth.requestAuthCode 不存在');
+    },
+    // 方式3: 调用 bridge.call
+    async () => {
+      console.log('[BitableAuth] 尝试方式3: bridge.call("auth.requestAuthCode")');
+      const result = await bitable.bridge.call('auth.requestAuthCode', { scope });
+      return result?.code || result;
+    },
+  ];
+
+  for (let i = 0; i < methods.length; i++) {
+    try {
+      const code = await methods[i]();
+      if (code && typeof code === 'string') {
+        console.log(`[BitableAuth] 方式${i + 1}成功，获取授权码`);
+        return code;
+      }
+    } catch (err) {
+      console.log(`[BitableAuth] 方式${i + 1}失败:`, (err as Error).message);
+    }
+  }
+
+  throw new Error('所有 bridge 调用方式均失败');
+}
+
+/**
  * 请求授权码
  * 使用客户端授权方式 bitable.auth.requestAuthCode，无需重定向 URL
  */
@@ -70,6 +121,7 @@ export async function requestAuthCode(scope: string = 'contact:user.base:readonl
     console.log('[BitableAuth] bitable 对象属性:', Object.keys(bitable));
     console.log('[BitableAuth] bitable.base:', bitable.base ? '存在' : '不存在');
     console.log('[BitableAuth] bitable.auth:', bitable.auth ? '存在' : '不存在');
+    console.log('[BitableAuth] bitable.bridge:', bitable.bridge ? '存在' : '不存在');
 
     // 等待基础库加载完成
     if (bitable.base?.ready) {
@@ -82,9 +134,30 @@ export async function requestAuthCode(scope: string = 'contact:user.base:readonl
       }
     }
 
-    // 检查 auth 模块
-    if (!bitable.auth) {
-      console.error('[BitableAuth] bitable.auth 不存在');
+    let authCode: string;
+
+    // 尝试方式1: 直接调用 bitable.auth.requestAuthCode
+    if (bitable.auth?.requestAuthCode) {
+      console.log('[BitableAuth] 使用 bitable.auth.requestAuthCode');
+      authCode = await bitable.auth.requestAuthCode({ scope });
+    } 
+    // 尝试方式2: 通过 bridge 调用
+    else if (bitable.bridge) {
+      console.log('[BitableAuth] 尝试通过 bitable.bridge 调用授权');
+      authCode = await requestAuthCodeViaBridge(scope);
+    }
+    // 方式3: 尝试使用 window.lark 或 window.Feishu
+    else if (typeof window !== 'undefined' && ((window as any).lark || (window as any).Feishu)) {
+      console.log('[BitableAuth] 尝试使用 window.lark/window.Feishu');
+      const lark = (window as any).lark || (window as any).Feishu;
+      if (lark.auth?.requestAuthCode) {
+        authCode = await lark.auth.requestAuthCode({ scope });
+      } else {
+        throw new Error('window.lark.auth.requestAuthCode 不可用');
+      }
+    }
+    else {
+      console.error('[BitableAuth] bitable.auth 不存在且没有可用的 bridge');
       console.error('[BitableAuth] bitable 完整对象:', bitable);
       
       // 检查是否是权限问题
@@ -95,17 +168,6 @@ export async function requestAuthCode(scope: string = 'contact:user.base:readonl
       
       throw new Error('bitable.auth 不存在，请在飞书开发者后台申请"获取用户授权码"权限');
     }
-    
-    if (typeof bitable.auth.requestAuthCode !== 'function') {
-      console.error('[BitableAuth] bitable.auth.requestAuthCode 不是函数');
-      console.error('[BitableAuth] auth 模块方法:', Object.keys(bitable.auth));
-      throw new Error('bitable.auth.requestAuthCode 不可用');
-    }
-
-    console.log('[BitableAuth] 调用 bitable.auth.requestAuthCode，参数:', { scope });
-
-    // 调用授权方法
-    const authCode = await bitable.auth.requestAuthCode({ scope });
 
     console.log('[BitableAuth] requestAuthCode 返回:', {
       authCode: authCode ? `${authCode.slice(0, 10)}...` : null,
