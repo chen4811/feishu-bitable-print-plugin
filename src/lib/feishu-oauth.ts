@@ -124,7 +124,7 @@ export async function getOAuthUrl(state: string): Promise<string> {
 
   const params = new URLSearchParams({
     app_id: appId,
-    redirect_uri: redirectUri,
+    redirect_uri: encodeURIComponent(redirectUri),
     response_type: 'code',
     state: state,
   });
