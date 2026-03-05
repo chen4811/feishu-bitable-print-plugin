@@ -2236,6 +2236,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                           height: 'auto',
                           padding,
                           boxSizing: 'border-box',
+                          marginLeft: 'auto',
+                          marginRight: 'auto',
                         }}
                       >
                         <div className="text-center text-gray-400">
@@ -2265,6 +2267,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                         position: 'relative',
                         marginBottom: layoutMode === 'default' && !isLast ? '20px' : '0',
                         pageBreakAfter: layoutMode === 'default' && !isLast ? 'always' : 'auto',
+                        marginLeft: 'auto',
+                        marginRight: 'auto',
                       }}
                     >
                       {/* 页码标记 */}
@@ -2309,6 +2313,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                             height: 'auto',
                             padding,
                             boxSizing: 'border-box',
+                            marginLeft: 'auto',
+                            marginRight: 'auto',
                           }}
                         >
                           {selectedRecords.map((record, idx) => (
@@ -2347,6 +2353,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                             minHeight: `${actualHeight}mm`,
                             padding,
                             boxSizing: 'border-box',
+                            marginLeft: 'auto',
+                            marginRight: 'auto',
                           }}
                         >
                           <div style={{
@@ -2385,7 +2393,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
               })()
             ) : (
               <div className="flex justify-start">
-                <div className="h-96 flex items-center justify-center text-gray-400 bg-white rounded-lg shadow-sm print-area-page" style={{ width: '210mm' }}>
+                <div className="h-96 flex items-center justify-center text-gray-400 bg-white rounded-lg shadow-sm print-area-page" style={{ width: '210mm', marginLeft: 'auto', marginRight: 'auto' }}>
                   <div className="text-center">
                     <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
                     <p className="text-lg">请从左侧选择一个模板</p>
