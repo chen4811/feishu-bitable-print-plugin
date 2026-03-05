@@ -419,11 +419,9 @@ const renderTableComponent = (component: any, data: Record<string, any>): React.
   // 安全构建表格容器样式
   const tableContainerStyle = buildSafeStyle({
     position: 'relative',
-    width: component.layout?.width || '100%',
-    flex: `0 0 ${component.layout?.width || '100%'}`,
-    maxWidth: '100%',
+    width: component.layout?.width || 'auto',
+    flex: component.layout?.width ? `0 0 ${component.layout.width}` : '0 0 auto',
     boxSizing: 'border-box',
-    overflowX: 'auto',
   }, style);
 
   return (
@@ -2276,7 +2274,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                       {/* 流式布局容器 - 与编辑器一致 */}
                       <div style={{
                         display: 'flex',
-                        flexWrap: 'wrap',
+                        flexWrap: 'nowrap',
                         alignContent: 'flex-start',
                         gap: '12px',
                       }}>
@@ -2324,7 +2322,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                             >
                               <div style={{
                                 display: 'flex',
-                                flexWrap: 'wrap',
+                                flexWrap: 'nowrap',
                                 alignContent: 'flex-start',
                                 gap: '12px',
                               }}>
@@ -2366,7 +2364,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                               >
                                 <div style={{
                                   display: 'flex',
-                                  flexWrap: 'wrap',
+                                  flexWrap: 'nowrap',
                                   alignContent: 'flex-start',
                                   gap: '8px',
                                 }}>
