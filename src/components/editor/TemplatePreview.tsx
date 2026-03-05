@@ -1887,7 +1887,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
               
               {/* 模板列表 Tab */}
               <TabsContent value="templates" className="flex-1 overflow-hidden mt-2">
-                <ScrollArea className="h-full px-4 scrollbar-thin">
+                <div className="h-full px-4 overflow-y-auto scrollbar-thin">
                   <div className="space-y-3 pb-4">
                     {templates.map((template) => {
                       // 获取该模板的变量
@@ -1947,12 +1947,12 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                       </div>
                     )}
                   </div>
-                </ScrollArea>
+                </div>
               </TabsContent>
               
               {/* 数据匹配 Tab */}
               <TabsContent value="data" className="flex-1 overflow-hidden mt-2">
-                <ScrollArea className="h-full px-4 scrollbar-thin">
+                <div className="h-full px-4 overflow-y-auto scrollbar-thin">
                   <div className="space-y-3 pb-4">
                     {/* 表格匹配状态显示 */}
                     {selectedTemplate && (
@@ -2073,7 +2073,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                       </div>
                     )}
                   </div>
-                </ScrollArea>
+                </div>
               </TabsContent>
             </Tabs>
           </CardContent>
