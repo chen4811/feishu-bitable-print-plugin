@@ -1853,7 +1853,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   }, [sidebarExpanded]);
 
   return (
-    <div className="print-wrapper h-full flex gap-3 p-3 overflow-hidden">
+    <div className="print-wrapper h-screen flex gap-3 p-3 overflow-hidden">
       {/* 左侧：模板列表与数据匹配选择夹 - 条件渲染 */}
       {sidebarExpanded && (
         <Card ref={sidebarRef} className="sidebar-left no-print w-64 flex-shrink-0 flex flex-col animate-in slide-in-from-left-2 duration-200">
@@ -2186,8 +2186,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           </CardContent>
         </Card>
 
-        {/* A4 预览区域 */}
-        <div className="flex-1 bg-gray-100 rounded-lg relative flex flex-col">
+        {/* A4 预览区域 - 确保可以滚动 */}
+        <div className="flex-1 bg-gray-100 rounded-lg relative flex flex-col overflow-hidden" style={{ minHeight: '0' }}>
           {/* 页面尺寸信息 - 固定在顶部 */}
           {selectedTemplate && (
             <div className="no-print bg-white border-b p-2 flex items-center justify-between print:hidden flex-shrink-0">
@@ -2217,12 +2217,13 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           <div 
             className="flex-1 overflow-x-auto overflow-y-auto scrollbar-thin"
             style={{
-              backgroundColor: '#f5f5f5',  // 【关键】灰色编辑区背景
+              backgroundColor: '#f5f5f5',
               display: 'flex',
-              justifyContent: 'flex-start',  // 纸张从左侧开始对齐
+              justifyContent: 'flex-start',
               alignItems: 'flex-start',
-              padding: '20px',  // 给纸张周围留灰边
+              padding: '20px',
               boxSizing: 'border-box',
+              minHeight: '0',  // 【关键】确保 flex 子元素可以正确收缩
             }}
           >
             <div 
