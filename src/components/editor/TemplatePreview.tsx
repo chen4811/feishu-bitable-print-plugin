@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import { useTemplateStore, type Template } from '@/store/templateStore';
 import { useSelectedDataStore } from '@/store/selectedDataStore';
@@ -807,9 +807,10 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   
   // 忽略列表：存储用户手动删除的记录 ID，避免被飞书事件恢复
   const [ignoredRecordIds, setIgnoredRecordIds] = useState<Set<string>>(new Set());
-  
 
-  
+  // 左侧区域展开状态
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
+
   // 页面设置状态
   const [isPageSettingsOpen, setIsPageSettingsOpen] = useState(false);
   const [localPageConfig, setLocalPageConfig] = useState<PageConfig>({
@@ -1834,217 +1835,236 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   return (
     <div className="print-wrapper h-full flex gap-3 p-3 overflow-hidden">
       {/* 左侧：模板列表与数据匹配选择夹 */}
-      <Card className="sidebar-left no-print w-64 flex-shrink-0 flex flex-col">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            打印预览
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex-1 p-0 overflow-hidden">
-          <Tabs defaultValue="templates" className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-2 mx-4 mt-2 w-auto">
-              <TabsTrigger value="templates" className="text-xs">
-                模板 ({templates.length})
-              </TabsTrigger>
-              <TabsTrigger value="data" className="text-xs">
-                数据 ({selectedRecords.length})
-              </TabsTrigger>
-            </TabsList>
-            
-            {/* 模板列表 Tab */}
-            <TabsContent value="templates" className="flex-1 overflow-hidden mt-2">
-              <ScrollArea className="h-full px-4">
-                <div className="space-y-3 pb-4">
-                  {templates.map((template) => {
-                    // 获取该模板的变量
-                    const vars = template.data?.components 
-                      ? extractVariables(template.data.components) 
-                      : [];
-                    return (
-                      <button
-                        key={template.id}
-                        onClick={() => handleSelectTemplate(template)}
-                        className={`w-full text-left p-3 rounded-lg border transition-all ${
-                          selectedTemplate?.id === template.id
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        <div className="font-medium text-sm">{template.name}</div>
-                        {template.description && (
-                          <div className="text-xs text-gray-500 mt-1 line-clamp-2">
-                            {template.description}
-                          </div>
-                        )}
-                        {/* 模板变量显示 */}
-                        {vars.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {vars.slice(0, 3).map((v) => (
-                              <span key={v} className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
-                                {v}
-                              </span>
-                            ))}
-                            {vars.length > 3 && (
-                              <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
-                                +{vars.length - 3}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2 mt-2">
-                          <Badge variant="outline" className="text-xs">
-                            {template.data?.components?.length || 0} 组件
-                          </Badge>
-                          {template.isPublic && (
-                            <Badge variant="secondary" className="text-xs">
-                              公开
-                            </Badge>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-
-                  {templates.length === 0 && (
-                    <div className="text-center py-8 text-gray-400">
-                      <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">暂无模板</p>
-                      <p className="text-xs mt-1">请在编辑器中创建模板</p>
-                    </div>
+      <Collapsible
+        open={sidebarExpanded}
+        onOpenChange={setSidebarExpanded}
+        className="sidebar-left no-print flex-shrink-0 flex flex-col transition-all duration-300"
+      >
+        <Card className="flex-1 flex flex-col overflow-hidden w-64">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                打印预览
+              </CardTitle>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  {sidebarExpanded ? (
+                    <ChevronLeft className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
                   )}
-                </div>
-              </ScrollArea>
-            </TabsContent>
-            
-            {/* 数据匹配 Tab */}
-            <TabsContent value="data" className="flex-1 overflow-hidden mt-2">
-              <ScrollArea className="h-full px-4">
-                <div className="space-y-3 pb-4">
-                  {/* 表格匹配状态显示 */}
-                  {selectedTemplate && (
-                    <div className="p-3 rounded-lg bg-gray-50 border mb-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-500">表格匹配</span>
-                        <Badge 
-                          variant={isTableMatched ? "default" : "destructive"}
-                          className={`text-[10px] ${isTableMatched ? 'bg-green-100 text-green-700 hover:bg-green-100' : ''}`}
-                        >
-                          {isTableMatched ? '匹配' : '不匹配'}
-                        </Badge>
-                      </div>
-                      <div className="mt-1 text-xs text-gray-600 truncate" title={currentTableInfo.tableId || ''}>
-                        表格ID: {currentTableInfo.tableId || '未知'}
-                      </div>
-                      {selectedTemplate.data?.tableId ? (
-                        <div className="mt-1 text-[10px] text-gray-400 truncate" title={selectedTemplate.data.tableId as string}>
-                          模板绑定: {(selectedTemplate.data.tableName as string) || (selectedTemplate.data.tableId as string)}
-                        </div>
-                      ) : (
-                        <div className="mt-1 text-[10px] text-amber-600">
-                          模板未绑定表格（旧模板）
-                        </div>
-                      )}
-                      {!isTableMatched && (
-                        <div className="mt-2 text-[10px] text-red-600 font-medium">
-                          当前表格与模板不匹配，无法添加数据
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  {/* 空状态提示 */}
-                  {selectedTemplate && availableRecords.length === 0 && (
-                    <div className="text-center py-8 text-gray-400">
-                      <p className="text-sm mb-2">暂无数据</p>
-                      <p className="text-xs">
-                        请在多维表格中点击行以载入数据
-                      </p>
-                    </div>
-                  )}
-                  
-                  {selectedTemplate ? (
-                    availableRecords.length > 0 ? (
-                      availableRecords.map((record, idx) => {
-                        const isSelected = selectedRecords.some(r => r.id === record.id);
+                </Button>
+              </CollapsibleTrigger>
+            </div>
+          </CardHeader>
+          <CollapsibleContent className="flex-1 flex flex-col min-h-0">
+            <CardContent className="flex-1 p-0 overflow-hidden">
+              <Tabs defaultValue="templates" className="h-full flex flex-col">
+                <TabsList className="grid w-full grid-cols-2 mx-4 mt-2 w-auto">
+                  <TabsTrigger value="templates" className="text-xs">
+                    模板 ({templates.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="data" className="text-xs">
+                    数据 ({selectedRecords.length})
+                  </TabsTrigger>
+                </TabsList>
+                
+                {/* 模板列表 Tab */}
+                <TabsContent value="templates" className="flex-1 overflow-hidden mt-2">
+                  <ScrollArea className="h-full px-4">
+                    <div className="space-y-3 pb-4">
+                      {templates.map((template) => {
+                        // 获取该模板的变量
+                        const vars = template.data?.components 
+                          ? extractVariables(template.data.components) 
+                          : [];
                         return (
-                          <div
-                            key={record.id || idx}
-                            className={`relative w-full text-left p-3 rounded-lg border text-xs transition-all box-border ${
-                              isSelected 
-                                ? 'bg-blue-50 border-blue-400 ring-1 ring-blue-400 shadow-sm' 
-                                : 'bg-white border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                          <button
+                            key={template.id}
+                            onClick={() => handleSelectTemplate(template)}
+                            className={`w-full text-left p-3 rounded-lg border transition-all ${
+                              selectedTemplate?.id === template.id
+                                ? 'border-blue-500 bg-blue-50'
+                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                             }`}
                           >
-                            {/* 删除按钮 - 始终显示 */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                console.log('[TP] 点击删除:', record.id);
-                                removeRecordFromSelection(record.id);
-                              }}
-                              className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10"
-                            >
-                              ×
-                            </button>
-                            
-                            {/* 卡片内容 - 可点击选中/取消选中 */}
-                            <button
-                              onClick={() => {
-                                console.log('[TP] 点击卡片:', record.id, isSelected ? '取消选中' : '选中');
-                                if (isSelected) {
-                                  removeRecordFromSelection(record.id);
-                                } else {
-                                  addRecordToSelection(record);
-                                }
-                              }}
-                              className="w-full text-left"
-                            >
-                              <div className="flex items-center justify-between gap-2">
-                                <span className={`font-medium truncate flex-1 min-w-0 ${isSelected ? 'text-blue-700' : 'text-gray-700'}`}>
-                                  {record['流程名称'] || record.编号 || record.id || `记录 ${idx + 1}`}
-                                </span>
-                                {isSelected && (
-                                  <span className="text-[10px] px-1.5 py-0.5 bg-blue-500 text-white rounded flex-shrink-0">
-                                    已选
+                            <div className="font-medium text-sm">{template.name}</div>
+                            {template.description && (
+                              <div className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                {template.description}
+                              </div>
+                            )}
+                            {/* 模板变量显示 */}
+                            {vars.length > 0 && (
+                              <div className="mt-2 flex flex-wrap gap-1">
+                                {vars.slice(0, 3).map((v) => (
+                                  <span key={v} className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
+                                    {v}
+                                  </span>
+                                ))}
+                                {vars.length > 3 && (
+                                  <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                                    +{vars.length - 3}
                                   </span>
                                 )}
                               </div>
-                              
-                              {/* 显示更多预览字段 */}
-                              <div className="mt-2 space-y-1">
-                                {Object.entries(record)
-                                  .filter(([key]) => key !== 'id' && key !== '_rowIndex' && !key.startsWith('_'))
-                                  .slice(0, 4)
-                                  .map(([key, value]) => {
-                                    const displayValue = formatFieldValue(key, value);
-                                    const rawType = typeof value;
-                                    return (
-                                      <div key={key} className="flex gap-1 text-[11px]">
-                                        <span className="text-gray-400 shrink-0">{key}:</span>
-                                        <span className={`truncate flex-1 ${isSelected ? 'text-blue-600' : 'text-gray-600'}`}>
-                                          {displayValue || `[${rawType}]`}
-                                        </span>
-                                      </div>
-                                    );
-                                  })}
-                              </div>
-                            </button>
-                          </div>
+                            )}
+                            <div className="flex items-center gap-2 mt-2">
+                              <Badge variant="outline" className="text-xs">
+                                {template.data?.components?.length || 0} 组件
+                              </Badge>
+                              {template.isPublic && (
+                                <Badge variant="secondary" className="text-xs">
+                                  公开
+                                </Badge>
+                              )}
+                            </div>
+                          </button>
                         );
-                      })
-                    ) : null
-                  ) : (
-                    <div className="text-center py-8 text-gray-400">
-                      <p className="text-sm">选择模板后可添加数据</p>
+                      })}
+
+                      {templates.length === 0 && (
+                        <div className="text-center py-8 text-gray-400">
+                          <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                          <p className="text-sm">暂无模板</p>
+                          <p className="text-xs mt-1">请在编辑器中创建模板</p>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </ScrollArea>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+                  </ScrollArea>
+                </TabsContent>
+                
+                {/* 数据匹配 Tab */}
+                <TabsContent value="data" className="flex-1 overflow-hidden mt-2">
+                  <ScrollArea className="h-full px-4">
+                    <div className="space-y-3 pb-4">
+                      {/* 表格匹配状态显示 */}
+                      {selectedTemplate && (
+                        <div className="p-3 rounded-lg bg-gray-50 border mb-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-500">表格匹配</span>
+                            <Badge 
+                              variant={isTableMatched ? "default" : "destructive"}
+                              className={`text-[10px] ${isTableMatched ? 'bg-green-100 text-green-700 hover:bg-green-100' : ''}`}
+                            >
+                              {isTableMatched ? '匹配' : '不匹配'}
+                            </Badge>
+                          </div>
+                          <div className="mt-1 text-xs text-gray-600 truncate" title={currentTableInfo.tableId || ''}>
+                            表格ID: {currentTableInfo.tableId || '未知'}
+                          </div>
+                          {selectedTemplate.data?.tableId ? (
+                            <div className="mt-1 text-[10px] text-gray-400 truncate" title={selectedTemplate.data.tableId as string}>
+                              模板绑定: {(selectedTemplate.data.tableName as string) || (selectedTemplate.data.tableId as string)}
+                            </div>
+                          ) : (
+                            <div className="mt-1 text-[10px] text-amber-600">
+                              模板未绑定表格（旧模板）
+                            </div>
+                          )}
+                          {!isTableMatched && (
+                            <div className="mt-2 text-[10px] text-red-600 font-medium">
+                              当前表格与模板不匹配，无法添加数据
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* 空状态提示 */}
+                      {selectedTemplate && availableRecords.length === 0 && (
+                        <div className="text-center py-8 text-gray-400">
+                          <p className="text-sm mb-2">暂无数据</p>
+                          <p className="text-xs">
+                            请在多维表格中点击行以载入数据
+                          </p>
+                        </div>
+                      )}
+                      
+                      {selectedTemplate ? (
+                        availableRecords.length > 0 ? (
+                          availableRecords.map((record, idx) => {
+                            const isSelected = selectedRecords.some(r => r.id === record.id);
+                            return (
+                              <div
+                                key={record.id || idx}
+                                className={`relative w-full text-left p-3 rounded-lg border text-xs transition-all box-border ${
+                                  isSelected 
+                                    ? 'bg-blue-50 border-blue-400 ring-1 ring-blue-400 shadow-sm' 
+                                    : 'bg-white border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                                }`}
+                              >
+                                {/* 删除按钮 - 始终显示 */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    console.log('[TP] 点击删除:', record.id);
+                                    removeRecordFromSelection(record.id);
+                                  }}
+                                  className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10"
+                                >
+                                  ×
+                                </button>
+                                
+                                {/* 卡片内容 - 可点击选中/取消选中 */}
+                                <button
+                                  onClick={() => {
+                                    console.log('[TP] 点击卡片:', record.id, isSelected ? '取消选中' : '选中');
+                                    if (isSelected) {
+                                      removeRecordFromSelection(record.id);
+                                    } else {
+                                      addRecordToSelection(record);
+                                    }
+                                  }}
+                                  className="w-full text-left"
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className={`font-medium truncate flex-1 min-w-0 ${isSelected ? 'text-blue-700' : 'text-gray-700'}`}>
+                                      {record['流程名称'] || record.编号 || record.id || `记录 ${idx + 1}`}
+                                    </span>
+                                    {isSelected && (
+                                      <span className="text-[10px] px-1.5 py-0.5 bg-blue-500 text-white rounded flex-shrink-0">
+                                        已选
+                                      </span>
+                                    )}
+                                  </div>
+                                  
+                                  {/* 显示更多预览字段 */}
+                                  <div className="mt-2 space-y-1">
+                                    {Object.entries(record)
+                                      .filter(([key]) => key !== 'id' && key !== '_rowIndex' && !key.startsWith('_'))
+                                      .slice(0, 4)
+                                      .map(([key, value]) => {
+                                        const displayValue = formatFieldValue(key, value);
+                                        const rawType = typeof value;
+                                        return (
+                                          <div key={key} className="flex gap-1 text-[11px]">
+                                            <span className="text-gray-400 shrink-0">{key}:</span>
+                                            <span className={`truncate flex-1 ${isSelected ? 'text-blue-600' : 'text-gray-600'}`}>
+                                              {displayValue || `[${rawType}]`}
+                                            </span>
+                                          </div>
+                                        );
+                                      })}
+                                  </div>
+                                </button>
+                              </div>
+                            );
+                          })
+                        ) : null
+                      ) : (
+                        <div className="text-center py-8 text-gray-400">
+                          <p className="text-sm">选择模板后可添加数据</p>
+                        </div>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* 中间：打印预览 - 确保最小宽度 */}
       <div className="print-content-area flex-1 min-w-[500px] flex flex-col overflow-hidden">
