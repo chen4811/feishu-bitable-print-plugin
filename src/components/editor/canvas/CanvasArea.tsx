@@ -288,9 +288,11 @@ export function CanvasArea() {
       {/* 画布容器 */}
       <div 
         ref={canvasContainerRef}
-        className="flex items-start justify-start"
+        className="flex items-start justify-start min-w-0"
         style={{ 
-          maxWidth: '100%',
+          maxWidth: 'none',
+          width: 'fit-content',
+          overflowX: 'auto',
         }}
       >
         <DndContext
@@ -302,14 +304,15 @@ export function CanvasArea() {
         >
           <div
             id="canvas"
-            className="bg-white shadow-lg relative transition-transform origin-top"
+            className="bg-white shadow-lg relative transition-transform origin-top-left"
             style={{
               width: `${canvasWidth}px`,
               minHeight: `${canvasHeight}px`,
               padding: `${pageConfig.margins.top * mmToPx}px ${pageConfig.margins.right * mmToPx}px ${pageConfig.margins.bottom * mmToPx}px ${pageConfig.margins.left * mmToPx}px`,
               fontFamily: styleConfig.fontFamily,
               transform: `scale(${scale})`,
-              transformOrigin: 'top center',
+              transformOrigin: 'top left',
+              willChange: 'transform',
             }}
             onClick={handleCanvasClick}
           >

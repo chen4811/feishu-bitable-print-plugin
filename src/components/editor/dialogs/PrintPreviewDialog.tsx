@@ -654,7 +654,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
                         minHeight: `${canvasHeight}px`,
                         padding: `${pageConfig.margins.top * mmToPx}px ${pageConfig.margins.right * mmToPx}px ${pageConfig.margins.bottom * mmToPx}px ${pageConfig.margins.left * mmToPx}px`,
                         transform: `scale(${scale})`,
-                        transformOrigin: 'top center',
+                        transformOrigin: 'top left',
                         marginBottom: `${20 * scale}px`,
                       }}
                     >
@@ -699,7 +699,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
                         minHeight: `${canvasHeight}px`,
                         padding: `${pageConfig.margins.top * mmToPx}px ${pageConfig.margins.right * mmToPx}px ${pageConfig.margins.bottom * mmToPx}px ${pageConfig.margins.left * mmToPx}px`,
                         transform: `scale(${scale})`,
-                        transformOrigin: 'top center',
+                        transformOrigin: 'top left',
                       }}
                     >
                       {renderPageContent(previewRecords[currentPage])}
