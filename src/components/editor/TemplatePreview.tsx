@@ -2187,11 +2187,11 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           </CardContent>
         </Card>
 
-        {/* A4 预览区域 - 支持横向滚动 */}
-        <div className="flex-1 bg-gray-100 rounded-lg overflow-x-auto overflow-y-auto relative">
-          {/* 页面尺寸信息显示 */}
+        {/* A4 预览区域 */}
+        <div className="flex-1 bg-gray-100 rounded-lg relative flex flex-col">
+          {/* 页面尺寸信息 - 固定在顶部 */}
           {selectedTemplate && (
-            <div className="no-print bg-white border-b p-2 flex items-center justify-between print:hidden">
+            <div className="no-print bg-white border-b p-2 flex items-center justify-between print:hidden flex-shrink-0">
               <div className="flex items-center gap-4 text-sm">
                 <span className="font-medium">画布尺寸:</span>
                 <Badge variant="outline">
@@ -2214,8 +2214,10 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
             </div>
           )}
           
-          <div className="min-w-max p-4 flex flex-col items-center">
-            {selectedTemplate ? (
+          {/* 滚动容器 - 包含画布 */}
+          <div className="flex-1 overflow-auto">
+            <div className="min-w-max min-h-full p-4 inline-block">
+              {selectedTemplate ? (
               (() => {
                 // 使用本地页面配置
                 const pageConfig = localPageConfig;
@@ -2227,7 +2229,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                 // 如果没有选中数据，显示空状态
                 if (selectedRecords.length === 0) {
                   return (
-                    <div className="flex justify-start">
+                    <div className="flex justify-center">
                       <div
                         className="bg-white shadow-lg print:shadow-none print-area-page flex items-center justify-center"
                         style={{
@@ -2236,8 +2238,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                           height: 'auto',
                           padding,
                           boxSizing: 'border-box',
-                          marginLeft: 'auto',
-                          marginRight: 'auto',
                         }}
                       >
                         <div className="text-center text-gray-400">
@@ -2295,7 +2295,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                   case 'default':
                     // 默认：每条数据一页
                     return (
-                      <div className="flex flex-col items-start gap-5">
+                      <div className="flex flex-col items-center gap-5">
                         {selectedRecords.map((record, idx) => 
                           renderDataPage(record, idx, idx === selectedRecords.length - 1)
                         )}
@@ -2305,7 +2305,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                   case 'continuous':
                     // 连续：不间断排版，可能需要分页
                     return (
-                      <div className="flex flex-col items-start">
+                      <div className="flex flex-col items-center">
                         <div
                           className="bg-white shadow-lg print:shadow-none print-area-page"
                           style={{
@@ -2313,8 +2313,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                             height: 'auto',
                             padding,
                             boxSizing: 'border-box',
-                            marginLeft: 'auto',
-                            marginRight: 'auto',
                           }}
                         >
                           {selectedRecords.map((record, idx) => (
@@ -2345,7 +2343,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                   case 'label':
                     // 标签：所有数据在一页，紧凑排列
                     return (
-                      <div className="flex justify-start">
+                      <div className="flex justify-center">
                         <div
                           className="bg-white shadow-lg print:shadow-none print-area-page"
                           style={{
@@ -2353,8 +2351,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                             minHeight: `${actualHeight}mm`,
                             padding,
                             boxSizing: 'border-box',
-                            marginLeft: 'auto',
-                            marginRight: 'auto',
                           }}
                         >
                           <div style={{
@@ -2404,7 +2400,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           </div>
         </div>
       </div>
-
+      </div>
+      
       {/* 打印样式 - 只打印画布内容 */}
       <style jsx global>{`
         @media print {
