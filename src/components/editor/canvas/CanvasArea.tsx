@@ -37,13 +37,22 @@ function getComponentWidthClass(width: string) {
   }
 }
 
-// 获取组件宽度样式
-function getComponentWidthStyle(width: string) {
+// 获取组件宽度样式 - 修复：确保宽度计算考虑 gap
+function getComponentWidthStyle(width: string, containerWidth: number) {
+  const gap = 12; // gap-3 = 12px
   switch (width) {
-    case '50%': return { flex: '0 0 50%', maxWidth: '50%' };
-    case '33%': return { flex: '0 0 33.333%', maxWidth: '33.333%' };
-    case '25%': return { flex: '0 0 25%', maxWidth: '25%' };
-    default: return { flex: '0 0 100%', maxWidth: '100%' };
+    case '50%': 
+      // 两个组件并排：每个占 (容器宽度 - gap) / 2
+      return { width: `${(containerWidth - gap) / 2}px`, flexShrink: 0 };
+    case '33%': 
+      // 三个组件并排：每个占 (容器宽度 - 2*gap) / 3
+      return { width: `${(containerWidth - 2 * gap) / 3}px`, flexShrink: 0 };
+    case '25%': 
+      // 四个组件并排：每个占 (容器宽度 - 3*gap) / 4
+      return { width: `${(containerWidth - 3 * gap) / 4}px`, flexShrink: 0 };
+    default: 
+      // 100% 宽度
+      return { width: `${containerWidth}px`, flexShrink: 0 };
   }
 }
 
@@ -334,10 +343,9 @@ export function CanvasArea() {
                         )}
 
                         <div
-                          className={getComponentWidthClass(layoutWidth)}
                           style={{
-                            ...getComponentWidthStyle(layoutWidth),
-                            flexShrink: 0,
+                            ...getComponentWidthStyle(layoutWidth, contentWidth),
+                            boxSizing: 'border-box',
                           }}
                         >
                           <div data-component-id={component.id}>

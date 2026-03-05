@@ -1178,7 +1178,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       >
         {/* 注入变量芯片样式 */}
         <style dangerouslySetInnerHTML={{ __html: VARIABLE_CHIP_STYLES }} />
-        <table className="w-full border-collapse">
+        <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
           <tbody>
             {/* 列标行 */}
             {isCurrentTableEditing && (
