@@ -37,22 +37,34 @@ function getComponentWidthClass(width: string) {
   }
 }
 
-// 获取组件宽度样式 - 修复：确保宽度计算考虑 gap
+// 获取组件宽度样式 - 修复：使用 calc 更精确，确保 box-sizing 正确
 function getComponentWidthStyle(width: string, containerWidth: number) {
   const gap = 12; // gap-3 = 12px
   switch (width) {
     case '50%': 
-      // 两个组件并排：每个占 (容器宽度 - gap) / 2
-      return { width: `${(containerWidth - gap) / 2}px`, flexShrink: 0 };
+      return { 
+        width: `calc((100% - ${gap}px) / 2)`,
+        flexShrink: 0,
+        boxSizing: 'border-box' as const,
+      };
     case '33%': 
-      // 三个组件并排：每个占 (容器宽度 - 2*gap) / 3
-      return { width: `${(containerWidth - 2 * gap) / 3}px`, flexShrink: 0 };
+      return { 
+        width: `calc((100% - ${2 * gap}px) / 3)`,
+        flexShrink: 0,
+        boxSizing: 'border-box' as const,
+      };
     case '25%': 
-      // 四个组件并排：每个占 (容器宽度 - 3*gap) / 4
-      return { width: `${(containerWidth - 3 * gap) / 4}px`, flexShrink: 0 };
+      return { 
+        width: `calc((100% - ${3 * gap}px) / 4)`,
+        flexShrink: 0,
+        boxSizing: 'border-box' as const,
+      };
     default: 
-      // 100% 宽度
-      return { width: `${containerWidth}px`, flexShrink: 0 };
+      return { 
+        width: '100%',
+        flexShrink: 0,
+        boxSizing: 'border-box' as const,
+      };
   }
 }
 
@@ -315,14 +327,13 @@ export function CanvasArea() {
             }}
             onClick={handleCanvasClick}
           >
-            {/* 使用 flex-wrap 实现并排 - 修复：确保内容不被挤压且受页边距限制 */}
+            {/* 使用 flex-wrap 实现并排 - 修复：移除 maxWidth 限制，允许内容溢出 */}
             <div
               id="canvas-grid"
               className="flex flex-wrap content-start gap-3"
               style={{ 
-                width: `${contentWidth}px`,  // 【关键】限制宽度为内容区域宽度
+                width: `${contentWidth}px`,
                 minHeight: `${contentHeight}px`,
-                maxWidth: `${contentWidth}px`,  // 【关键】最大宽度不超过内容区域
               }}
             >
               <SortableContext
