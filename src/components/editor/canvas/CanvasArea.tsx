@@ -303,11 +303,14 @@ export function CanvasArea() {
             }}
             onClick={handleCanvasClick}
           >
-            {/* 使用 flex-wrap 实现并排 */}
+            {/* 使用 flex-wrap 实现并排 - 修复：确保内容不被挤压 */}
             <div
               id="canvas-grid"
               className="flex flex-wrap content-start gap-3"
-              style={{ minHeight: `${contentHeight}px` }}
+              style={{ 
+                minHeight: `${contentHeight}px`,
+                minWidth: 'max-content',  // 【关键】确保容器宽度由内容决定，防止内容被挤压
+              }}
             >
               <SortableContext
                 items={components.map((c) => c.id)}
