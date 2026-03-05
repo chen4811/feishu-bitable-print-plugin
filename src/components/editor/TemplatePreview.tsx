@@ -2078,8 +2078,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         </Card>
       )}
 
-      {/* 中间：打印预览 - 确保最小宽度 */}
-      <div className="print-content-area flex-1 min-w-[500px] flex flex-col overflow-hidden">
+      {/* 中间：打印预览 - 支持横向滚动 */}
+      <div className="print-content-area flex-1 min-w-0 flex flex-col overflow-auto">
         {/* 工具栏 */}
         <Card className="no-print mb-4">
           <CardContent className="p-4">
@@ -2212,7 +2212,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
             </div>
           )}
           
-          <div className="min-w-max p-4">
+          <div className="p-4 inline-block min-w-full">
             {selectedTemplate ? (
               (() => {
                 // 使用本地页面配置
@@ -2225,9 +2225,9 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                 // 如果没有选中数据，显示空状态
                 if (selectedRecords.length === 0) {
                   return (
-                    <div className="flex justify-center">
+                    <div className="flex justify-start">
                       <div
-                        className="bg-white shadow-lg print:shadow-none print-area-page flex items-center justify-center"
+                        className="bg-white shadow-lg print:shadow-none print-area-page flex items-center justify-center mx-auto"
                         style={{
                           width: `${actualWidth}mm`,
                           minHeight: `${actualHeight}mm`,
@@ -2337,9 +2337,9 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                   case 'label':
                     // 标签：所有数据在一页，紧凑排列
                     return (
-                      <div className="flex justify-center">
+                      <div className="flex justify-start">
                         <div
-                          className="bg-white shadow-lg print:shadow-none print-area-page"
+                          className="bg-white shadow-lg print:shadow-none print-area-page mx-auto"
                           style={{
                             width: `${actualWidth}mm`,
                             minHeight: `${actualHeight}mm`,
@@ -2382,8 +2382,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                 }
               })()
             ) : (
-              <div className="flex justify-center">
-                <div className="h-96 flex items-center justify-center text-gray-400 bg-white rounded-lg shadow-sm print-area-page" style={{ width: '210mm' }}>
+              <div className="flex justify-start">
+                <div className="h-96 flex items-center justify-center text-gray-400 bg-white rounded-lg shadow-sm print-area-page mx-auto" style={{ width: '210mm' }}>
                   <div className="text-center">
                     <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
                     <p className="text-lg">请从左侧选择一个模板</p>
