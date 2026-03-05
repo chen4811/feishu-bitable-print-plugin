@@ -247,7 +247,7 @@ export function CanvasArea() {
   };
 
   return (
-    <div className="flex flex-col items-start">  {/* 改为 items-start，避免内容被居中裁剪 */}
+    <div className="flex flex-col items-start" style={{ minWidth: 'min-content' }}>  {/* 改为 items-start，避免内容被居中裁剪 */}
       {/* 缩放控制栏 - 背景透明，宽度自适应，居中显示 */}
       <div className="w-full flex justify-center mb-4">
         <div className="flex items-center gap-2 bg-transparent rounded-lg p-2">
@@ -285,14 +285,13 @@ export function CanvasArea() {
         </div>
       </div>
 
-      {/* 画布容器 */}
+      {/* 画布容器 - 确保宽度能容纳原始尺寸的画布 */}
       <div 
         ref={canvasContainerRef}
-        className="flex items-start justify-start min-w-0"
+        className="flex items-start justify-start"
         style={{ 
-          maxWidth: 'none',
-          width: 'fit-content',
-          overflowX: 'auto',
+          minWidth: `${canvasWidth}px`,  // 【关键】确保最小宽度等于画布原始宽度
+          overflow: 'auto',  // 允许滚动
         }}
       >
         <DndContext
