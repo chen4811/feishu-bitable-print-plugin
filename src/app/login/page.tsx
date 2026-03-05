@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useUserStore } from '@/store/userStore';
-import { isBitablePlugin, loginWithClientAuth } from '@/lib/feishu-bitable-auth';
+import { isBitablePlugin, loginWithPluginAuth } from '@/lib/feishu-bitable-auth';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -86,13 +86,13 @@ export default function LoginPage() {
    * 处理客户端授权（插件环境）
    */
   const handleClientAuth = async () => {
-    console.log('[Login] ========== 开始客户端授权处理 ==========');
+    console.log('[Login] ========== 开始插件环境登录 ==========');
     try {
-      // 使用客户端授权获取用户信息和 JWT token
-      console.log('[Login] 调用 loginWithClientAuth...');
-      const authResult = await loginWithClientAuth();
+      // 使用插件环境直接登录
+      console.log('[Login] 调用 loginWithPluginAuth...');
+      const authResult = await loginWithPluginAuth();
       
-      console.log('[Login] 授权结果:', {
+      console.log('[Login] 登录结果:', {
         success: authResult.success,
         hasUserInfo: !!authResult.userInfo,
         hasToken: !!authResult.token,
@@ -100,14 +100,14 @@ export default function LoginPage() {
       });
 
       if (!authResult.success || !authResult.userInfo || !authResult.token) {
-        console.error('[Login] 授权失败:', authResult.error);
-        setError(authResult.error || '授权失败');
+        console.error('[Login] 登录失败:', authResult.error);
+        setError(authResult.error || '登录失败');
         setIsLoading(false);
         return;
       }
 
       const { userInfo, token } = authResult;
-      console.log('[Login] 客户端授权成功，用户信息:', {
+      console.log('[Login] 插件登录成功，用户信息:', {
         id: userInfo.id,
         name: userInfo.name,
         hasAvatar: !!userInfo.avatar,
@@ -128,7 +128,7 @@ export default function LoginPage() {
       console.log('[Login] 跳转到主页...');
       router.push('/');
     } catch (err) {
-      console.error('[Login] ========== 客户端授权异常 ==========');
+      console.error('[Login] ========== 插件登录异常 ==========');
       console.error('[Login] 错误类型:', err?.constructor?.name);
       console.error('[Login] 错误对象:', err);
       setError(err instanceof Error ? err.message : '登录失败');
@@ -169,7 +169,7 @@ export default function LoginPage() {
           {isPlugin && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
               <p className="font-medium">🚀 插件模式</p>
-              <p className="mt-1">检测到多维表格插件环境，将使用免跳转授权</p>
+              <p className="mt-1">检测到多维表格插件环境，无需 OAuth 授权</p>
             </div>
           )}
           <Button 

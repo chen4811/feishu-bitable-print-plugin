@@ -1,8 +1,8 @@
 /**
- * 飞书多维表格侧边栏插件 - 客户端授权
+ * 飞书多维表格侧边栏插件 - 客户端登录
  * 
- * 使用 bitable.auth.requestAuthCode 获取授权码
- * 无需配置重定向 URL，适合插件场景
+ * 插件环境可以直接获取用户信息，无需 OAuth 授权码
+ * 使用 bitable.base.getUserInfo() 获取当前登录用户
  */
 
 import { bitable as importedBitable } from '@lark-base-open/js-sdk';
@@ -34,173 +34,111 @@ export function isBitablePlugin(): boolean {
   const isIframe = hasWindow && window.self !== window.top;
   const isLarkFeishu = hasWindow && /lark|feishu/i.test(navigator.userAgent);
   
-  console.log('[BitableAuth] 环境检测:', {
-    hasWindow,
-    isIframe,
-    isLarkFeishu,
-    hasWindowBitable: hasWindow && !!(window as any).bitable,
-    userAgent: hasWindow ? navigator.userAgent.slice(0, 50) : 'N/A',
-    result: hasWindow && (isIframe || isLarkFeishu),
-  });
-  
-  return hasWindow && (isIframe || isLarkFeishu);
+  return hasWindow && (isIframe || isLarkFeishu || !!(window as any).bitable);
 }
 
 /**
- * 通过 bitable.bridge 调用授权
- * 侧边栏插件环境下 auth 可能在 bridge 中
+ * 获取插件环境用户信息
+ * 直接使用 bitable.base.getUserInfo()，无需授权码
  */
-async function requestAuthCodeViaBridge(scope: string): Promise<string> {
-  const bitable = getBitable();
-  if (!bitable?.bridge) {
-    throw new Error('bitable.bridge 不可用');
-  }
-
-  console.log('[BitableAuth] 尝试通过 bitable.bridge 调用授权...');
-
-  // 尝试多种调用方式
-  const methods = [
-    // 方式1: 直接调用 bridge.callFunction
-    async () => {
-      console.log('[BitableAuth] 尝试方式1: bridge.callFunction("requestAuthCode")');
-      const result = await bitable.bridge.callFunction('requestAuthCode', { scope });
-      return result?.data?.code || result?.code || result;
-    },
-    // 方式2: 调用 bridge 上的 auth 方法
-    async () => {
-      console.log('[BitableAuth] 尝试方式2: bridge.auth.requestAuthCode');
-      if (bitable.bridge.auth?.requestAuthCode) {
-        return await bitable.bridge.auth.requestAuthCode({ scope });
-      }
-      throw new Error('bridge.auth.requestAuthCode 不存在');
-    },
-    // 方式3: 调用 bridge.call
-    async () => {
-      console.log('[BitableAuth] 尝试方式3: bridge.call("auth.requestAuthCode")');
-      const result = await bitable.bridge.call('auth.requestAuthCode', { scope });
-      return result?.code || result;
-    },
-  ];
-
-  for (let i = 0; i < methods.length; i++) {
-    try {
-      const code = await methods[i]();
-      if (code && typeof code === 'string') {
-        console.log(`[BitableAuth] 方式${i + 1}成功，获取授权码`);
-        return code;
-      }
-    } catch (err) {
-      console.log(`[BitableAuth] 方式${i + 1}失败:`, (err as Error).message);
-    }
-  }
-
-  throw new Error('所有 bridge 调用方式均失败');
-}
-
-/**
- * 请求授权码
- * 使用客户端授权方式 bitable.auth.requestAuthCode，无需重定向 URL
- */
-export async function requestAuthCode(scope: string = 'contact:user.base:readonly'): Promise<{
+export async function getPluginUserInfo(): Promise<{
   success: boolean;
-  code?: string;
+  userInfo?: {
+    id: string;
+    name: string;
+    avatar?: string;
+    feishuUserId: string;
+    email?: string;
+    mobile?: string;
+  };
   error?: string;
 }> {
   try {
-    console.log('[BitableAuth] ========== 开始请求客户端授权码 ==========');
-    console.log('[BitableAuth] 请求的 scope:', scope);
+    console.log('[BitableAuth] ========== 开始获取插件环境用户信息 ==========');
 
     const bitable = getBitable();
-    console.log('[BitableAuth] bitable SDK:', bitable ? '已获取' : '未获取');
     
     if (!bitable) {
       throw new Error('无法获取 bitable SDK，请确保在多维表格插件环境中运行');
     }
     
-    // 输出 bitable 的所有顶层属性
-    console.log('[BitableAuth] bitable 对象属性:', Object.keys(bitable));
-    console.log('[BitableAuth] bitable.base:', bitable.base ? '存在' : '不存在');
-    console.log('[BitableAuth] bitable.auth:', bitable.auth ? '存在' : '不存在');
-    console.log('[BitableAuth] bitable.bridge:', bitable.bridge ? '存在' : '不存在');
-
     // 等待基础库加载完成
-    if (bitable.base?.ready) {
-      console.log('[BitableAuth] 等待 bitable.base.ready...');
-      try {
-        await bitable.base.ready;
-        console.log('[BitableAuth] bitable.base.ready 成功');
-      } catch (readyError) {
-        console.error('[BitableAuth] bitable.base.ready 失败:', readyError);
-      }
-    }
+    console.log('[BitableAuth] 等待 bitable.base.ready...');
+    await bitable.base.ready;
+    console.log('[BitableAuth] bitable.base.ready 成功');
 
-    let authCode: string;
-
-    // 尝试方式1: 直接调用 bitable.auth.requestAuthCode
-    if (bitable.auth?.requestAuthCode) {
-      console.log('[BitableAuth] 使用 bitable.auth.requestAuthCode');
-      authCode = await bitable.auth.requestAuthCode({ scope });
-    } 
-    // 尝试方式2: 通过 bridge 调用
-    else if (bitable.bridge) {
-      console.log('[BitableAuth] 尝试通过 bitable.bridge 调用授权');
-      authCode = await requestAuthCodeViaBridge(scope);
-    }
-    // 方式3: 尝试使用 window.lark 或 window.Feishu
-    else if (typeof window !== 'undefined' && ((window as any).lark || (window as any).Feishu)) {
-      console.log('[BitableAuth] 尝试使用 window.lark/window.Feishu');
-      const lark = (window as any).lark || (window as any).Feishu;
-      if (lark.auth?.requestAuthCode) {
-        authCode = await lark.auth.requestAuthCode({ scope });
-      } else {
-        throw new Error('window.lark.auth.requestAuthCode 不可用');
-      }
-    }
-    else {
-      console.error('[BitableAuth] bitable.auth 不存在且没有可用的 bridge');
-      console.error('[BitableAuth] bitable 完整对象:', bitable);
-      
-      // 检查是否是权限问题
-      console.error('[BitableAuth] 可能原因:');
-      console.error('1. 飞书应用后台未开启"获取用户授权码"权限');
-      console.error('2. SDK 版本过低');
-      console.error('3. 不在正确的插件环境中运行');
-      
-      throw new Error('bitable.auth 不存在，请在飞书开发者后台申请"获取用户授权码"权限');
-    }
-
-    console.log('[BitableAuth] requestAuthCode 返回:', {
-      authCode: authCode ? `${authCode.slice(0, 10)}...` : null,
-      type: typeof authCode,
-      hasValue: !!authCode,
+    // 直接获取用户信息
+    console.log('[BitableAuth] 调用 bitable.base.getUserInfo()...');
+    const userInfo = await bitable.base.getUserInfo();
+    
+    console.log('[BitableAuth] 获取到用户信息:', {
+      id: userInfo?.id,
+      name: userInfo?.name,
+      email: userInfo?.email,
     });
 
-    if (!authCode || typeof authCode !== 'string') {
-      console.error('[BitableAuth] 返回的授权码无效:', authCode);
-      throw new Error('获取授权码失败：返回的授权码无效');
+    if (!userInfo || !userInfo.id) {
+      throw new Error('获取用户信息失败：返回数据无效');
     }
 
-    console.log('[BitableAuth] 授权码获取成功，长度:', authCode.length);
     return {
       success: true,
-      code: authCode,
+      userInfo: {
+        id: userInfo.id,
+        name: userInfo.name || '未知用户',
+        avatar: userInfo.avatar_url,
+        feishuUserId: userInfo.id,
+        email: userInfo.email,
+        mobile: userInfo.mobile,
+      },
     };
   } catch (error) {
-    console.error('[BitableAuth] ========== 获取授权码失败 ==========');
-    console.error('[BitableAuth] 错误类型:', error?.constructor?.name);
-    console.error('[BitableAuth] 错误信息:', error);
+    console.error('[BitableAuth] 获取用户信息失败:', error);
     
     return {
       success: false,
-      error: error instanceof Error ? `获取授权码失败: ${error.message}` : '获取授权码失败',
+      error: error instanceof Error ? `获取用户信息失败: ${error.message}` : '获取用户信息失败',
     };
   }
 }
 
 /**
- * 完整的客户端授权登录流程
+ * 获取 tenant_access_token（应用身份）
+ * 用于调用 OpenAPI
  */
-export async function loginWithClientAuth(): Promise<{
+export async function getTenantAccessToken(): Promise<{
+  success: boolean;
+  token?: string;
+  error?: string;
+}> {
+  try {
+    console.log('[BitableAuth] 获取 tenant_access_token...');
+
+    const bitable = getBitable();
+    
+    if (!bitable) {
+      throw new Error('无法获取 bitable SDK');
+    }
+    
+    await bitable.base.ready;
+    const token = await bitable.base.getTenantAccessToken();
+    
+    console.log('[BitableAuth] 获取 token 成功');
+    return { success: true, token };
+  } catch (error) {
+    console.error('[BitableAuth] 获取 token 失败:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '获取 token 失败',
+    };
+  }
+}
+
+/**
+ * 插件环境登录
+ * 直接获取用户信息并同步到后端
+ */
+export async function loginWithPluginAuth(): Promise<{
   success: boolean;
   userInfo?: {
     id: string;
@@ -211,26 +149,29 @@ export async function loginWithClientAuth(): Promise<{
   token?: string;
   error?: string;
 }> {
-  console.log('[BitableAuth] ========== 开始客户端授权登录流程 ==========');
+  console.log('[BitableAuth] ========== 开始插件环境登录 ==========');
   
   try {
-    // 1. 获取授权码
-    console.log('[BitableAuth] 步骤 1: 获取授权码');
-    const authResult = await requestAuthCode();
-    console.log('[BitableAuth] 授权码结果:', { success: authResult.success, hasCode: !!authResult.code });
+    // 1. 获取插件环境用户信息
+    console.log('[BitableAuth] 步骤 1: 获取插件环境用户信息');
+    const userResult = await getPluginUserInfo();
     
-    if (!authResult.success || !authResult.code) {
-      console.error('[BitableAuth] 获取授权码失败:', authResult.error);
-      return { success: false, error: authResult.error };
+    if (!userResult.success || !userResult.userInfo) {
+      console.error('[BitableAuth] 获取用户信息失败:', userResult.error);
+      return { success: false, error: userResult.error };
     }
 
-    // 2. 调用后端 API 换取用户信息、JWT token
-    console.log('[BitableAuth] 步骤 2: 调用后端 API 换取 token');
+    console.log('[BitableAuth] 获取用户信息成功:', userResult.userInfo.name);
+
+    // 2. 调用后端 API 同步用户并获取 JWT token
+    console.log('[BitableAuth] 步骤 2: 同步用户到后端');
     
-    const response = await fetch('/api/auth/feishu/client-token', {
+    const response = await fetch('/api/auth/feishu/plugin-login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: authResult.code }),
+      body: JSON.stringify({
+        userInfo: userResult.userInfo,
+      }),
     });
 
     console.log('[BitableAuth] API 响应状态:', response.status);
@@ -259,4 +200,38 @@ export async function loginWithClientAuth(): Promise<{
       error: error instanceof Error ? error.message : '登录失败',
     };
   }
+}
+
+/**
+ * 兼容旧代码：请求授权码（插件环境不需要）
+ * @deprecated 插件环境直接使用 getPluginUserInfo
+ */
+export async function requestAuthCode(_scope?: string): Promise<{
+  success: boolean;
+  code?: string;
+  error?: string;
+}> {
+  console.warn('[BitableAuth] requestAuthCode 在插件环境中不需要，请使用 loginWithPluginAuth');
+  return {
+    success: false,
+    error: '插件环境不需要授权码，请使用 loginWithPluginAuth',
+  };
+}
+
+/**
+ * 兼容旧代码：完整的客户端授权登录流程
+ * @deprecated 请使用 loginWithPluginAuth
+ */
+export async function loginWithClientAuth(): Promise<{
+  success: boolean;
+  userInfo?: {
+    id: string;
+    name: string;
+    avatar?: string;
+    feishuUserId: string;
+  };
+  token?: string;
+  error?: string;
+}> {
+  return loginWithPluginAuth();
 }
