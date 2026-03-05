@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useUserStore } from '@/store/userStore';
 import { useTemplateStore } from '@/store/templateStore';
@@ -20,7 +20,6 @@ function getCookie(name: string): string | null {
 // 实际的回调处理组件
 function AuthCallbackContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { setUser, setToken, setHasAuthorizations } = useUserStore();
   const { fetchTemplates } = useTemplateStore();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -31,19 +30,19 @@ function AuthCallbackContent() {
       try {
         console.log('[Auth Callback] 开始处理回调');
 
-        // 从 cookie 读取 token
+        // 从 URL 读取参数（避免 useSearchParams 问题）
+        const urlParams = new URLSearchParams(window.location.search);
         const token = getCookie('auth_token');
-        const userId = searchParams.get('userId');
-        const name = searchParams.get('name');
-        const hasAuthorizations = searchParams.get('hasAuthorizations') === 'true';
-        const errorParam = searchParams.get('error');
+        const userId = urlParams.get('userId');
+        const name = urlParams.get('name');
+        const hasAuthorizations = urlParams.get('hasAuthorizations') === 'true';
+        const errorParam = urlParams.get('error');
 
-        console.log('[Auth Callback] 完整URL参数:', Object.fromEntries(searchParams.entries()));
+        console.log('[Auth Callback] 完整URL参数:', Object.fromEntries(urlParams.entries()));
         console.log('[Auth Callback] 从 cookie 获取 token:', token ? '存在' : '不存在');
         console.log('[Auth Callback] userId:', userId);
         console.log('[Auth Callback] name:', name);
-        console.log('[Auth Callback] hasAuthorizations 原始值:', searchParams.get('hasAuthorizations'));
-        console.log('[Auth Callback] hasAuthorizations 转换后:', hasAuthorizations);
+        console.log('[Auth Callback] hasAuthorizations:', hasAuthorizations);
 
         if (errorParam) {
           console.error('[Auth Callback] 收到错误:', errorParam);
@@ -95,7 +94,7 @@ function AuthCallbackContent() {
     };
 
     handleCallback();
-  }, [searchParams, router, setToken, setUser, setHasAuthorizations, fetchTemplates]);
+  }, [router, setToken, setUser, setHasAuthorizations, fetchTemplates]);
 
   return (
     <Card className="w-full max-w-md mx-4">
