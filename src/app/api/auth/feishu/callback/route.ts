@@ -224,8 +224,7 @@ export async function GET(request: Request) {
     // 6. 创建响应，设置 Cookie 并重定向到前端回调页面
     // 使用飞书 union_id 作为用户ID，确保与前端一致
     const feishuId = feishuUserInfo.union_id;
-    // 注意：使用 /auth/callback/ 带斜杠的路径，避免 308 重定向
-    const callbackUrl = `/auth/callback/?userId=${feishuId}&name=${encodeURIComponent(dbUser.name || '')}&hasAuthorizations=${hasAuthorizations}`;
+    const callbackUrl = `/auth/callback?userId=${feishuId}&name=${encodeURIComponent(dbUser.name || '')}&hasAuthorizations=${hasAuthorizations}`;
     
     console.log('[Feishu OAuth Callback API] 回调URL:', callbackUrl);
     console.log('[Feishu OAuth Callback API] 传递给前端的用户ID (union_id):', feishuId);

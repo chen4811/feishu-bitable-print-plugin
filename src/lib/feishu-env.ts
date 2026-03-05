@@ -572,37 +572,6 @@ export async function fetchRecords(): Promise<Array<{
 }
 
 // ============================================
-// 新增：获取表格信息
-// ============================================
-export async function getTableInfo(tableId?: string): Promise<{ tableId: string | null; tableName: string | null }> {
-  if (envStatus !== 'ready') {
-    debugLog('环境未就绪，无法获取表格信息');
-    return { tableId: null, tableName: null };
-  }
-
-  try {
-    if (tableId) {
-      // 如果提供了 tableId，获取指定表格的信息
-      const table = await base.getTable(tableId);
-      const tableName = (table as any).name || tableId;
-      return { tableId, tableName };
-    } else {
-      // 否则获取当前选中的表格
-      const selection = await base.getSelection();
-      if (selection?.tableId) {
-        const table = await base.getTable(selection.tableId);
-        const tableName = (table as any).name || selection.tableId;
-        return { tableId: selection.tableId, tableName };
-      }
-    }
-    return { tableId: null, tableName: null };
-  } catch (error) {
-    debugLog('获取表格信息失败:', error);
-    return { tableId: null, tableName: null };
-  }
-}
-
-// ============================================
 // 新增：获取选中记录（方案A实现）
 // ============================================
 
@@ -1230,7 +1199,6 @@ export const feishuEnv = {
   fetchFirstRecord,
   initFeishuContext,
   getDebugInfo,
-  getTableInfo,
   
   // 选中变化（基于 base.getSelection）
   onSelectionChange,

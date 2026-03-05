@@ -18,7 +18,6 @@ import { PageSettingsDialog } from '@/components/editor/dialogs/PageSettingsDial
 import { PAGE_SIZES, PageConfig } from '@/types/editor';
 import { feishuEnv } from '@/lib/feishu-env';
 import { onSelectionChange } from '@/lib/feishu-env';
-import { useTableFieldSync } from '@/hooks/useTableFieldSync';
 
 
 interface TemplatePreviewProps {
@@ -810,9 +809,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
   // 左侧区域展开状态（默认收起）
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
-
-  // 使用 Hook 同步表格字段（当切换表格时自动同步数据源字段）
-  useTableFieldSync();
 
   // 页面设置状态
   const [isPageSettingsOpen, setIsPageSettingsOpen] = useState(false);
