@@ -416,21 +416,13 @@ const renderTableComponent = (component: any, data: Record<string, any>): React.
 
   const { cells = [], borderWidth = 1, borderColor = '#000000', showOuterBorder = true, showInnerBorder = true } = tableConfig;
 
-  // 安全构建表格容器样式
+  // 简化表格容器样式 - 让表格自然流动在纸张容器内
   const tableContainerStyle = buildSafeStyle({
     position: 'relative',
-    width: 'max-content',      // 【关键】宽度由内容决定，不再受父容器限制
-    minWidth: '100%',          // 确保至少占满一行，防止过窄
-    maxWidth: 'none',          // 【关键】移除最大宽度限制
-    flexShrink: 0,             // 【关键】拒绝被压缩
-    display: 'block',          // 【关键】确保 block 元素行为
+    width: '100%',             // 相对于父容器（纸张）的宽度
     boxSizing: 'border-box',
-    // 【关键修复】强制重置左侧间距，解决横向滚动无法显示完整内容的问题
-    marginLeft: '0px',
-    marginRight: '0px',
-    transform: 'none',
-    left: 'auto',
-    right: 'auto',
+    marginLeft: '0',
+    marginRight: '0',
   }, style);
 
   return (
@@ -2221,20 +2213,25 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
             </div>
           )}
           
-          {/* 滚动容器 - 包含画布 */}
+          {/* 滚动容器 - 包含画布 (灰色背景编辑区) */}
           <div 
             className="flex-1 overflow-x-auto overflow-y-auto scrollbar-thin"
             style={{
-              paddingLeft: '0px',
-              paddingRight: '0px',
+              backgroundColor: '#f5f5f5',  // 【关键】灰色编辑区背景
+              display: 'flex',
+              justifyContent: 'flex-start',  // 纸张从左侧开始对齐
+              alignItems: 'flex-start',
+              padding: '20px',  // 给纸张周围留灰边
               boxSizing: 'border-box',
             }}
           >
             <div 
-              className="w-fit min-h-full p-4"
+              className="min-h-full"
               style={{
-                marginLeft: '0px',
-                marginRight: '0px',
+                // 由内容决定宽度
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '20px',
               }}
             >
               {selectedTemplate ? (
@@ -2249,22 +2246,24 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                 // 如果没有选中数据，显示空状态
                 if (selectedRecords.length === 0) {
                   return (
-                    <div className="flex justify-start">
-                      <div
-                        className="bg-white shadow-lg print:shadow-none print-area-page flex items-center justify-center"
-                        style={{
-                          width: `${actualWidth}mm`,
-                          minHeight: `${actualHeight}mm`,
-                          height: 'auto',
-                          padding,
-                          boxSizing: 'border-box',
-                        }}
-                      >
-                        <div className="text-center text-gray-400">
-                          <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                          <p className="text-lg">请从右侧选择数据</p>
-                          <p className="text-sm mt-2">点击右侧数据卡片添加到预览</p>
-                        </div>
+                    <div
+                      className="bg-white shadow-lg print:shadow-none print-area-page flex items-center justify-center"
+                      style={{
+                        width: `${actualWidth}mm`,
+                        minHeight: `${actualHeight}mm`,
+                        height: 'auto',
+                        padding,
+                        boxSizing: 'border-box',
+                        position: 'relative',
+                        margin: '0',
+                        marginLeft: '0',
+                        marginRight: '0',
+                      }}
+                    >
+                      <div className="text-center text-gray-400">
+                        <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                        <p className="text-lg">请从右侧选择数据</p>
+                        <p className="text-sm mt-2">点击右侧数据卡片添加到预览</p>
                       </div>
                     </div>
                   );
@@ -2286,6 +2285,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                         boxSizing: 'border-box',
                         position: 'relative',
                         marginBottom: layoutMode === 'default' && !isLast ? '20px' : '0',
+                        marginLeft: '0',
+                        marginRight: '0',
                         pageBreakAfter: layoutMode === 'default' && !isLast ? 'always' : 'auto',
                       }}
                     >
@@ -2293,14 +2294,14 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                       <div className="absolute top-2 right-2 text-xs text-gray-300 print:hidden">
                         #{pageIndex + 1}
                       </div>
-                      {/* 流式布局容器 - 与编辑器一致 */}
+                      {/* 流式布局容器 - 内容区域 */}
                       <div style={{
+                        width: '100%',
                         display: 'flex',
-                        flexWrap: 'nowrap',        // 【关键】禁止换行，强制所有子元素在同一行
+                        flexWrap: 'nowrap',        // 禁止换行，强制所有子元素在同一行
                         alignContent: 'flex-start',
                         alignItems: 'flex-start',  // 防止子元素拉伸
                         gap: '12px',
-                        overflowX: 'visible',      // 让内容溢出，由外层容器负责滚动
                       }}>
                         {components.map((component: any) => 
                           renderComponent(component, record.data)
@@ -2325,32 +2326,79 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                   case 'continuous':
                     // 连续：不间断排版，可能需要分页
                     return (
-                      <div className="flex flex-col items-start">
-                        <div
-                          className="bg-white shadow-lg print:shadow-none print-area-page"
-                          style={{
-                            width: `${actualWidth}mm`,
-                            height: 'auto',
-                            padding,
-                            boxSizing: 'border-box',
-                          }}
-                        >
-                          {selectedRecords.map((record, idx) => (
-                            <div 
+                      <div
+                        className="bg-white shadow-lg print:shadow-none print-area-page"
+                        style={{
+                          width: `${actualWidth}mm`,
+                          height: 'auto',
+                          padding,
+                          boxSizing: 'border-box',
+                          margin: '0',
+                          marginLeft: '0',
+                          marginRight: '0',
+                        }}
+                      >
+                        {selectedRecords.map((record, idx) => (
+                          <div 
+                            key={record.id}
+                            style={{
+                              marginBottom: idx < selectedRecords.length - 1 ? '40px' : '0',
+                              borderBottom: idx < selectedRecords.length - 1 ? '1px dashed #e5e7eb' : 'none',
+                              paddingBottom: idx < selectedRecords.length - 1 ? '40px' : '0',
+                            }}
+                          >
+                            <div style={{
+                              width: '100%',
+                              display: 'flex',
+                              flexWrap: 'nowrap',        // 禁止换行
+                              alignContent: 'flex-start',
+                              alignItems: 'flex-start',
+                              gap: '12px',
+                            }}>
+                              {components.map((component: any) => 
+                                renderComponent(component, record.data)
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                    
+                  case 'label':
+                    // 标签：所有数据在一页，紧凑排列
+                    return (
+                      <div
+                        className="bg-white shadow-lg print:shadow-none print-area-page"
+                        style={{
+                          width: `${actualWidth}mm`,
+                          minHeight: `${actualHeight}mm`,
+                          padding,
+                          boxSizing: 'border-box',
+                          margin: '0',
+                          marginLeft: '0',
+                          marginRight: '0',
+                        }}
+                      >
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fill, minmax(90mm, 1fr))',
+                          gap: '10mm',
+                        }}>
+                          {selectedRecords.map((record) => (
+                            <div
                               key={record.id}
+                              className="border border-gray-200 rounded p-3"
                               style={{
-                                marginBottom: idx < selectedRecords.length - 1 ? '40px' : '0',
-                                borderBottom: idx < selectedRecords.length - 1 ? '1px dashed #e5e7eb' : 'none',
-                                paddingBottom: idx < selectedRecords.length - 1 ? '40px' : '0',
+                                breakInside: 'avoid',
                               }}
                             >
                               <div style={{
+                                width: '100%',
                                 display: 'flex',
-                                flexWrap: 'nowrap',        // 【关键】禁止换行，强制所有子元素在同一行
+                                flexWrap: 'nowrap',        // 禁止换行
                                 alignContent: 'flex-start',
-                                alignItems: 'flex-start',  // 防止子元素拉伸
-                                gap: '12px',
-                                overflowX: 'visible',      // 让内容溢出，由外层容器负责滚动
+                                alignItems: 'flex-start',
+                                gap: '8px',
                               }}>
                                 {components.map((component: any) => 
                                   renderComponent(component, record.data)
@@ -2362,62 +2410,25 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                       </div>
                     );
                     
-                  case 'label':
-                    // 标签：所有数据在一页，紧凑排列
-                    return (
-                      <div className="flex justify-start">
-                        <div
-                          className="bg-white shadow-lg print:shadow-none print-area-page"
-                          style={{
-                            width: `${actualWidth}mm`,
-                            minHeight: `${actualHeight}mm`,
-                            padding,
-                            boxSizing: 'border-box',
-                          }}
-                        >
-                          <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fill, minmax(90mm, 1fr))',
-                            gap: '10mm',
-                          }}>
-                            {selectedRecords.map((record) => (
-                              <div
-                                key={record.id}
-                                className="border border-gray-200 rounded p-3"
-                                style={{
-                                  breakInside: 'avoid',
-                                }}
-                              >
-                                <div style={{
-                                  display: 'flex',
-                                  flexWrap: 'nowrap',        // 【关键】禁止换行，强制所有子元素在同一行
-                                  alignContent: 'flex-start',
-                                  alignItems: 'flex-start',  // 防止子元素拉伸
-                                  gap: '8px',
-                                  overflowX: 'visible',      // 让内容溢出，由外层容器负责滚动
-                                }}>
-                                  {components.map((component: any) => 
-                                    renderComponent(component, record.data)
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                    
                   default:
                     return null;
                 }
               })()
             ) : (
-              <div className="flex justify-start">
-                <div className="h-96 flex items-center justify-center text-gray-400 bg-white rounded-lg shadow-sm print-area-page" style={{ width: '210mm' }}>
-                  <div className="text-center">
-                    <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg">请从左侧选择一个模板</p>
-                  </div>
+              // 未选择模板时的空状态
+              <div
+                className="bg-white shadow-lg rounded-lg print-area-page flex items-center justify-center"
+                style={{
+                  width: '210mm',
+                  height: '297mm',
+                  margin: '0',
+                  marginLeft: '0',
+                  marginRight: '0',
+                }}
+              >
+                <div className="text-center text-gray-400">
+                  <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg">请从左侧选择一个模板</p>
                 </div>
               </div>
             )}
