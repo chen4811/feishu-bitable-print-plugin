@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useEditorStore } from '@/store/editorStore';
+import { useTableFieldSync } from '@/hooks/useTableFieldSync';
 import { Search, Copy, AlertCircle, Check, FileText, Hash, Calendar, List, Image, User } from 'lucide-react';
 import { Field } from '@/types/editor';
 import { toast } from 'sonner';
@@ -48,6 +49,9 @@ export function DataSourcePanel({ onAddField }: DataSourcePanelProps) {
   const [copiedFieldId, setCopiedFieldId] = useState<string | null>(null);
   
   const { fields, systemFields, isFeishuEnvironment } = useEditorStore();
+  
+  // 使用 Hook 自动同步表格字段
+  useTableFieldSync();
 
   // 过滤字段
   const filteredFields = (activeTab === 'field' ? fields : systemFields).filter(
