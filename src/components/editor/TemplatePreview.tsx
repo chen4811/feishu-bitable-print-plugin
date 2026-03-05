@@ -2236,6 +2236,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                           height: 'auto',
                           padding,
                           boxSizing: 'border-box',
+                          overflow: 'hidden',
                         }}
                       >
                         <div className="text-center text-gray-400">
@@ -2265,6 +2266,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                         position: 'relative',
                         marginBottom: layoutMode === 'default' && !isLast ? '20px' : '0',
                         pageBreakAfter: layoutMode === 'default' && !isLast ? 'always' : 'auto',
+                        overflow: 'hidden', // 防止内容撑开纸张
                       }}
                     >
                       {/* 页码标记 */}
@@ -2277,6 +2279,9 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                         flexWrap: 'wrap',
                         alignContent: 'flex-start',
                         gap: '12px',
+                        overflowX: 'auto', // 支持横向滚动
+                        width: '100%',
+                        height: '100%',
                       }}>
                         {components.map((component: any) => 
                           renderComponent(component, record.data)
@@ -2309,6 +2314,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                             height: 'auto',
                             padding,
                             boxSizing: 'border-box',
+                            overflow: 'hidden',
                           }}
                         >
                           {selectedRecords.map((record, idx) => (
@@ -2325,6 +2331,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                                 flexWrap: 'wrap',
                                 alignContent: 'flex-start',
                                 gap: '12px',
+                                overflowX: 'auto',
+                                width: '100%',
                               }}>
                                 {components.map((component: any) => 
                                   renderComponent(component, record.data)
@@ -2347,12 +2355,15 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                             minHeight: `${actualHeight}mm`,
                             padding,
                             boxSizing: 'border-box',
+                            overflow: 'hidden',
                           }}
                         >
                           <div style={{
                             display: 'grid',
                             gridTemplateColumns: 'repeat(auto-fill, minmax(90mm, 1fr))',
                             gap: '10mm',
+                            overflowX: 'auto',
+                            width: '100%',
                           }}>
                             {selectedRecords.map((record) => (
                               <div
@@ -2367,6 +2378,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                                   flexWrap: 'wrap',
                                   alignContent: 'flex-start',
                                   gap: '8px',
+                                  overflowX: 'auto',
+                                  width: '100%',
                                 }}>
                                   {components.map((component: any) => 
                                     renderComponent(component, record.data)
