@@ -11,8 +11,8 @@ export async function GET() {
     // 生成随机 state
     const state = Math.random().toString(36).substring(2, 15);
     
-    // 生成 OAuth 授权 URL
-    const oauthUrl = getOAuthUrl(state);
+    // 生成 OAuth 授权 URL（现在是异步函数）
+    const oauthUrl = await getOAuthUrl(state);
     
     console.log('[Feishu OAuth Login API] 重定向到:', oauthUrl);
     

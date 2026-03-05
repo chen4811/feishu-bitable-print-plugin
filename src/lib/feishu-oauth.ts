@@ -1,3 +1,5 @@
+import { getSystemConfig } from './system-config';
+
 // 飞书 OAuth 2.0 客户端
 interface AppAccessTokenCache {
   token: string;
@@ -56,8 +58,9 @@ export async function getAppAccessToken(): Promise<string> {
 
   console.log('[Feishu OAuth] 获取新的 app_access_token');
   
-  const appId = process.env.FEISHU_APP_ID;
-  const appSecret = process.env.FEISHU_APP_SECRET;
+  // 从系统配置读取，支持数据库配置和环境变量
+  const appId = await getSystemConfig('FEISHU_APP_ID');
+  const appSecret = await getSystemConfig('FEISHU_APP_SECRET');
 
   if (!appId || !appSecret) {
     throw new Error('FEISHU_APP_ID 或 FEISHU_APP_SECRET 未配置');
@@ -110,9 +113,10 @@ export async function getAppAccessToken(): Promise<string> {
 /**
  * 生成 OAuth 授权 URL
  */
-export function getOAuthUrl(state: string): string {
-  const appId = process.env.FEISHU_APP_ID;
-  const redirectUri = process.env.FEISHU_REDIRECT_URI;
+export async function getOAuthUrl(state: string): Promise<string> {
+  // 从系统配置读取，支持数据库配置和环境变量
+  const appId = await getSystemConfig('FEISHU_APP_ID');
+  const redirectUri = await getSystemConfig('FEISHU_REDIRECT_URI');
 
   if (!appId || !redirectUri) {
     throw new Error('FEISHU_APP_ID 或 FEISHU_REDIRECT_URI 未配置');

@@ -69,3 +69,15 @@ export const admins = pgTable('admins', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+
+// ========== 系统配置表 ==========
+export const systemConfigs = pgTable('system_configs', {
+  id: serial('id').primaryKey(),
+  key: varchar('key', { length: 100 }).unique().notNull(),
+  value: text('value').notNull(),
+  description: text('description'),
+  isEncrypted: boolean('is_encrypted').default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
