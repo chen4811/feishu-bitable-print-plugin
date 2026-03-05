@@ -2227,7 +2227,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                 // 如果没有选中数据，显示空状态
                 if (selectedRecords.length === 0) {
                   return (
-                    <div className="flex justify-center">
+                    <div className="flex justify-start">
                       <div
                         className="bg-white shadow-lg print:shadow-none print-area-page flex items-center justify-center"
                         style={{
@@ -2291,7 +2291,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                   case 'default':
                     // 默认：每条数据一页
                     return (
-                      <div className="flex flex-col items-center gap-5">
+                      <div className="flex flex-col items-start gap-5">
                         {selectedRecords.map((record, idx) => 
                           renderDataPage(record, idx, idx === selectedRecords.length - 1)
                         )}
@@ -2301,7 +2301,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                   case 'continuous':
                     // 连续：不间断排版，可能需要分页
                     return (
-                      <div className="flex flex-col items-center">
+                      <div className="flex flex-col items-start">
                         <div
                           className="bg-white shadow-lg print:shadow-none print-area-page"
                           style={{
@@ -2339,7 +2339,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                   case 'label':
                     // 标签：所有数据在一页，紧凑排列
                     return (
-                      <div className="flex justify-center">
+                      <div className="flex justify-start">
                         <div
                           className="bg-white shadow-lg print:shadow-none print-area-page"
                           style={{
@@ -2384,7 +2384,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                 }
               })()
             ) : (
-              <div className="flex justify-center">
+              <div className="flex justify-start">
                 <div className="h-96 flex items-center justify-center text-gray-400 bg-white rounded-lg shadow-sm print-area-page" style={{ width: '210mm' }}>
                   <div className="text-center">
                     <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
