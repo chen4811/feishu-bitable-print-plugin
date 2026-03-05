@@ -59,14 +59,12 @@ export async function requestAuthCode(scope: string = 'contact:user.base:readonl
 export async function loginWithClientAuth(): Promise<{
   success: boolean;
   userInfo?: {
-    userId: string;
-    openId: string;
-    unionId: string;
+    id: string;
     name: string;
     avatar?: string;
-    email?: string;
-    mobile?: string;
+    feishuUserId: string;
   };
+  token?: string;
   error?: string;
 }> {
   try {
@@ -76,7 +74,7 @@ export async function loginWithClientAuth(): Promise<{
       return { success: false, error: authResult.error };
     }
 
-    // 2. 调用后端 API 换取 user_access_token 和用户信息
+    // 2. 调用后端 API 换取用户信息、JWT token
     const response = await fetch('/api/auth/feishu/client-token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -92,6 +90,7 @@ export async function loginWithClientAuth(): Promise<{
     return {
       success: true,
       userInfo: result.userInfo,
+      token: result.token,
     };
   } catch (error) {
     console.error('[BitableAuth] 客户端授权登录失败:', error);

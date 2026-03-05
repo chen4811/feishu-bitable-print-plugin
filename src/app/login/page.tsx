@@ -7,8 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useUserStore } from '@/store/userStore';
 import { isBitablePlugin, loginWithClientAuth } from '@/lib/feishu-bitable-auth';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
-import { generateToken } from '@/lib/auth';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -64,74 +62,27 @@ export default function LoginPage() {
    */
   const handleClientAuth = async () => {
     try {
-      // 1. 使用客户端授权获取用户信息
+      // 使用客户端授权获取用户信息和 JWT token
       const authResult = await loginWithClientAuth();
 
-      if (!authResult.success || !authResult.userInfo) {
+      if (!authResult.success || !authResult.userInfo || !authResult.token) {
         setError(authResult.error || '授权失败');
         return;
       }
 
-      const feishuUser = authResult.userInfo;
-      console.log('[Login] 客户端授权成功:', feishuUser);
+      const { userInfo, token } = authResult;
+      console.log('[Login] 客户端授权成功:', userInfo);
 
-      // 2. 在数据库中查找或创建用户
-      const client = getSupabaseClient();
-      const { data: existingUsers } = await client
-        .from('users')
-        .select('*')
-        .eq('feishu_union_id', feishuUser.unionId);
-
-      let dbUser = existingUsers && existingUsers.length > 0 ? existingUsers[0] : null;
-
-      if (!dbUser) {
-        // 创建新用户
-        const { data: newUser } = await client
-          .from('users')
-          .insert({
-            feishu_user_id: feishuUser.userId,
-            feishu_union_id: feishuUser.unionId,
-            name: feishuUser.name,
-            avatar: feishuUser.avatar || '',
-          })
-          .select();
-
-        dbUser = newUser?.[0];
-      } else {
-        // 更新用户信息
-        await client
-          .from('users')
-          .update({
-            feishu_user_id: feishuUser.userId,
-            name: feishuUser.name,
-            avatar: feishuUser.avatar || '',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', dbUser.id);
-      }
-
-      if (!dbUser) {
-        setError('用户数据处理失败');
-        return;
-      }
-
-      // 3. 生成 JWT token
-      const jwtToken = generateToken({
-        userId: dbUser.id,
-        feishuUserId: feishuUser.unionId,
-        name: feishuUser.name,
-      });
-
-      // 4. 更新用户状态
+      // 更新用户状态
       setUser({
-        id: dbUser.id,
-        name: feishuUser.name,
-        avatar: feishuUser.avatar || '',
-        feishuUserId: feishuUser.userId,
+        id: userInfo.id,
+        name: userInfo.name,
+        avatar: userInfo.avatar || '',
+        feishuUserId: userInfo.feishuUserId,
       });
-      setToken(jwtToken);
+      setToken(token);
 
-      // 5. 跳转到主页
+      // 跳转到主页
       router.push('/');
     } catch (err) {
       console.error('[Login] 客户端授权失败:', err);
