@@ -424,23 +424,40 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
     ? records.filter(r => selectedRecordIds.includes(r.id as string))
     : records.length > 0 ? records : [{ id: 'demo', __tableName__: '演示数据' }];
 
+  // 计算内容区域宽度（考虑页边距）
+  const contentWidth = canvasWidth - (pageConfig.margins.left + pageConfig.margins.right) * mmToPx;
+
+  // 获取组件宽度样式 - 与 CanvasArea 保持一致
+  const getComponentWidthStyle = useCallback((width: string) => {
+    const gap = 12; // gap-3 = 12px
+    switch (width) {
+      case '50%': 
+        return { width: `${(contentWidth - gap) / 2}px`, flexShrink: 0 };
+      case '33%': 
+        return { width: `${(contentWidth - 2 * gap) / 3}px`, flexShrink: 0 };
+      case '25%': 
+        return { width: `${(contentWidth - 3 * gap) / 4}px`, flexShrink: 0 };
+      default: 
+        return { width: `${contentWidth}px`, flexShrink: 0 };
+    }
+  }, [contentWidth]);
+
   // 渲染单页内容（流式布局）
   const renderPageContent = useCallback((record: Record<string, unknown>) => {
     return (
-      <div className="flex flex-wrap content-start gap-3 w-full">
+      <div 
+        className="flex flex-wrap content-start gap-3"
+        style={{ width: `${contentWidth}px`, maxWidth: `${contentWidth}px` }}
+      >
         {components.map((component) => {
           const layoutWidth = component.layout?.width || '100%';
-          const widthPercent = layoutWidth === '100%' ? 100 : 
-                              layoutWidth === '50%' ? 50 :
-                              layoutWidth === '33%' ? 33.333 : 25;
           
           return (
             <div
               key={component.id}
               style={{
-                flex: `0 0 ${widthPercent}%`,
-                maxWidth: `${widthPercent}%`,
-                padding: '4px',
+                ...getComponentWidthStyle(layoutWidth),
+                boxSizing: 'border-box',
               }}
             >
               <PrintComponentRenderer
@@ -454,7 +471,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
         })}
       </div>
     );
-  }, [components, fields, styleConfig]);
+  }, [components, fields, styleConfig, contentWidth, getComponentWidthStyle]);
 
   // 导出为 PDF
   const handleExportPDF = useCallback(async () => {
