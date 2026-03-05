@@ -239,39 +239,41 @@ export function CanvasArea() {
 
   return (
     <div className="flex flex-col items-start">  {/* 改为 items-start，避免内容被居中裁剪 */}
-      {/* 缩放控制栏 */}
-      <div className="flex items-center gap-2 mb-4 bg-white rounded-lg shadow-sm border p-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleZoomOut}
-          disabled={scale <= 0.5}
-          className="h-8 w-8"
-        >
-          <ZoomOut className="w-4 h-4" />
-        </Button>
-        <span className="text-sm font-medium min-w-[60px] text-center">
-          {Math.round(scale * 100)}%
-        </span>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleZoomIn}
-          disabled={scale >= 2}
-          className="h-8 w-8"
-        >
-          <ZoomIn className="w-4 h-4" />
-        </Button>
-        <div className="w-px h-4 bg-gray-300 mx-1" />
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleResetZoom}
-          className="h-8 w-8"
-          title="重置缩放"
-        >
-          <RotateCcw className="w-4 h-4" />
-        </Button>
+      {/* 缩放控制栏 - 背景透明，宽度自适应，居中显示 */}
+      <div className="w-full flex justify-center mb-4">
+        <div className="flex items-center gap-2 bg-transparent rounded-lg p-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleZoomOut}
+            disabled={scale <= 0.5}
+            className="h-8 w-8 bg-white/80 hover:bg-white shadow-sm border"
+          >
+            <ZoomOut className="w-4 h-4" />
+          </Button>
+          <span className="text-sm font-medium min-w-[60px] text-center bg-white/80 px-3 py-1.5 rounded-md shadow-sm border">
+            {Math.round(scale * 100)}%
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleZoomIn}
+            disabled={scale >= 2}
+            className="h-8 w-8 bg-white/80 hover:bg-white shadow-sm border"
+          >
+            <ZoomIn className="w-4 h-4" />
+          </Button>
+          <div className="w-px h-4 bg-gray-300 mx-1" />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleResetZoom}
+            className="h-8 w-8 bg-white/80 hover:bg-white shadow-sm border"
+            title="重置缩放"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       {/* 画布容器 */}
