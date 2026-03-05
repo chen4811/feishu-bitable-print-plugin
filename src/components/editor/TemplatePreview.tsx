@@ -2296,12 +2296,10 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                       </div>
                       {/* 流式布局容器 - 内容区域 */}
                       <div style={{
-                        width: '100%',
-                        display: 'flex',
-                        flexWrap: 'nowrap',        // 禁止换行，强制所有子元素在同一行
-                        alignContent: 'flex-start',
-                        alignItems: 'flex-start',  // 防止子元素拉伸
-                        gap: '12px',
+                        minWidth: 'max-content',   // 【关键】确保容器宽度由内容决定
+                        display: 'block',          // 【关键】改为 block 避免 flex 压缩
+                        padding: '0',
+                        margin: '0',
                       }}>
                         {components.map((component: any) => 
                           renderComponent(component, record.data)
@@ -2348,12 +2346,10 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                             }}
                           >
                             <div style={{
-                              width: '100%',
-                              display: 'flex',
-                              flexWrap: 'nowrap',        // 禁止换行
-                              alignContent: 'flex-start',
-                              alignItems: 'flex-start',
-                              gap: '12px',
+                              minWidth: 'max-content',   // 【关键】确保容器宽度由内容决定
+                              display: 'block',          // 【关键】改为 block 避免 flex 压缩
+                              padding: '0',
+                              margin: '0',
                             }}>
                               {components.map((component: any) => 
                                 renderComponent(component, record.data)
@@ -2393,12 +2389,10 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                               }}
                             >
                               <div style={{
-                                width: '100%',
-                                display: 'flex',
-                                flexWrap: 'nowrap',        // 禁止换行
-                                alignContent: 'flex-start',
-                                alignItems: 'flex-start',
-                                gap: '8px',
+                                minWidth: 'max-content',   // 【关键】确保容器宽度由内容决定
+                                display: 'block',          // 【关键】改为 block 避免 flex 压缩
+                                padding: '0',
+                                margin: '0',
                               }}>
                                 {components.map((component: any) => 
                                   renderComponent(component, record.data)
