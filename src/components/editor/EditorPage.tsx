@@ -288,10 +288,17 @@ export function EditorPage({ onExit }: EditorPageProps) {
     }
   }, [templateName, pageConfig, styleConfig, components]); // 移除 initialEditorState 依赖
 
-  // 自动保存逻辑 - 防抖，只在有未保存修改时触发
+  // 自动保存逻辑 - 防抖，只在有未保存修改且不在编辑状态时才触发
   useEffect(() => {
-    if (!currentTemplate?.id || !hasUnsavedChanges) {
-      return; // 没有模板、没有修改时，不自动保存
+    // 检查是否有组件正在编辑
+    const isComponentEditing = tableEditing.isEditing || tableCellEditing.isEditing;
+    
+    if (!currentTemplate?.id || !hasUnsavedChanges || isComponentEditing) {
+      // 没有模板、没有修改，或有组件正在编辑时，不自动保存
+      if (isComponentEditing) {
+        console.log('[EditorPage] 组件正在编辑中，跳过自动保存');
+      }
+      return;
     }
 
     console.log('[EditorPage] 检测到未保存修改，计划自动保存', { 
@@ -374,7 +381,18 @@ export function EditorPage({ onExit }: EditorPageProps) {
     };
   }, [
     currentTemplate,
-    hasUnsavedChanges, // 只依赖 hasUnsavedChanges，避免频繁触发
+    hasUnsavedChanges, // 依赖未保存修改状态
+    tableEditing.isEditing, // 表格编辑状态变化时重新评估
+    tableCellEditing.isEditing, // 单元格编辑状态变化时重新评估
+    // 以下依赖用于保存时读取最新数据
+    templateName,
+    pageConfig,
+    styleConfig,
+    components,
+    history,
+    historyIndex,
+    currentTableInfo,
+    updateTemplate,
   ]);
 
   // 获取当前正在编辑的表格
