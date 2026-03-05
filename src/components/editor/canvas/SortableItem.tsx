@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { CanvasComponentNode } from '@/types/editor';
 import { CanvasComponent } from './CanvasComponent';
 import { useEditorStore } from '@/store/editorStore';
+import { useRef } from 'react';
 
 interface SortableItemProps {
   id: string;
@@ -44,6 +45,10 @@ export function SortableItem({
   // 检查当前表格是否处于编辑状态
   const isTableEditing = tableEditing.isEditing && tableEditing.tableId === component.id;
 
+  // 用于检测双击的 ref
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const clickCountRef = useRef(0);
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -54,6 +59,31 @@ export function SortableItem({
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     onDelete();
+  };
+
+  // 处理点击，防止双击时触发两次选中
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    clickCountRef.current += 1;
+    
+    if (clickCountRef.current === 1) {
+      // 第一次点击，设置定时器
+      clickTimeoutRef.current = setTimeout(() => {
+        // 如果300ms内没有第二次点击，则触发选中
+        if (clickCountRef.current === 1) {
+          onSelect();
+        }
+        clickCountRef.current = 0;
+      }, 300);
+    } else if (clickCountRef.current === 2) {
+      // 第二次点击（双击），清除定时器，不触发选中
+      if (clickTimeoutRef.current) {
+        clearTimeout(clickTimeoutRef.current);
+        clickTimeoutRef.current = null;
+      }
+      clickCountRef.current = 0;
+    }
   };
 
   // 获取当前宽度索引
@@ -90,10 +120,7 @@ export function SortableItem({
         ${isSelected ? 'ring-1 ring-primary' : ''}
         ${!isSelected && !isDragging ? 'hover:ring-1 hover:ring-gray-300' : ''}
       `}
-      onClick={(e) => {
-        e.stopPropagation();
-        onSelect();
-      }}
+      onClick={handleClick}
     >
       {/* 左侧操作栏 - 拖拽手柄和删除按钮 - 仅在非编辑状态下显示 */}
       {!isTableEditing && (

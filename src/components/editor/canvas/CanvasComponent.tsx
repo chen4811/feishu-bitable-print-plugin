@@ -534,12 +534,14 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
     
     if (isCurrentTableEditing) {
-      // 退出编辑
+      // 退出编辑 - 同时清除选中状态
       setTableEditing({
         isEditing: false,
         tableId: null,
         selectedCells: [],
       });
+      // 清除组件选中状态
+      selectComponent(null);
     } else {
       // 进入编辑 - 只设置基本状态
       setTableEditing({
@@ -548,7 +550,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         selectedCells: [],
       });
     }
-  }, [component.id, isCurrentTableEditing, setTableEditing]);
+  }, [component.id, isCurrentTableEditing, setTableEditing, selectComponent]);
 
   // 双击表格进入编辑
   const handleDoubleClickTable = (e: React.MouseEvent) => {
