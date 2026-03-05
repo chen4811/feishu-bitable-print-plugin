@@ -277,7 +277,7 @@ export function TemplateSidebar({ onSelectTemplate, onCreateNew, onLogout, onDel
 
   return (
     <>
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col h-full">
+      <div className="w-56 bg-white border-r border-gray-200 flex flex-col h-full">
         {/* 顶部标题栏 */}
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center gap-2 mb-4">

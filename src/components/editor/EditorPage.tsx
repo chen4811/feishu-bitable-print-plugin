@@ -1301,7 +1301,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
         {/* 主内容区 */}
         <div className="flex-1 flex overflow-hidden">
           {/* 左侧面板 */}
-          <aside className="w-64 border-r flex flex-col bg-muted/30">
+          <aside className="w-56 border-r flex flex-col bg-muted/30">
             {/* 标签切换 */}
             <Tabs
               value={activeTab}
