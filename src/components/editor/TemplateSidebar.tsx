@@ -85,9 +85,9 @@ function TemplateItem({
           <FileText className="w-5 h-5" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between overflow-hidden">
             <h4 className={`
-              font-medium text-sm truncate
+              font-medium text-sm truncate whitespace-nowrap
               ${isActive ? 'text-blue-900' : 'text-gray-900'}
             `}>
               {template.name}
