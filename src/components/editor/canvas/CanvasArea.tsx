@@ -238,7 +238,7 @@ export function CanvasArea() {
   };
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-start">  {/* 改为 items-start，避免内容被居中裁剪 */}
       {/* 缩放控制栏 */}
       <div className="flex items-center gap-2 mb-4 bg-white rounded-lg shadow-sm border p-2">
         <Button
@@ -277,9 +277,9 @@ export function CanvasArea() {
       {/* 画布容器 */}
       <div 
         ref={canvasContainerRef}
-        className="flex items-start justify-center overflow-auto"
+        className="flex items-start justify-start overflow-auto"
         style={{ 
-          maxWidth: '100vw',
+          maxWidth: '100%',
           maxHeight: 'calc(100vh - 200px)',
         }}
       >
