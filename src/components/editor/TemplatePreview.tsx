@@ -419,8 +419,11 @@ const renderTableComponent = (component: any, data: Record<string, any>): React.
   // 安全构建表格容器样式
   const tableContainerStyle = buildSafeStyle({
     position: 'relative',
-    width: component.layout?.width || 'auto',
-    flex: component.layout?.width ? `0 0 ${component.layout.width}` : '0 0 auto',
+    width: 'max-content',      // 【关键】宽度由内容决定，不再受父容器限制
+    minWidth: '100%',          // 确保至少占满一行，防止过窄
+    maxWidth: 'none',          // 【关键】移除最大宽度限制
+    flexShrink: 0,             // 【关键】拒绝被压缩
+    display: 'block',          // 【关键】确保 block 元素行为
     boxSizing: 'border-box',
   }, style);
 
@@ -2274,9 +2277,11 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                       {/* 流式布局容器 - 与编辑器一致 */}
                       <div style={{
                         display: 'flex',
-                        flexWrap: 'nowrap',
+                        flexWrap: 'nowrap',        // 【关键】禁止换行，强制所有子元素在同一行
                         alignContent: 'flex-start',
+                        alignItems: 'flex-start',  // 防止子元素拉伸
                         gap: '12px',
+                        overflowX: 'visible',      // 让内容溢出，由外层容器负责滚动
                       }}>
                         {components.map((component: any) => 
                           renderComponent(component, record.data)
@@ -2322,9 +2327,11 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                             >
                               <div style={{
                                 display: 'flex',
-                                flexWrap: 'nowrap',
+                                flexWrap: 'nowrap',        // 【关键】禁止换行，强制所有子元素在同一行
                                 alignContent: 'flex-start',
+                                alignItems: 'flex-start',  // 防止子元素拉伸
                                 gap: '12px',
+                                overflowX: 'visible',      // 让内容溢出，由外层容器负责滚动
                               }}>
                                 {components.map((component: any) => 
                                   renderComponent(component, record.data)
@@ -2364,9 +2371,11 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                               >
                                 <div style={{
                                   display: 'flex',
-                                  flexWrap: 'nowrap',
+                                  flexWrap: 'nowrap',        // 【关键】禁止换行，强制所有子元素在同一行
                                   alignContent: 'flex-start',
+                                  alignItems: 'flex-start',  // 防止子元素拉伸
                                   gap: '8px',
+                                  overflowX: 'visible',      // 让内容溢出，由外层容器负责滚动
                                 }}>
                                   {components.map((component: any) => 
                                     renderComponent(component, record.data)
