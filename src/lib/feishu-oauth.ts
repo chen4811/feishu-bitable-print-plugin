@@ -149,6 +149,7 @@ export async function getUserAccessToken(code: string): Promise<UserAccessTokenR
   console.log('[Feishu OAuth] 使用授权码获取用户访问令牌');
   
   const appAccessToken = await getAppAccessToken();
+  const redirectUri = await getSystemConfig('FEISHU_REDIRECT_URI');
 
   const response = await fetch('https://open.feishu.cn/open-apis/authen/v1/access_token', {
     method: 'POST',
@@ -159,6 +160,7 @@ export async function getUserAccessToken(code: string): Promise<UserAccessTokenR
     body: JSON.stringify({
       grant_type: 'authorization_code',
       code: code,
+      redirect_uri: redirectUri || undefined,
     }),
   });
 
