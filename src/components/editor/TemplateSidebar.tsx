@@ -84,15 +84,23 @@ function TemplateItem({
         `}>
           <FileText className="w-5 h-5" />
         </div>
-        <div className="flex-1 min-w-0 overflow-hidden">
-          <div className="flex items-center justify-between overflow-hidden">
-            <h4 className={`
-              flex-1 font-medium text-sm truncate whitespace-nowrap overflow-hidden text-ellipsis break-keep
-              ${isActive ? 'text-blue-900' : 'text-gray-900'}
-            `}>
+        <div className="flex-1 min-w-[100px] overflow-hidden">
+          <div className="flex items-center justify-between overflow-hidden gap-2">
+            <h4 
+              className={`
+                flex-1 block font-medium text-sm truncate min-w-0
+                ${isActive ? 'text-blue-900' : 'text-gray-900'}
+              `}
+              style={{ 
+                whiteSpace: 'nowrap',
+                writingMode: 'horizontal-tb',
+                textOverflow: 'ellipsis',
+                overflow: 'hidden'
+              }}
+            >
               {template.name}
             </h4>
-            <div className="relative">
+            <div className="relative shrink-0">
               <Button
                 variant="ghost"
                 size="icon"
