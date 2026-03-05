@@ -118,18 +118,28 @@ export async function getOAuthUrl(state: string): Promise<string> {
   const appId = await getSystemConfig('FEISHU_APP_ID');
   const redirectUri = await getSystemConfig('FEISHU_REDIRECT_URI');
 
+  console.log('[Feishu OAuth] 配置信息:', {
+    appId: appId ? `${appId.substring(0, 8)}...` : null,
+    redirectUri,
+  });
+
   if (!appId || !redirectUri) {
     throw new Error('FEISHU_APP_ID 或 FEISHU_REDIRECT_URI 未配置');
   }
 
+  // 飞书要求 redirect_uri 必须与应用后台配置完全一致
+  // URLSearchParams 会自动对参数进行编码
   const params = new URLSearchParams({
     app_id: appId,
-    redirect_uri: encodeURIComponent(redirectUri),
+    redirect_uri: redirectUri,
     response_type: 'code',
     state: state,
   });
 
-  return `https://open.feishu.cn/open-apis/authen/v1/index?${params.toString()}`;
+  const oauthUrl = `https://open.feishu.cn/open-apis/authen/v1/index?${params.toString()}`;
+  console.log('[Feishu OAuth] 生成的授权 URL:', oauthUrl);
+
+  return oauthUrl;
 }
 
 /**
