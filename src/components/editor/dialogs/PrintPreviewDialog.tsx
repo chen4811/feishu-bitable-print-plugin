@@ -276,6 +276,7 @@ const PrintComponentRenderer = ({
         <table style={{
           width: '100%',
           borderCollapse: 'collapse',
+          tableLayout: 'fixed',  // 【关键】固定表格布局，防止内容撑开
           fontFamily: styleConfig.fontFamily,
           fontSize: `${styleConfig.fontSize}px`,
         }}>
