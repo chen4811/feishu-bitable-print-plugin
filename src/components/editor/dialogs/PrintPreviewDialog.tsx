@@ -170,6 +170,8 @@ const PrintComponentRenderer = ({
         margin: '0 0 16px 0',
         padding: '8px 0',
         minHeight: '1em',
+        wordBreak: 'break-word',  // 【添加】防止长文本溢出
+        overflowWrap: 'break-word',
       };
 
       const Tag = `h${level}` as React.ElementType;
@@ -204,6 +206,8 @@ const PrintComponentRenderer = ({
         margin: '0 0 12px 0',
         padding: '4px 0',
         minHeight: '1em',
+        wordBreak: 'break-word',  // 【添加】防止长文本溢出
+        overflowWrap: 'break-word',
       };
 
       return (
@@ -239,6 +243,8 @@ const PrintComponentRenderer = ({
         margin: '0 0 12px 0',
         paddingLeft: '2em',
         minHeight: '1em',
+        wordBreak: 'break-word',  // 【添加】防止长文本溢出
+        overflowWrap: 'break-word',
       };
 
       return (
@@ -474,6 +480,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
               key={component.id}
               style={{
                 ...getComponentWidthStyle(layoutWidth),
+                boxSizing: 'border-box',
               }}
             >
               <PrintComponentRenderer
