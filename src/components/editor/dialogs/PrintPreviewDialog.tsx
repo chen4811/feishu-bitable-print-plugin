@@ -433,15 +433,31 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
     const gap = 12; // gap-3 = 12px
     switch (width) {
       case '50%': 
-        return { width: `${(contentWidth - gap) / 2}px`, flexShrink: 0 };
+        return { 
+          width: `calc((100% - ${gap}px) / 2)`,
+          flexShrink: 0,
+          boxSizing: 'border-box' as const,
+        };
       case '33%': 
-        return { width: `${(contentWidth - 2 * gap) / 3}px`, flexShrink: 0 };
+        return { 
+          width: `calc((100% - ${2 * gap}px) / 3)`,
+          flexShrink: 0,
+          boxSizing: 'border-box' as const,
+        };
       case '25%': 
-        return { width: `${(contentWidth - 3 * gap) / 4}px`, flexShrink: 0 };
+        return { 
+          width: `calc((100% - ${3 * gap}px) / 4)`,
+          flexShrink: 0,
+          boxSizing: 'border-box' as const,
+        };
       default: 
-        return { width: `${contentWidth}px`, flexShrink: 0 };
+        return { 
+          width: '100%',
+          flexShrink: 0,
+          boxSizing: 'border-box' as const,
+        };
     }
-  }, [contentWidth]);
+  }, []);
 
   // 渲染单页内容（流式布局）
   const renderPageContent = useCallback((record: Record<string, unknown>) => {
