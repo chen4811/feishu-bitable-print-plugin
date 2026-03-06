@@ -76,6 +76,7 @@ const PrintComponentRenderer = ({
         textDecoration: textStyle.underline ? 'underline' : textStyle.lineThrough ? 'line-through' : 'none',
         minHeight: '1em',
         display: 'block',
+        width: '100%',  // 【添加】确保填满父容器
         whiteSpace: 'pre-wrap',
         wordBreak: 'break-word',
       };
@@ -170,6 +171,7 @@ const PrintComponentRenderer = ({
         margin: '0 0 16px 0',
         padding: '8px 0',
         minHeight: '1em',
+        width: '100%',  // 【添加】确保填满父容器
         wordBreak: 'break-word',  // 【添加】防止长文本溢出
         overflowWrap: 'break-word',
       };
@@ -206,6 +208,7 @@ const PrintComponentRenderer = ({
         margin: '0 0 12px 0',
         padding: '4px 0',
         minHeight: '1em',
+        width: '100%',  // 【添加】确保填满父容器
         wordBreak: 'break-word',  // 【添加】防止长文本溢出
         overflowWrap: 'break-word',
       };
@@ -243,6 +246,7 @@ const PrintComponentRenderer = ({
         margin: '0 0 12px 0',
         paddingLeft: '2em',
         minHeight: '1em',
+        width: '100%',  // 【添加】确保填满父容器
         wordBreak: 'break-word',  // 【添加】防止长文本溢出
         overflowWrap: 'break-word',
       };
@@ -478,6 +482,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
           return (
             <div
               key={component.id}
+              className="w-full"  // 【添加】确保内容填满父容器
               style={{
                 ...getComponentWidthStyle(layoutWidth),
                 boxSizing: 'border-box',
