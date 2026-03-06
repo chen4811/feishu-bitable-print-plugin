@@ -447,7 +447,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
     return (
       <div 
         className="flex flex-wrap content-start gap-3"
-        style={{ width: `${contentWidth}px`, maxWidth: `${contentWidth}px` }}
+        style={{ width: `${contentWidth}px` }}
       >
         {components.map((component) => {
           const layoutWidth = component.layout?.width || '100%';
@@ -457,7 +457,6 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
               key={component.id}
               style={{
                 ...getComponentWidthStyle(layoutWidth),
-                boxSizing: 'border-box',
               }}
             >
               <PrintComponentRenderer
