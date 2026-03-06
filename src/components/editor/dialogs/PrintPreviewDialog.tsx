@@ -607,7 +607,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
           )}
 
           {/* 中间：预览区域 */}
-          <div className="flex-1 flex flex-col overflow-hidden bg-gray-100">
+          <div className="flex-1 flex flex-col bg-gray-100" style={{ overflow: 'visible' }}>
             {/* 预览模式切换 */}
             <div className="p-4 border-b bg-background">
               <Tabs value={previewMode} onValueChange={(v: any) => setPreviewMode(v)}>
