@@ -650,7 +650,10 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
 
             {/* 预览内容 */}
             <ScrollArea className="flex-1">
-              <div className="p-8 flex flex-col items-center gap-8">
+              <div 
+                className="p-8 flex flex-col items-center gap-8"
+                style={{ minWidth: 'fit-content' }}  // 【关键】确保容器能适应画布宽度
+              >
                 {printError && (
                   <Alert variant="destructive" className="max-w-lg">
                     <AlertCircle className="h-4 w-4" />
