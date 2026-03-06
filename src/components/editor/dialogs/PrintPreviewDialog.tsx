@@ -431,8 +431,8 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
     ? records.filter(r => selectedRecordIds.includes(r.id as string))
     : records.length > 0 ? records : [{ id: 'demo', __tableName__: '演示数据' }];
 
-  // 计算内容区域宽度（考虑页边距）
-  const contentWidth = canvasWidth - (pageConfig.margins.left + pageConfig.margins.right) * mmToPx;
+  // 计算内容区域宽度（考虑页边距和缩放）
+  const contentWidth = (canvasWidth - (pageConfig.margins.left + pageConfig.margins.right) * mmToPx) * scale;
 
   // 获取组件宽度样式 - 与 CanvasArea 保持一致
   const getComponentWidthStyle = useCallback((width: string) => {
@@ -676,12 +676,11 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
                       ref={index === 0 ? previewRef : null}
                       className="bg-white shadow-lg relative"
                       style={{
-                        width: `${canvasWidth}px`,
-                        minHeight: `${canvasHeight}px`,
-                        padding: `${pageConfig.margins.top * mmToPx}px ${pageConfig.margins.right * mmToPx}px ${pageConfig.margins.bottom * mmToPx}px ${pageConfig.margins.left * mmToPx}px`,
-                        transform: `scale(${scale})`,
-                        transformOrigin: 'top left',
-                        marginBottom: `${20 * scale}px`,
+                        width: `${canvasWidth * scale}px`,  // 【修改】根据缩放调整宽度
+                        minHeight: `${canvasHeight * scale}px`,
+                        padding: `${pageConfig.margins.top * mmToPx * scale}px ${pageConfig.margins.right * mmToPx * scale}px ${pageConfig.margins.bottom * mmToPx * scale}px ${pageConfig.margins.left * mmToPx * scale}px`,
+                        fontFamily: styleConfig.fontFamily,
+                        marginBottom: '20px',
                       }}
                     >
                       <div className="absolute -top-6 left-0 text-sm text-muted-foreground">
@@ -721,11 +720,10 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
                       ref={previewRef}
                       className="bg-white shadow-lg"
                       style={{
-                        width: `${canvasWidth}px`,
-                        minHeight: `${canvasHeight}px`,
-                        padding: `${pageConfig.margins.top * mmToPx}px ${pageConfig.margins.right * mmToPx}px ${pageConfig.margins.bottom * mmToPx}px ${pageConfig.margins.left * mmToPx}px`,
-                        transform: `scale(${scale})`,
-                        transformOrigin: 'top left',
+                        width: `${canvasWidth * scale}px`,  // 【修改】根据缩放调整宽度
+                        minHeight: `${canvasHeight * scale}px`,
+                        padding: `${pageConfig.margins.top * mmToPx * scale}px ${pageConfig.margins.right * mmToPx * scale}px ${pageConfig.margins.bottom * mmToPx * scale}px ${pageConfig.margins.left * mmToPx * scale}px`,
+                        fontFamily: styleConfig.fontFamily,
                       }}
                     >
                       {renderPageContent(previewRecords[currentPage])}
