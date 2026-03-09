@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useEditorStore } from '@/store/editorStore';
 import { PAGE_SIZES, CanvasComponentNode, Field } from '@/types/editor';
 import { 
@@ -27,6 +28,9 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCcw,
+  Database,
+  Layout,
+  RefreshCw,
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -37,21 +41,43 @@ interface PrintPreviewDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// 数据源类型
+interface DataSource {
+  id: string;
+  name: string;
+  type: 'template' | 'table';
+  fields: Field[];
+  records: Record<string, unknown>[];
+}
+
 // 统一的组件渲染器，与 CanvasComponent 保持一致
 const PrintComponentRenderer = ({ 
   component, 
   record, 
   fields, 
-  styleConfig 
+  styleConfig,
+  isEmptyPreview = false,
 }: { 
   component: CanvasComponentNode;
   record: Record<string, unknown>;
   fields: Field[];
   styleConfig: any;
+  isEmptyPreview?: boolean;
 }) => {
   // 变量解析函数
   const resolveVariables = (text: string) => {
     if (!text) return '';
+    // 空预览模式下，保留变量占位符格式
+    if (isEmptyPreview) {
+      return text.replace(/\[([^\]]+)\]/g, (match, varName) => {
+        const hasValue = record[varName] !== undefined && record[varName] !== '';
+        if (hasValue) {
+          return String(record[varName]);
+        }
+        // 空预览模式下显示占位符
+        return match;
+      });
+    }
     return text.replace(/\[([^\]]+)\]/g, (match, varName) => {
       return String(record[varName] || match);
     });
@@ -76,7 +102,7 @@ const PrintComponentRenderer = ({
         textDecoration: textStyle.underline ? 'underline' : textStyle.lineThrough ? 'line-through' : 'none',
         minHeight: '1em',
         display: 'block',
-        width: '100%',  // 【添加】确保填满父容器
+        width: '100%',
         whiteSpace: 'pre-wrap',
         wordBreak: 'break-word',
       };
@@ -171,8 +197,8 @@ const PrintComponentRenderer = ({
         margin: '0 0 16px 0',
         padding: '8px 0',
         minHeight: '1em',
-        width: '100%',  // 【添加】确保填满父容器
-        wordBreak: 'break-word',  // 【添加】防止长文本溢出
+        width: '100%',
+        wordBreak: 'break-word',
         overflowWrap: 'break-word',
       };
 
@@ -208,8 +234,8 @@ const PrintComponentRenderer = ({
         margin: '0 0 12px 0',
         padding: '4px 0',
         minHeight: '1em',
-        width: '100%',  // 【添加】确保填满父容器
-        wordBreak: 'break-word',  // 【添加】防止长文本溢出
+        width: '100%',
+        wordBreak: 'break-word',
         overflowWrap: 'break-word',
       };
 
@@ -246,8 +272,8 @@ const PrintComponentRenderer = ({
         margin: '0 0 12px 0',
         paddingLeft: '2em',
         minHeight: '1em',
-        width: '100%',  // 【添加】确保填满父容器
-        wordBreak: 'break-word',  // 【添加】防止长文本溢出
+        width: '100%',
+        wordBreak: 'break-word',
         overflowWrap: 'break-word',
       };
 
@@ -286,7 +312,7 @@ const PrintComponentRenderer = ({
         <table style={{
           width: '100%',
           borderCollapse: 'collapse',
-          tableLayout: 'fixed',  // 【关键】固定表格布局，防止内容撑开
+          tableLayout: 'fixed',
           fontFamily: styleConfig.fontFamily,
           fontSize: `${styleConfig.fontSize}px`,
         }}>
@@ -401,6 +427,8 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
     toggleRecordSelection,
     selectAllRecords,
     clearRecordSelection,
+    setRecords,
+    setFields,
   } = useEditorStore();
   
   const [previewMode, setPreviewMode] = useState<'default' | 'continuous' | 'label'>('default');
@@ -408,6 +436,8 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
   const [isExporting, setIsExporting] = useState(false);
   const [printError, setPrintError] = useState<string | null>(null);
   const [scale, setScale] = useState(1);
+  const [dataSourceMode, setDataSourceMode] = useState<'template' | 'data'>('template');
+  const [isLoadingData, setIsLoadingData] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
 
   // 计算画布尺寸
@@ -431,9 +461,27 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
   };
 
   // 获取预览记录
-  const previewRecords = selectedRecordIds.length > 0
-    ? records.filter(r => selectedRecordIds.includes(r.id as string))
-    : records.length > 0 ? records : [{ id: 'demo', __tableName__: '演示数据' }];
+  const getPreviewRecords = useCallback(() => {
+    // 模板预览模式：返回空记录，让组件显示占位符
+    if (dataSourceMode === 'template') {
+      return [{ id: 'template-preview', __mode__: 'template' }];
+    }
+    
+    // 数据预览模式：使用实际记录
+    if (selectedRecordIds.length > 0) {
+      return records.filter(r => selectedRecordIds.includes(r.id as string));
+    }
+    
+    if (records.length > 0) {
+      return records;
+    }
+    
+    // 没有数据时返回空记录
+    return [{ id: 'empty', __mode__: 'empty' }];
+  }, [dataSourceMode, records, selectedRecordIds]);
+
+  const previewRecords = getPreviewRecords();
+  const isEmptyPreview = dataSourceMode === 'template' || (dataSourceMode === 'data' && records.length === 0);
 
   // 计算内容区域宽度（考虑页边距和缩放）
   const contentWidth = (canvasWidth - (pageConfig.margins.left + pageConfig.margins.right) * mmToPx) * scale;
@@ -482,7 +530,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
           return (
             <div
               key={component.id}
-              className="w-full"  // 【添加】确保内容填满父容器
+              className="w-full"
               style={{
                 ...getComponentWidthStyle(layoutWidth),
                 boxSizing: 'border-box',
@@ -493,13 +541,55 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
                 record={record}
                 fields={fields}
                 styleConfig={styleConfig}
+                isEmptyPreview={isEmptyPreview}
               />
             </div>
           );
         })}
       </div>
     );
-  }, [components, fields, styleConfig, contentWidth, getComponentWidthStyle]);
+  }, [components, fields, styleConfig, contentWidth, getComponentWidthStyle, isEmptyPreview]);
+
+  // 加载飞书数据
+  const loadFeishuData = useCallback(async () => {
+    setIsLoadingData(true);
+    setPrintError(null);
+    
+    try {
+      // 动态导入 feishu-env
+      const { fetchFields, fetchRecords } = await import('@/lib/feishu-env');
+      
+      // 获取字段
+      const feishuFields = await fetchFields();
+      const appFields = feishuFields.map((field: any) => ({
+        id: field.id,
+        name: field.name,
+        type: field.type,
+        placeholder: `[${field.name}]`,
+        isSystem: false,
+      }));
+      setFields(appFields);
+      
+      // 获取记录
+      const feishuRecords = await fetchRecords();
+      const appRecords = feishuRecords.map((record: any) => ({
+        id: record.id,
+        ...record.fields,
+      }));
+      setRecords(appRecords as Record<string, unknown>[]);
+      
+      // 切换到数据模式
+      setDataSourceMode('data');
+      
+      // 重置页码
+      setCurrentPage(0);
+    } catch (error) {
+      console.error('加载飞书数据失败:', error);
+      setPrintError('加载数据失败，请确保在飞书环境中并选择了表格');
+    } finally {
+      setIsLoadingData(false);
+    }
+  }, [setFields, setRecords]);
 
   // 导出为 PDF
   const handleExportPDF = useCallback(async () => {
@@ -569,58 +659,133 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
 
         {/* 主体内容 */}
         <div className="flex flex-1 overflow-hidden">
-          {/* 左侧：记录选择 */}
-          {records.length > 0 && (
-            <div className="w-64 border-r flex flex-col">
-              <div className="p-4 border-b">
-                <div className="flex items-center gap-2 mb-2">
-                  <Checkbox
-                    id="select-all"
-                    checked={allSelected}
-                    onCheckedChange={handleToggleSelectAll}
-                  />
-                  <label htmlFor="select-all" className="text-sm font-medium cursor-pointer">
-                    全选 ({records.length})
-                  </label>
-                </div>
-                <Badge variant="secondary">
-                  已选 {selectedRecordIds.length} 条
-                </Badge>
-              </div>
+          {/* 左侧：数据源选择和记录选择 */}
+          <div className="w-72 border-r flex flex-col">
+            {/* 数据源选择 */}
+            <div className="p-4 border-b bg-muted/30">
+              <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+                <Database className="w-4 h-4" />
+                数据源
+              </h3>
+              <Tabs 
+                value={dataSourceMode} 
+                onValueChange={(v) => setDataSourceMode(v as 'template' | 'data')}
+                className="w-full"
+              >
+                <TabsList className="w-full grid grid-cols-2">
+                  <TabsTrigger value="template" className="text-xs">
+                    <Layout className="w-3 h-3 mr-1" />
+                    点选模板
+                  </TabsTrigger>
+                  <TabsTrigger value="data" className="text-xs">
+                    <Database className="w-3 h-3 mr-1" />
+                    点选数据
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
               
-              <ScrollArea className="flex-1">
-                <div className="p-2">
-                  {records.map((record) => (
-                    <div
-                      key={record.id as string}
-                      className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
-                      onClick={() => toggleRecordSelection(record.id as string)}
-                    >
-                      <Checkbox
-                        checked={selectedRecordIds.includes(record.id as string)}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {String(record['__tableName__'] || record.id)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
+              {dataSourceMode === 'data' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full mt-3"
+                  onClick={loadFeishuData}
+                  disabled={isLoadingData}
+                >
+                  <RefreshCw className={`w-3 h-3 mr-1 ${isLoadingData ? 'animate-spin' : ''}`} />
+                  {isLoadingData ? '加载中...' : '加载表格数据'}
+                </Button>
+              )}
+              
+              {dataSourceMode === 'template' && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  预览模板结构，变量将显示为占位符
+                </p>
+              )}
             </div>
-          )}
+
+            {/* 记录选择（仅在数据模式下显示） */}
+            {dataSourceMode === 'data' && records.length > 0 && (
+              <>
+                <div className="p-3 border-b">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Checkbox
+                      id="select-all"
+                      checked={allSelected}
+                      onCheckedChange={handleToggleSelectAll}
+                    />
+                    <label htmlFor="select-all" className="text-sm font-medium cursor-pointer">
+                      全选 ({records.length})
+                    </label>
+                  </div>
+                  <Badge variant="secondary" className="text-xs">
+                    已选 {selectedRecordIds.length} 条
+                  </Badge>
+                </div>
+                
+                <ScrollArea className="flex-1">
+                  <div className="p-2">
+                    {records.map((record) => (
+                      <div
+                        key={record.id as string}
+                        className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
+                        onClick={() => toggleRecordSelection(record.id as string)}
+                      >
+                        <Checkbox
+                          checked={selectedRecordIds.includes(record.id as string)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {String(record['__tableName__'] || record.id)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </>
+            )}
+            
+            {dataSourceMode === 'data' && records.length === 0 && !isLoadingData && (
+              <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
+                <Database className="w-8 h-8 text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  暂无数据
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  点击上方按钮加载表格数据
+                </p>
+              </div>
+            )}
+            
+            {dataSourceMode === 'template' && (
+              <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
+                <Layout className="w-8 h-8 text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  模板预览模式
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  显示模板结构和变量占位符
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* 中间：预览区域 */}
           <div className="flex-1 flex flex-col bg-gray-100" style={{ overflow: 'visible' }}>
             {/* 预览模式切换 */}
-            <div className="p-4 border-b bg-background">
+            <div className="p-4 border-b bg-background flex items-center justify-between">
               <Tabs value={previewMode} onValueChange={(v: any) => setPreviewMode(v)}>
                 <TabsList>
                   <TabsTrigger value="default">单页模式</TabsTrigger>
                   <TabsTrigger value="continuous">连续模式</TabsTrigger>
                 </TabsList>
               </Tabs>
+              
+              {/* 模式指示器 */}
+              <Badge variant={dataSourceMode === 'template' ? 'secondary' : 'default'} className="text-xs">
+                {dataSourceMode === 'template' ? '模板预览' : '数据预览'}
+              </Badge>
             </div>
 
             {/* 缩放控制栏 - 跟模板编辑一样，位于画布上方 */}
@@ -664,7 +829,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
             <ScrollArea className="flex-1">
               <div 
                 className="p-8 flex flex-col items-center gap-8"
-                style={{ minWidth: 'fit-content' }}  // 【关键】确保容器能适应画布宽度
+                style={{ minWidth: 'fit-content' }}
               >
                 {printError && (
                   <Alert variant="destructive" className="max-w-lg">
@@ -681,7 +846,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
                       ref={index === 0 ? previewRef : null}
                       className="bg-white shadow-lg relative"
                       style={{
-                        width: `${canvasWidth * scale}px`,  // 【修改】根据缩放调整宽度
+                        width: `${canvasWidth * scale}px`,
                         minHeight: `${canvasHeight * scale}px`,
                         padding: `${pageConfig.margins.top * mmToPx * scale}px ${pageConfig.margins.right * mmToPx * scale}px ${pageConfig.margins.bottom * mmToPx * scale}px ${pageConfig.margins.left * mmToPx * scale}px`,
                         fontFamily: styleConfig.fontFamily,
@@ -725,7 +890,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
                       ref={previewRef}
                       className="bg-white shadow-lg"
                       style={{
-                        width: `${canvasWidth * scale}px`,  // 【修改】根据缩放调整宽度
+                        width: `${canvasWidth * scale}px`,
                         minHeight: `${canvasHeight * scale}px`,
                         padding: `${pageConfig.margins.top * mmToPx * scale}px ${pageConfig.margins.right * mmToPx * scale}px ${pageConfig.margins.bottom * mmToPx * scale}px ${pageConfig.margins.left * mmToPx * scale}px`,
                         fontFamily: styleConfig.fontFamily,
