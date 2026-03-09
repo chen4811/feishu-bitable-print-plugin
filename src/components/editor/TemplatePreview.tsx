@@ -2244,11 +2244,13 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                 const actualHeight = pageConfig.orientation === 'portrait' ? pageSize.height : pageSize.width;
                 const padding = `${pageConfig.margins.top}mm ${pageConfig.margins.right}mm ${pageConfig.margins.bottom}mm ${pageConfig.margins.left}mm`;
                 
-                // 如果没有选中数据，显示空状态
+                // 如果没有选中数据，显示模板预览（使用空数据）
                 if (selectedRecords.length === 0) {
+                  const components = selectedTemplate?.data?.components || [];
+                  
                   return (
                     <div
-                      className="bg-white shadow-lg print:shadow-none print-area-page flex items-center justify-center"
+                      className="bg-white shadow-lg print:shadow-none print-area-page"
                       style={{
                         width: `${actualWidth}mm`,
                         minHeight: `${actualHeight}mm`,
@@ -2261,10 +2263,20 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                         marginRight: '0',
                       }}
                     >
-                      <div className="text-center text-gray-400">
-                        <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                        <p className="text-lg">请从右侧选择数据</p>
-                        <p className="text-sm mt-2">点击右侧数据卡片添加到预览</p>
+                      {/* 模板预览标记 */}
+                      <div className="absolute top-2 right-2 text-xs text-blue-400 print:hidden">
+                        模板预览
+                      </div>
+                      {/* 流式布局容器 - 内容区域 */}
+                      <div style={{
+                        minWidth: 'max-content',
+                        display: 'block',
+                        padding: '0',
+                        margin: '0',
+                      }}>
+                        {components.map((component: any) => 
+                          renderComponent(component, {})
+                        )}
                       </div>
                     </div>
                   );
