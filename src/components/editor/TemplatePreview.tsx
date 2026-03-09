@@ -416,13 +416,26 @@ const renderTableComponent = (component: any, data: Record<string, any>): React.
 
   const { cells = [], borderWidth = 1, borderColor = '#000000', showOuterBorder = true, showInnerBorder = true } = tableConfig;
 
+  // 计算列宽 - 如果有 colWidths 配置则使用，否则平均分配
+  const colWidths = tableConfig.colWidths || [];
+  const maxCols = cells.reduce((max: number, row: any[]) => {
+    const visibleCols = row.filter((cell: any) => {
+      const rowSpan = cell?.rowSpan ?? 1;
+      const colSpan = cell?.colSpan ?? 1;
+      return rowSpan > 0 && colSpan > 0;
+    }).length;
+    return Math.max(max, visibleCols);
+  }, 0);
+
   // 简化表格容器样式 - 让表格自然流动在纸张容器内
   const tableContainerStyle = buildSafeStyle({
     position: 'relative',
     width: '100%',             // 相对于父容器（纸张）的宽度
+    maxWidth: '100%',          // 【关键】限制最大宽度为父容器宽度
     boxSizing: 'border-box',
     marginLeft: '0',
     marginRight: '0',
+    overflow: 'hidden',        // 【关键】隐藏溢出内容
   }, style);
 
   return (
@@ -434,6 +447,8 @@ const renderTableComponent = (component: any, data: Record<string, any>): React.
         style={{
           borderCollapse: 'collapse',
           width: '100%',
+          maxWidth: '100%',        // 【关键】限制表格最大宽度
+          tableLayout: 'fixed',    // 【关键】固定表格布局，防止内容撑开
           border: showOuterBorder ? `${borderWidth}px solid ${borderColor}` : 'none',
         }}
       >
@@ -458,6 +473,9 @@ const renderTableComponent = (component: any, data: Record<string, any>): React.
                   const content = cell.content || '';
                   const processedContent = replaceVariables(content, data);
                   
+                  // 获取列宽配置
+                  const colWidth = colWidths[colIndex];
+                  
                   return (
                     <td
                       key={`${rowIndex}-${colIndex}`}
@@ -469,6 +487,10 @@ const renderTableComponent = (component: any, data: Record<string, any>): React.
                         verticalAlign: 'top',
                         whiteSpace: 'pre-wrap',
                         wordWrap: 'break-word',
+                        overflowWrap: 'break-word',
+                        width: colWidth ? `${colWidth}px` : `${100 / maxCols}%`, // 【关键】设置列宽
+                        minWidth: colWidth ? `${colWidth}px` : undefined,
+                        maxWidth: colWidth ? `${colWidth}px` : `${100 / maxCols}%`,
                       }, cell.style)}
                     >
                       {processedContent}
@@ -519,11 +541,24 @@ const renderComponentToHTML = (component: any, data: Record<string, any>): strin
     case 'table':
       // 渲染表格为 HTML
       if (component.tableConfig) {
-        const { cells = [], borderWidth = 1, borderColor = '#000000', showOuterBorder = true, showInnerBorder = true } = component.tableConfig;
+        const { cells = [], colWidths = [], borderWidth = 1, borderColor = '#000000', showOuterBorder = true, showInnerBorder = true } = component.tableConfig;
+        
+        // 计算最大列数
+        const maxCols = cells.reduce((max: number, row: any[]) => {
+          const visibleCols = row.filter((cell: any) => {
+            const rowSpan = cell?.rowSpan ?? 1;
+            const colSpan = cell?.colSpan ?? 1;
+            return rowSpan > 0 && colSpan > 0;
+          }).length;
+          return Math.max(max, visibleCols);
+        }, 0);
+        
         const tableHtml = `
           <table style="
             border-collapse: collapse;
             width: 100%;
+            max-width: 100%;
+            table-layout: fixed;
             border: ${showOuterBorder ? `${borderWidth}px solid ${borderColor}` : 'none'};
           ">
             <tbody>
@@ -543,6 +578,9 @@ const renderComponentToHTML = (component: any, data: Record<string, any>): strin
                       const content = cell.content || '';
                       const cellStyle = cell.style || {};
                       const processedContent = replaceVariablesToHTML(content, data, cellStyle);
+                      // 获取列宽配置
+                      const colWidth = colWidths[colIndex];
+                      const cellWidth = colWidth ? `${colWidth}px` : `${100 / maxCols}%`;
                       return `
                         <td 
                           ${rowSpan > 1 ? `rowspan="${rowSpan}"` : ''}
@@ -554,6 +592,8 @@ const renderComponentToHTML = (component: any, data: Record<string, any>): strin
                             white-space: pre-wrap;
                             word-wrap: break-word;
                             overflow-wrap: break-word;
+                            width: ${cellWidth};
+                            max-width: ${cellWidth};
                           "
                         >${processedContent}</td>
                       `;
