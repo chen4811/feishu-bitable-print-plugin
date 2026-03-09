@@ -483,8 +483,8 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
   const previewRecords = getPreviewRecords();
   const isEmptyPreview = dataSourceMode === 'template' || (dataSourceMode === 'data' && records.length === 0);
 
-  // 计算内容区域宽度（考虑页边距和缩放）
-  const contentWidth = (canvasWidth - (pageConfig.margins.left + pageConfig.margins.right) * mmToPx) * scale;
+  // 计算内容区域宽度（考虑页边距）- 与 CanvasArea 保持一致
+  const contentWidth = canvasWidth - (pageConfig.margins.left + pageConfig.margins.right) * mmToPx;
 
   // 获取组件宽度样式 - 与 CanvasArea 保持一致
   const getComponentWidthStyle = useCallback((width: string) => {
@@ -519,6 +519,20 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
 
   // 渲染单页内容（流式布局）
   const renderPageContent = useCallback((record: Record<string, unknown>) => {
+    // 空状态：没有组件时显示提示
+    if (components.length === 0) {
+      return (
+        <div 
+          className="flex flex-col items-center justify-center h-full text-muted-foreground"
+          style={{ width: `${contentWidth}px`, minHeight: '200px' }}
+        >
+          <Layout className="w-12 h-12 mb-4 opacity-50" />
+          <p className="text-lg font-medium">模板为空</p>
+          <p className="text-sm mt-1">请先添加组件到画布</p>
+        </div>
+      );
+    }
+
     return (
       <div 
         className="flex flex-wrap content-start gap-3"
