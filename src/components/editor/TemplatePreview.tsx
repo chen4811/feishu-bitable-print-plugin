@@ -253,6 +253,117 @@ const formatFieldValueToHTML = (key: string, value: any, textStyle?: any): strin
     return dateValue;
   }
   
+  // 检查是否是图片附件
+  // 附件字段数据格式：[{name: 'xxx.jpg', url: '...', type: 'image/jpeg'}, ...]
+  const isImageAttachment = (item: any): boolean => {
+    if (typeof item !== 'object' || item === null) return false;
+    const name = item.name || item.fileName || '';
+    const url = item.url || item.fileUrl || '';
+    const type = item.type || item.mimeType || '';
+    // 检查文件名后缀或类型
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+    const isImageByName = imageExtensions.some(ext => name.toLowerCase().endsWith(ext));
+    const isImageByType = type.startsWith('image/');
+    return isImageByName || isImageByType;
+  };
+
+  // 处理附件/图片字段
+  if (Array.isArray(value) && value.length > 0 && isImageAttachment(value[0])) {
+    // 生成图片网格 HTML
+    const imagesHtml = value
+      .filter((item: any) => isImageAttachment(item))
+      .map((item: any, index: number) => {
+        const url = item.url || item.fileUrl || '';
+        const name = item.name || item.fileName || `图片${index + 1}`;
+        if (!url) return '';
+        return `
+          <div style="
+            display: inline-block;
+            margin: 4px;
+            text-align: center;
+            vertical-align: top;
+          ">
+            <img 
+              src="${url}" 
+              alt="${name}"
+              style="
+                max-width: 120px;
+                max-height: 120px;
+                width: auto;
+                height: auto;
+                object-fit: contain;
+                border: 1px solid #e5e7eb;
+                border-radius: 4px;
+                padding: 2px;
+                background: #f9fafb;
+              "
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+            />
+            <div style="
+              display: none;
+              padding: 8px;
+              background: #f3f4f6;
+              border-radius: 4px;
+              font-size: 12px;
+              color: #6b7280;
+              max-width: 120px;
+              word-break: break-word;
+            ">${name}</div>
+            <div style="
+              font-size: 11px;
+              color: #6b7280;
+              margin-top: 4px;
+              max-width: 120px;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+            ">${name}</div>
+          </div>
+        `;
+      })
+      .join('');
+    
+    if (imagesHtml) {
+      return `<div style="display: flex; flex-wrap: wrap; gap: 4px;">${imagesHtml}</div>`;
+    }
+  }
+
+  // 单个图片附件
+  if (!Array.isArray(value) && isImageAttachment(value)) {
+    const url = value.url || value.fileUrl || '';
+    const name = value.name || value.fileName || '图片';
+    if (url) {
+      return `
+        <div style="text-align: center;">
+          <img 
+            src="${url}" 
+            alt="${name}"
+            style="
+              max-width: 200px;
+              max-height: 200px;
+              width: auto;
+              height: auto;
+              object-fit: contain;
+              border: 1px solid #e5e7eb;
+              border-radius: 4px;
+              padding: 4px;
+              background: #f9fafb;
+            "
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+          />
+          <div style="
+            display: none;
+            padding: 8px;
+            background: #f3f4f6;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #6b7280;
+          ">${name}</div>
+        </div>
+      `;
+    }
+  }
+  
   // 检查是否是流程选项（有颜色信息）
   // 流程字段数据通常是数组，每个元素有 text, color, bgColor 等属性
   let isWorkflowOption = false;
@@ -681,7 +792,134 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
 
   // 替换变量 - 优先使用 content，其次使用 text
   const sourceText = content || text;
-  const processedContent = sourceText ? replaceVariables(sourceText, data) : undefined;
+  let processedContent: React.ReactNode = sourceText ? replaceVariables(sourceText, data) : undefined;
+
+  // 检测并渲染附件图片（在变量替换后）
+  // 如果文本中包含 [字段名] 且该字段是附件类型，尝试渲染图片
+  if (sourceText) {
+    const variableMatches = sourceText.match(/\[([^\]]+)\]/g);
+    if (variableMatches && variableMatches.length > 0) {
+      // 检查是否有附件字段
+      const hasAttachmentField = variableMatches.some((match: string) => {
+        const fieldName = match.slice(1, -1);
+        const fieldValue = data[fieldName];
+        if (Array.isArray(fieldValue) && fieldValue.length > 0) {
+          const firstItem = fieldValue[0];
+          return firstItem && (firstItem.url || firstItem.fileUrl) && (firstItem.name || firstItem.fileName);
+        }
+        return false;
+      });
+
+      if (hasAttachmentField) {
+        // 使用分段渲染，将文本和图片混合
+        const parts: React.ReactNode[] = [];
+        let lastIndex = 0;
+        
+        // 使用正则匹配所有变量
+        const varRegex = /\[([^\]]+)\]/g;
+        let match: RegExpExecArray | null;
+        let partIndex = 0;
+        
+        while ((match = varRegex.exec(sourceText)) !== null) {
+          const varName = match[1];
+          const matchStart = match.index;
+          const matchEnd = match.index + match[0].length;
+          
+          // 添加变量前的文本
+          if (matchStart > lastIndex) {
+            parts.push(
+              <span key={`text-${partIndex}`}>
+                {sourceText.slice(lastIndex, matchStart)}
+              </span>
+            );
+          }
+          
+          // 获取字段值
+          const fieldValue = data[varName];
+          
+          // 检查是否是图片附件
+          if (Array.isArray(fieldValue) && fieldValue.length > 0 && 
+              fieldValue[0] && (fieldValue[0].url || fieldValue[0].fileUrl)) {
+            // 渲染图片网格
+            const images = fieldValue
+              .filter((item: any) => item && (item.url || item.fileUrl))
+              .map((item: any, idx: number) => {
+                const url = item.url || item.fileUrl;
+                const name = item.name || item.fileName || `图片${idx + 1}`;
+                return (
+                  <div 
+                    key={idx}
+                    style={{
+                      display: 'inline-block',
+                      margin: '4px',
+                      textAlign: 'center',
+                      verticalAlign: 'top',
+                    }}
+                  >
+                    <img
+                      src={url}
+                      alt={name}
+                      style={{
+                        maxWidth: '120px',
+                        maxHeight: '120px',
+                        width: 'auto',
+                        height: 'auto',
+                        objectFit: 'contain',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '4px',
+                        padding: '2px',
+                        background: '#f9fafb',
+                      }}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                    <div style={{
+                      fontSize: '11px',
+                      color: '#6b7280',
+                      marginTop: '4px',
+                      maxWidth: '120px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {name}
+                    </div>
+                  </div>
+                );
+              });
+            
+            parts.push(
+              <div key={`img-${partIndex}`} style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                {images}
+              </div>
+            );
+          } else {
+            // 普通字段，使用变量替换后的值
+            parts.push(
+              <span key={`var-${partIndex}`}>
+                {replaceVariables(match[0], data)}
+              </span>
+            );
+          }
+          
+          lastIndex = matchEnd;
+          partIndex++;
+        }
+        
+        // 添加剩余文本
+        if (lastIndex < sourceText.length) {
+          parts.push(
+            <span key={`text-end`}>
+              {sourceText.slice(lastIndex)}
+            </span>
+          );
+        }
+        
+        processedContent = <>{parts}</>;
+      }
+    }
+  }
 
   // 兼容处理：编辑器中使用 textStyle，模板预览中可能使用 style
   const actualStyle = Object.keys(textStyle).length > 0 ? textStyle : style;
