@@ -231,16 +231,27 @@ const enrichAttachmentUrls = async (
   fieldMetaList: any[]
 ): Promise<Record<string, any>> => {
   console.log('[AttachmentEnrich] ========== 开始为记录获取附件URL ==========');
-  console.log('[AttachmentEnrich] 记录ID:', recordId, '表格ID:', tableId);
+  console.log('[AttachmentEnrich-Start] 开始处理记录:', recordId);
+  console.log('[AttachmentEnrich-Debug] 字段元数据:', fieldMetaList.map(f => ({ name: f.name, id: f.id, type: f.type })));
   
   const enrichedFields = { ...fields };
   
-  // 查找附件类型字段（原始类型为11，映射后为 'attachment'）
-  const attachmentFields = fieldMetaList.filter(f => f.type === 11 || f.type === 'attachment' || f.type === 'Attachment');
-  console.log('[AttachmentEnrich] 找到附件字段数量:', attachmentFields.length);
+  // 【修复】放宽类型判断，支持多种类型表示
+  const attachmentFields = fieldMetaList.filter(f => {
+    const isType11 = Number(f.type) === 11;
+    const isTypeName = f.type === 'attachment' || f.type === 'Attachment';
+    
+    if (isType11 || isTypeName) {
+      console.log('[AttachmentEnrich-Found] 发现附件字段:', f.name, 'type:', f.type);
+      return true;
+    }
+    return false;
+  });
+  
+  console.log('[AttachmentEnrich-Result] 找到附件字段数量:', attachmentFields.length);
   
   if (attachmentFields.length === 0) {
-    console.log('[AttachmentEnrich] 没有附件字段，跳过处理');
+    console.warn('[AttachmentEnrich-Warn] 没有找到附件字段');
     return enrichedFields;
   }
   

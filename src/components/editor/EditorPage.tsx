@@ -76,63 +76,94 @@ const enrichAttachmentUrls = async (
   fields: Record<string, any>,
   fieldMetaList: any[]
 ): Promise<Record<string, any>> => {
-  console.log('[EditorPage-Attachment] 开始为记录获取附件URL:', recordId);
+  console.log('[AttachmentEnrich-Start] 开始处理记录:', recordId);
+  console.log('[AttachmentEnrich-Debug] 字段元数据列表:', fieldMetaList.map(f => ({ name: f.name, id: f.id, type: f.type })));
+  console.log('[AttachmentEnrich-Debug] 输入字段数据键:', Object.keys(fields));
   
   const enrichedFields = { ...fields };
   
-  // 查找附件类型字段（原始类型为11，映射后为 'attachment'）
-  const attachmentFields = fieldMetaList.filter(f => f.type === 11 || f.type === 'attachment');
-  console.log('[EditorPage-Attachment] 找到附件字段数量:', attachmentFields.length);
+  // 【修复】放宽类型判断，支持多种类型表示
+  const attachmentFields = fieldMetaList.filter(f => {
+    const isType11 = Number(f.type) === 11;
+    const isTypeName = f.type === 'attachment' || f.type === 'Attachment';
+    
+    if (isType11 || isTypeName) {
+      console.log('[AttachmentEnrich-Found] 发现附件字段:', f.name, 'ID:', f.id, 'type:', f.type);
+      return true;
+    }
+    return false;
+  });
+  
+  console.log('[AttachmentEnrich-Result] 找到附件字段数量:', attachmentFields.length);
   
   if (attachmentFields.length === 0) {
+    console.warn('[AttachmentEnrich-Warn] 没有找到附件字段，跳过处理');
     return enrichedFields;
   }
   
   try {
+    console.log('[AttachmentEnrich-Call] 开始获取 bitable 实例...');
     const { bitable } = await import('@lark-base-open/js-sdk');
     const base = await bitable.base;
+    console.log('[AttachmentEnrich-Call] 开始获取 table 实例，tableId:', tableId);
     const table = await base.getTable(tableId);
+    console.log('[AttachmentEnrich-Call] 成功获取 table 实例');
     
     for (const fieldMeta of attachmentFields) {
       const fieldName = fieldMeta.name;
       const fieldId = fieldMeta.id;
-      // 【关键】record.fields 使用字段ID作为键，不是字段名称！
+      
+      console.log(`[AttachmentEnrich-Debug] 检查字段 ${fieldName} (ID: ${fieldId})`);
+      
+      // 使用字段ID访问字段值
       const fieldValue = enrichedFields[fieldId];
       
-      console.log(`[EditorPage-Attachment] 检查字段: ${fieldName} (ID: ${fieldId}), 值存在:`, !!fieldValue);
-      // 检查字段值是否为附件数组
-      if (!Array.isArray(fieldValue) || fieldValue.length === 0) {
+      console.log(`[AttachmentEnrich-Debug] 字段值类型:`, typeof fieldValue, '是否是数组:', Array.isArray(fieldValue));
+      
+      if (!Array.isArray(fieldValue)) {
+        console.warn(`[AttachmentEnrich-Warn] 字段 ${fieldName} 的值不是数组，跳过`);
         continue;
       }
       
-      console.log(`[EditorPage-Attachment] 处理字段: ${fieldName}, 包含 ${fieldValue.length} 个附件`);
+      if (fieldValue.length === 0) {
+        console.warn(`[AttachmentEnrich-Warn] 字段 ${fieldName} 的值为空数组，跳过`);
+        continue;
+      }
+      
+      console.log(`[AttachmentEnrich-Call] 字段 ${fieldName} 包含 ${fieldValue.length} 个附件，准备调用 getAttachmentUrls`);
+      console.log(`[AttachmentEnrich-Debug] 第一个附件数据:`, JSON.stringify(fieldValue[0]).substring(0, 200));
       
       try {
         const field = await table.getField(fieldId);
+        console.log(`[AttachmentEnrich-Call] 成功获取字段实例 ${fieldId}，准备调用 getAttachmentUrls`);
+        
         const realUrls = await (field as any).getAttachmentUrls(recordId);
         
-        console.log(`[EditorPage-Attachment] 获取到 ${realUrls?.length || 0} 个真实URL`);
+        console.log(`[AttachmentEnrich-Result] 获取到 ${realUrls?.length || 0} 个真实URL:`, realUrls?.slice(0, 2));
         
         if (realUrls && realUrls.length > 0) {
-          // 【关键】使用字段ID作为键更新字段值
           enrichedFields[fieldId] = fieldValue.map((item: any, index: number) => {
             const realUrl = realUrls[index] || '';
-            console.log(`[EditorPage-Attachment] [${index}] ${item.name}: 注入URL ${realUrl.substring(0, 50)}...`);
+            console.log(`[AttachmentEnrich-Inject] [${index}] ${item.name}: 注入 URL ${realUrl.substring(0, 80)}...`);
             return {
               ...item,
               url: realUrl,
               fileUrl: realUrl,
             };
           });
+          console.log(`[AttachmentEnrich-Result] 字段 ${fieldName} 的 URL 注入完成`);
+        } else {
+          console.warn(`[AttachmentEnrich-Warn] 字段 ${fieldName} 未返回任何 URL`);
         }
       } catch (error) {
-        console.error(`[EditorPage-Attachment] 处理字段 ${fieldName} 失败:`, error);
+        console.error(`[AttachmentEnrich-Error] 处理字段 ${fieldName} 失败:`, error);
       }
     }
   } catch (error) {
-    console.error('[EditorPage-Attachment] 获取附件URL失败:', error);
+    console.error('[AttachmentEnrich-Error] 获取附件URL失败:', error);
   }
   
+  console.log('[AttachmentEnrich-End] 处理完成，返回 enrichedFields');
   return enrichedFields;
 };
 
@@ -262,20 +293,35 @@ export function EditorPage({ onExit }: EditorPageProps) {
         console.log('[EditorPage] 获取到记录:', records);
         
         if (records.length > 0) {
+          console.log('[EditorPage] ========== 开始处理记录附件 ==========');
           // 【关键】为每条记录获取附件URL并转换格式
           const enrichedRecords: any[] = [];
           
           for (let index = 0; index < records.length; index++) {
             const record = records[index];
-            console.log(`[EditorPage] 处理记录 ${index}:`, record.id);
+            console.log(`[EditorPage] 处理记录 ${index}/${records.length}, ID:`, record.id);
+            console.log(`[EditorPage] 记录原始字段键:`, Object.keys(record.fields || {}));
             
-            // 获取附件字段的真实URL
+            // 【关键】获取附件字段的真实URL
+            console.log(`[EditorPage] 调用 enrichAttachmentUrls for record ${record.id}`);
             const enrichedFields = await enrichAttachmentUrls(
               record.id,
               selection?.tableId || '',
               record.fields,
               fields
             );
+            
+            console.log(`[EditorPage] enrichAttachmentUrls 返回，检查字段键:`, Object.keys(enrichedFields));
+            
+            // 检查附件字段是否被处理
+            const attachmentField = fields.find(f => Number(f.type) === 11 || f.type === 'attachment');
+            if (attachmentField) {
+              const originalValue = record.fields[attachmentField.id] as any[];
+              const enrichedValue = enrichedFields[attachmentField.id] as any[];
+              console.log(`[EditorPage] 附件字段 ${attachmentField.name} 处理前后对比:`);
+              console.log(`  - 原始:`, originalValue?.[0]?.url || '无url');
+              console.log(`  - 处理后:`, enrichedValue?.[0]?.url || '无url');
+            }
             
             enrichedRecords.push({
               id: record.id,

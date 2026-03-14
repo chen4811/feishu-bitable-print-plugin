@@ -79,12 +79,32 @@ function isImageAttachment(item: any): boolean {
  * @returns 是否为附件数组
  */
 export function isAttachmentField(value: unknown): boolean {
-  if (!Array.isArray(value) || value.length === 0) return false;
+  console.log('[Render-Debug] isAttachmentField 检查, 类型:', typeof value, '是否是数组:', Array.isArray(value));
+  
+  if (!Array.isArray(value) || value.length === 0) {
+    console.log('[Render-Debug] 不是数组或为空');
+    return false;
+  }
+  
   // 检查第一个元素是否为附件对象
   const firstItem = value[0];
-  if (typeof firstItem !== 'object' || firstItem === null) return false;
+  console.log('[Render-Debug] 第一个元素:', firstItem);
+  
+  if (typeof firstItem !== 'object' || firstItem === null) {
+    console.log('[Render-Debug] 第一个元素不是对象');
+    return false;
+  }
+  
   // 附件对象通常有 name, url, fileToken 等字段
-  return 'name' in firstItem && ('url' in firstItem || 'fileUrl' in firstItem || 'fileToken' in firstItem);
+  const hasName = 'name' in firstItem;
+  const hasUrl = 'url' in firstItem || 'fileUrl' in firstItem;
+  const hasToken = 'fileToken' in firstItem || 'token' in firstItem;
+  
+  console.log('[Render-Debug] 附件检测:', { hasName, hasUrl, hasToken });
+  
+  const result = hasName && (hasUrl || hasToken);
+  console.log('[Render-Debug] 是否附件字段:', result);
+  return result;
 }
 
 /**
@@ -93,11 +113,27 @@ export function isAttachmentField(value: unknown): boolean {
  * @returns 图片URL数组
  */
 export function getAttachmentImageUrls(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
+  if (!Array.isArray(value)) {
+    console.log('[Render-Debug] getAttachmentImageUrls: 不是数组');
+    return [];
+  }
+  
+  console.log('[Render-Debug] getAttachmentImageUrls 处理', value.length, '个附件');
+  
   return value
-    .filter(item => isImageAttachment(item))
-    .map(item => item.url || item.fileUrl || '')
-    .filter(url => url !== '');
+    .map((item: any, index) => {
+      const isImage = isImageAttachment(item);
+      const url = item.url || item.fileUrl || '';
+      
+      console.log(`[Render-Debug] [${index}] ${item.name}: 是否图片=${isImage}, 是否有URL=${!!url}`);
+      
+      if (!url) {
+        console.warn(`[Render-Warn] 附件 ${item.name} 缺少 URL`);
+      }
+      return { url, isImage };
+    })
+    .filter(({ isImage, url }) => isImage && url)
+    .map(({ url }) => url);
 }
 
 // 变量匹配正则：支持 [字段名]、[字段名:格式]、{{字段名}}、{{字段名:格式}}
