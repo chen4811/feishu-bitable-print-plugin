@@ -348,7 +348,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
             console.log(`[EditorPage] enrichAttachmentUrls 返回，检查字段键:`, Object.keys(enrichedFields));
             
             // 检查附件字段是否被处理
-            const attachmentField = fields.find(f => Number(f.type) === 11 || f.type === 'attachment');
+            const attachmentField = fields.find(f => Number(f.type) === 17 || f.type === 'attachment');
             if (attachmentField) {
               const originalValue = record.fields[attachmentField.id] as any[];
               const enrichedValue = enrichedFields[attachmentField.id] as any[];
