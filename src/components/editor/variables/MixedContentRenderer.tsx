@@ -70,6 +70,19 @@ export function MixedContentRenderer({
               fieldName,
               type: fieldType
             };
+            
+            // 【关键修复】为附件类型添加默认配置，确保 AttachmentVariable 能正确渲染
+            if (fieldType === 'attachment') {
+              config = {
+                fieldName,
+                type: 'attachment',
+                displayMode: 'image_only',
+                sizeMode: 'auto',
+                onePerLine: false,
+                align: 'left',
+                emptyDisplay: 'default'
+              };
+            }
           }
 
           // 渲染变量

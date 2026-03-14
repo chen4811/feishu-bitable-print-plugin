@@ -60,8 +60,10 @@ export function AttachmentVariable({
       const newLoading: Record<number, boolean> = {};
 
       data.forEach((item, index) => {
-        if (item.url) {
-          newUrls[index] = item.url;
+        // 【关键修复】支持多种 URL 字段名（飞书可能返回 url、fileUrl 或 tmpUrl）
+        const url = item.url || (item as any).fileUrl || (item as any).tmpUrl;
+        if (url) {
+          newUrls[index] = url;
         } else if (item.token && !imageUrls[index]) {
           // 需要异步获取URL
           newLoading[index] = true;
@@ -198,7 +200,9 @@ export function AttachmentVariable({
   return (
     <div style={getContainerStyle()} className="attachment-variable-container">
       {data.map((item, index) => {
-        const url = imageUrls[index] || item.url;
+        // 【关键修复】支持多种 URL 字段名
+        const itemUrl = item.url || (item as any).fileUrl || (item as any).tmpUrl;
+        const url = imageUrls[index] || itemUrl;
         const isLoading = loading[index];
         const hasError = errors[index];
 
