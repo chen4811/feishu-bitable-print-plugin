@@ -482,6 +482,8 @@ const formatFieldValueToHTML = (key: string, value: any, textStyle?: any): strin
             <img 
               src="${url}" 
               alt="${name}"
+              referrerpolicy="no-referrer"
+              crossorigin="anonymous"
               style="
                 max-width: 120px;
                 max-height: 120px;
@@ -534,6 +536,8 @@ const formatFieldValueToHTML = (key: string, value: any, textStyle?: any): strin
           <img 
             src="${url}" 
             alt="${name}"
+            referrerpolicy="no-referrer"
+            crossorigin="anonymous"
             style="
               max-width: 200px;
               max-height: 200px;
@@ -1055,6 +1059,8 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
                     <img
                       src={url}
                       alt={name}
+                      referrerPolicy="no-referrer"
+                      crossOrigin="anonymous"
                       style={{
                         maxWidth: '120px',
                         maxHeight: '120px',
@@ -1066,7 +1072,9 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
                         padding: '2px',
                         background: '#f9fafb',
                       }}
+                      onLoad={() => console.log(`✅ Image Loaded: ${name}`)}
                       onError={(e) => {
+                        console.error(`❌ Image Failed: ${name}`, e);
                         (e.target as HTMLImageElement).style.display = 'none';
                       }}
                     />
