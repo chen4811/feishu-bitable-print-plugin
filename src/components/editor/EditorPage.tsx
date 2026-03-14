@@ -211,21 +211,30 @@ const enrichAttachmentUrls = async (
             return fileItem;
           });
           
-          // 更新增强后的数据 - 【关键】同时更新 ID 和 Name 两个键，确保模板能读到
-          enrichedFields[actualKey] = enrichedValue;
+          // 【关键修改】将对象数组转换为 HTML 字符串，以便渲染组件正确显示图片
+          const htmlString = enrichedValue.map((file: any) => {
+            // 如果是图片类型，生成 img 标签
+            if (file.type && file.type.startsWith('image/')) {
+              return `<div style="margin-bottom: 8px;"><img src="${file.url}" style="max-width: 200px; max-height: 200px; object-fit: cover; border: 1px solid #ddd;" /></div>`;
+            } 
+            // 如果是其他文件，生成下载链接
+            else {
+              return `<div style="margin-bottom: 4px;">📎 <a href="${file.url}" target="_blank" style="color: #337ab7; text-decoration: none;">${file.name}</a></div>`;
+            }
+          }).join('');
           
-          // 如果 actualKey 是 fieldId，同时更新 fieldName；反之亦然
+          // 存储 HTML 字符串到 actualKey
+          enrichedFields[actualKey] = htmlString;
+          
+          // 双键更新：存储 HTML 字符串到 otherKey
           const otherKey = actualKey === fieldId ? fieldName : fieldId;
           if (otherKey && otherKey !== actualKey) {
-            enrichedFields[otherKey] = enrichedValue;
-            console.log(`[AttachmentEnrich-DualKey] 同时更新两个键: ${actualKey} 和 ${otherKey}`);
+            enrichedFields[otherKey] = htmlString;
+            console.log(`[AttachmentEnrich-HTML] ✅ 已转换并双键更新: ${actualKey} & ${otherKey}`);
+            console.log(`[AttachmentEnrich-HTML] 生成的 HTML 预览:`, htmlString.substring(0, 100) + '...');
           }
           
-          console.log(`[Merge-Success] 字段 ${fieldName} 注入完成，样例:`, {
-            name: enrichedValue[0]?.name,
-            hasUrl: !!enrichedValue[0]?.url,
-            url: enrichedValue[0]?.url?.substring(0, 80)
-          });
+          console.log(`[Merge-Success] 字段 ${fieldName} 注入完成，已转换为 HTML 字符串，长度:`, htmlString.length);
         } else {
           console.warn(`[AttachmentEnrich-Warn] 字段 ${fieldName} 未返回任何 URL`);
         }
