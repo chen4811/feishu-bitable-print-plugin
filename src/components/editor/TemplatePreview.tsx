@@ -328,12 +328,14 @@ class AttachmentProcessor {
    * @param token - 附件token
    * @param fieldId - 字段ID
    * @param recordId - 记录ID
+   * @param attachmentIndex - 附件在数组中的索引（用于获取对应URL）
    * @param table - 表格对象
    */
   async getAttachmentUrl(
     token: string, 
     fieldId: string, 
     recordId: string,
+    attachmentIndex: number,
     table: any
   ): Promise<string | null> {
     const cacheKey = `${token}-${fieldId}-${recordId}`;
@@ -354,13 +356,12 @@ class AttachmentProcessor {
       
       if (typeof (attachmentField as any).getAttachmentUrls === 'function') {
         const urls = await (attachmentField as any).getAttachmentUrls(recordId);
-        // 从返回的URL列表中找到对应的URL
-        // 注意：urls数组顺序与附件数组顺序一致
-        if (Array.isArray(urls) && urls.length > 0) {
-          // 需要根据token找到正确的索引，这里简化处理取第一个
-          // 实际应该根据attachments数组索引来对应
-          url = urls[0];
-          console.log(`[AttachmentProcessor] 通过 getAttachmentUrls 获取到URL`);
+        // 【关键修复】根据索引获取对应的URL
+        if (Array.isArray(urls) && urls.length > attachmentIndex) {
+          url = urls[attachmentIndex];
+          console.log(`[AttachmentProcessor] 通过 getAttachmentUrls 获取到URL，索引 ${attachmentIndex}:`, url?.substring(0, 50));
+        } else {
+          console.warn(`[AttachmentProcessor] URL数组长度 ${urls?.length} 小于索引 ${attachmentIndex}`);
         }
       }
       
@@ -411,6 +412,7 @@ class AttachmentProcessor {
                 attachment.token,
                 fieldId,
                 recordId,
+                index,  // 【关键修复】传入附件索引，确保获取正确的URL
                 table
               );
             }
