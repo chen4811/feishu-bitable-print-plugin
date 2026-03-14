@@ -263,16 +263,33 @@ const enrichAttachmentUrls = async (
     for (const fieldMeta of attachmentFields) {
       const fieldName = fieldMeta.name;
       const fieldId = fieldMeta.id;
-      // 【关键】record.fields 使用字段ID作为键，不是字段名称！
-      const fieldValue = enrichedFields[fieldId];
       
-      console.log(`[AttachmentEnrich] 检查字段: ${fieldName} (ID: ${fieldId}), 值存在:`, !!fieldValue);
+      console.log(`[AttachmentEnrich-Debug] 检查字段 ${fieldName} (ID: ${fieldId})`);
+      console.log(`[AttachmentEnrich-Debug] enrichedFields 可用键:`, Object.keys(enrichedFields).slice(0, 10));
+      
+      // 【关键】尝试用ID和name都读取一遍，使用能获取到数据的那个
+      const byId = enrichedFields[fieldId];
+      const byName = enrichedFields[fieldName];
+      console.log(`[AttachmentEnrich-Debug] 通过ID读取['${fieldId}']:`, Array.isArray(byId) ? `数组(${byId.length})` : typeof byId);
+      console.log(`[AttachmentEnrich-Debug] 通过Name读取['${fieldName}']:`, Array.isArray(byName) ? `数组(${byName.length})` : typeof byName);
+      
+      // 【关键】选择实际有数据的键名（优先ID，如果没有则尝试Name）
+      let actualKey = fieldId;
+      let fieldValue = byId;
+      
+      if (!Array.isArray(fieldValue) && Array.isArray(byName)) {
+        console.log(`[AttachmentEnrich-Fix] 数据使用字段名称作为键，切换到 '${fieldName}'`);
+        actualKey = fieldName;
+        fieldValue = byName;
+      }
+      
+      console.log(`[AttachmentEnrich] 检查字段: ${fieldName} (key: ${actualKey}), 值存在:`, !!fieldValue);
       // 检查字段值是否为附件数组
       if (!Array.isArray(fieldValue) || fieldValue.length === 0) {
         continue;
       }
       
-      console.log(`[AttachmentEnrich] 处理附件字段: ${fieldName} (ID: ${fieldId}), 包含 ${fieldValue.length} 个附件`);
+      console.log(`[AttachmentEnrich] 处理附件字段: ${fieldName} (ID: ${fieldId}, key: ${actualKey}), 包含 ${fieldValue.length} 个附件`);
       
       try {
         // 获取字段对象
@@ -285,8 +302,8 @@ const enrichAttachmentUrls = async (
         console.log(`[AttachmentEnrich] 获取到 ${realUrls?.length || 0} 个真实URL`);
         
         if (realUrls && realUrls.length > 0) {
-          // 【关键】使用字段ID作为键更新字段值
-          enrichedFields[fieldId] = fieldValue.map((item: any, index: number) => {
+          // 【关键】使用 actualKey（可能是ID或Name）更新字段值
+          enrichedFields[actualKey] = fieldValue.map((item: any, index: number) => {
             const realUrl = realUrls[index] || '';
             console.log(`[AttachmentEnrich] [${index}] ${item.name || item.fileName}: 注入URL ${realUrl.substring(0, 50)}...`);
             
