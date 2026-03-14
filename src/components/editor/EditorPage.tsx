@@ -211,8 +211,15 @@ const enrichAttachmentUrls = async (
             return fileItem;
           });
           
-          // 更新增强后的数据
+          // 更新增强后的数据 - 【关键】同时更新 ID 和 Name 两个键，确保模板能读到
           enrichedFields[actualKey] = enrichedValue;
+          
+          // 如果 actualKey 是 fieldId，同时更新 fieldName；反之亦然
+          const otherKey = actualKey === fieldId ? fieldName : fieldId;
+          if (otherKey && otherKey !== actualKey) {
+            enrichedFields[otherKey] = enrichedValue;
+            console.log(`[AttachmentEnrich-DualKey] 同时更新两个键: ${actualKey} 和 ${otherKey}`);
+          }
           
           console.log(`[Merge-Success] 字段 ${fieldName} 注入完成，样例:`, {
             name: enrichedValue[0]?.name,
