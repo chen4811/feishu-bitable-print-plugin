@@ -55,6 +55,8 @@ interface VariableTextRendererProps {
   onDeleteAttachment?: (fieldName: string) => void;
   // 选中的变量
   selectedVariable?: string | null;
+  // 是否处于编辑状态
+  isEditing?: boolean;
 }
 
 /**
@@ -74,6 +76,7 @@ export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
   onEditAttachment,
   onDeleteAttachment,
   selectedVariable,
+  isEditing = false,
 }) => {
   if (!text) {
     return <Tag className={className}>&nbsp;</Tag>;
@@ -119,6 +122,7 @@ export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
           config={config}
           textStyle={textStyle}
           isSelected={selectedVariable === fieldName}
+          isEditing={isEditing}
           onEdit={() => onEditAttachment?.(fieldName)}
           onDelete={() => onDeleteAttachment?.(fieldName)}
         />

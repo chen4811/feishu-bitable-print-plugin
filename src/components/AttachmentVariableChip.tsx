@@ -13,6 +13,7 @@ interface AttachmentVariableChipProps {
   className?: string;
   textStyle?: Partial<ComponentTextStyle>;
   isSelected?: boolean;
+  isEditing?: boolean;  // 是否处于编辑状态，只有编辑状态才显示悬停按钮
   onEdit?: () => void;
   onDelete?: () => void;
 }
@@ -28,6 +29,7 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
   className = '',
   textStyle,
   isSelected = false,
+  isEditing = false,  // 默认为 false
   onEdit,
   onDelete,
 }) => {
@@ -83,8 +85,8 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
         <FileImage className="w-4 h-4" />
         <span className="truncate max-w-[120px]">{emptyText}</span>
         
-        {/* 悬停浮窗按钮 */}
-        {isHovered && (
+        {/* 悬停浮窗按钮 - 仅在编辑状态下显示 */}
+        {isEditing && isHovered && (
           <span className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-gray-800 rounded-md px-2 py-1 shadow-lg z-50">
             <button
               onClick={(e) => {
@@ -237,8 +239,8 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
             </>
           )}
 
-          {/* 悬停浮窗按钮 */}
-          {isHovered && (
+          {/* 悬停浮窗按钮 - 仅在编辑状态下显示 */}
+          {isEditing && isHovered && (
             <span 
               className="absolute -top-9 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-gray-800 rounded-md px-2 py-1 shadow-lg z-50"
               onClick={(e) => e.stopPropagation()}

@@ -1666,6 +1666,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                 fields={fields || []}
                                 tagName="span"
                                 textStyle={cellStyle}
+                                isEditing={isCurrentTableEditing}
                               />
                             </h1>
                           );
@@ -1683,6 +1684,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                 fields={fields || []}
                                 tagName="span"
                                 textStyle={cellStyle}
+                                isEditing={isCurrentTableEditing}
                               />
                             </h2>
                           );
@@ -1761,6 +1763,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                 fields={fields || []}
                                 tagName="span"
                                 textStyle={cellStyle}
+                                isEditing={isCurrentTableEditing}
                               />
                             </a>
                           );
@@ -1910,6 +1913,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   fields={fields || []}
                   tagName="span"
                   textStyle={textComp.textStyle}
+                  isEditing={isEditing}
                 />
               </h1>
             )}
@@ -1925,6 +1929,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   fields={fields || []}
                   tagName="span"
                   textStyle={textComp.textStyle}
+                  isEditing={isEditing}
                 />
               </h2>
             )}
@@ -1937,6 +1942,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     fields={fields || []}
                     tagName="span"
                     textStyle={textComp.textStyle}
+                    isEditing={isEditing}
                   />
                 </li>
               </ul>
@@ -1950,6 +1956,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     fields={fields || []}
                     tagName="span"
                     textStyle={textComp.textStyle}
+                    isEditing={isEditing}
                   />
                 </li>
               </ol>
@@ -1979,6 +1986,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     fields={fields || []}
                     tagName="span"
                     textStyle={textComp.textStyle}
+                    isEditing={isEditing}
                   />
                 )}
               </span>
