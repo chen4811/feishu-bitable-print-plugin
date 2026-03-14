@@ -1677,19 +1677,11 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
             issues.push(`✅ "${fieldName}" 已转换为HTML（包含图片）`);
             console.log(`  ✅ 已转换为HTML（包含图片）`);
             
-            // 提取图片URL
-            const imgMatches = fieldValue.match(/src="([^"]+)"/g);
-            if (imgMatches) {
-              imgMatches.forEach((match, idx) => {
-                const url = match.replace('src="', '').replace('"', '');
-                console.log(`  📸 图片 ${idx + 1} URL: ${url.substring(0, 80)}...`);
-                
-                // 测试URL有效性
-                testImageUrl(url).then(valid => {
-                  console.log(`     URL有效性: ${valid ? '✅ 可访问' : '❌ 无法访问'}`);
-                });
-              });
-            }
+            // 提取并测试所有图片URL
+            testAllImageUrls(fieldValue).then(results => {
+              const validCount = results.filter(r => r.valid).length;
+              console.log(`  📊 ${validCount}/${results.length} 个URL有效`);
+            });
           } else {
             issues.push(`⚠️ "${fieldName}" 是字符串但不包含图片`);
             console.log(`  ⚠️ 是字符串但不包含图片`);
@@ -1708,14 +1700,54 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     return issues;
   };
   
-  // 测试图片URL有效性
-  const testImageUrl = async (url: string): Promise<boolean> => {
-    try {
-      const response = await fetch(url, { method: 'HEAD', mode: 'no-cors' });
-      return true; // no-cors 模式下无法读取响应状态，但请求会发出
-    } catch (error) {
-      return false;
-    }
+  // 测试图片URL有效性 - 使用Image对象更准确地检测
+  const testImageUrl = (url: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      let timeoutId: NodeJS.Timeout;
+      
+      img.onload = () => {
+        clearTimeout(timeoutId);
+        console.log('✅ 图片加载测试成功:', url.substring(0, 60) + '...');
+        resolve(true);
+      };
+      
+      img.onerror = () => {
+        clearTimeout(timeoutId);
+        console.log('❌ 图片加载测试失败:', url.substring(0, 60) + '...');
+        resolve(false);
+      };
+      
+      // 设置超时
+      timeoutId = setTimeout(() => {
+        console.log('⏰ 图片加载超时:', url.substring(0, 60) + '...');
+        resolve(false);
+      }, 10000);
+      
+      img.src = url;
+    });
+  };
+  
+  // 批量测试HTML字符串中的所有图片URL
+  const testAllImageUrls = async (htmlString: string) => {
+    const imgTags = htmlString.match(/<img[^>]+src="([^">]+)"/g) || [];
+    console.log(`[testAllImageUrls] 发现 ${imgTags.length} 个图片标签`);
+    
+    const results = await Promise.all(
+      imgTags.map(async (tag, index) => {
+        const srcMatch = tag.match(/src="([^">]+)"/);
+        if (srcMatch && srcMatch[1]) {
+          const url = srcMatch[1];
+          console.log(`[testAllImageUrls] 测试图片 ${index + 1}: ${url.substring(0, 60)}...`);
+          const isValid = await testImageUrl(url);
+          return { url: url.substring(0, 80), valid: isValid, index: index + 1 };
+        }
+        return { url: 'invalid', valid: false, index: 0 };
+      })
+    );
+    
+    console.log('📊 URL批量测试结果:', results);
+    return results;
   };
 
   // 加载模板列表
