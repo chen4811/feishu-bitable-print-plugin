@@ -56,6 +56,50 @@ function formatTimestamp(timestamp: number, format: 'date' | 'datetime' | 'time'
   }
 }
 
+/**
+ * 判断是否为图片附件
+ * @param item 附件项
+ * @returns 是否为图片
+ */
+function isImageAttachment(item: any): boolean {
+  if (typeof item !== 'object' || item === null) return false;
+  const name = item.name || item.fileName || '';
+  const url = item.url || item.fileUrl || '';
+  const type = item.type || item.mimeType || '';
+  // 检查文件名后缀或类型
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+  const isImageByName = imageExtensions.some(ext => name.toLowerCase().endsWith(ext));
+  const isImageByType = type.startsWith('image/');
+  return isImageByName || isImageByType;
+}
+
+/**
+ * 检查字段值是否为附件数组
+ * @param value 字段值
+ * @returns 是否为附件数组
+ */
+export function isAttachmentField(value: unknown): boolean {
+  if (!Array.isArray(value) || value.length === 0) return false;
+  // 检查第一个元素是否为附件对象
+  const firstItem = value[0];
+  if (typeof firstItem !== 'object' || firstItem === null) return false;
+  // 附件对象通常有 name, url, fileToken 等字段
+  return 'name' in firstItem && ('url' in firstItem || 'fileUrl' in firstItem || 'fileToken' in firstItem);
+}
+
+/**
+ * 获取图片附件的URL数组
+ * @param value 字段值（附件数组）
+ * @returns 图片URL数组
+ */
+export function getAttachmentImageUrls(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(item => isImageAttachment(item))
+    .map(item => item.url || item.fileUrl || '')
+    .filter(url => url !== '');
+}
+
 // 变量匹配正则：支持 [字段名]、[字段名:格式]、{{字段名}}、{{字段名:格式}}
 // 优先匹配 [字段名] 格式
 const VARIABLE_REGEX = /\[([^\]]+)(?::([^\]]+))?\]|\{\{([^}]+)(?::([^}]+))?\}\}/g;
