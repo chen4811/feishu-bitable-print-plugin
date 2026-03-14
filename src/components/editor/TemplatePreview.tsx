@@ -18,7 +18,7 @@ import { PageSettingsDialog } from '@/components/editor/dialogs/PageSettingsDial
 import { PAGE_SIZES, PageConfig } from '@/types/editor';
 import { feishuEnv } from '@/lib/feishu-env';
 import { onSelectionChange } from '@/lib/feishu-env';
-import { MixedContentRenderer, extractVariables } from '@/components/editor/variables';
+import { MixedContentRenderer, extractVariables, FieldTypeMap } from '@/components/editor/variables';
 
 
 interface TemplatePreviewProps {
@@ -1245,7 +1245,7 @@ function getComponentWidthStyle(width: string) {
 }
 
 // 渲染单个组件（带变量替换）
-const renderComponent = (component: any, data: Record<string, any>): React.ReactNode => {
+const renderComponent = (component: any, data: Record<string, any>, fieldTypeMap: FieldTypeMap = {}): React.ReactNode => {
   if (!component) {
     return null;
   }
@@ -1273,6 +1273,7 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
     <MixedContentRenderer 
       content={sourceText} 
       data={data}
+      fieldTypeMap={fieldTypeMap} // 【关键修复】传递字段类型映射，确保附件字段正确识别
     />
   ) : undefined;
 
@@ -1378,7 +1379,7 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
     case 'container':
       return (
         <div key={id} style={commonStyle}>
-          {children.map((child: any) => renderComponent(child, data))}
+          {children.map((child: any) => renderComponent(child, data, fieldTypeMap))}
         </div>
       );
     case 'line':
@@ -1500,6 +1501,9 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     },
     continuous: false,
   });
+
+  // 【关键修复】字段类型映射，用于正确识别附件字段（即使数据为空）
+  const [fieldTypeMap, setFieldTypeMap] = useState<FieldTypeMap>({});
 
   // 监听 selectedRecords 变化
   useEffect(() => {
@@ -1805,6 +1809,32 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       const fieldMetaList = await table.getFieldMetaList();
       console.log('[TP] 字段元数据数量:', fieldMetaList?.length || 0);
       
+      // 【关键修复】构建字段类型映射（字段名 -> 字段类型）
+      const newFieldTypeMap: FieldTypeMap = {};
+      if (fieldMetaList && Array.isArray(fieldMetaList)) {
+        fieldMetaList.forEach((field: any) => {
+          if (field?.name) {
+            // 根据飞书字段类型映射到我们的类型
+            const fieldType = field.type;
+            if (fieldType === 17 || fieldType === 'Attachment') {
+              newFieldTypeMap[field.name] = 'attachment';
+            } else if (fieldType === 11 || fieldType === 'User') {
+              newFieldTypeMap[field.name] = 'text'; // 人员字段渲染为文本
+            } else if (fieldType === 4 || fieldType === 'DateTime') {
+              newFieldTypeMap[field.name] = 'date';
+            } else if (fieldType === 2 || fieldType === 'Number') {
+              newFieldTypeMap[field.name] = 'number';
+            } else if (fieldType === 7 || fieldType === 'Checkbox') {
+              newFieldTypeMap[field.name] = 'boolean';
+            } else {
+              newFieldTypeMap[field.name] = 'text';
+            }
+          }
+        });
+        setFieldTypeMap(newFieldTypeMap);
+        console.log('[TP] 字段类型映射已更新:', Object.keys(newFieldTypeMap).length, '个字段');
+      }
+      
       // 创建字段 ID 到字段名称的映射
       const fieldMap: Record<string, string> = {};
       if (fieldMetaList && Array.isArray(fieldMetaList)) {
@@ -1993,6 +2023,31 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
             console.log('[TP] 开始获取字段元数据...');
             const fieldMetaList = await table.getFieldMetaList();
             console.log('[TP] 已获取字段元数据, 字段数:', fieldMetaList?.length || 0);
+            
+            // 【关键修复】构建字段类型映射（字段名 -> 字段类型）
+            const newFieldTypeMap: FieldTypeMap = {};
+            if (fieldMetaList && Array.isArray(fieldMetaList)) {
+              fieldMetaList.forEach((field: any) => {
+                if (field?.name) {
+                  const fieldType = field.type;
+                  if (fieldType === 17 || fieldType === 'Attachment') {
+                    newFieldTypeMap[field.name] = 'attachment';
+                  } else if (fieldType === 11 || fieldType === 'User') {
+                    newFieldTypeMap[field.name] = 'text'; // 人员字段渲染为文本
+                  } else if (fieldType === 4 || fieldType === 'DateTime') {
+                    newFieldTypeMap[field.name] = 'date';
+                  } else if (fieldType === 2 || fieldType === 'Number') {
+                    newFieldTypeMap[field.name] = 'number';
+                  } else if (fieldType === 7 || fieldType === 'Checkbox') {
+                    newFieldTypeMap[field.name] = 'boolean';
+                  } else {
+                    newFieldTypeMap[field.name] = 'text';
+                  }
+                }
+              });
+              setFieldTypeMap(newFieldTypeMap);
+              console.log('[TP] 字段类型映射已更新:', Object.keys(newFieldTypeMap).length, '个字段');
+            }
             
             // 查找附件字段
             const attachmentFields = fieldMetaList.filter(f => f.type === 17 || String(f.type) === 'Attachment');
@@ -3278,7 +3333,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                         boxSizing: 'border-box',
                       }}>
                         {components.map((component: any) => 
-                          renderComponent(component, {})
+                          renderComponent(component, {}, fieldTypeMap)
                         )}
                       </div>
                     </div>
@@ -3350,7 +3405,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                         boxSizing: 'border-box',
                       }}>
                         {components.map((component: any) => 
-                          renderComponent(component, record.data)
+                          renderComponent(component, record.data, fieldTypeMap)
                         )}
                       </div>
                     </div>
@@ -3403,7 +3458,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                               boxSizing: 'border-box',
                             }}>
                               {components.map((component: any) => 
-                                renderComponent(component, record.data)
+                                renderComponent(component, record.data, fieldTypeMap)
                               )}
                             </div>
                           </div>
@@ -3449,7 +3504,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                                 boxSizing: 'border-box',
                               }}>
                                 {components.map((component: any) => 
-                                  renderComponent(component, record.data)
+                                  renderComponent(component, record.data, fieldTypeMap)
                                 )}
                               </div>
                             </div>

@@ -22,4 +22,4 @@ export {
   extractVariables, 
   hasAttachmentVariable 
 } from './MixedContentRenderer';
-export type { ContentSegment } from './MixedContentRenderer';
+export type { ContentSegment, FieldTypeMap } from './MixedContentRenderer';

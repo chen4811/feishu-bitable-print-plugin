@@ -1,17 +1,21 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { VariableRenderer, VariableConfig, detectFieldType } from './VariableRenderer';
+import { VariableRenderer, VariableConfig, detectFieldType, VariableType } from './VariableRenderer';
 
 // 混合内容片段类型
 export type ContentSegment = 
   | { type: 'text'; content: string }
   | { type: 'variable'; fieldName: string; config?: VariableConfig };
 
+// 字段类型映射
+export type FieldTypeMap = Record<string, VariableType>;
+
 interface MixedContentRendererProps {
   content: string;                    // 原始文本内容，包含变量占位符
   data: Record<string, any>;          // 数据对象
   variableConfigs?: Record<string, VariableConfig>;  // 变量配置（可选，用于附件等需要特殊配置的变量）
+  fieldTypeMap?: FieldTypeMap;        // 【新增】字段类型映射（字段名 -> 类型）
   className?: string;
   style?: React.CSSProperties;
 }
@@ -25,6 +29,7 @@ export function MixedContentRenderer({
   content,
   data,
   variableConfigs = {},
+  fieldTypeMap = {}, // 【新增】字段类型映射
   className,
   style
 }: MixedContentRendererProps) {
@@ -48,8 +53,19 @@ export function MixedContentRenderer({
           let config = variableConfigs[fieldName];
           
           if (!config) {
-            // 自动检测字段类型并创建配置
-            const fieldType = detectFieldType(fieldName, fieldValue);
+            // 【关键修复】优先使用 fieldTypeMap 判断字段类型，避免数据为空时误判
+            let fieldType: VariableType;
+            
+            if (fieldTypeMap[fieldName]) {
+              // 使用预定义的字段类型（从字段元数据获取）
+              fieldType = fieldTypeMap[fieldName];
+              console.log(`[MixedContentRenderer] 使用 fieldTypeMap 判断 "${fieldName}" 类型:`, fieldType);
+            } else {
+              // 回退：通过数据值特征判断
+              fieldType = detectFieldType(fieldName, fieldValue);
+              console.log(`[MixedContentRenderer] 使用 detectFieldType 判断 "${fieldName}" 类型:`, fieldType);
+            }
+            
             config = {
               fieldName,
               type: fieldType
@@ -149,7 +165,8 @@ export function extractVariables(content: string): string[] {
 export function hasAttachmentVariable(
   content: string, 
   data: Record<string, any>,
-  variableConfigs: Record<string, VariableConfig> = {}
+  variableConfigs: Record<string, VariableConfig> = {},
+  fieldTypeMap: FieldTypeMap = {} // 【新增】字段类型映射
 ): boolean {
   const variables = extractVariables(content);
   
@@ -160,7 +177,12 @@ export function hasAttachmentVariable(
       return true;
     }
     
-    // 自动检测
+    // 【关键修复】优先使用 fieldTypeMap 判断
+    if (fieldTypeMap[fieldName] === 'attachment') {
+      return true;
+    }
+    
+    // 自动检测（通过数据值特征）
     const fieldValue = data[fieldName];
     if (Array.isArray(fieldValue) && fieldValue.length > 0) {
       const firstItem = fieldValue[0];
