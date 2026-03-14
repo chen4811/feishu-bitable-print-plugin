@@ -1606,6 +1606,16 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                 tagName="span"
                                 textStyle={cellStyle}
                                 isEditing={isCurrentTableEditing}
+                                onEditAttachment={handleEditAttachmentVariable}
+                                onDeleteAttachment={(fieldName) => {
+                                  // 从单元格内容中删除该字段
+                                  const newContent = cellContent.replace(
+                                    new RegExp(`\\[${fieldName}\\]|\\{\\{${fieldName}\\}\\}`, 'g'), 
+                                    ''
+                                  );
+                                  handleTableCellChange(rowIndex, colIndex, newContent);
+                                  toast.success(`字段 "${fieldName}" 已删除`);
+                                }}
                               />
                             </h1>
                           );
@@ -1624,6 +1634,15 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                 tagName="span"
                                 textStyle={cellStyle}
                                 isEditing={isCurrentTableEditing}
+                                onEditAttachment={handleEditAttachmentVariable}
+                                onDeleteAttachment={(fieldName) => {
+                                  const newContent = cellContent.replace(
+                                    new RegExp(`\\[${fieldName}\\]|\\{\\{${fieldName}\\}\\}`, 'g'), 
+                                    ''
+                                  );
+                                  handleTableCellChange(rowIndex, colIndex, newContent);
+                                  toast.success(`字段 "${fieldName}" 已删除`);
+                                }}
                               />
                             </h2>
                           );
@@ -1651,6 +1670,15 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                   tagName="span"
                                   textStyle={cellStyle}
                                   isEditing={isCurrentTableEditing}
+                                  onEditAttachment={handleEditAttachmentVariable}
+                                  onDeleteAttachment={(fieldName) => {
+                                    const newContent = cellContent.replace(
+                                      new RegExp(`\\[${fieldName}\\]|\\{\\{${fieldName}\\}\\}`, 'g'), 
+                                      ''
+                                    );
+                                    handleTableCellChange(rowIndex, colIndex, newContent);
+                                    toast.success(`字段 "${fieldName}" 已删除`);
+                                  }}
                                 />
                               </li>
                             </ul>
@@ -1678,6 +1706,15 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                   tagName="span"
                                   textStyle={cellStyle}
                                   isEditing={isCurrentTableEditing}
+                                  onEditAttachment={handleEditAttachmentVariable}
+                                  onDeleteAttachment={(fieldName) => {
+                                    const newContent = cellContent.replace(
+                                      new RegExp(`\\[${fieldName}\\]|\\{\\{${fieldName}\\}\\}`, 'g'), 
+                                      ''
+                                    );
+                                    handleTableCellChange(rowIndex, colIndex, newContent);
+                                    toast.success(`字段 "${fieldName}" 已删除`);
+                                  }}
                                 />
                               </li>
                             </ol>
@@ -1705,6 +1742,15 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                 tagName="span"
                                 textStyle={cellStyle}
                                 isEditing={isCurrentTableEditing}
+                                onEditAttachment={handleEditAttachmentVariable}
+                                onDeleteAttachment={(fieldName) => {
+                                  const newContent = cellContent.replace(
+                                    new RegExp(`\\[${fieldName}\\]|\\{\\{${fieldName}\\}\\}`, 'g'), 
+                                    ''
+                                  );
+                                  handleTableCellChange(rowIndex, colIndex, newContent);
+                                  toast.success(`字段 "${fieldName}" 已删除`);
+                                }}
                               />
                             </a>
                           );
@@ -1719,6 +1765,15 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                               tagName="span"
                               textStyle={cellStyle}
                               isEditing={isCurrentTableEditing}
+                              onEditAttachment={handleEditAttachmentVariable}
+                              onDeleteAttachment={(fieldName) => {
+                                const newContent = cellContent.replace(
+                                  new RegExp(`\\[${fieldName}\\]|\\{\\{${fieldName}\\}\\}`, 'g'), 
+                                  ''
+                                );
+                                handleTableCellChange(rowIndex, colIndex, newContent);
+                                toast.success(`字段 "${fieldName}" 已删除`);
+                              }}
                             />
                           </span>
                         );
@@ -1866,6 +1921,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   tagName="span"
                   textStyle={textComp.textStyle}
                   isEditing={isEditing}
+                  onEditAttachment={handleEditAttachmentVariable}
+                  onDeleteAttachment={handleDeleteAttachmentVariable}
                 />
               </h1>
             )}
@@ -1882,6 +1939,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   tagName="span"
                   textStyle={textComp.textStyle}
                   isEditing={isEditing}
+                  onEditAttachment={handleEditAttachmentVariable}
+                  onDeleteAttachment={handleDeleteAttachmentVariable}
                 />
               </h2>
             )}
@@ -1895,6 +1954,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     tagName="span"
                     textStyle={textComp.textStyle}
                     isEditing={isEditing}
+                    onEditAttachment={handleEditAttachmentVariable}
+                    onDeleteAttachment={handleDeleteAttachmentVariable}
                   />
                 </li>
               </ul>
@@ -1909,6 +1970,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     tagName="span"
                     textStyle={textComp.textStyle}
                     isEditing={isEditing}
+                    onEditAttachment={handleEditAttachmentVariable}
+                    onDeleteAttachment={handleDeleteAttachmentVariable}
                   />
                 </li>
               </ol>
@@ -1939,6 +2002,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     tagName="span"
                     textStyle={textComp.textStyle}
                     isEditing={isEditing}
+                    onEditAttachment={handleEditAttachmentVariable}
+                    onDeleteAttachment={handleDeleteAttachmentVariable}
                   />
                 )}
               </span>
