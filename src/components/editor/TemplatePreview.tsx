@@ -214,6 +214,90 @@ const formatFieldValue = (key: string, value: any): string => {
   return String(extractedValue);
 };
 
+// ==================== 附件URL获取与处理函数 ====================
+
+/**
+ * 为记录的附件字段获取真实的可访问URL
+ * @param recordId 记录ID
+ * @param tableId 表格ID
+ * @param fields 字段数据（已格式化的字段名键值对）
+ * @param fieldMetaList 字段元数据列表
+ * @returns 注入真实URL后的字段数据
+ */
+const enrichAttachmentUrls = async (
+  recordId: string,
+  tableId: string,
+  fields: Record<string, any>,
+  fieldMetaList: any[]
+): Promise<Record<string, any>> => {
+  console.log('[AttachmentEnrich] ========== 开始为记录获取附件URL ==========');
+  console.log('[AttachmentEnrich] 记录ID:', recordId, '表格ID:', tableId);
+  
+  const enrichedFields = { ...fields };
+  
+  // 查找附件类型字段（类型ID为17）
+  const attachmentFields = fieldMetaList.filter(f => f.type === 17);
+  console.log('[AttachmentEnrich] 找到附件字段数量:', attachmentFields.length);
+  
+  if (attachmentFields.length === 0) {
+    console.log('[AttachmentEnrich] 没有附件字段，跳过处理');
+    return enrichedFields;
+  }
+  
+  try {
+    const { bitable } = await import('@lark-base-open/js-sdk');
+    const base = await bitable.base;
+    const table = await base.getTable(tableId);
+    
+    for (const fieldMeta of attachmentFields) {
+      const fieldName = fieldMeta.name;
+      const fieldId = fieldMeta.id;
+      const fieldValue = enrichedFields[fieldName];
+      
+      // 检查字段值是否为附件数组
+      if (!Array.isArray(fieldValue) || fieldValue.length === 0) {
+        continue;
+      }
+      
+      console.log(`[AttachmentEnrich] 处理附件字段: ${fieldName} (ID: ${fieldId}), 包含 ${fieldValue.length} 个附件`);
+      
+      try {
+        // 获取字段对象
+        const field = await table.getField(fieldId);
+        
+        // 调用 getAttachmentUrls 获取真实URL
+        console.log(`[AttachmentEnrich] 调用 getAttachmentUrls for record ${recordId}`);
+        const realUrls = await (field as any).getAttachmentUrls(recordId);
+        
+        console.log(`[AttachmentEnrich] 获取到 ${realUrls?.length || 0} 个真实URL`);
+        
+        if (realUrls && realUrls.length > 0) {
+          // 将真实URL注入到附件数据中
+          enrichedFields[fieldName] = fieldValue.map((item: any, index: number) => {
+            const realUrl = realUrls[index] || '';
+            console.log(`[AttachmentEnrich] [${index}] ${item.name || item.fileName}: 注入URL ${realUrl.substring(0, 50)}...`);
+            
+            return {
+              ...item,
+              url: realUrl,        // 注入真实URL
+              fileUrl: realUrl,    // 兼容不同字段名
+            };
+          });
+        } else {
+          console.warn(`[AttachmentEnrich] 字段 ${fieldName} 未返回任何URL`);
+        }
+      } catch (error) {
+        console.error(`[AttachmentEnrich] 处理字段 ${fieldName} 失败:`, error);
+      }
+    }
+  } catch (error) {
+    console.error('[AttachmentEnrich] 获取附件URL失败:', error);
+  }
+  
+  console.log('[AttachmentEnrich] ========== 附件URL处理完成 ==========');
+  return enrichedFields;
+};
+
 // ==================== 附件URL调试函数 ====================
 // 用于测试 getAttachmentUrls API 是否能获取附件URL
 const debugAttachmentUrls = async (recordId: string, fieldId: string, fieldName: string) => {
@@ -1402,14 +1486,27 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         _rowIndex: availableRecords.length,
       };
       
-      console.log('[TP] 最终格式化记录:', formattedRecord);
+      console.log('[TP] 格式化记录（原始）:', formattedRecord);
       
-      // 【调试】测试附件字段 getAttachmentUrls API
+      // 【关键】获取附件字段的真实URL并注入
+      console.log('[TP] 开始为附件字段获取真实URL...');
+      const enrichedFields = await enrichAttachmentUrls(recordId, tableId, formattedFields, fieldMetaList);
+      
+      const enrichedRecord = {
+        ...enrichedFields,
+        id: recordId,
+        _sourceRecordId: recordId,
+        _rowIndex: availableRecords.length,
+      };
+      
+      console.log('[TP] 最终格式化记录（已注入附件URL）:', enrichedRecord);
+      
+      // 【调试】测试附件字段 getAttachmentUrls API（可选，保留用于调试）
       console.log('[TP] 开始调试附件字段...');
-      await debugRecordAttachments(formattedRecord, fieldMetaList);
+      await debugRecordAttachments(enrichedRecord, fieldMetaList);
       
       // 添加到列表
-      setAvailableRecords(prev => [...prev, formattedRecord]);
+      setAvailableRecords(prev => [...prev, enrichedRecord]);
       console.log('[TP] 记录已添加到列表');
       toast.success('已添加记录');
       
@@ -1453,6 +1550,15 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     
     try {
       console.log('[TP] ========== fetchSelectedRecordsFromEnv 开始 ==========');
+      
+      // 获取表格和字段元数据（用于后续附件URL获取）
+      const { bitable } = await import('@lark-base-open/js-sdk');
+      const base = await bitable.base;
+      const table = await base.getActiveTable();
+      const tableId = table.id;
+      const fieldMetaList = await table.getFieldMetaList();
+      console.log('[TP] 获取字段元数据:', fieldMetaList?.length || 0, '个字段');
+      
       const selRecords = await feishuEnv.getSelectedRecords();
       console.log('[TP] getSelectedRecords 返回:', selRecords.length, '条记录');
       
@@ -1461,22 +1567,40 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         console.log('[TP] 第一条记录结构:', JSON.stringify(selRecords[0], null, 2));
         console.log('[TP] 第一条记录 fields:', JSON.stringify(selRecords[0].fields, null, 2));
         
-        // 转换格式 - 确保每条记录都有唯一 ID
-        const formattedRecords = selRecords.map((record, index) => {
+        // 转换格式并获取附件URL - 确保每条记录都有唯一 ID
+        const enrichedRecords: any[] = [];
+        
+        for (let index = 0; index < selRecords.length; index++) {
+          const record = selRecords[index];
           // 生成唯一 ID：优先使用 record.id，其次是 recordId
-          // 注意：不使用 Date.now()，确保同一记录多次点击生成相同 ID
           const uniqueId = record.id || (record as any).recordId || `record_${index}`;
-          const formattedRecord = {
-            ...record.fields,
+          const sourceRecordId = record.id || (record as any).recordId;
+          
+          console.log(`[TP] 处理记录 ${index}:`, { id: uniqueId, sourceRecordId });
+          
+          // 获取原始字段数据
+          const rawFields = record.fields || {};
+          
+          // 【关键】为附件字段获取真实URL
+          const enrichedFields = await enrichAttachmentUrls(
+            sourceRecordId,
+            tableId,
+            rawFields,
+            fieldMetaList
+          );
+          
+          const enrichedRecord = {
+            ...enrichedFields,
             id: uniqueId,
-            _sourceRecordId: record.id || (record as any).recordId, // 保存原始记录ID用于调试
+            _sourceRecordId: sourceRecordId,
             _rowIndex: index,
           };
-          console.log(`[TP] 格式化记录 ${index}:`, { id: uniqueId, fields: Object.keys(record.fields || {}) });
-          return formattedRecord;
-        });
+          
+          enrichedRecords.push(enrichedRecord);
+          console.log(`[TP] 记录 ${index} 处理完成，字段数:`, Object.keys(enrichedFields).length);
+        }
         
-        console.log('[TP] 格式化后记录数:', formattedRecords.length);
+        console.log('[TP] 所有记录处理完成，共:', enrichedRecords.length, '条');
         
         // 只追加到可用记录列表，不自动设置为当前记录
         setAvailableRecords(prev => {
@@ -1486,7 +1610,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           let skippedCount = 0;
           let ignoredCount = 0;
           
-          formattedRecords.forEach(record => {
+          enrichedRecords.forEach(record => {
             // 获取所有可能的ID用于去重检查
             const recordId = record.id;
             const sourceRecordId = record._sourceRecordId;
