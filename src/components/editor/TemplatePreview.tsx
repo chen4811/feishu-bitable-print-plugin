@@ -1079,10 +1079,15 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
   if (sourceText) {
     const variableMatches = sourceText.match(/\[([^\]]+)\]/g);
     if (variableMatches && variableMatches.length > 0) {
-      // 检查是否有附件字段
+      // 【关键修复】检查是否有附件字段（对象数组）或 HTML 字符串
       const hasAttachmentField = variableMatches.some((match: string) => {
         const fieldName = match.slice(1, -1);
         const fieldValue = data[fieldName];
+        // 检查是否是 HTML 字符串（由 enrichAttachmentUrls 转换）
+        if (typeof fieldValue === 'string' && (fieldValue.includes('<img') || fieldValue.includes('<div'))) {
+          return true;
+        }
+        // 检查是否是对象数组
         if (Array.isArray(fieldValue) && fieldValue.length > 0) {
           const firstItem = fieldValue[0];
           return firstItem && (firstItem.url || firstItem.fileUrl) && (firstItem.name || firstItem.fileName);
@@ -1117,8 +1122,19 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
           // 获取字段值
           const fieldValue = data[varName];
           
-          // 检查是否是图片附件
-          if (Array.isArray(fieldValue) && fieldValue.length > 0 && 
+          // 【关键修复】检查是否是 HTML 字符串
+          if (typeof fieldValue === 'string' && (fieldValue.includes('<img') || fieldValue.includes('<div'))) {
+            console.log(`[renderComponent] 字段 ${varName} 是 HTML 字符串，使用 dangerouslySetInnerHTML 渲染`);
+            parts.push(
+              <div 
+                key={`html-${partIndex}`}
+                dangerouslySetInnerHTML={{ __html: fieldValue }}
+                style={{ display: 'inline-block' }}
+              />
+            );
+          }
+          // 检查是否是图片附件（对象数组）
+          else if (Array.isArray(fieldValue) && fieldValue.length > 0 && 
               fieldValue[0] && (fieldValue[0].url || fieldValue[0].fileUrl)) {
             // 渲染图片网格
             const images = fieldValue
