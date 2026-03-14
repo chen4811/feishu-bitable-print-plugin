@@ -100,10 +100,18 @@ export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
     // 获取原始字段值以检测类型
     const rawValue = getRawFieldValue(variable.fieldName, records, fields);
     
+    // 【调试】打印变量渲染信息
+    console.log(`🖼️ [RENDER-VAR] 字段 "${variable.fieldName}", rawValue 类型:`, typeof rawValue, '是否数组:', Array.isArray(rawValue));
+    if (Array.isArray(rawValue) && rawValue.length > 0) {
+      console.log(`🖼️ [RENDER-VAR] 第一个元素:`, { name: rawValue[0]?.name, hasUrl: !!rawValue[0]?.url, url: rawValue[0]?.url?.substring(0, 50) });
+    }
+    
     // 检测是否为附件字段（图片）
     if (isAttachmentField(rawValue)) {
       // 获取图片URL列表
       const imageUrls = getAttachmentImageUrls(rawValue);
+      
+      console.log(`🖼️ [RENDER-VAR] 字段 "${variable.fieldName}" 是附件字段，提取到 ${imageUrls.length} 个图片URL:`, imageUrls.slice(0, 2));
       
       if (imageUrls.length > 0) {
         // 渲染图片网格

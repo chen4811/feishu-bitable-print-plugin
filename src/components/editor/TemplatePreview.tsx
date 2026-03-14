@@ -334,6 +334,12 @@ const enrichAttachmentUrls = async (
               fileUrl: realUrl,    // 兼容不同字段名
             };
           });
+          
+          // 【FINAL-CHECK】确认数据已正确注入
+          console.log(`🔍 [FINAL-CHECK] 字段 ${fieldName} (key=${actualKey}) 注入后数据:`, 
+            JSON.stringify(enrichedFields[actualKey]?.map((i: any) => ({ name: i.name, hasUrl: !!i.url, url: i.url?.substring(0, 50) })))
+          );
+          
         } else {
           console.warn(`[AttachmentEnrich] 字段 ${fieldName} 未返回任何URL`);
         }
@@ -346,6 +352,15 @@ const enrichAttachmentUrls = async (
   }
   
   console.log('[AttachmentEnrich] ========== 附件URL处理完成 ==========');
+  
+  // 【FINAL-CHECK】返回前检查所有附件字段的数据
+  console.log('🔍 [FINAL-CHECK-ALL] 返回前 enrichedFields 中的所有附件数据:');
+  for (const [key, value] of Object.entries(enrichedFields)) {
+    if (Array.isArray(value) && value.length > 0 && value[0]?.name) {
+      console.log(`  [${key}]:`, value.map((i: any) => ({ name: i.name, hasUrl: !!i.url })));
+    }
+  }
+  
   return enrichedFields;
 };
 
