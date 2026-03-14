@@ -95,10 +95,13 @@ let selectionUnsubscribe: (() => void) | null = null;
 const FIELD_TYPE_MAP: Record<number, string> = {
   1: 'text', 2: 'number', 3: 'singleSelect', 4: 'multiSelect',
   5: 'date', 6: 'checkbox', 7: 'user', 8: 'url',
-  9: 'phone', 10: 'email', 11: 'attachment', 12: 'formula',
+  9: 'phone', 10: 'email', 
+  11: 'user', // 🔥 修复：11 是人员（User），不是 attachment
+  12: 'formula',
   13: 'progress', 14: 'currency', 15: 'rating', 16: 'location',
-  17: 'relation', 18: 'group', 19: 'barcode', 20: 'modifiedTime',
-  21: 'createdTime', 22: 'modifiedUser', 23: 'createdUser', 24: 'autoNumber',
+  17: 'attachment', // 🔥 修复：17 是附件（Attachment），不是 relation
+  18: 'group', 19: 'barcode', 
+  20: 'modifiedTime', 21: 'createdTime', 22: 'modifiedUser', 23: 'createdUser', 24: 'autoNumber',
 };
 
 // ============================================
