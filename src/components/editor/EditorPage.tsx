@@ -80,11 +80,13 @@ const enrichAttachmentUrls = async (
   
   const enrichedFields = { ...fields };
   
-  // 查找附件类型字段（类型ID为17）
-  const attachmentFields = fieldMetaList.filter(f => f.type === 17);
+  // 查找附件类型字段（类型ID为17或字符串'Attachment'）
+  const attachmentFields = fieldMetaList.filter(f => f.type === 17 || f.type === 'Attachment' || String(f.type).toLowerCase() === 'attachment');
   console.log('[EditorPage-Attachment] 找到附件字段数量:', attachmentFields.length);
+  console.log('[EditorPage-Attachment] 所有字段类型:', fieldMetaList.map(f => ({ name: f.name, type: f.type })));
   
   if (attachmentFields.length === 0) {
+    console.log('[EditorPage-Attachment] 没有附件字段，跳过处理');
     return enrichedFields;
   }
   
@@ -98,12 +100,15 @@ const enrichAttachmentUrls = async (
       const fieldId = fieldMeta.id;
       const fieldValue = enrichedFields[fieldName];
       
+      console.log(`[EditorPage-Attachment] 检查字段: ${fieldName}, 值类型: ${typeof fieldValue}, 是否数组: ${Array.isArray(fieldValue)}`);
+      
       // 检查字段值是否为附件数组
       if (!Array.isArray(fieldValue) || fieldValue.length === 0) {
+        console.log(`[EditorPage-Attachment] 字段 ${fieldName} 不是数组或为空，跳过`);
         continue;
       }
       
-      console.log(`[EditorPage-Attachment] 处理字段: ${fieldName}, 包含 ${fieldValue.length} 个附件`);
+      console.log(`[EditorPage-Attachment] 处理字段: ${fieldName} (ID: ${fieldId}), 包含 ${fieldValue.length} 个附件`);
       
       try {
         const field = await table.getField(fieldId);
