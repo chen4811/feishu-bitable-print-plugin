@@ -69,13 +69,32 @@ export function usePrintSDK(): UsePrintSDKResult {
     setIsFeishuEnvironment(false);
     setFeishuEnvironment(false);
 
-    const mockFields: Field[] = mockBitableData.fields.map(f => ({
-      id: f.id,
-      name: f.name,
-      type: f.type,
-      placeholder: `{{${f.name}}}`,
-      isSystem: false,
-    }));
+    const mockFields: Field[] = mockBitableData.fields.map(f => {
+      // 判断字段种类（使用类型断言）
+      let fieldKind: Field['fieldKind'] = 'other';
+      const fieldType = f.type as string;
+      
+      if (fieldType === 'attachment') {
+        fieldKind = 'attachment';
+      } else if (fieldType === 'person' || fieldType === 'user') {
+        fieldKind = 'person';
+      } else if (fieldType === 'text') {
+        fieldKind = 'text';
+      } else if (fieldType === 'number') {
+        fieldKind = 'number';
+      } else if (fieldType === 'date') {
+        fieldKind = 'date';
+      }
+      
+      return {
+        id: f.id,
+        name: f.name,
+        type: f.type,
+        placeholder: `{{${f.name}}}`,
+        isSystem: false,
+        fieldKind,
+      };
+    });
     setFields(mockFields);
     setStoreFields(mockFields);
 
@@ -135,13 +154,32 @@ export function usePrintSDK(): UsePrintSDKResult {
         setError('未获取到字段数据，请检查权限配置');
       }
 
-      const convertedFields: Field[] = feishuFields.map(f => ({
-        id: f.id,
-        name: f.name,
-        type: f.type,
-        placeholder: `{{${f.name}}}`,
-        isSystem: false,
-      }));
+      const convertedFields: Field[] = feishuFields.map(f => {
+        // 判断字段种类
+        let fieldKind: Field['fieldKind'] = 'other';
+        const fieldType = String(f.type);
+        
+        if (fieldType === '17' || fieldType === 'attachment') {
+          fieldKind = 'attachment';
+        } else if (fieldType === '11' || fieldType === 'user' || fieldType === 'person') {
+          fieldKind = 'person';
+        } else if (fieldType === '1' || fieldType === 'text') {
+          fieldKind = 'text';
+        } else if (fieldType === '2' || fieldType === 'number') {
+          fieldKind = 'number';
+        } else if (fieldType === '5' || fieldType === 'date') {
+          fieldKind = 'date';
+        }
+        
+        return {
+          id: f.id,
+          name: f.name,
+          type: f.type,
+          placeholder: `{{${f.name}}}`,
+          isSystem: false,
+          fieldKind, // 【关键】在获取时就确定字段种类
+        };
+      });
       console.log('[PrintSDK] 转换后的字段:', convertedFields);
       console.log('[PrintSDK] 准备设置到 store 和 store...');
       setFields(convertedFields);

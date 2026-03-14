@@ -205,6 +205,13 @@ export interface Field {
   type: string;
   placeholder: string;
   isSystem?: boolean;
+  // 【新增】字段种类：在获取字段时就确定，避免后续误判
+  // 'attachment' = 附件字段
+  // 'person' = 人员字段  
+  // 'text' = 普通文本字段
+  // 'number' = 数字字段
+  // 'other' = 其他类型
+  fieldKind?: 'attachment' | 'person' | 'text' | 'number' | 'date' | 'other';
 }
 
 // 组件基础属性（简化版 - 无x,y,zIndex）

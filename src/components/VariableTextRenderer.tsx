@@ -14,10 +14,22 @@ import {
 import { Field, ComponentTextStyle } from '@/types/editor';
 import { AttachmentVariableConfig } from '@/components/editor/variables';
 
-// 判断是否为附件字段
+// 判断是否为附件字段（使用预存的 fieldKind 优先）
 function isAttachmentField(fieldName: string, records: any[], fields: Field[]): boolean {
-  // 🔥 优先使用字段元数据中的类型判断（更可靠）
+  // 🔥 【核心修复】优先使用预存的 fieldKind（在字段获取时确定）
   const field = fields.find(f => f.name === fieldName || f.id === fieldName);
+  
+  if (field?.fieldKind) {
+    // 如果预存了 fieldKind，直接使用（最可靠）
+    if (field.fieldKind === 'attachment') {
+      return true;
+    }
+    if (field.fieldKind === 'person' || field.fieldKind === 'text' || field.fieldKind === 'number') {
+      return false;
+    }
+  }
+  
+  // 其次使用字段元数据中的 type 判断
   if (field) {
     const fieldType = field.type;
     
@@ -39,7 +51,7 @@ function isAttachmentField(fieldName: string, records: any[], fields: Field[]): 
     }
   }
   
-  // 如果没有字段元数据或类型不明确，回退到值判断
+  // 如果没有字段元数据，回退到值判断（兜底逻辑）
   if (!records || records.length === 0) return false;
   
   const record = records[0];
@@ -49,22 +61,12 @@ function isAttachmentField(fieldName: string, records: any[], fields: Field[]): 
   
   const firstItem = value[0];
   
-  // 🔥 排除人员字段 (IOpenUser: 有 id+name+avatar_url，无 fileToken/previewUrl 等文件属性)
-  // 人员字段可能有 token（飞书内部标识），但不能有文件相关属性
+  // 排除人员字段：有 avatar_url 无 fileToken/previewUrl
   if (firstItem && ('id' in firstItem) && ('name' in firstItem) && ('avatar_url' in firstItem)) {
     return false;
   }
   
-  // 进一步排除：如果对象包含 IOpenUser 特有的属性组合（但无文件属性）
-  if (firstItem && 
-      ('id' in firstItem) && 
-      ('name' in firstItem) && 
-      !('fileToken' in firstItem) && 
-      !('previewUrl' in firstItem)) {
-    return false;
-  }
-  
-  // 更严格的附件判断：必须包含文件相关的 token 或属性
+  // 附件判断：必须有文件相关属性
   return firstItem && (
     ('fileToken' in firstItem && typeof firstItem.fileToken === 'string') ||
     ('previewUrl' in firstItem && typeof firstItem.previewUrl === 'string')

@@ -54,13 +54,32 @@ export default function PrintPluginApp() {
     });
 
     // 从模拟数据或真实数据中获取字段
-    const fields: Field[] = mockBitableData.fields.map((field) => ({
-      id: field.id,
-      name: field.name,
-      type: field.type,
-      placeholder: `[${field.name}]`,
-      isSystem: false,
-    }));
+    const fields: Field[] = mockBitableData.fields.map((field) => {
+      // 判断字段种类（使用类型断言绕过 TypeScript 严格检查）
+      let fieldKind: Field['fieldKind'] = 'other';
+      const fieldType = field.type as string;
+      
+      if (fieldType === 'attachment') {
+        fieldKind = 'attachment';
+      } else if (fieldType === 'person' || fieldType === 'user') {
+        fieldKind = 'person';
+      } else if (fieldType === 'text') {
+        fieldKind = 'text';
+      } else if (fieldType === 'number') {
+        fieldKind = 'number';
+      } else if (fieldType === 'date') {
+        fieldKind = 'date';
+      }
+      
+      return {
+        id: field.id,
+        name: field.name,
+        type: field.type,
+        placeholder: `[${field.name}]`,
+        isSystem: false,
+        fieldKind,
+      };
+    });
 
     const systemFields: Field[] = [
       { id: 'sys_table_name', name: '表格名', type: 'text', placeholder: '[表格名]', isSystem: true },

@@ -577,13 +577,32 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
       
       // 获取字段
       const feishuFields = await fetchFields();
-      const appFields = feishuFields.map((field: any) => ({
-        id: field.id,
-        name: field.name,
-        type: field.type,
-        placeholder: `[${field.name}]`,
-        isSystem: false,
-      }));
+      const appFields = feishuFields.map((field: any) => {
+        // 判断字段种类
+        let fieldKind: Field['fieldKind'] = 'other';
+        const fieldType = String(field.type);
+        
+        if (fieldType === '17' || fieldType === 'attachment') {
+          fieldKind = 'attachment';
+        } else if (fieldType === '11' || fieldType === 'user' || fieldType === 'person') {
+          fieldKind = 'person';
+        } else if (fieldType === '1' || fieldType === 'text') {
+          fieldKind = 'text';
+        } else if (fieldType === '2' || fieldType === 'number') {
+          fieldKind = 'number';
+        } else if (fieldType === '5' || fieldType === 'date') {
+          fieldKind = 'date';
+        }
+        
+        return {
+          id: field.id,
+          name: field.name,
+          type: field.type,
+          placeholder: `[${field.name}]`,
+          isSystem: false,
+          fieldKind, // 【关键】在获取时就确定字段种类
+        };
+      });
       setFields(appFields);
       
       // 获取记录

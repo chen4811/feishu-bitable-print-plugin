@@ -16,7 +16,7 @@ import {
 } from '@dnd-kit/core';
 import { useEditorStore } from '@/store/editorStore';
 import { useTemplateStore, UserTemplate } from '@/store/templateStore';
-import { ComponentType, PAGE_SIZES, TextComponent } from '@/types/editor';
+import { ComponentType, PAGE_SIZES, TextComponent, Field } from '@/types/editor';
 import {
   Database,
   LayoutGrid,
@@ -162,14 +162,33 @@ export function EditorPage({ onExit }: EditorPageProps) {
         const fields = await feishuEnv.fetchFields();
         console.log('[EditorPage] 获取到字段:', fields);
         
-        // 转换字段格式
-        const appFields = fields.map((field: any) => ({
-          id: field.id,
-          name: field.name,
-          type: field.type,
-          placeholder: `[${field.name}]`,
-          isSystem: false,
-        }));
+        // 转换字段格式（添加 fieldKind 标记）
+        const appFields = fields.map((field: any) => {
+          // 判断字段种类
+          let fieldKind: Field['fieldKind'] = 'other';
+          const fieldType = String(field.type);
+          
+          if (fieldType === '17' || fieldType === 'attachment') {
+            fieldKind = 'attachment';
+          } else if (fieldType === '11' || fieldType === 'user' || fieldType === 'person') {
+            fieldKind = 'person';
+          } else if (fieldType === '1' || fieldType === 'text') {
+            fieldKind = 'text';
+          } else if (fieldType === '2' || fieldType === 'number') {
+            fieldKind = 'number';
+          } else if (fieldType === '5' || fieldType === 'date') {
+            fieldKind = 'date';
+          }
+          
+          return {
+            id: field.id,
+            name: field.name,
+            type: field.type,
+            placeholder: `[${field.name}]`,
+            isSystem: false,
+            fieldKind, // 【关键】在获取时就确定字段种类
+          };
+        });
         setFeishuFields(fields);
         setFields(appFields);
 
