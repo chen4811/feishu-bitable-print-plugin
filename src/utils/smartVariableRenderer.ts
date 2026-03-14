@@ -188,6 +188,10 @@ export function getFieldValue(
     return value
       .map((item: any) => {
         if (typeof item === 'object' && item !== null) {
+          // 🔥 处理人员字段 (IOpenUser)
+          if (item.id && item.name && !item.token) {
+            return item.name; // 人员字段只显示姓名
+          }
           // 如果是数组中的对象，也检查是否包含时间戳
           if (item.text !== undefined && isTimestamp(item.text)) {
             return formatTimestamp(item.text as number, 'datetime');

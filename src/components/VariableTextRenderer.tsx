@@ -23,8 +23,8 @@ function isAttachmentField(fieldName: string, records: any[], fields: Field[]): 
     if (field.type === 'attachment') {
       return true;
     }
-    // 明确排除文本类字段，避免误判
-    if (['text', 'number', 'singleSelect', 'multiSelect', 'date', 'phone', 'email', 'url'].includes(field.type)) {
+    // 明确排除非附件字段类型，避免误判
+    if (['text', 'number', 'singleSelect', 'multiSelect', 'date', 'phone', 'email', 'url', 'user', 'person'].includes(field.type)) {
       return false;
     }
   }
@@ -38,6 +38,12 @@ function isAttachmentField(fieldName: string, records: any[], fields: Field[]): 
   if (!Array.isArray(value) || value.length === 0) return false;
   
   const firstItem = value[0];
+  
+  // 🔥 排除人员字段 (IOpenUser)
+  if (firstItem && ('id' in firstItem) && ('name' in firstItem) && !('token' in firstItem)) {
+    return false;
+  }
+  
   // 更严格的附件判断：必须包含 token 或特定的文件属性
   return firstItem && (
     ('token' in firstItem && typeof firstItem.token === 'string') || 
