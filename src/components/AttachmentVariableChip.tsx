@@ -61,7 +61,7 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
       <span
         ref={containerRef}
         className={`
-          inline-flex items-center gap-1
+          inline-flex items-center gap-1 relative
           px-2 py-1 rounded
           bg-amber-50 border border-amber-200
           text-amber-600 text-sm
@@ -73,9 +73,13 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
         style={{
           fontSize: textStyle?.fontSize ? `${textStyle.fontSize}px` : undefined,
         }}
+        title={`附件字段：${fieldName}（无数据）。双击编辑配置`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={(e) => {
+          e.stopPropagation();
+        }}
+        onDoubleClick={(e) => {
           e.stopPropagation();
           onEdit?.();
         }}
@@ -87,7 +91,10 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
         
         {/* 悬停浮窗按钮 - 仅在编辑状态下显示 */}
         {isEditing && isHovered && (
-          <span className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-gray-800 rounded-md px-2 py-1 shadow-lg z-50">
+          <span 
+            className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-gray-800 rounded-md px-2 py-1 shadow-lg z-[60]"
+            onMouseEnter={() => setIsHovered(true)}
+          >
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -164,31 +171,33 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
   };
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span
-          ref={containerRef}
-          className={`
-            inline-flex items-center gap-1 relative
-            px-1 py-0.5 rounded
-            bg-blue-50 border border-blue-200
-            cursor-pointer
-            transition-all duration-200
-            hover:bg-blue-100 hover:border-blue-300
-            ${isSelected ? 'ring-2 ring-blue-400' : ''}
-            ${className}
-          `}
-          style={getContainerStyle()}
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit?.();
-          }}
-          data-field-name={fieldName}
-          data-variable-type="attachment"
-          data-attachment-count={data?.length}
-        >
+    <span
+      ref={containerRef}
+      className={`
+        inline-flex items-center gap-1 relative
+        px-1 py-0.5 rounded
+        bg-blue-50 border border-blue-200
+        cursor-pointer
+        transition-all duration-200
+        hover:bg-blue-100 hover:border-blue-300
+        ${isSelected ? 'ring-2 ring-blue-400' : ''}
+        ${className}
+      `}
+      title={`附件字段：${fieldName}，共 ${data?.length || 0} 个附件。双击编辑配置`}
+      style={getContainerStyle()}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={(e) => {
+        e.stopPropagation();
+      }}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        onEdit?.();
+      }}
+      data-field-name={fieldName}
+      data-variable-type="attachment"
+      data-attachment-count={data?.length}
+    >
           {/* 显示模式：只显示图片 */}
           {displayMode === 'image_only' && imageUrl && (
             <img
@@ -242,8 +251,22 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
           {/* 悬停浮窗按钮 - 仅在编辑状态下显示 */}
           {isEditing && isHovered && (
             <span 
-              className="absolute -top-9 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-gray-800 rounded-md px-2 py-1 shadow-lg z-50"
-              onClick={(e) => e.stopPropagation()}
+              className="absolute -top-9 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-gray-800 rounded-md px-2 py-1 shadow-lg z-[60]"
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={(e) => {
+                // 检查鼠标是否真的离开了整个组件区域
+                const rect = containerRef.current?.getBoundingClientRect();
+                if (rect) {
+                  const isOutside = 
+                    e.clientX < rect.left || 
+                    e.clientX > rect.right || 
+                    e.clientY < rect.top || 
+                    e.clientY > rect.bottom;
+                  if (isOutside) {
+                    setIsHovered(false);
+                  }
+                }
+              }}
             >
               <GripVertical className="w-3 h-3 text-gray-400 cursor-grab" />
               <button
@@ -268,16 +291,7 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
               </button>
             </span>
           )}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent side="top">
-        <div className="text-sm">
-          <p className="font-medium">附件字段：{fieldName}</p>
-          <p className="text-gray-400">共 {data?.length} 个附件</p>
-          <p className="text-xs text-gray-500 mt-1">点击编辑配置</p>
-        </div>
-      </TooltipContent>
-    </Tooltip>
+    </span>
   );
 };
 
