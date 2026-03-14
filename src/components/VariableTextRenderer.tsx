@@ -16,12 +16,12 @@ import { AttachmentVariableConfig } from '@/components/editor/variables';
 
 // 判断是否为附件字段（使用 fieldTypeMap 优先）
 function isAttachmentField(fieldName: string, records: any[], fields: Field[], fieldTypeMap?: FieldTypeMap): boolean {
-  console.log('[isAttachmentField] ====== 开始判断 ======', { fieldName, hasTypeMap: !!fieldTypeMap });
+  console.log('[isAttachmentField] ====== 开始判断 ======', { fieldName, hasTypeMap: !!fieldTypeMap, fieldsCount: fields.length });
   
   // 🔥 【核心修复】优先使用 fieldTypeMap（字段名 -> 字段种类）
   if (fieldTypeMap && fieldTypeMap[fieldName]) {
     const fieldKind = fieldTypeMap[fieldName];
-    console.log('[isAttachmentField] 使用 fieldTypeMap:', fieldKind);
+    console.log('[isAttachmentField] 使用 fieldTypeMap[字段名]:', fieldKind);
     if (fieldKind === 'attachment') {
       console.log('[isAttachmentField] => true (fieldTypeMap=attachment)');
       return true;
@@ -32,9 +32,21 @@ function isAttachmentField(fieldName: string, records: any[], fields: Field[], f
     }
   }
   
+  // 【关键修复】如果通过字段名找不到，尝试找到字段ID再用ID查找
+  // 这可以处理字段名乱码导致无法匹配的问题
+  const fieldByName = fields.find(f => f.name === fieldName);
+  if (fieldByName?.id && fieldTypeMap && fieldTypeMap[fieldByName.id]) {
+    const fieldKind = fieldTypeMap[fieldByName.id];
+    console.log('[isAttachmentField] 使用 fieldTypeMap[字段ID]:', fieldKind, '字段ID:', fieldByName.id);
+    if (fieldKind === 'attachment') {
+      console.log('[isAttachmentField] => true (fieldTypeMap[id]=attachment)');
+      return true;
+    }
+  }
+  
   // 其次使用字段查找（兼容旧逻辑）
   const field = fields.find(f => f.name === fieldName || f.id === fieldName);
-  console.log('[isAttachmentField] 查找字段结果:', { fieldName, found: !!field, fieldKind: field?.fieldKind });
+  console.log('[isAttachmentField] 查找字段结果:', { fieldName, found: !!field, fieldKind: field?.fieldKind, fieldId: field?.id });
   
   if (field?.fieldKind) {
     if (field.fieldKind === 'attachment') {

@@ -202,9 +202,14 @@ export function EditorPage({ onExit }: EditorPageProps) {
         // 【关键】构建字段类型映射（字段名 -> 字段种类）
         const fieldTypeMap: Record<string, 'attachment' | 'person' | 'text' | 'number' | 'date' | 'other'> = {};
         appFields.forEach((field: Field) => {
+          // 【关键修复】同时用字段名和字段ID作为键，处理乱码问题
           fieldTypeMap[field.name] = field.fieldKind || 'other';
+          if (field.id) {
+            fieldTypeMap[field.id] = field.fieldKind || 'other';
+          }
         });
         console.log('[EditorPage] 字段类型映射:', fieldTypeMap);
+        console.log('[EditorPage] 附件字段映射:', Object.entries(fieldTypeMap).filter(([k, v]) => v === 'attachment'));
         
         setFeishuFields(fields);
         setFields(appFields);
