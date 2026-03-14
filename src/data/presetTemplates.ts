@@ -147,6 +147,24 @@ export const presetTemplates: PresetTemplate[] = [
     category: '申请表/申请书',
     format: 'DOCX',
   },
+  
+  // 工程监理
+  {
+    id: 'template-supervision-notice',
+    name: '监理通知单',
+    description: '适用于工程安全隐患整改通知、质量问题整改等场景',
+    thumbnail: '/templates/supervision-notice.png',
+    category: '工程监理',
+    format: 'DOCX',
+  },
+  {
+    id: 'template-supervision-inspection',
+    name: '监理巡查记录',
+    description: '适用于日常监理巡查、施工质量检查等场景',
+    thumbnail: '/templates/supervision-inspection.png',
+    category: '工程监理',
+    format: 'DOCX',
+  },
 ];
 
 // 模板分类
@@ -163,4 +181,5 @@ export const templateCategories = [
   { id: 'media', name: '新媒体' },
   { id: 'application', name: '申请表/申请书' },
   { id: 'supply', name: '供应链' },
+  { id: 'engineering', name: '工程监理' },
 ];
