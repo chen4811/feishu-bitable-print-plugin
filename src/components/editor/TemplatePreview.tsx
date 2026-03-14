@@ -725,8 +725,10 @@ const formatFieldValueToHTML = (key: string, value: any, textStyle?: any): strin
   }
   
   // 检查值是否已经是HTML字符串（通过附件处理器转换后的）
-  if (typeof value === 'string' && value.includes('<') && value.includes('>')) {
-    // 可能是HTML内容，直接返回
+  // 更精确地检测附件HTML：包含 <img 或 <div 标签
+  if (typeof value === 'string' && (value.includes('<img') || (value.includes('<') && value.includes('</div>')))) {
+    // 确认是HTML内容，直接返回
+    console.log(`[formatFieldValueToHTML] 检测到HTML字符串，直接返回，长度: ${value.length}`);
     return value;
   }
   
@@ -1276,12 +1278,20 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
           const fieldValue = data[varName];
           
           // 检查值是否已经是HTML字符串（通过附件处理器转换后的）
-          if (typeof fieldValue === 'string' && fieldValue.includes('<') && fieldValue.includes('>')) {
+          // 更精确地检测附件HTML：包含 <img 或完整的HTML结构
+          const isHTMLString = typeof fieldValue === 'string' && 
+                               (fieldValue.includes('<img') || 
+                                (fieldValue.includes('<div') && fieldValue.includes('</div>')));
+          
+          if (isHTMLString) {
             // 使用 dangerouslySetInnerHTML 渲染HTML内容
+            console.log(`[renderComponent] 字段 "${varName}" 是HTML字符串，使用 dangerouslySetInnerHTML 渲染`);
             parts.push(
               <div 
                 key={`img-${partIndex}`} 
+                className="attachment-field-content"
                 dangerouslySetInnerHTML={{ __html: fieldValue }}
+                style={{ display: 'block', width: '100%' }}
               />
             );
           }
@@ -1613,6 +1623,22 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   // 监听 availableRecords 变化
   useEffect(() => {
     console.log('[TP] 可用记录变化:', availableRecords.length, '条');
+    
+    // 调试：检查每条记录的附件字段状态
+    availableRecords.forEach((record, idx) => {
+      console.log(`[TP] 记录 ${idx} (${record.id}) 字段分析:`);
+      Object.entries(record).forEach(([key, value]) => {
+        // 检查是否是附件相关字段
+        if (key.includes('照片') || key.includes('附件') || key.includes('image') || key.includes('attachment')) {
+          const valueType = Array.isArray(value) ? 'array' : typeof value;
+          const isHTML = typeof value === 'string' && value.includes('<img');
+          const preview = typeof value === 'string' 
+            ? value.substring(0, 100) + (value.length > 100 ? '...' : '')
+            : JSON.stringify(value).substring(0, 100);
+          console.log(`  - ${key}: 类型=${valueType}, 是HTML=${isHTML}, 内容预览=${preview}`);
+        }
+      });
+    });
   }, [availableRecords]);
 
   // 加载模板列表
