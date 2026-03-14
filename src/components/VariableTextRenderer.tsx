@@ -117,6 +117,7 @@ export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
     fieldsCount: fields?.length,
     isEditing,
     hasVariables: containsVariables(text),
+    variables: containsVariables(text) ? parseVariables(text).map(v => v.fieldName) : [],
   });
   if (!text) {
     return <Tag className={className}>&nbsp;</Tag>;
