@@ -236,12 +236,13 @@ const enrichAttachmentUrls = async (
   
   const enrichedFields = { ...fields };
   
-  // 【修复】放宽类型判断，支持多种类型表示
+  // 【修复】附件字段类型是 17，不是 11（11是人员字段）
   const attachmentFields = fieldMetaList.filter(f => {
-    const isType11 = Number(f.type) === 11;
+    const typeNum = Number(f.type);
+    const isAttachmentType = typeNum === 17; // 17 = Attachment
     const isTypeName = f.type === 'attachment' || f.type === 'Attachment';
     
-    if (isType11 || isTypeName) {
+    if (isAttachmentType || isTypeName) {
       console.log('[AttachmentEnrich-Found] 发现附件字段:', f.name, 'type:', f.type);
       return true;
     }
@@ -270,22 +271,25 @@ const enrichAttachmentUrls = async (
       // 【关键】尝试用ID和name都读取一遍，使用能获取到数据的那个
       const byId = enrichedFields[fieldId];
       const byName = enrichedFields[fieldName];
-      console.log(`[AttachmentEnrich-Debug] 通过ID读取['${fieldId}']:`, Array.isArray(byId) ? `数组(${byId.length})` : typeof byId);
-      console.log(`[AttachmentEnrich-Debug] 通过Name读取['${fieldName}']:`, Array.isArray(byName) ? `数组(${byName.length})` : typeof byName);
+      const byIdIsArray = Array.isArray(byId);
+      const byNameIsArray = Array.isArray(byName);
+      console.log(`[AttachmentEnrich-Debug] 通过ID读取['${fieldId}']:`, byIdIsArray ? `数组(${byId.length})` : typeof byId);
+      console.log(`[AttachmentEnrich-Debug] 通过Name读取['${fieldName}']:`, byNameIsArray ? `数组(${byName.length})` : typeof byName, byName);
       
       // 【关键】选择实际有数据的键名（优先ID，如果没有则尝试Name）
       let actualKey = fieldId;
       let fieldValue = byId;
       
-      if (!Array.isArray(fieldValue) && Array.isArray(byName)) {
+      if (!byIdIsArray && byName !== undefined && byName !== null) {
         console.log(`[AttachmentEnrich-Fix] 数据使用字段名称作为键，切换到 '${fieldName}'`);
         actualKey = fieldName;
         fieldValue = byName;
       }
       
-      console.log(`[AttachmentEnrich] 检查字段: ${fieldName} (key: ${actualKey}), 值存在:`, !!fieldValue);
+      console.log(`[AttachmentEnrich] 检查字段: ${fieldName} (key: ${actualKey}), 值类型:`, typeof fieldValue, '是否数组:', Array.isArray(fieldValue));
       // 检查字段值是否为附件数组
       if (!Array.isArray(fieldValue) || fieldValue.length === 0) {
+        console.warn(`[AttachmentEnrich-Warn] 字段 ${fieldName} 的值不是有效数组，跳过`);
         continue;
       }
       

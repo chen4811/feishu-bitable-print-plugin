@@ -82,12 +82,13 @@ const enrichAttachmentUrls = async (
   
   const enrichedFields = { ...fields };
   
-  // 【修复】放宽类型判断，支持多种类型表示
+  // 【修复】附件字段类型是 17，不是 11（11是人员字段）
   const attachmentFields = fieldMetaList.filter(f => {
-    const isType11 = Number(f.type) === 11;
+    const typeNum = Number(f.type);
+    const isAttachmentType = typeNum === 17; // 17 = Attachment
     const isTypeName = f.type === 'attachment' || f.type === 'Attachment';
     
-    if (isType11 || isTypeName) {
+    if (isAttachmentType || isTypeName) {
       console.log('[AttachmentEnrich-Found] 发现附件字段:', f.name, 'ID:', f.id, 'type:', f.type);
       return true;
     }
