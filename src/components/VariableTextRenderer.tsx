@@ -110,6 +110,14 @@ export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
   selectedVariable,
   isEditing = false,
 }) => {
+  // 🔥 调试日志
+  console.log('[VariableTextRenderer] Render:', {
+    textPreview: text?.substring(0, 30),
+    recordsCount: records?.length,
+    fieldsCount: fields?.length,
+    isEditing,
+    hasVariables: containsVariables(text),
+  });
   if (!text) {
     return <Tag className={className}>&nbsp;</Tag>;
   }

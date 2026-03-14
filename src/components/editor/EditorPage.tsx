@@ -213,6 +213,10 @@ export function EditorPage({ onExit }: EditorPageProps) {
               ...record.fields,
               _rowIndex: index,
             }));
+            console.log('[EditorPage] Setting records to store:', {
+              count: appRecords.length,
+              firstRecordKeys: Object.keys(appRecords[0]).slice(0, 10),
+            });
             setFeishuRecords(records);
             setRecords(appRecords as unknown as Record<string, unknown>[]);
           }

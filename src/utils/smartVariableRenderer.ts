@@ -131,6 +131,13 @@ export function getFieldValue(
   records: any[],
   fields: Field[]
 ): string {
+  // 🔥 调试日志
+  console.log('[getFieldValue] Called:', {
+    fieldName,
+    recordsCount: records?.length,
+    fieldsCount: fields?.length,
+    firstRecordKeys: records?.[0] ? Object.keys(records[0]).slice(0, 10) : 'no record',
+  });
   // 无数据时返回占位符
   if (!records || records.length === 0) {
     return '[暂无数据]';
