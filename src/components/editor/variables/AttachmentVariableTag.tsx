@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { FileImage, Pencil, Trash2 } from 'lucide-react';
 
 interface AttachmentVariableTagProps {
@@ -21,6 +21,25 @@ export const AttachmentVariableTag: React.FC<AttachmentVariableTagProps> = ({
   onDelete,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 延迟关闭弹窗，给用户足够时间移动鼠标到弹窗上
+  const scheduleHide = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = setTimeout(() => {
+      setIsHovered(false);
+    }, 300); // 300ms 延迟
+  }, []);
+
+  // 取消延迟关闭
+  const cancelHide = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
 
   return (
     <span
@@ -31,13 +50,14 @@ export const AttachmentVariableTag: React.FC<AttachmentVariableTagProps> = ({
         text-amber-700 text-sm
         ${isEditing ? 'cursor-pointer' : 'cursor-default'}
       `}
-      onMouseEnter={() => isEditing && setIsHovered(true)}
-      onMouseLeave={(e) => {
-        // 检查鼠标是否移动到了弹窗上
-        const target = e.relatedTarget as HTMLElement;
-        if (!target?.closest('.attachment-variable-popup')) {
-          setIsHovered(false);
+      onMouseEnter={() => {
+        cancelHide();
+        if (isEditing) {
+          setIsHovered(true);
         }
+      }}
+      onMouseLeave={() => {
+        scheduleHide();
       }}
       onClick={(e) => {
         e.stopPropagation();
@@ -53,9 +73,14 @@ export const AttachmentVariableTag: React.FC<AttachmentVariableTagProps> = ({
       {/* 悬停编辑/删除按钮 - 仅在编辑状态下显示 */}
       {isEditing && isHovered && (
         <span 
-          className="attachment-variable-popup absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-gray-800 rounded px-2 py-1 shadow-lg z-[60]"
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
+          className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-gray-800 rounded px-2 py-1 shadow-lg z-[60]"
+          onMouseEnter={() => {
+            cancelHide();
+            setIsHovered(true);
+          }}
+          onMouseLeave={() => {
+            scheduleHide();
+          }}
         >
           <button
             onClick={(e) => {
