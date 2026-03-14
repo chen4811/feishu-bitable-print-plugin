@@ -53,6 +53,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+
+// 🔥 防抖函数
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout | null = null;
+  return (...args: Parameters<T>) => {
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+}
 import { DataSourcePanel } from './panels/DataSourcePanel';
 import { ComponentPanel } from './panels/ComponentPanel';
 import { SettingsPanel } from './panels/SettingsPanel';
@@ -82,6 +94,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
   const [initialEditorState, setInitialEditorState] = useState<string | null>(null);
   
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isFetchingRecordsRef = useRef(false); // 🔥 执行锁，防止重复获取
   const { 
     templates, 
     currentTemplate: storeCurrentTemplate,
@@ -195,13 +208,20 @@ export function EditorPage({ onExit }: EditorPageProps) {
         setFeishuLoading(false);
       }
 
-      // 设置点击行监听
+      // 设置点击行监听（带防抖和执行锁）
       console.log('[EditorPage] 设置点击行监听...');
-      const unsubscribe = feishuEnv.onSelectionChange(async (event) => {
-        console.log('[EditorPage] ======== 收到点击行事件 ========');
-        console.log('[EditorPage] 事件数据:', event);
+      
+      // 🔥 防抖处理的记录获取函数
+      const debouncedFetchRecords = debounce(async () => {
+        // 执行锁：如果正在获取，跳过
+        if (isFetchingRecordsRef.current) {
+          console.log('[EditorPage] 跳过重复获取：已有请求进行中');
+          return;
+        }
         
-        // 获取新的选中记录
+        isFetchingRecordsRef.current = true;
+        console.log('[EditorPage] ======== 开始获取选中记录 ========');
+        
         try {
           const records = await feishuEnv.getSelectedRecords();
           console.log('[EditorPage] 获取到新的选中记录:', records);
@@ -218,7 +238,15 @@ export function EditorPage({ onExit }: EditorPageProps) {
           }
         } catch (error) {
           console.error('[EditorPage] 获取选中记录失败:', error);
+        } finally {
+          isFetchingRecordsRef.current = false;
+          console.log('[EditorPage] ======== 结束获取选中记录 ========');
         }
+      }, 300); // 300ms 防抖延迟
+      
+      const unsubscribe = feishuEnv.onSelectionChange(async (event) => {
+        console.log('[EditorPage] 收到点击行事件:', event);
+        debouncedFetchRecords();
       });
 
       return unsubscribe;
