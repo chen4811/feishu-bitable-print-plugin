@@ -309,17 +309,24 @@ class AttachmentProcessor {
   private urlCache = new Map<string, { url: string; expiry: number }>();
   
   /**
-   * 识别附件字段
-   * 根据飞书附件数据结构特征进行识别
+   * 【简化修复】识别附件字段
+   * 只根据飞书 FieldType 枚举判断，不再使用值特征扫描
+   * FieldType.Attachment = 17
    */
-  isAttachmentField(fieldValue: any): boolean {
+  isAttachmentField(fieldValue: any, fieldType?: number | string): boolean {
+    // 优先根据字段元数据的 type 判断
+    if (fieldType !== undefined) {
+      const typeNum = typeof fieldType === 'string' ? parseInt(fieldType, 10) : fieldType;
+      return typeNum === 17;
+    }
+    
+    // 后备：根据值结构判断（仅用于兼容性）
     if (!Array.isArray(fieldValue)) return false;
     if (fieldValue.length === 0) return false;
     
-    // 检查数组中的每一项是否都有附件特征属性
     return fieldValue.every(item => 
       item && typeof item === 'object' && 
-      ('token' in item || 'name' in item || 'type' in item)
+      ('token' in item || 'fileToken' in item)
     );
   }
   
@@ -499,136 +506,114 @@ class AttachmentProcessor {
     fieldMetaList: any[],
     table: any
   ): Promise<Record<string, any>> {
-    // 【关键修复】创建深拷贝，避免修改原始数据引用
+    // 创建深拷贝，避免修改原始数据引用
     const processedRecord = JSON.parse(JSON.stringify(record));
     
-    // 查找附件类型字段（type === 17）
-    const attachmentFieldMetas = fieldMetaList.filter(f => f.type === 17 || f.type === 'Attachment');
-    
-    console.log(`[AttachmentProcessor] 字段元数据总数: ${fieldMetaList.length}`);
-    console.log(`[AttachmentProcessor] 附件字段元数据:`, attachmentFieldMetas.map(f => ({ id: f.id, name: f.name })));
-    console.log(`[AttachmentProcessor] 记录中的所有字段:`, Object.keys(processedRecord));
-    
-    // 【关键修复】构建字段ID到字段名的映射（用于处理乱码问题）
-    const fieldIdToNameMap: Record<string, string> = {};
-    fieldMetaList.forEach(f => {
-      if (f.id && f.name) {
-        fieldIdToNameMap[f.id] = f.name;
-      }
+    // 【简化修复】只使用字段元数据的 type 属性识别附件字段（FieldType.Attachment = 17）
+    // 不再使用值特征扫描，避免误判
+    const attachmentFieldMetas = fieldMetaList.filter(f => {
+      const typeNum = typeof f.type === 'string' ? parseInt(f.type, 10) : f.type;
+      return typeNum === 17;
     });
     
-    // 【关键修复】扫描记录中的所有字段，通过值特征识别附件字段
-    // 这可以处理字段名乱码导致无法匹配的问题
-    const potentialAttachmentFields: { fieldName: string; fieldValue: any; fieldId?: string }[] = [];
+    console.log(`[AttachmentProcessor] 字段元数据总数: ${fieldMetaList.length}`);
+    console.log(`[AttachmentProcessor] 附件字段元数据 (type=17):`, attachmentFieldMetas.map(f => ({ id: f.id, name: f.name, type: f.type })));
     
-    // 首先，从 fieldMetaList 中找到的附件字段
+    if (attachmentFieldMetas.length === 0) {
+      console.log('[AttachmentProcessor] 没有附件字段元数据');
+      return processedRecord;
+    }
+    
+    // 收集所有附件处理Promise
+    const processingResults: { fieldName: string; success: boolean; error?: string }[] = [];
+    const processingPromises: Promise<void>[] = [];
+    
     for (const fieldMeta of attachmentFieldMetas) {
       const fieldName = fieldMeta.name;
       const fieldId = fieldMeta.id;
       
-      // 尝试通过字段名或字段ID获取值
+      if (!fieldName) {
+        console.warn('[AttachmentProcessor] 字段元数据缺少 name:', fieldMeta);
+        continue;
+      }
+      
+      // 从记录中获取字段值
       let fieldValue = processedRecord[fieldName];
-      if (fieldValue === undefined) {
+      
+      // 如果字段名找不到，尝试用字段ID查找
+      if (fieldValue === undefined && fieldId) {
         fieldValue = processedRecord[fieldId];
       }
       
-      if (fieldValue !== undefined) {
-        potentialAttachmentFields.push({ fieldName, fieldValue, fieldId });
+      if (fieldValue === undefined) {
+        console.log(`[AttachmentProcessor] 记录中不存在字段 "${fieldName}" (ID: ${fieldId})`);
+        continue;
       }
-    }
-    
-    // 其次，扫描记录中所有数组类型的字段，检查是否是附件格式
-    for (const [key, value] of Object.entries(processedRecord)) {
-      // 跳过已处理的字段和内部字段
-      if (potentialAttachmentFields.some(f => f.fieldName === key)) continue;
-      if (key.startsWith('_')) continue;
-      
-      if (this.isAttachmentField(value)) {
-        console.log(`[AttachmentProcessor] 通过值特征发现附件字段: "${key}"`);
-        // 尝试找到对应的字段ID
-        const fieldId = Object.keys(fieldIdToNameMap).find(id => fieldIdToNameMap[id] === key);
-        potentialAttachmentFields.push({ fieldName: key, fieldValue: value, fieldId });
-      }
-    }
-    
-    console.log(`[AttachmentProcessor] 发现 ${potentialAttachmentFields.length} 个附件字段（含扫描发现）`);
-    
-    if (potentialAttachmentFields.length === 0) {
-      console.log('[AttachmentProcessor] 记录中没有附件字段');
-      return processedRecord;
-    }
-    
-    // 【关键修复】收集所有附件处理Promise，使用数组记录处理结果
-    const processingResults: { fieldName: string; success: boolean; error?: string }[] = [];
-    const processingPromises: Promise<void>[] = [];
-    
-    for (const { fieldName, fieldValue, fieldId: metaFieldId } of potentialAttachmentFields) {
-      // 尝试从 fieldMetaList 中找到对应的字段ID
-      const fieldMeta = attachmentFieldMetas.find(f => f.name === fieldName || f.id === metaFieldId);
-      const fieldId = metaFieldId || fieldMeta?.id || fieldName; // 优先使用字段ID，如果没有则使用字段名
       
       console.log(`[AttachmentProcessor] 检查字段 "${fieldName}" (ID: ${fieldId}):`, 
         Array.isArray(fieldValue) ? `数组(${fieldValue.length}项)` : typeof fieldValue
       );
       
-      // 识别并处理附件字段
-      if (this.isAttachmentField(fieldValue)) {
-        console.log(`[AttachmentProcessor] ✅ 确认是附件字段: ${fieldName} (${fieldValue.length} 个附件)`);
-        console.log(`[AttachmentProcessor] 附件数据样例:`, fieldValue[0] ? {
+      // 只处理数组类型的附件字段
+      if (!Array.isArray(fieldValue)) {
+        console.log(`[AttachmentProcessor] ⚠️ 字段 "${fieldName}" 不是数组，跳过:`, typeof fieldValue);
+        continue;
+      }
+      
+      console.log(`[AttachmentProcessor] ✅ 确认是附件字段: ${fieldName} (${fieldValue.length} 个附件)`);
+      
+      if (fieldValue.length > 0) {
+        console.log(`[AttachmentProcessor] 附件数据样例:`, {
           name: fieldValue[0].name,
           type: fieldValue[0].type,
-          hasToken: !!fieldValue[0].token,
+          hasToken: !!(fieldValue[0].token || fieldValue[0].fileToken),
           hasUrl: !!(fieldValue[0].url || fieldValue[0].fileUrl || fieldValue[0].tmpUrl)
-        } : '空数组');
-        
-        const processPromise = (async () => {
-          try {
-            // 【关键修复】确保获取正确的记录ID
-            const recordId = processedRecord.id || processedRecord._sourceRecordId || processedRecord.recordId;
-            
-            if (!recordId) {
-              console.error(`[AttachmentProcessor] ❌ 无法获取记录ID用于处理附件字段 "${fieldName}"`);
-              processingResults.push({ fieldName, success: false, error: '缺少记录ID' });
-              return;
-            }
-            
-            const htmlContent = await this.convertAttachmentFieldToHTML(
-              fieldValue, 
-              fieldId, 
-              recordId,
-              table
-            );
-            
-            // 【关键修复】存储处理后的HTML内容（使用字段名_html作为key，保留原始字段名给组件使用）
-            if (htmlContent) {
-              // 保留原始附件数组数据，供 VariableTextRenderer 等组件使用
-              processedRecord[fieldName] = fieldValue;
-              // HTML 内容存储在 _字段名_html 中，供打印预览使用
-              processedRecord[`_${fieldName}_html`] = htmlContent;
-              processingResults.push({ fieldName, success: true });
-              console.log(`[AttachmentProcessor] ✅ 附件字段 "${fieldName}" 处理完成，原始数据保留，HTML存储在 _${fieldName}_html，长度: ${htmlContent.length}`);
-              
-              // 【关键修复】同时按字段ID存储HTML，确保后续能通过ID访问
-              if (fieldId && fieldId !== fieldName) {
-                processedRecord[fieldId] = fieldValue; // 保留原始数据
-                processedRecord[`_${fieldId}_html`] = htmlContent; // HTML
-              }
-            } else {
-              processingResults.push({ fieldName, success: false, error: 'HTML内容为空' });
-              console.warn(`[AttachmentProcessor] ⚠️ 附件字段 "${fieldName}" 转换结果为空`);
-            }
-          } catch (error) {
-            const errorMsg = error instanceof Error ? error.message : String(error);
-            processingResults.push({ fieldName, success: false, error: errorMsg });
-            console.error(`[AttachmentProcessor] ❌ 处理附件字段 "${fieldName}" 失败:`, error);
-            // 保持原始数据，不影响其他字段
-          }
-        })();
-        
-        processingPromises.push(processPromise);
-      } else {
-        console.log(`[AttachmentProcessor] ⚠️ 字段 "${fieldName}" 不是附件格式，类型: ${typeof fieldValue}`);
+        });
       }
+      
+      const processPromise = (async () => {
+        try {
+          // 确保获取正确的记录ID
+          const recordId = processedRecord.id || processedRecord._sourceRecordId || processedRecord.recordId;
+          
+          if (!recordId) {
+            console.error(`[AttachmentProcessor] ❌ 无法获取记录ID用于处理附件字段 "${fieldName}"`);
+            processingResults.push({ fieldName, success: false, error: '缺少记录ID' });
+            return;
+          }
+          
+          const htmlContent = await this.convertAttachmentFieldToHTML(
+            fieldValue, 
+            fieldId || fieldName, 
+            recordId,
+            table
+          );
+          
+          // 存储处理后的HTML内容
+          if (htmlContent) {
+            // 保留原始附件数组数据
+            processedRecord[fieldName] = fieldValue;
+            // HTML 内容存储在 _字段名_html 中
+            processedRecord[`_${fieldName}_html`] = htmlContent;
+            processingResults.push({ fieldName, success: true });
+            console.log(`[AttachmentProcessor] ✅ 附件字段 "${fieldName}" 处理完成，HTML存储在 _${fieldName}_html`);
+            
+            // 同时按字段ID存储HTML
+            if (fieldId && fieldId !== fieldName) {
+              processedRecord[fieldId] = fieldValue;
+              processedRecord[`_${fieldId}_html`] = htmlContent;
+            }
+          } else {
+            processingResults.push({ fieldName, success: false, error: 'HTML内容为空' });
+          }
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          processingResults.push({ fieldName, success: false, error: errorMsg });
+          console.error(`[AttachmentProcessor] ❌ 处理附件字段 "${fieldName}" 失败:`, error);
+        }
+      })();
+      
+      processingPromises.push(processPromise);
     }
     
     // 等待所有附件处理完成
@@ -636,12 +621,8 @@ class AttachmentProcessor {
       await Promise.allSettled(processingPromises);
       const successCount = processingResults.filter(r => r.success).length;
       console.log(`[AttachmentProcessor] 所有附件字段处理完成，成功: ${successCount}/${processingResults.length}`);
-      console.log(`[AttachmentProcessor] 处理结果详情:`, processingResults);
-    } else {
-      console.log(`[AttachmentProcessor] 没有需要处理的附件字段`);
     }
     
-    // 【关键修复】返回处理后的深拷贝对象
     return processedRecord;
   }
 }
