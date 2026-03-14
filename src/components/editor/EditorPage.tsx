@@ -133,6 +133,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
     setFeishuEnvironment,
     fields: storeFields,
     setFields,
+    setFieldTypeMap,
     loadTemplateFromData,
   } = useEditorStore();
 
@@ -194,11 +195,20 @@ export function EditorPage({ onExit }: EditorPageProps) {
             type: field.type,
             placeholder: `[${field.name}]`,
             isSystem: false,
-            fieldKind, // 【关键】在获取时就确定字段种类
+            fieldKind,
           };
         });
+        
+        // 【关键】构建字段类型映射（字段名 -> 字段种类）
+        const fieldTypeMap: Record<string, 'attachment' | 'person' | 'text' | 'number' | 'date' | 'other'> = {};
+        appFields.forEach((field: Field) => {
+          fieldTypeMap[field.name] = field.fieldKind || 'other';
+        });
+        console.log('[EditorPage] 字段类型映射:', fieldTypeMap);
+        
         setFeishuFields(fields);
         setFields(appFields);
+        setFieldTypeMap(fieldTypeMap);
 
         // 2. 默认获取第一条记录
         console.log('[EditorPage] 获取第一条记录...');
@@ -274,6 +284,14 @@ export function EditorPage({ onExit }: EditorPageProps) {
                 fieldKind,
               };
             });
+            
+            // 【关键】更新字段类型映射
+            const fieldTypeMap: Record<string, 'attachment' | 'person' | 'text' | 'number' | 'date' | 'other'> = {};
+            appFields.forEach((field: Field) => {
+              fieldTypeMap[field.name] = field.fieldKind || 'other';
+            });
+            setFieldTypeMap(fieldTypeMap);
+            
             setFeishuFields(fields);
             setFields(appFields);
             console.log('[EditorPage] 字段已刷新:', appFields);

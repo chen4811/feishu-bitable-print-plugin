@@ -11,23 +11,32 @@ import {
   containsVariables,
   type VariableMatch 
 } from '@/utils/smartVariableRenderer';
-import { Field, ComponentTextStyle } from '@/types/editor';
+import { Field, ComponentTextStyle, FieldTypeMap } from '@/types/editor';
 import { AttachmentVariableConfig } from '@/components/editor/variables';
 
-// 判断是否为附件字段（使用预存的 fieldKind 优先）
-function isAttachmentField(fieldName: string, records: any[], fields: Field[]): boolean {
-  console.log('[isAttachmentField] ====== 开始判断 ======', { fieldName, fieldsCount: fields.length });
+// 判断是否为附件字段（使用 fieldTypeMap 优先）
+function isAttachmentField(fieldName: string, records: any[], fields: Field[], fieldTypeMap?: FieldTypeMap): boolean {
+  console.log('[isAttachmentField] ====== 开始判断 ======', { fieldName, hasTypeMap: !!fieldTypeMap });
   
-  // 显示所有字段信息
-  console.log('[isAttachmentField] 所有字段:', fields.map(f => ({ name: f.name, id: f.id, type: f.type, fieldKind: f.fieldKind })));
+  // 🔥 【核心修复】优先使用 fieldTypeMap（字段名 -> 字段种类）
+  if (fieldTypeMap && fieldTypeMap[fieldName]) {
+    const fieldKind = fieldTypeMap[fieldName];
+    console.log('[isAttachmentField] 使用 fieldTypeMap:', fieldKind);
+    if (fieldKind === 'attachment') {
+      console.log('[isAttachmentField] => true (fieldTypeMap=attachment)');
+      return true;
+    }
+    if (fieldKind === 'person' || fieldKind === 'text' || fieldKind === 'number' || fieldKind === 'date') {
+      console.log('[isAttachmentField] => false (fieldTypeMap=' + fieldKind + ')');
+      return false;
+    }
+  }
   
-  // 🔥 【核心修复】优先使用预存的 fieldKind（在字段获取时确定）
+  // 其次使用字段查找（兼容旧逻辑）
   const field = fields.find(f => f.name === fieldName || f.id === fieldName);
-  console.log('[isAttachmentField] 查找字段结果:', { fieldName, found: !!field, field });
+  console.log('[isAttachmentField] 查找字段结果:', { fieldName, found: !!field, fieldKind: field?.fieldKind });
   
   if (field?.fieldKind) {
-    console.log('[isAttachmentField] 使用 fieldKind:', field.fieldKind);
-    // 如果预存了 fieldKind，直接使用（最可靠）
     if (field.fieldKind === 'attachment') {
       console.log('[isAttachmentField] => true (fieldKind=attachment)');
       return true;
@@ -38,86 +47,46 @@ function isAttachmentField(fieldName: string, records: any[], fields: Field[]): 
     }
   }
   
-  // 其次使用字段元数据中的 type 判断
+  // 使用字段 type 判断
   if (field) {
     const fieldType = field.type;
-    console.log('[isAttachmentField] 使用 field.type:', fieldType);
-    
-    // 飞书附件字段类型为 'attachment' 或 '17'
     if (fieldType === 'attachment' || String(fieldType) === '17') {
       console.log('[isAttachmentField] => true (type=attachment/17)');
       return true;
     }
-    
-    // 明确排除非附件字段类型（支持字符串和数字编码）
-    const nonAttachmentTypes = [
-      // 字符串类型
-      'text', 'number', 'singleSelect', 'multiSelect', 'date', 'phone', 'email', 'url', 'user', 'person',
-      // 数字类型字符串（飞书字段类型编码）
-      '1', '2', '3', '4', '5', '11', '13', '15',
-    ];
-    
+    const nonAttachmentTypes = ['text', 'number', 'singleSelect', 'multiSelect', 'date', 'phone', 'email', 'url', 'user', 'person', '1', '2', '3', '4', '5', '11', '13', '15'];
     if (nonAttachmentTypes.includes(fieldType) || nonAttachmentTypes.includes(String(fieldType))) {
       console.log('[isAttachmentField] => false (non-attachment type)');
       return false;
     }
   }
   
-  // 如果没有字段元数据，回退到值判断（兜底逻辑）
+  // 回退到值判断
   console.log('[isAttachmentField] 回退到值判断');
-  if (!records || records.length === 0) {
-    console.log('[isAttachmentField] => false (no records)');
-    return false;
-  }
+  if (!records || records.length === 0) return false;
   
   const record = records[0];
   const value = record[fieldName] || record.fields?.[fieldName];
-  console.log('[isAttachmentField] 值判断:', { fieldName, hasValue: !!value, isArray: Array.isArray(value) });
   
-  if (!Array.isArray(value) || value.length === 0) {
-    console.log('[isAttachmentField] => false (not array or empty)');
-    return false;
-  }
+  if (!Array.isArray(value) || value.length === 0) return false;
   
   const firstItem = value[0];
-  console.log('[isAttachmentField] 第一个元素:', firstItem);
   
-  // 🔥 【修复】排除人员字段：有 id+name，无 fileToken/previewUrl
-  // 人员字段特征：id 以 'ou_' 开头（飞书用户ID），有 name，可能有 enName/en_name
-  // 附件字段特征：有 token 或 fileToken，有 name（文件名）
+  // 排除人员字段
   if (firstItem && ('id' in firstItem) && ('name' in firstItem)) {
     const id = String(firstItem.id || '');
     const hasEnName = 'enName' in firstItem || 'en_name' in firstItem;
     const hasFileToken = 'fileToken' in firstItem || ('token' in firstItem && firstItem.permission);
     
-    console.log('[isAttachmentField] 详细检查:', { id, hasEnName, hasFileToken, idStartsWithOu: id.startsWith('ou_') });
-    
-    // 如果有 enName/en_name，说明是人员字段
-    if (hasEnName) {
-      console.log('[isAttachmentField] => false (has enName/en_name)');
-      return false;
-    }
-    
-    // 如果有 fileToken 或 permission（附件特有），说明是附件
-    if (hasFileToken) {
-      console.log('[isAttachmentField] => true (has fileToken/permission)');
-      return true;
-    }
-    
-    // id 以 'ou_' 开头是飞书用户ID，说明是人员字段
-    if (id.startsWith('ou_')) {
-      console.log('[isAttachmentField] => false (id starts with ou_)');
-      return false;
-    }
+    if (hasEnName) return false;
+    if (hasFileToken) return true;
+    if (id.startsWith('ou_')) return false;
   }
   
-  // 附件判断：必须有文件相关属性
-  const result = firstItem && (
+  return firstItem && (
     ('fileToken' in firstItem && typeof firstItem.fileToken === 'string') ||
     ('previewUrl' in firstItem && typeof firstItem.previewUrl === 'string')
   );
-  console.log('[isAttachmentField] =>', result, '(by fileToken/previewUrl)');
-  return result;
 }
 
 // 获取附件数据
@@ -135,6 +104,7 @@ interface VariableTextRendererProps {
   text: string;
   records: any[];
   fields: Field[];
+  fieldTypeMap?: FieldTypeMap; // 【新增】字段类型映射
   className?: string;
   tagName?: 'p' | 'div' | 'span' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
   textStyle?: Partial<ComponentTextStyle>;
@@ -159,6 +129,7 @@ export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
   text,
   records,
   fields,
+  fieldTypeMap, // 【新增】
   className = '',
   tagName: Tag = 'span',
   textStyle,
@@ -173,6 +144,7 @@ export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
     textPreview: text?.substring(0, 30),
     recordsCount: records?.length,
     fieldsCount: fields?.length,
+    hasTypeMap: !!fieldTypeMap, // 【新增】
     isEditing,
     hasVariables: containsVariables(text),
     variables: containsVariables(text) ? parseVariables(text).map(v => v.fieldName) : [],
@@ -208,7 +180,7 @@ export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
     const fieldName = variable.fieldName;
     
     // 检查是否为附件字段
-    if (isAttachmentField(fieldName, records, fields)) {
+    if (isAttachmentField(fieldName, records, fields, fieldTypeMap)) {
       if (isEditing) {
         // 编辑状态：显示简单的变量标签 [字段名]
         parts.push(

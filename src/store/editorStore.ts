@@ -5,6 +5,7 @@ import {
   PageConfig,
   StyleConfig,
   Field,
+  FieldTypeMap,
   PrintTemplate,
   DEFAULT_PAGE_CONFIG,
   DEFAULT_STYLE_CONFIG,
@@ -58,6 +59,9 @@ interface EditorState {
   // 字段列表
   fields: Field[];
   systemFields: Field[];
+  
+  // 【新增】字段类型映射（字段名 -> 字段种类）
+  fieldTypeMap: FieldTypeMap;
   isFeishuEnvironment: boolean;
   
   // 飞书上下文
@@ -90,6 +94,7 @@ interface EditorState {
   
   // 字段
   setFields: (fields: Field[]) => void;
+  setFieldTypeMap: (map: FieldTypeMap) => void;
   setSystemFields: (fields: Field[]) => void;
   setFeishuEnvironment: (isFeishu: boolean) => void;
   
@@ -213,6 +218,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     { id: 'sys_table_name', name: '表格名', type: 'text', placeholder: '[表格名]', isSystem: true },
     { id: 'sys_print_time', name: '打印时间', type: 'text', placeholder: '[打印时间]', isSystem: true },
   ],
+  fieldTypeMap: {}, // 【新增】字段类型映射
   isFeishuEnvironment: false,
   feishuContext: null,
   isFeishuContextLoading: false,
@@ -382,6 +388,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   
   // 设置字段列表
   setFields: (fields) => set({ fields }),
+  setFieldTypeMap: (map) => set({ fieldTypeMap: map }),
   setSystemFields: (fields) => set({ systemFields: fields }),
   setFeishuEnvironment: (isFeishu) => set({ isFeishuEnvironment: isFeishu }),
   

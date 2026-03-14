@@ -104,6 +104,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     setTableCellEditing,
     records,
     fields,
+    fieldTypeMap, // 【新增】
     selectComponent,
     attachmentConfigs,
     setAttachmentConfig,
@@ -1756,6 +1757,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                 text={cellContent || ''}
                                 records={recordsForVariableRenderer || []}
                                 fields={fields || []}
+                                fieldTypeMap={fieldTypeMap} // 【新增】
                                 tagName="span"
                                 textStyle={cellStyle}
                                 isEditing={isCurrentTableEditing}
