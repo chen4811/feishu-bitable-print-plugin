@@ -16,6 +16,20 @@ import { AttachmentVariableConfig } from '@/components/editor/variables';
 
 // 判断是否为附件字段
 function isAttachmentField(fieldName: string, records: any[], fields: Field[]): boolean {
+  // 🔥 优先使用字段元数据中的类型判断（更可靠）
+  const field = fields.find(f => f.name === fieldName || f.id === fieldName);
+  if (field) {
+    // 飞书附件字段类型为 'attachment'
+    if (field.type === 'attachment') {
+      return true;
+    }
+    // 明确排除文本类字段，避免误判
+    if (['text', 'number', 'singleSelect', 'multiSelect', 'date', 'phone', 'email', 'url'].includes(field.type)) {
+      return false;
+    }
+  }
+  
+  // 如果没有字段元数据或类型不明确，回退到值判断
   if (!records || records.length === 0) return false;
   
   const record = records[0];
@@ -24,11 +38,11 @@ function isAttachmentField(fieldName: string, records: any[], fields: Field[]): 
   if (!Array.isArray(value) || value.length === 0) return false;
   
   const firstItem = value[0];
+  // 更严格的附件判断：必须包含 token 或特定的文件属性
   return firstItem && (
-    'token' in firstItem || 
-    'name' in firstItem || 
-    'type' in firstItem ||
-    'url' in firstItem
+    ('token' in firstItem && typeof firstItem.token === 'string') || 
+    ('fileToken' in firstItem && typeof firstItem.fileToken === 'string') ||
+    ('previewUrl' in firstItem && typeof firstItem.previewUrl === 'string')
   );
 }
 
