@@ -62,6 +62,76 @@ import { PrintPreviewDialog } from './dialogs/PrintPreviewDialog';
 import { usePrintSDK } from '@/hooks/usePrintSDK';
 import { feishuEnv } from '@/lib/feishu-env';
 
+/**
+ * 为记录的附件字段获取真实的可访问URL
+ * @param recordId 记录ID
+ * @param tableId 表格ID
+ * @param fields 字段数据
+ * @param fieldMetaList 字段元数据列表
+ * @returns 注入真实URL后的字段数据
+ */
+const enrichAttachmentUrls = async (
+  recordId: string,
+  tableId: string,
+  fields: Record<string, any>,
+  fieldMetaList: any[]
+): Promise<Record<string, any>> => {
+  console.log('[EditorPage-Attachment] 开始为记录获取附件URL:', recordId);
+  
+  const enrichedFields = { ...fields };
+  
+  // 查找附件类型字段（类型ID为17）
+  const attachmentFields = fieldMetaList.filter(f => f.type === 17);
+  console.log('[EditorPage-Attachment] 找到附件字段数量:', attachmentFields.length);
+  
+  if (attachmentFields.length === 0) {
+    return enrichedFields;
+  }
+  
+  try {
+    const { bitable } = await import('@lark-base-open/js-sdk');
+    const base = await bitable.base;
+    const table = await base.getTable(tableId);
+    
+    for (const fieldMeta of attachmentFields) {
+      const fieldName = fieldMeta.name;
+      const fieldId = fieldMeta.id;
+      const fieldValue = enrichedFields[fieldName];
+      
+      // 检查字段值是否为附件数组
+      if (!Array.isArray(fieldValue) || fieldValue.length === 0) {
+        continue;
+      }
+      
+      console.log(`[EditorPage-Attachment] 处理字段: ${fieldName}, 包含 ${fieldValue.length} 个附件`);
+      
+      try {
+        const field = await table.getField(fieldId);
+        const realUrls = await (field as any).getAttachmentUrls(recordId);
+        
+        console.log(`[EditorPage-Attachment] 获取到 ${realUrls?.length || 0} 个真实URL`);
+        
+        if (realUrls && realUrls.length > 0) {
+          enrichedFields[fieldName] = fieldValue.map((item: any, index: number) => {
+            const realUrl = realUrls[index] || '';
+            return {
+              ...item,
+              url: realUrl,
+              fileUrl: realUrl,
+            };
+          });
+        }
+      } catch (error) {
+        console.error(`[EditorPage-Attachment] 处理字段 ${fieldName} 失败:`, error);
+      }
+    }
+  } catch (error) {
+    console.error('[EditorPage-Attachment] 获取附件URL失败:', error);
+  }
+  
+  return enrichedFields;
+};
+
 interface EditorPageProps {
   onExit: () => void;
 }
@@ -179,14 +249,31 @@ export function EditorPage({ onExit }: EditorPageProps) {
         console.log('[EditorPage] 获取到记录:', records);
         
         if (records.length > 0) {
-          // 转换记录格式
-          const appRecords = records.map((record, index) => ({
-            id: record.id,
-            ...record.fields,
-            _rowIndex: index,
-          }));
+          // 【关键】为每条记录获取附件URL并转换格式
+          const enrichedRecords: any[] = [];
+          
+          for (let index = 0; index < records.length; index++) {
+            const record = records[index];
+            console.log(`[EditorPage] 处理记录 ${index}:`, record.id);
+            
+            // 获取附件字段的真实URL
+            const enrichedFields = await enrichAttachmentUrls(
+              record.id,
+              selection?.tableId || '',
+              record.fields,
+              fields
+            );
+            
+            enrichedRecords.push({
+              id: record.id,
+              ...enrichedFields,
+              _rowIndex: index,
+            });
+          }
+          
+          console.log('[EditorPage] 记录处理完成，共:', enrichedRecords.length, '条');
           setFeishuRecords(records);
-          setRecords(appRecords as unknown as Record<string, unknown>[]);
+          setRecords(enrichedRecords as unknown as Record<string, unknown>[]);
         }
         
         setFeishuLoading(false);
@@ -206,15 +293,37 @@ export function EditorPage({ onExit }: EditorPageProps) {
           const records = await feishuEnv.getSelectedRecords();
           console.log('[EditorPage] 获取到新的选中记录:', records);
           
+          // 获取当前表格ID
+          const currentTableId = currentTableInfo.tableId;
+          // 获取字段元数据（从已保存的feishuFields）
+          const fieldMetaList = feishuFields;
+          
           if (records.length > 0) {
-            // 转换记录格式
-            const appRecords = records.map((record, index) => ({
-              id: record.id,
-              ...record.fields,
-              _rowIndex: index,
-            }));
+            // 【关键】为每条记录获取附件URL并转换格式
+            const enrichedRecords: any[] = [];
+            
+            for (let index = 0; index < records.length; index++) {
+              const record = records[index];
+              console.log(`[EditorPage] 处理选中记录 ${index}:`, record.id);
+              
+              // 获取附件字段的真实URL
+              const enrichedFields = await enrichAttachmentUrls(
+                record.id,
+                currentTableId || '',
+                record.fields,
+                fieldMetaList
+              );
+              
+              enrichedRecords.push({
+                id: record.id,
+                ...enrichedFields,
+                _rowIndex: index,
+              });
+            }
+            
+            console.log('[EditorPage] 选中记录处理完成，共:', enrichedRecords.length, '条');
             setFeishuRecords(records);
-            setRecords(appRecords as unknown as Record<string, unknown>[]);
+            setRecords(enrichedRecords as unknown as Record<string, unknown>[]);
           }
         } catch (error) {
           console.error('[EditorPage] 获取选中记录失败:', error);
@@ -225,7 +334,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
     };
     
     init();
-  }, [setFeishuEnvironment, setFields, setRecords]);
+  }, [setFeishuEnvironment, setFields, setRecords, currentTableInfo.tableId, feishuFields]);
 
   // 初始化当前编辑的模板
   useEffect(() => {
