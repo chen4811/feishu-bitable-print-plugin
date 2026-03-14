@@ -511,8 +511,14 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     
     if (variables.length === 0) return;
     
-    // 检查是否有附件字段
+    // 检查是否有附件字段（使用 fieldTypeMap 判断）
     const attachmentFields = variables.filter(fieldName => {
+      // 🔥 优先使用 fieldTypeMap 判断
+      if (fieldTypeMap && fieldTypeMap[fieldName]) {
+        return fieldTypeMap[fieldName] === 'attachment';
+      }
+      
+      // 回退：通过值特征判断
       if (!records || records.length === 0) return false;
       const record = records[0] as any;
       const value = record[fieldName] || record.fields?.[fieldName];
@@ -520,11 +526,11 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       if (!Array.isArray(value) || value.length === 0) return false;
       
       const firstItem = value[0];
+      // 附件字段特征：有 permission 对象（包含 tableId/fieldId/recordId）
       return firstItem && (
-        'token' in firstItem || 
-        'name' in firstItem || 
-        'type' in firstItem ||
-        'url' in firstItem
+        ('token' in firstItem && firstItem.permission) || 
+        'fileToken' in firstItem || 
+        'previewUrl' in firstItem
       );
     });
     
@@ -604,22 +610,30 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     const attachmentFields: string[] = [];
     
     variables.forEach(fieldName => {
-      // 检查是否为附件字段
-      if (records && records.length > 0) {
+      // 检查是否为附件字段（使用 fieldTypeMap 判断）
+      let isAttachment = false;
+      
+      // 🔥 优先使用 fieldTypeMap 判断
+      if (fieldTypeMap && fieldTypeMap[fieldName]) {
+        isAttachment = fieldTypeMap[fieldName] === 'attachment';
+      } else if (records && records.length > 0) {
+        // 回退：通过值特征判断
         const record = records[0] as any;
         const value = record[fieldName] || record.fields?.[fieldName];
         
         if (Array.isArray(value) && value.length > 0) {
           const firstItem = value[0];
-          if (firstItem && (
-            'token' in firstItem || 
-            'name' in firstItem || 
-            'type' in firstItem ||
-            'url' in firstItem
-          )) {
-            attachmentFields.push(fieldName);
-          }
+          // 附件字段特征：有 permission 对象或 fileToken
+          isAttachment = firstItem && (
+            ('token' in firstItem && firstItem.permission) || 
+            'fileToken' in firstItem || 
+            'previewUrl' in firstItem
+          );
         }
+      }
+      
+      if (isAttachment) {
+        attachmentFields.push(fieldName);
       }
       
       // 将变量插入到内容中（使用 [字段名] 格式）
