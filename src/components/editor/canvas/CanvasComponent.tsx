@@ -1195,15 +1195,30 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
             );
           }
           
-          // 如果行列数匹配，保留已有编辑数据，只同步新单元格的内容
-          return cells.map((row: any[], rowIdx: number) => 
-            row.map((cell: any, colIdx: number) => {
-              // 如果本地有编辑中的值，优先使用本地值
-              if (prev[rowIdx]?.[colIdx] !== undefined && prev[rowIdx][colIdx] !== (cell?.content || '')) {
-                return prev[rowIdx][colIdx];
-              }
-              return cell?.content || '';
-            })
+          // 如果行列数匹配，从 cells 读取最新内容
+          // 只有在当前没有单元格处于编辑状态时才同步
+          const isAnyCellEditing = tableCellEditing.isEditing && tableCellEditing.tableId === component.id;
+          
+          if (isAnyCellEditing) {
+            // 有单元格在编辑中，保留本地编辑数据
+            return cells.map((row: any[], rowIdx: number) => 
+              row.map((cell: any, colIdx: number) => {
+                // 如果当前单元格正在编辑，保留本地值
+                const isThisCellEditing = 
+                  tableCellEditing.rowIndex === rowIdx && 
+                  tableCellEditing.colIndex === colIdx;
+                
+                if (isThisCellEditing && prev[rowIdx]?.[colIdx] !== undefined) {
+                  return prev[rowIdx][colIdx];
+                }
+                return cell?.content || '';
+              })
+            );
+          }
+          
+          // 没有单元格在编辑中，从 cells 同步最新内容
+          return cells.map((row: any[]) => 
+            row.map((cell: any) => cell?.content || '')
           );
         });
       } else {
@@ -1213,7 +1228,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         ]);
       }
     }
-  }, [component.id, component.type, (component as any).tableConfig?.cells?.length, (component as any).tableConfig?.cells?.[0]?.length]);
+  }, [component.id, component.type, (component as any).tableConfig?.cells, tableCellEditing.isEditing, tableCellEditing.tableId, tableCellEditing.rowIndex, tableCellEditing.colIndex]);
 
   // 生成二维码
   useEffect(() => {
