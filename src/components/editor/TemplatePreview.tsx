@@ -501,6 +501,10 @@ class AttachmentProcessor {
     // 查找附件类型字段（type === 17）
     const attachmentFieldMetas = fieldMetaList.filter(f => f.type === 17 || f.type === 'Attachment');
     
+    console.log(`[AttachmentProcessor] 字段元数据总数: ${fieldMetaList.length}`);
+    console.log(`[AttachmentProcessor] 附件字段元数据:`, attachmentFieldMetas.map(f => ({ id: f.id, name: f.name })));
+    console.log(`[AttachmentProcessor] 记录中的所有字段:`, Object.keys(record));
+    
     if (attachmentFieldMetas.length === 0) {
       console.log('[AttachmentProcessor] 记录中没有附件字段');
       return processedRecord;
@@ -514,11 +518,28 @@ class AttachmentProcessor {
     for (const fieldMeta of attachmentFieldMetas) {
       const fieldName = fieldMeta.name;
       const fieldId = fieldMeta.id;
-      const fieldValue = record[fieldName] || record[fieldId];
+      
+      // 尝试通过字段名或字段ID获取值
+      let fieldValue = record[fieldName];
+      if (fieldValue === undefined) {
+        fieldValue = record[fieldId];
+      }
+      
+      console.log(`[AttachmentProcessor] 检查字段 "${fieldName}" (ID: ${fieldId}):`, 
+        fieldValue === undefined ? '未找到' : 
+        Array.isArray(fieldValue) ? `数组(${fieldValue.length}项)` : 
+        typeof fieldValue
+      );
       
       // 识别并处理附件字段
       if (this.isAttachmentField(fieldValue)) {
-        console.log(`[AttachmentProcessor] 处理附件字段: ${fieldName} (${fieldValue.length} 个附件)`);
+        console.log(`[AttachmentProcessor] ✅ 确认是附件字段: ${fieldName} (${fieldValue.length} 个附件)`);
+        console.log(`[AttachmentProcessor] 附件数据样例:`, fieldValue[0] ? {
+          name: fieldValue[0].name,
+          type: fieldValue[0].type,
+          hasToken: !!fieldValue[0].token,
+          hasUrl: !!(fieldValue[0].url || fieldValue[0].fileUrl || fieldValue[0].tmpUrl)
+        } : '空数组');
         
         const processPromise = (async () => {
           try {
@@ -533,15 +554,17 @@ class AttachmentProcessor {
             if (htmlContent) {
               processedRecord[fieldName] = htmlContent;
               processedRecord[`_${fieldName}_original`] = fieldValue; // 保留原始数据备用
-              console.log(`[AttachmentProcessor] 附件字段 ${fieldName} 处理完成`);
+              console.log(`[AttachmentProcessor] ✅ 附件字段 "${fieldName}" 处理完成，已转换为HTML`);
             }
           } catch (error) {
-            console.error(`[AttachmentProcessor] 处理附件字段 ${fieldName} 失败:`, error);
+            console.error(`[AttachmentProcessor] ❌ 处理附件字段 "${fieldName}" 失败:`, error);
             // 保持原始数据，不影响其他字段
           }
         })();
         
         processingPromises.push(processPromise);
+      } else if (fieldValue !== undefined) {
+        console.log(`[AttachmentProcessor] ⚠️ 字段 "${fieldName}" 不是附件格式`);
       }
     }
     
@@ -549,6 +572,8 @@ class AttachmentProcessor {
     if (processingPromises.length > 0) {
       await Promise.allSettled(processingPromises);
       console.log(`[AttachmentProcessor] 所有附件字段处理完成`);
+    } else {
+      console.log(`[AttachmentProcessor] 没有需要处理的附件字段`);
     }
     
     return processedRecord;
@@ -1839,34 +1864,68 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         console.log('[TP] 格式化后记录数:', formattedRecords.length);
         
         // 【附件处理】异步处理所有记录的附件字段
-        console.log('[TP] 开始处理附件字段...');
+        console.log('[TP] ========== 开始处理附件字段 ==========');
         let processedRecords = formattedRecords;
+        
         try {
           const { base } = await import('@lark-base-open/js-sdk');
+          console.log('[TP] 已导入 SDK');
+          
           const selection = await base.getSelection();
+          console.log('[TP] 获取 selection:', selection);
+          
           if (selection?.tableId) {
+            console.log('[TP] 开始获取 table 对象, tableId:', selection.tableId);
             const table = await base.getTable(selection.tableId);
+            console.log('[TP] 已获取 table 对象');
+            
+            console.log('[TP] 开始获取字段元数据...');
             const fieldMetaList = await table.getFieldMetaList();
+            console.log('[TP] 已获取字段元数据, 字段数:', fieldMetaList?.length || 0);
+            
+            // 查找附件字段
+            const attachmentFields = fieldMetaList.filter(f => f.type === 17 || String(f.type) === 'Attachment');
+            console.log('[TP] 发现附件字段数:', attachmentFields.length);
+            if (attachmentFields.length > 0) {
+              console.log('[TP] 附件字段列表:', attachmentFields.map(f => ({ id: f.id, name: f.name })));
+            }
             
             // 并行处理所有记录的附件字段
+            console.log('[TP] 开始并行处理', formattedRecords.length, '条记录的附件...');
             processedRecords = await Promise.all(
-              formattedRecords.map(async (record) => {
+              formattedRecords.map(async (record, idx) => {
+                console.log(`[TP] 处理记录 ${idx}:`, record.id);
                 try {
-                  return await attachmentProcessor.processRecordAttachments(
-                    record,
+                  const result = await attachmentProcessor.processRecordAttachments(
+                    record as Record<string, any>,
                     fieldMetaList,
                     table
                   ) as typeof record;
+                  
+                  // 检查附件字段是否被处理
+                  attachmentFields.forEach(field => {
+                    const originalValue = (record as Record<string, any>)[field.name];
+                    const processedValue = (result as Record<string, any>)[field.name];
+                    console.log(`[TP] 记录 ${idx} 字段 "${field.name}":`, 
+                      typeof originalValue === 'string' ? '已转为HTML' : '仍是原始数据',
+                      '原始类型:', Array.isArray(originalValue) ? 'array' : typeof originalValue,
+                      '处理后类型:', typeof processedValue
+                    );
+                  });
+                  
+                  return result;
                 } catch (error) {
-                  console.warn('[TP] 处理记录附件失败:', record.id, error);
+                  console.error(`[TP] 处理记录 ${idx} 附件失败:`, record.id, error);
                   return record; // 保持原始记录
                 }
               })
             );
-            console.log('[TP] 附件字段处理完成');
+            console.log('[TP] ========== 附件字段处理完成 ==========');
+          } else {
+            console.warn('[TP] 无法获取 tableId，跳过附件处理');
           }
         } catch (attachmentError) {
-          console.warn('[TP] 附件处理失败，使用原始记录:', attachmentError);
+          console.error('[TP] ========== 附件处理失败 ==========', attachmentError);
           // 保持原始记录
         }
         
