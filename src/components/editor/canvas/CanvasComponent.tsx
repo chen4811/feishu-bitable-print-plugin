@@ -201,6 +201,12 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   // 表格编辑状态（本地数据，UI 状态在 store）
   const [tableEditData, setTableEditData] = useState<any[][]>([]);
   
+  // 使用 ref 跟踪最新的 tableEditData，避免闭包问题
+  const tableEditDataRef = useRef<any[][]>([]);
+  useEffect(() => {
+    tableEditDataRef.current = tableEditData;
+  }, [tableEditData]);
+  
   // 表格单元格选择状态（用于拖动选择）
   const [cellSelection, setCellSelection] = useState<{
     startRow: number | null;
@@ -544,6 +550,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   }, [records, attachmentConfigs, editContent]);
 
   // 处理表格单元格粘贴事件 - 检测所有字段变量
+  const cellPasteDataRef = useRef<{rowIndex: number, colIndex: number, cursorPosition: number} | null>(null);
+  
   const handleCellPaste = useCallback((rowIndex: number, colIndex: number) => (e: React.ClipboardEvent) => {
     // 获取粘贴的文本内容
     const pastedText = e.clipboardData.getData('text');
@@ -561,16 +569,18 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     // 有变量，阻止默认粘贴行为，手动处理
     e.preventDefault();
     
-    // 从当前活动的 textarea 获取最新内容和光标位置
-    const activeElement = document.activeElement as HTMLTextAreaElement;
-    if (!activeElement || activeElement.tagName !== 'TEXTAREA') {
-      return;
-    }
+    // 从 ref 获取最新内容，避免闭包问题
+    const currentContent = tableEditDataRef.current[rowIndex]?.[colIndex] || '';
     
-    // 获取当前内容（从 DOM 获取，确保是最新的）
-    const currentContent = activeElement.value || '';
-    const selectionStart = activeElement.selectionStart || 0;
-    const selectionEnd = activeElement.selectionEnd || 0;
+    // 尝试从当前活动的 textarea 获取光标位置
+    const activeElement = document.activeElement as HTMLTextAreaElement;
+    let selectionStart = currentContent.length; // 默认在末尾
+    let selectionEnd = currentContent.length;
+    
+    if (activeElement && activeElement.tagName === 'TEXTAREA') {
+      selectionStart = activeElement.selectionStart || 0;
+      selectionEnd = activeElement.selectionEnd || 0;
+    }
     
     // 处理每个变量
     let variablesText = '';
@@ -602,13 +612,12 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     // 在光标位置插入变量文本
     const newContent = currentContent.substring(0, selectionStart) + variablesText + currentContent.substring(selectionEnd);
     
-    // 更新单元格内容
-    handleTableCellChange(rowIndex, colIndex, newContent);
-    
-    // 更新 textarea 的值和光标位置
-    activeElement.value = newContent;
+    // 记录光标位置，用于后续恢复
     const newCursorPosition = selectionStart + variablesText.length;
-    activeElement.setSelectionRange(newCursorPosition, newCursorPosition);
+    cellPasteDataRef.current = { rowIndex, colIndex, cursorPosition: newCursorPosition };
+    
+    // 更新单元格内容 - 让 React 自然处理渲染
+    handleTableCellChange(rowIndex, colIndex, newContent);
     
     // 如果有附件字段且没有配置，打开配置弹窗（只处理第一个）
     if (attachmentFields.length > 0) {
@@ -637,6 +646,25 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     
     toast.success(`附件字段 "${config.fieldName}" 配置已保存`);
   }, [setAttachmentConfig]);
+
+  // 在渲染后恢复光标位置（用于粘贴后）
+  useEffect(() => {
+    if (cellPasteDataRef.current && tableCellEditing.isEditing) {
+      const { rowIndex, colIndex, cursorPosition } = cellPasteDataRef.current;
+      // 检查当前编辑的单元格是否匹配
+      if (tableCellEditing.rowIndex === rowIndex && tableCellEditing.colIndex === colIndex) {
+        const textarea = document.activeElement as HTMLTextAreaElement;
+        if (textarea && textarea.tagName === 'TEXTAREA') {
+          // 使用 setTimeout 确保 DOM 已更新
+          setTimeout(() => {
+            textarea.setSelectionRange(cursorPosition, cursorPosition);
+          }, 0);
+        }
+      }
+      // 清除 ref
+      cellPasteDataRef.current = null;
+    }
+  }, [tableEditData, tableCellEditing]);
 
   // 处理编辑附件变量
   const handleEditAttachmentVariable = useCallback((fieldName: string) => {
