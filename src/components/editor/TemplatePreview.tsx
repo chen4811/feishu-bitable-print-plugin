@@ -1606,6 +1606,18 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         _rowIndex: availableRecords.length,
       };
       
+      // 【验证】检查附件字段是否正确转换为 HTML
+      const attachmentFieldName = Object.keys(formattedFields).find(key => {
+        const val = formattedFields[key];
+        return typeof val === 'string' && val.includes('<img');
+      });
+      if (attachmentFieldName) {
+        console.log(`✅ [TP-VERIFY] 附件字段 ${attachmentFieldName} 已转换为 HTML，长度:`, formattedFields[attachmentFieldName].length);
+        console.log(`✅ [TP-VERIFY] HTML 预览:`, formattedFields[attachmentFieldName].substring(0, 100));
+      } else {
+        console.warn(`⚠️ [TP-VERIFY] 未找到已转换的附件字段，所有字段类型:`, Object.entries(formattedFields).map(([k, v]) => `${k}=${typeof v}`));
+      }
+      
       console.log('[TP] 最终格式化记录（已注入附件URL）:', enrichedRecord);
       
       // 【调试】测试附件字段 getAttachmentUrls API（可选，保留用于调试）
