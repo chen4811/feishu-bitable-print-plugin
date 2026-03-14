@@ -509,17 +509,19 @@ class AttachmentProcessor {
     console.log(`[AttachmentProcessor] 附件字段元数据:`, attachmentFieldMetas.map(f => ({ id: f.id, name: f.name })));
     console.log(`[AttachmentProcessor] 记录中的所有字段:`, Object.keys(processedRecord));
     
-    if (attachmentFieldMetas.length === 0) {
-      console.log('[AttachmentProcessor] 记录中没有附件字段');
-      return processedRecord;
-    }
+    // 【关键修复】构建字段ID到字段名的映射（用于处理乱码问题）
+    const fieldIdToNameMap: Record<string, string> = {};
+    fieldMetaList.forEach(f => {
+      if (f.id && f.name) {
+        fieldIdToNameMap[f.id] = f.name;
+      }
+    });
     
-    console.log(`[AttachmentProcessor] 发现 ${attachmentFieldMetas.length} 个附件字段，开始处理...`);
+    // 【关键修复】扫描记录中的所有字段，通过值特征识别附件字段
+    // 这可以处理字段名乱码导致无法匹配的问题
+    const potentialAttachmentFields: { fieldName: string; fieldValue: any; fieldId?: string }[] = [];
     
-    // 【关键修复】收集所有附件处理Promise，使用数组记录处理结果
-    const processingResults: { fieldName: string; success: boolean; error?: string }[] = [];
-    const processingPromises: Promise<void>[] = [];
-    
+    // 首先，从 fieldMetaList 中找到的附件字段
     for (const fieldMeta of attachmentFieldMetas) {
       const fieldName = fieldMeta.name;
       const fieldId = fieldMeta.id;
@@ -530,10 +532,43 @@ class AttachmentProcessor {
         fieldValue = processedRecord[fieldId];
       }
       
+      if (fieldValue !== undefined) {
+        potentialAttachmentFields.push({ fieldName, fieldValue, fieldId });
+      }
+    }
+    
+    // 其次，扫描记录中所有数组类型的字段，检查是否是附件格式
+    for (const [key, value] of Object.entries(processedRecord)) {
+      // 跳过已处理的字段和内部字段
+      if (potentialAttachmentFields.some(f => f.fieldName === key)) continue;
+      if (key.startsWith('_')) continue;
+      
+      if (this.isAttachmentField(value)) {
+        console.log(`[AttachmentProcessor] 通过值特征发现附件字段: "${key}"`);
+        // 尝试找到对应的字段ID
+        const fieldId = Object.keys(fieldIdToNameMap).find(id => fieldIdToNameMap[id] === key);
+        potentialAttachmentFields.push({ fieldName: key, fieldValue: value, fieldId });
+      }
+    }
+    
+    console.log(`[AttachmentProcessor] 发现 ${potentialAttachmentFields.length} 个附件字段（含扫描发现）`);
+    
+    if (potentialAttachmentFields.length === 0) {
+      console.log('[AttachmentProcessor] 记录中没有附件字段');
+      return processedRecord;
+    }
+    
+    // 【关键修复】收集所有附件处理Promise，使用数组记录处理结果
+    const processingResults: { fieldName: string; success: boolean; error?: string }[] = [];
+    const processingPromises: Promise<void>[] = [];
+    
+    for (const { fieldName, fieldValue, fieldId: metaFieldId } of potentialAttachmentFields) {
+      // 尝试从 fieldMetaList 中找到对应的字段ID
+      const fieldMeta = attachmentFieldMetas.find(f => f.name === fieldName || f.id === metaFieldId);
+      const fieldId = metaFieldId || fieldMeta?.id || fieldName; // 优先使用字段ID，如果没有则使用字段名
+      
       console.log(`[AttachmentProcessor] 检查字段 "${fieldName}" (ID: ${fieldId}):`, 
-        fieldValue === undefined ? '未找到' : 
-        Array.isArray(fieldValue) ? `数组(${fieldValue.length}项)` : 
-        typeof fieldValue
+        Array.isArray(fieldValue) ? `数组(${fieldValue.length}项)` : typeof fieldValue
       );
       
       // 识别并处理附件字段
@@ -574,8 +609,10 @@ class AttachmentProcessor {
               console.log(`[AttachmentProcessor] ✅ 附件字段 "${fieldName}" 处理完成，原始数据保留，HTML存储在 _${fieldName}_html，长度: ${htmlContent.length}`);
               
               // 【关键修复】同时按字段ID存储HTML，确保后续能通过ID访问
-              processedRecord[fieldId] = fieldValue; // 保留原始数据
-              processedRecord[`_${fieldId}_html`] = htmlContent; // HTML
+              if (fieldId && fieldId !== fieldName) {
+                processedRecord[fieldId] = fieldValue; // 保留原始数据
+                processedRecord[`_${fieldId}_html`] = htmlContent; // HTML
+              }
             } else {
               processingResults.push({ fieldName, success: false, error: 'HTML内容为空' });
               console.warn(`[AttachmentProcessor] ⚠️ 附件字段 "${fieldName}" 转换结果为空`);
@@ -589,7 +626,7 @@ class AttachmentProcessor {
         })();
         
         processingPromises.push(processPromise);
-      } else if (fieldValue !== undefined) {
+      } else {
         console.log(`[AttachmentProcessor] ⚠️ 字段 "${fieldName}" 不是附件格式，类型: ${typeof fieldValue}`);
       }
     }
