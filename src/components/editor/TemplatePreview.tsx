@@ -252,8 +252,10 @@ const enrichAttachmentUrls = async (
     for (const fieldMeta of attachmentFields) {
       const fieldName = fieldMeta.name;
       const fieldId = fieldMeta.id;
-      const fieldValue = enrichedFields[fieldName];
+      // 【关键】record.fields 使用字段ID作为键，不是字段名称！
+      const fieldValue = enrichedFields[fieldId];
       
+      console.log(`[AttachmentEnrich] 检查字段: ${fieldName} (ID: ${fieldId}), 值存在:`, !!fieldValue);
       // 检查字段值是否为附件数组
       if (!Array.isArray(fieldValue) || fieldValue.length === 0) {
         continue;
@@ -272,8 +274,8 @@ const enrichAttachmentUrls = async (
         console.log(`[AttachmentEnrich] 获取到 ${realUrls?.length || 0} 个真实URL`);
         
         if (realUrls && realUrls.length > 0) {
-          // 将真实URL注入到附件数据中
-          enrichedFields[fieldName] = fieldValue.map((item: any, index: number) => {
+          // 【关键】使用字段ID作为键更新字段值
+          enrichedFields[fieldId] = fieldValue.map((item: any, index: number) => {
             const realUrl = realUrls[index] || '';
             console.log(`[AttachmentEnrich] [${index}] ${item.name || item.fileName}: 注入URL ${realUrl.substring(0, 50)}...`);
             
