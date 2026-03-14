@@ -214,6 +214,88 @@ const formatFieldValue = (key: string, value: any): string => {
   return String(extractedValue);
 };
 
+// ==================== 附件URL调试函数 ====================
+// 用于测试 getAttachmentUrls API 是否能获取附件URL
+const debugAttachmentUrls = async (recordId: string, fieldId: string, fieldName: string) => {
+  console.log('[AttachmentDebug] ========== 开始测试 getAttachmentUrls API ==========');
+  console.log('[AttachmentDebug] 记录ID:', recordId);
+  console.log('[AttachmentDebug] 字段ID:', fieldId);
+  console.log('[AttachmentDebug] 字段名:', fieldName);
+  
+  try {
+    // 动态导入 SDK
+    const { bitable } = await import('@lark-base-open/js-sdk');
+    const base = await bitable.base;
+    const table = await base.getActiveTable();
+    
+    console.log('[AttachmentDebug] 已获取 table 对象');
+    
+    // 获取附件字段
+    const attachmentField = await table.getField(fieldId);
+    console.log('[AttachmentDebug] 已获取字段对象:', attachmentField);
+    console.log('[AttachmentDebug] 字段类型:', (attachmentField as any).type);
+    
+    // 调用 getAttachmentUrls API
+    console.log('[AttachmentDebug] 开始调用 getAttachmentUrls...');
+    const attachmentUrls = await (attachmentField as any).getAttachmentUrls(recordId);
+    
+    console.log('[AttachmentDebug] ✅ getAttachmentUrls 返回结果:', attachmentUrls);
+    console.log('[AttachmentDebug] URL 数量:', attachmentUrls?.length || 0);
+    
+    if (attachmentUrls && attachmentUrls.length > 0) {
+      attachmentUrls.forEach((url: string, index: number) => {
+        console.log(`[AttachmentDebug] URL[${index}]:`, url.substring(0, 100) + '...');
+      });
+    } else {
+      console.log('[AttachmentDebug] ⚠️ 未获取到任何 URL');
+    }
+    
+    return attachmentUrls;
+  } catch (error) {
+    console.error('[AttachmentDebug] ❌ getAttachmentUrls 调用失败:', error);
+    return null;
+  } finally {
+    console.log('[AttachmentDebug] ========== 测试结束 ==========');
+  }
+};
+
+// 检查记录中的附件字段并调试
+const debugRecordAttachments = async (record: any, fieldMetaList: any[]) => {
+  console.log('[AttachmentDebug] 开始检查记录中的附件字段');
+  
+  // 查找附件类型字段
+  const attachmentFields = fieldMetaList.filter(f => f.type === 17 || f.type === 'Attachment'); // 17 是附件字段类型
+  console.log('[AttachmentDebug] 找到附件字段数量:', attachmentFields.length);
+  
+  if (attachmentFields.length === 0) {
+    console.log('[AttachmentDebug] 没有找到附件字段');
+    return;
+  }
+  
+  for (const field of attachmentFields) {
+    console.log(`[AttachmentDebug] 检查附件字段: ${field.name} (ID: ${field.id})`);
+    
+    // 获取字段值
+    const fieldValue = record[field.id] || record[field.name];
+    console.log(`[AttachmentDebug] 字段值:`, fieldValue);
+    
+    if (fieldValue && Array.isArray(fieldValue) && fieldValue.length > 0) {
+      console.log(`[AttachmentDebug] 字段包含 ${fieldValue.length} 个附件`);
+      
+      // 测试 getAttachmentUrls API
+      await debugAttachmentUrls(record.id || record._sourceRecordId, field.id, field.name);
+      
+      // 同时输出直接从 record 获取的 URL
+      console.log('[AttachmentDebug] 从 record 直接获取的 URL:');
+      fieldValue.forEach((item: any, idx: number) => {
+        console.log(`[AttachmentDebug] [${idx}] name: ${item.name || item.fileName}`);
+        console.log(`[AttachmentDebug] [${idx}] url: ${(item.url || item.fileUrl || '').substring(0, 100)}...`);
+      });
+    }
+  }
+};
+// ==================== 附件URL调试函数结束 ====================
+
 // 格式化字段值为带样式的HTML（用于打印预览）
 const formatFieldValueToHTML = (key: string, value: any, textStyle?: any): string => {
   // 构建基础样式字符串
@@ -1321,6 +1403,10 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       };
       
       console.log('[TP] 最终格式化记录:', formattedRecord);
+      
+      // 【调试】测试附件字段 getAttachmentUrls API
+      console.log('[TP] 开始调试附件字段...');
+      await debugRecordAttachments(formattedRecord, fieldMetaList);
       
       // 添加到列表
       setAvailableRecords(prev => [...prev, formattedRecord]);
