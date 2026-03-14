@@ -100,15 +100,25 @@ export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
     // 获取原始字段值以检测类型
     const rawValue = getRawFieldValue(variable.fieldName, records, fields);
     
-    // 【调试】打印变量渲染信息
-    console.log(`🖼️ [RENDER-VAR] 字段 "${variable.fieldName}", rawValue 类型:`, typeof rawValue, '是否数组:', Array.isArray(rawValue));
+    // 【关键调试】打印原始值的类型和内容（验尸日志）
+    console.log('🔍 [DEBUG-RENDER] ===============================');
+    console.log('🔍 [DEBUG-RENDER] 字段:', variable.fieldName);
+    console.log('🔍 [DEBUG-RENDER] 原始值类型:', typeof rawValue);
+    console.log('🔍 [DEBUG-RENDER] 原始值内容:', rawValue);
+    console.log('🔍 [DEBUG-RENDER] 是否是数组?', Array.isArray(rawValue));
+    console.log('🔍 [DEBUG-RENDER] 字符串长度:', typeof rawValue === 'string' ? rawValue.length : 'N/A');
+    console.log('🔍 [DEBUG-RENDER] 是否包含<img?', typeof rawValue === 'string' ? rawValue.includes('<img') : false);
+    
+    // 如果是数组，打印第一项
     if (Array.isArray(rawValue) && rawValue.length > 0) {
-      console.log(`🖼️ [RENDER-VAR] 第一个元素:`, { name: rawValue[0]?.name, hasUrl: !!rawValue[0]?.url, url: rawValue[0]?.url?.substring(0, 50) });
+      console.log('🔍 [DEBUG-RENDER] 数组第一项:', rawValue[0]);
+      console.log('🔍 [DEBUG-RENDER] 数组第一项类型:', typeof rawValue[0]);
     }
     
     // 【关键修复】检测是否为 HTML 字符串（附件字段已转换为 HTML）
     if (typeof rawValue === 'string' && (rawValue.includes('<img') || rawValue.includes('<div') || rawValue.includes('<a href'))) {
-      console.log(`🖼️ [RENDER-VAR] 字段 "${variable.fieldName}" 是 HTML 字符串，使用 dangerouslySetInnerHTML 渲染`);
+      console.log(`✅ [RENDER-VAR] 确认为 HTML 字符串，长度:`, rawValue.length);
+      console.log(`✅ [RENDER-VAR] HTML 前100字符:`, rawValue.substring(0, 100));
       parts.push(
         <span 
           key={`var-${index}`} 
@@ -117,36 +127,65 @@ export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
         />
       );
     }
-    // 检测是否为附件字段（图片）
-    else if (isAttachmentField(rawValue)) {
-      // 获取图片URL列表
-      const imageUrls = getAttachmentImageUrls(rawValue);
-      
-      console.log(`🖼️ [RENDER-VAR] 字段 "${variable.fieldName}" 是附件字段，提取到 ${imageUrls.length} 个图片URL:`, imageUrls.slice(0, 2));
-      
-      if (imageUrls.length > 0) {
-        // 渲染图片网格
-        parts.push(
-          <span key={`var-${index}`} className="inline-flex flex-wrap gap-1 align-middle">
-            {imageUrls.map((url, imgIdx) => (
-              <img
-                key={imgIdx}
-                src={url}
-                alt={`图片${imgIdx + 1}`}
-                className="rounded border object-contain"
-                style={{
-                  maxWidth: '80px',
-                  maxHeight: '80px',
-                  width: 'auto',
-                  height: 'auto',
-                }}
-                referrerPolicy="no-referrer"
-              />
-            ))}
-          </span>
-        );
+    // 检测到的是数组！这就是问题所在！
+    else if (Array.isArray(rawValue)) {
+      console.log('❌ [RENDER-VAR] 检测到的是数组！这就是问题所在！');
+      console.log('❌ [RENDER-VAR] 数组内容:', JSON.stringify(rawValue).substring(0, 200));
+      // 降级显示为字符串
+      parts.push(
+        <VariableChip
+          key={`var-${index}`}
+          fieldName={variable.fieldName}
+          value={rawValue.map((item: any) => item.name || String(item)).join(', ')}
+          textStyle={textStyle}
+        />
+      );
+    }
+    // 普通文本或其他类型
+    else {
+      console.log('⚠️ [RENDER-VAR] 普通文本或其他类型:', typeof rawValue);
+      // 检测是否为附件字段（图片对象数组）
+      if (isAttachmentField(rawValue)) {
+        // 获取图片URL列表
+        const imageUrls = getAttachmentImageUrls(rawValue);
+        
+        console.log(`🖼️ [RENDER-VAR] 字段 "${variable.fieldName}" 是附件对象字段，提取到 ${imageUrls.length} 个图片URL`);
+        
+        if (imageUrls.length > 0) {
+          // 渲染图片网格
+          parts.push(
+            <span key={`var-${index}`} className="inline-flex flex-wrap gap-1 align-middle">
+              {imageUrls.map((url, imgIdx) => (
+                <img
+                  key={imgIdx}
+                  src={url}
+                  alt={`图片${imgIdx + 1}`}
+                  className="rounded border object-contain"
+                  style={{
+                    maxWidth: '80px',
+                    maxHeight: '80px',
+                    width: 'auto',
+                    height: 'auto',
+                  }}
+                  referrerPolicy="no-referrer"
+                />
+              ))}
+            </span>
+          );
+        } else {
+          // 附件中没有图片，显示普通芯片
+          const value = getFieldValue(variable.fieldName, records, fields);
+          parts.push(
+            <VariableChip
+              key={`var-${index}`}
+              fieldName={variable.fieldName}
+              value={value}
+              textStyle={textStyle}
+            />
+          );
+        }
       } else {
-        // 附件中没有图片，显示普通芯片
+        // 普通字段，显示文本芯片
         const value = getFieldValue(variable.fieldName, records, fields);
         parts.push(
           <VariableChip
@@ -157,17 +196,6 @@ export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
           />
         );
       }
-    } else {
-      // 普通字段，显示文本芯片
-      const value = getFieldValue(variable.fieldName, records, fields);
-      parts.push(
-        <VariableChip
-          key={`var-${index}`}
-          fieldName={variable.fieldName}
-          value={value}
-          textStyle={textStyle}
-        />
-      );
     }
     
     lastIndex = startIndex + variable.original.length;
