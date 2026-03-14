@@ -398,8 +398,13 @@ const debugAttachmentUrls = async (recordId: string, fieldId: string, fieldName:
 const debugRecordAttachments = async (record: any, fieldMetaList: any[]) => {
   console.log('[AttachmentDebug] 开始检查记录中的附件字段');
   
-  // 查找附件类型字段（原始类型为11，映射后为 'attachment'）
-  const attachmentFields = fieldMetaList.filter(f => f.type === 11 || f.type === 'attachment' || f.type === 'Attachment');
+  // 查找附件类型字段（原始类型为17，映射后为 'attachment'）
+  const attachmentFields = fieldMetaList.filter(f => {
+    const typeNum = Number(f.type);
+    const isAttachmentType = typeNum === 17; // 17 = Attachment
+    const isTypeName = f.type === 'attachment' || f.type === 'Attachment';
+    return isAttachmentType || isTypeName;
+  });
   console.log('[AttachmentDebug] 找到附件字段数量:', attachmentFields.length);
   
   if (attachmentFields.length === 0) {
