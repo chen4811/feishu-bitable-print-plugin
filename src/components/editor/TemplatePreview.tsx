@@ -18,6 +18,7 @@ import { PageSettingsDialog } from '@/components/editor/dialogs/PageSettingsDial
 import { PAGE_SIZES, PageConfig } from '@/types/editor';
 import { feishuEnv } from '@/lib/feishu-env';
 import { onSelectionChange } from '@/lib/feishu-env';
+import { MixedContentRenderer, extractVariables } from '@/components/editor/variables';
 
 
 interface TemplatePreviewProps {
@@ -885,7 +886,7 @@ const formatFieldValueToHTML = (key: string, value: any, textStyle?: any): strin
 };
 
 // 检测模板中的变量 - 支持 [字段名] 和 {{字段名}} 两种格式
-const extractVariables = (components: any[]): string[] => {
+const extractVariablesFromComponents = (components: any[]): string[] => {
   const variables: string[] = [];
   // 支持 [字段名]、[字段名:格式]、{{字段名}}、{{字段名:格式}}
   const variableRegex = /\[([^\]]+)(?::([^\]]+))?\]|\{\{([^}]+)(?::([^}]+))?\}\}/g;
@@ -1255,163 +1256,14 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
 
   // 替换变量 - 优先使用 content，其次使用 text
   const sourceText = content || text;
-  let processedContent: React.ReactNode = sourceText ? replaceVariables(sourceText, data) : undefined;
-
-  // 检测并渲染附件图片（在变量替换后）
-  // 如果文本中包含 [字段名] 且该字段是附件类型，尝试渲染图片
-  if (sourceText) {
-    const variableMatches = sourceText.match(/\[([^\]]+)\]/g);
-    if (variableMatches && variableMatches.length > 0) {
-      // 检查是否有附件字段
-      const hasAttachmentField = variableMatches.some((match: string) => {
-        const fieldName = match.slice(1, -1);
-        const fieldValue = data[fieldName];
-        if (Array.isArray(fieldValue) && fieldValue.length > 0) {
-          const firstItem = fieldValue[0];
-          return firstItem && (firstItem.url || firstItem.fileUrl) && (firstItem.name || firstItem.fileName);
-        }
-        return false;
-      });
-
-      if (hasAttachmentField) {
-        // 使用分段渲染，将文本和图片混合
-        const parts: React.ReactNode[] = [];
-        let lastIndex = 0;
-        
-        // 使用正则匹配所有变量
-        const varRegex = /\[([^\]]+)\]/g;
-        let match: RegExpExecArray | null;
-        let partIndex = 0;
-        
-        while ((match = varRegex.exec(sourceText)) !== null) {
-          const varName = match[1];
-          const matchStart = match.index;
-          const matchEnd = match.index + match[0].length;
-          
-          // 添加变量前的文本
-          if (matchStart > lastIndex) {
-            parts.push(
-              <span key={`text-${partIndex}`}>
-                {sourceText.slice(lastIndex, matchStart)}
-              </span>
-            );
-          }
-          
-          // 获取字段值
-          const fieldValue = data[varName];
-          
-          // 检查值是否已经是HTML字符串（通过附件处理器转换后的）
-          // 更精确地检测附件HTML：包含 <img 或完整的HTML结构
-          const isHTMLString = typeof fieldValue === 'string' && 
-                               (fieldValue.includes('<img') || 
-                                (fieldValue.includes('<div') && fieldValue.includes('</div>')));
-          
-          if (isHTMLString) {
-            // 使用 dangerouslySetInnerHTML 渲染HTML内容
-            console.log(`[renderComponent] 字段 "${varName}" 是HTML字符串，使用 dangerouslySetInnerHTML 渲染`);
-            parts.push(
-              <div 
-                key={`img-${partIndex}`} 
-                className="attachment-field-content"
-                dangerouslySetInnerHTML={{ __html: fieldValue }}
-                style={{ display: 'block', width: '100%' }}
-              />
-            );
-          }
-          // 使用 isAttachmentField 函数识别附件字段
-          else if (isAttachmentField(fieldValue)) {
-            // 优先检查是否有预处理好的HTML内容
-            const preprocessedHtml = data[`_${varName}_html`];
-            if (preprocessedHtml) {
-              // 使用 dangerouslySetInnerHTML 渲染预处理好的HTML
-              parts.push(
-                <div 
-                  key={`img-${partIndex}`} 
-                  dangerouslySetInnerHTML={{ __html: preprocessedHtml }}
-                />
-              );
-            } else {
-              // 回退到直接渲染图片
-              const images = fieldValue
-                .filter((item: any) => item && (item.url || item.fileUrl || item.tmpUrl))
-                .map((item: any, idx: number) => {
-                  const url = item.url || item.fileUrl || item.tmpUrl;
-                  const name = item.name || item.fileName || `图片${idx + 1}`;
-                  return (
-                    <div 
-                      key={idx}
-                      style={{
-                        display: 'inline-block',
-                        margin: '4px',
-                        textAlign: 'center',
-                        verticalAlign: 'top',
-                      }}
-                    >
-                      <img
-                        src={url}
-                        alt={name}
-                        style={{
-                          maxWidth: '120px',
-                          maxHeight: '120px',
-                          width: 'auto',
-                          height: 'auto',
-                          objectFit: 'contain',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '4px',
-                          padding: '2px',
-                          background: '#f9fafb',
-                        }}
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                      />
-                      <div style={{
-                        fontSize: '11px',
-                        color: '#6b7280',
-                        marginTop: '4px',
-                        maxWidth: '120px',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}>
-                        {name}
-                      </div>
-                    </div>
-                  );
-                });
-              
-              parts.push(
-                <div key={`img-${partIndex}`} style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                  {images}
-                </div>
-              );
-            }
-          } else {
-            // 普通字段，使用变量替换后的值
-            parts.push(
-              <span key={`var-${partIndex}`}>
-                {replaceVariables(match[0], data)}
-              </span>
-            );
-          }
-          
-          lastIndex = matchEnd;
-          partIndex++;
-        }
-        
-        // 添加剩余文本
-        if (lastIndex < sourceText.length) {
-          parts.push(
-            <span key={`text-end`}>
-              {sourceText.slice(lastIndex)}
-            </span>
-          );
-        }
-        
-        processedContent = <>{parts}</>;
-      }
-    }
-  }
+  
+  // 【新架构】使用 MixedContentRenderer 处理混合内容（文本 + 变量）
+  let processedContent: React.ReactNode = sourceText ? (
+    <MixedContentRenderer 
+      content={sourceText} 
+      data={data}
+    />
+  ) : undefined;
 
   // 兼容处理：编辑器中使用 textStyle，模板预览中可能使用 style
   const actualStyle = Object.keys(textStyle).length > 0 ? textStyle : style;
@@ -2630,7 +2482,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     if (!selectedTemplate || !selectedTemplate.data?.components) {
       return [];
     }
-    return extractVariables(selectedTemplate.data.components);
+    return extractVariablesFromComponents(selectedTemplate.data.components);
   }, [selectedTemplate]);
 
   // 检查数据匹配情况
@@ -3028,7 +2880,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                     {templates.map((template) => {
                       // 获取该模板的变量
                       const vars = template.data?.components 
-                        ? extractVariables(template.data.components) 
+                        ? extractVariablesFromComponents(template.data.components) 
                         : [];
                       return (
                         <button
