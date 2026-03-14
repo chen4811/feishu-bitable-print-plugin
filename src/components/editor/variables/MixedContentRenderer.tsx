@@ -11,11 +11,15 @@ export type ContentSegment =
 // 字段类型映射
 export type FieldTypeMap = Record<string, VariableType>;
 
+// 字段ID映射（新增）
+export type FieldIdMap = Record<string, string>;
+
 interface MixedContentRendererProps {
   content: string;                    // 原始文本内容，包含变量占位符
   data: Record<string, any>;          // 数据对象
   variableConfigs?: Record<string, VariableConfig>;  // 变量配置（可选，用于附件等需要特殊配置的变量）
   fieldTypeMap?: FieldTypeMap;        // 【新增】字段类型映射（字段名 -> 类型）
+  fieldIdMap?: FieldIdMap;            // 【新增】字段ID映射（字段名 -> 字段ID）
   className?: string;
   style?: React.CSSProperties;
 }
@@ -30,6 +34,7 @@ export function MixedContentRenderer({
   data,
   variableConfigs = {},
   fieldTypeMap = {}, // 【新增】字段类型映射
+  fieldIdMap = {},   // 【新增】字段ID映射
   className,
   style
 }: MixedContentRendererProps) {
@@ -88,7 +93,11 @@ export function MixedContentRenderer({
           // 渲染变量
           return (
             <span key={index} className="inline-variable">
-              <VariableRenderer config={config} data={data} />
+              <VariableRenderer 
+                config={config} 
+                data={data} 
+                fieldIdMap={fieldIdMap}
+              />
             </span>
           );
         }

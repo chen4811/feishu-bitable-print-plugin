@@ -29,12 +29,14 @@ interface AttachmentVariableProps {
   config: AttachmentVariableConfig;
   data: AttachmentItem[] | null | undefined;
   isEditing?: boolean;  // 是否处于编辑模式
+  fieldId?: string;     // 【新增】字段ID，用于获取附件URL
 }
 
 export function AttachmentVariable({ 
   config, 
   data, 
-  isEditing = false 
+  isEditing = false,
+  fieldId
 }: AttachmentVariableProps) {
   const [imageUrls, setImageUrls] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState<Record<number, boolean>>({});
@@ -54,10 +56,15 @@ export function AttachmentVariable({
   // 获取附件URL（带缓存）
   useEffect(() => {
     if (!data || data.length === 0) return;
+    if (!fieldId) {
+      console.warn('[AttachmentVariable] 缺少 fieldId，无法获取附件URL');
+      return;
+    }
 
     const fetchUrls = async () => {
       const newUrls: Record<number, string> = {};
       const newLoading: Record<number, boolean> = {};
+      const tokensToFetch: { index: number; token: string }[] = [];
 
       data.forEach((item, index) => {
         // 【关键修复】支持多种 URL 字段名（飞书可能返回 url、fileUrl 或 tmpUrl）
@@ -67,31 +74,105 @@ export function AttachmentVariable({
         } else if (item.token && !imageUrls[index]) {
           // 需要异步获取URL
           newLoading[index] = true;
+          tokensToFetch.push({ index, token: item.token });
         }
       });
 
-      if (Object.keys(newLoading).length > 0) {
+      if (tokensToFetch.length > 0) {
         setLoading(prev => ({ ...prev, ...newLoading }));
         
-        // 批量获取URL
+        // 【关键修复】调用 getAttachmentUrls 获取临时URL
         try {
+          console.log('[AttachmentVariable] 开始获取附件URL，字段ID:', fieldId);
+          console.log('[AttachmentVariable] 需要获取URL的附件数量:', tokensToFetch.length);
+          
           const { bitable } = await import('@lark-base-open/js-sdk');
           const base = await bitable.base;
           const table = await base.getActiveTable();
           
-          // 这里简化处理，实际应该根据字段ID获取
-          // 暂时使用已有URL或占位
-          data.forEach((item, index) => {
-            if (item.token && !item.url) {
-              // 标记为需要加载，实际项目中调用 getAttachmentUrls
-              setTimeout(() => {
-                setLoading(prev => ({ ...prev, [index]: false }));
-                setErrors(prev => ({ ...prev, [index]: true }));
-              }, 100);
+          // 获取当前选中记录的ID
+          const selection = await base.getSelection();
+          const recordId = selection.recordId;
+          
+          if (!recordId) {
+            console.warn('[AttachmentVariable] 没有选中记录，无法获取附件URL');
+            setLoading(prev => {
+              const updated = { ...prev };
+              tokensToFetch.forEach(({ index }) => {
+                updated[index] = false;
+              });
+              return updated;
+            });
+            setErrors(prev => {
+              const updated = { ...prev };
+              tokensToFetch.forEach(({ index }) => {
+                updated[index] = true;
+              });
+              return updated;
+            });
+            return;
+          }
+          
+          // 获取附件字段对象
+          const attachmentField = await table.getField(fieldId);
+          
+          // 调用 getAttachmentUrls API
+          if (typeof (attachmentField as any).getAttachmentUrls === 'function') {
+            console.log('[AttachmentVariable] 调用 getAttachmentUrls，recordId:', recordId);
+            const urls = await (attachmentField as any).getAttachmentUrls(recordId);
+            console.log('[AttachmentVariable] 获取到URL数量:', urls?.length);
+            
+            if (Array.isArray(urls) && urls.length > 0) {
+              // 根据索引分配URL
+              tokensToFetch.forEach(({ index }, fetchIndex) => {
+                if (urls[fetchIndex]) {
+                  newUrls[index] = urls[fetchIndex];
+                  console.log(`[AttachmentVariable] 分配URL[${index}]:`, urls[fetchIndex].substring(0, 50) + '...');
+                } else {
+                  console.warn(`[AttachmentVariable] 没有获取到索引 ${index} 的URL`);
+                }
+              });
+            } else {
+              console.warn('[AttachmentVariable] getAttachmentUrls 返回空数组');
             }
+          } else {
+            console.warn('[AttachmentVariable] 字段对象不支持 getAttachmentUrls 方法');
+          }
+          
+          // 更新状态
+          setLoading(prev => {
+            const updated = { ...prev };
+            tokensToFetch.forEach(({ index }) => {
+              updated[index] = false;
+            });
+            return updated;
+          });
+          
+          setErrors(prev => {
+            const updated = { ...prev };
+            tokensToFetch.forEach(({ index }) => {
+              if (!newUrls[index]) {
+                updated[index] = true;
+              }
+            });
+            return updated;
           });
         } catch (err) {
-          console.error('获取附件URL失败:', err);
+          console.error('[AttachmentVariable] 获取附件URL失败:', err);
+          setLoading(prev => {
+            const updated = { ...prev };
+            tokensToFetch.forEach(({ index }) => {
+              updated[index] = false;
+            });
+            return updated;
+          });
+          setErrors(prev => {
+            const updated = { ...prev };
+            tokensToFetch.forEach(({ index }) => {
+              updated[index] = true;
+            });
+            return updated;
+          });
         }
       }
 
@@ -99,7 +180,7 @@ export function AttachmentVariable({
     };
 
     fetchUrls();
-  }, [data]);
+  }, [data, fieldId]);
 
   // 处理图片加载错误
   const handleImageError = (index: number) => {

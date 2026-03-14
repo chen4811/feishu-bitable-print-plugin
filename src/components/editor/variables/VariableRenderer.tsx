@@ -24,13 +24,14 @@ interface VariableRendererProps {
   config: VariableConfig;
   data: Record<string, any>;
   isEditing?: boolean;
+  fieldIdMap?: Record<string, string>;  // 【新增】字段ID映射（字段名 -> 字段ID）
 }
 
 /**
  * 统一变量渲染器
  * 根据变量配置类型，自动选择对应的渲染组件
  */
-export function VariableRenderer({ config, data, isEditing = false }: VariableRendererProps) {
+export function VariableRenderer({ config, data, isEditing = false, fieldIdMap = {} }: VariableRendererProps) {
   const { fieldName, type } = config;
   const fieldValue = data[fieldName];
 
@@ -42,11 +43,14 @@ export function VariableRenderer({ config, data, isEditing = false }: VariableRe
         // 确保数据是数组格式
         const attachmentData = Array.isArray(fieldValue) ? fieldValue : 
                               fieldValue ? [fieldValue] : null;
+        // 获取字段ID
+        const fieldId = fieldIdMap[fieldName];
         return (
           <AttachmentVariable 
             config={config} 
             data={attachmentData} 
-            isEditing={isEditing} 
+            isEditing={isEditing}
+            fieldId={fieldId}  // 【新增】传递字段ID
           />
         );
       }

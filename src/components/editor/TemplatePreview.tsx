@@ -1247,7 +1247,7 @@ function getComponentWidthStyle(width: string) {
 }
 
 // 渲染单个组件（带变量替换）
-const renderComponent = (component: any, data: Record<string, any>, fieldTypeMap: FieldTypeMap = {}): React.ReactNode => {
+const renderComponent = (component: any, data: Record<string, any>, fieldTypeMap: FieldTypeMap = {}, fieldIdMap: Record<string, string> = {}): React.ReactNode => {
   if (!component) {
     return null;
   }
@@ -1276,6 +1276,7 @@ const renderComponent = (component: any, data: Record<string, any>, fieldTypeMap
       content={sourceText} 
       data={data}
       fieldTypeMap={fieldTypeMap} // 【关键修复】传递字段类型映射，确保附件字段正确识别
+      fieldIdMap={fieldIdMap}    // 【关键修复】传递字段ID映射，用于获取附件URL
     />
   ) : undefined;
 
@@ -1381,7 +1382,7 @@ const renderComponent = (component: any, data: Record<string, any>, fieldTypeMap
     case 'container':
       return (
         <div key={id} style={commonStyle}>
-          {children.map((child: any) => renderComponent(child, data, fieldTypeMap))}
+          {children.map((child: any) => renderComponent(child, data, fieldTypeMap, fieldIdMap))}
         </div>
       );
     case 'line':
@@ -1506,6 +1507,9 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
   // 【关键修复】字段类型映射，用于正确识别附件字段（即使数据为空）
   const [fieldTypeMap, setFieldTypeMap] = useState<FieldTypeMap>({});
+  
+  // 【关键修复】字段ID映射，用于获取附件URL（字段名 -> 字段ID）
+  const [fieldIdMap, setFieldIdMap] = useState<Record<string, string>>({});
 
   // 监听 selectedRecords 变化
   useEffect(() => {
@@ -1813,6 +1817,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       
       // 【关键修复】构建字段类型映射（字段名 -> 字段类型）
       const newFieldTypeMap: FieldTypeMap = {};
+      const newFieldIdMap: Record<string, string> = {}; // 【新增】字段名 -> 字段ID
+      
       if (fieldMetaList && Array.isArray(fieldMetaList)) {
         fieldMetaList.forEach((field: any) => {
           if (field?.name) {
@@ -1831,10 +1837,17 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
             } else {
               newFieldTypeMap[field.name] = 'text';
             }
+            
+            // 【新增】构建字段ID映射（字段名 -> 字段ID）
+            if (field?.id) {
+              newFieldIdMap[field.name] = field.id;
+            }
           }
         });
         setFieldTypeMap(newFieldTypeMap);
+        setFieldIdMap(newFieldIdMap); // 【新增】
         console.log('[TP] 字段类型映射已更新:', Object.keys(newFieldTypeMap).length, '个字段');
+        console.log('[TP] 字段ID映射已更新:', Object.keys(newFieldIdMap).length, '个字段');
       }
       
       // 创建字段 ID 到字段名称的映射
@@ -2028,6 +2041,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
             
             // 【关键修复】构建字段类型映射（字段名 -> 字段类型）
             const newFieldTypeMap: FieldTypeMap = {};
+            const newFieldIdMap: Record<string, string> = {}; // 【新增】字段名 -> 字段ID
+            
             if (fieldMetaList && Array.isArray(fieldMetaList)) {
               fieldMetaList.forEach((field: any) => {
                 if (field?.name) {
@@ -2045,10 +2060,17 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                   } else {
                     newFieldTypeMap[field.name] = 'text';
                   }
+                  
+                  // 【新增】构建字段ID映射（字段名 -> 字段ID）
+                  if (field?.id) {
+                    newFieldIdMap[field.name] = field.id;
+                  }
                 }
               });
               setFieldTypeMap(newFieldTypeMap);
+              setFieldIdMap(newFieldIdMap); // 【新增】
               console.log('[TP] 字段类型映射已更新:', Object.keys(newFieldTypeMap).length, '个字段');
+              console.log('[TP] 字段ID映射已更新:', Object.keys(newFieldIdMap).length, '个字段');
             }
             
             // 查找附件字段
@@ -3335,7 +3357,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                         boxSizing: 'border-box',
                       }}>
                         {components.map((component: any) => 
-                          renderComponent(component, {}, fieldTypeMap)
+                          renderComponent(component, {}, fieldTypeMap, fieldIdMap)
                         )}
                       </div>
                     </div>
@@ -3407,7 +3429,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                         boxSizing: 'border-box',
                       }}>
                         {components.map((component: any) => 
-                          renderComponent(component, record.data, fieldTypeMap)
+                          renderComponent(component, record.data, fieldTypeMap, fieldIdMap)
                         )}
                       </div>
                     </div>
@@ -3460,7 +3482,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                               boxSizing: 'border-box',
                             }}>
                               {components.map((component: any) => 
-                                renderComponent(component, record.data, fieldTypeMap)
+                                renderComponent(component, record.data, fieldTypeMap, fieldIdMap)
                               )}
                             </div>
                           </div>
@@ -3506,7 +3528,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                                 boxSizing: 'border-box',
                               }}>
                                 {components.map((component: any) => 
-                                  renderComponent(component, record.data, fieldTypeMap)
+                                  renderComponent(component, record.data, fieldTypeMap, fieldIdMap)
                                 )}
                               </div>
                             </div>
