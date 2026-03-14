@@ -18,7 +18,7 @@ import { PageSettingsDialog } from '@/components/editor/dialogs/PageSettingsDial
 import { PAGE_SIZES, PageConfig } from '@/types/editor';
 import { feishuEnv } from '@/lib/feishu-env';
 import { onSelectionChange } from '@/lib/feishu-env';
-import { MixedContentRenderer, extractVariables, FieldTypeMap } from '@/components/editor/variables';
+import { MixedContentRenderer, extractVariables, FieldTypeMap, type VariableType } from '@/components/editor/variables';
 
 
 interface TemplatePreviewProps {
@@ -1824,23 +1824,30 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           if (field?.name) {
             // 根据飞书字段类型映射到我们的类型
             const fieldType = field.type;
+            let variableType: VariableType = 'text';
+            
             if (fieldType === 17 || fieldType === 'Attachment') {
-              newFieldTypeMap[field.name] = 'attachment';
+              variableType = 'attachment';
             } else if (fieldType === 11 || fieldType === 'User') {
-              newFieldTypeMap[field.name] = 'text'; // 人员字段渲染为文本
+              variableType = 'text'; // 人员字段渲染为文本
             } else if (fieldType === 4 || fieldType === 'DateTime') {
-              newFieldTypeMap[field.name] = 'date';
+              variableType = 'date';
             } else if (fieldType === 2 || fieldType === 'Number') {
-              newFieldTypeMap[field.name] = 'number';
+              variableType = 'number';
             } else if (fieldType === 7 || fieldType === 'Checkbox') {
-              newFieldTypeMap[field.name] = 'boolean';
-            } else {
-              newFieldTypeMap[field.name] = 'text';
+              variableType = 'boolean';
+            }
+            
+            // 【关键修复】同时用字段名和字段ID作为键，处理乱码问题
+            newFieldTypeMap[field.name] = variableType;
+            if (field?.id) {
+              newFieldTypeMap[field.id] = variableType; // 字段ID也映射到类型
             }
             
             // 【新增】构建字段ID映射（字段名 -> 字段ID）
             if (field?.id) {
               newFieldIdMap[field.name] = field.id;
+              newFieldIdMap[field.id] = field.id; // 字段ID自身映射
             }
           }
         });
@@ -1848,6 +1855,14 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         setFieldIdMap(newFieldIdMap); // 【新增】
         console.log('[TP] 字段类型映射已更新:', Object.keys(newFieldTypeMap).length, '个字段');
         console.log('[TP] 字段ID映射已更新:', Object.keys(newFieldIdMap).length, '个字段');
+        
+        // 【调试】打印附件字段的映射
+        const attachmentFields = fieldMetaList.filter((f: any) => f.type === 17 || f.type === 'Attachment');
+        attachmentFields.forEach((f: any) => {
+          console.log(`[TP] 附件字段映射: "${f.name}" -> ${f.id}`);
+          console.log(`[TP] 字段类型Map: "${f.name}" = ${newFieldTypeMap[f.name]}, "${f.id}" = ${newFieldTypeMap[f.id]}`);
+          console.log(`[TP] 字段ID Map: "${f.name}" = ${newFieldIdMap[f.name]}, "${f.id}" = ${newFieldIdMap[f.id]}`);
+        });
       }
       
       // 创建字段 ID 到字段名称的映射

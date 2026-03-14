@@ -71,6 +71,16 @@ export function MixedContentRenderer({
               console.log(`[MixedContentRenderer] 使用 detectFieldType 判断 "${fieldName}" 类型:`, fieldType);
             }
             
+            // 【关键修复】如果 fieldTypeMap 返回 undefined，再次检查数据值特征
+            // 这可以处理字段名乱码导致无法匹配的情况
+            if (!fieldTypeMap[fieldName] && fieldValue) {
+              const detectedFromValue = detectFieldType(fieldName, fieldValue);
+              if (detectedFromValue === 'attachment') {
+                fieldType = 'attachment';
+                console.log(`[MixedContentRenderer] 数据值特征表明 "${fieldName}" 是附件类型`);
+              }
+            }
+            
             config = {
               fieldName,
               type: fieldType

@@ -56,12 +56,19 @@ export function AttachmentVariable({
   // 获取附件URL（带缓存）
   useEffect(() => {
     if (!data || data.length === 0) return;
-    if (!fieldId) {
-      console.warn('[AttachmentVariable] 缺少 fieldId，无法获取附件URL');
-      return;
-    }
-
+    
     const fetchUrls = async () => {
+      // 【关键修复】如果没有 fieldId，尝试使用 config.fieldName 作为备选
+      const targetFieldId = fieldId || config.fieldName;
+      
+      if (!targetFieldId) {
+        console.warn('[AttachmentVariable] 缺少 fieldId 和 fieldName，无法获取附件URL');
+        return;
+      }
+      
+      if (!fieldId) {
+        console.log(`[AttachmentVariable] 未提供 fieldId，尝试使用字段名 "${config.fieldName}" 获取字段`);
+      }
       const newUrls: Record<number, string> = {};
       const newLoading: Record<number, boolean> = {};
       const tokensToFetch: { index: number; token: string }[] = [];
@@ -113,8 +120,10 @@ export function AttachmentVariable({
             return;
           }
           
-          // 获取附件字段对象
-          const attachmentField = await table.getField(fieldId);
+          // 获取附件字段对象（使用 targetFieldId，可能是 fieldId 或 fieldName）
+          const attachmentField = await table.getField(targetFieldId);
+          
+          console.log(`[AttachmentVariable] 获取字段对象成功，使用ID/名称: "${targetFieldId}"`);
           
           // 调用 getAttachmentUrls API
           if (typeof (attachmentField as any).getAttachmentUrls === 'function') {
