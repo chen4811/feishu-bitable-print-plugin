@@ -214,199 +214,6 @@ const formatFieldValue = (key: string, value: any): string => {
   return String(extractedValue);
 };
 
-// ==================== 附件URL获取与处理函数 ====================
-
-/**
- * 为记录的附件字段获取真实的可访问URL
- * @param recordId 记录ID
- * @param tableId 表格ID
- * @param fields 字段数据（已格式化的字段名键值对）
- * @param fieldMetaList 字段元数据列表
- * @returns 注入真实URL后的字段数据
- */
-const enrichAttachmentUrls = async (
-  recordId: string,
-  tableId: string,
-  fields: Record<string, any>,
-  fieldMetaList: any[]
-): Promise<Record<string, any>> => {
-  console.log('[AttachmentEnrich] ========== 开始为记录获取附件URL ==========');
-  console.log('[AttachmentEnrich-Start] 开始处理记录:', recordId);
-  console.log('[AttachmentEnrich-Debug] 字段元数据:', fieldMetaList.map(f => ({ name: f.name, id: f.id, type: f.type })));
-  
-  const enrichedFields = { ...fields };
-  
-  // 【修复】附件字段类型是 17，不是 11（11是人员字段）
-  const attachmentFields = fieldMetaList.filter(f => {
-    const typeNum = Number(f.type);
-    const isAttachmentType = typeNum === 17; // 17 = Attachment
-    const isTypeName = f.type === 'attachment' || f.type === 'Attachment';
-    
-    if (isAttachmentType || isTypeName) {
-      console.log('[AttachmentEnrich-Found] 发现附件字段:', f.name, 'type:', f.type);
-      return true;
-    }
-    return false;
-  });
-  
-  console.log('[AttachmentEnrich-Result] 找到附件字段数量:', attachmentFields.length);
-  
-  if (attachmentFields.length === 0) {
-    console.warn('[AttachmentEnrich-Warn] 没有找到附件字段');
-    return enrichedFields;
-  }
-  
-  try {
-    const { bitable } = await import('@lark-base-open/js-sdk');
-    const base = await bitable.base;
-    const table = await base.getTable(tableId);
-    
-    for (const fieldMeta of attachmentFields) {
-      const fieldName = fieldMeta.name;
-      const fieldId = fieldMeta.id;
-      
-      console.log(`[AttachmentEnrich-Debug] 检查字段 ${fieldName} (ID: ${fieldId})`);
-      console.log(`[AttachmentEnrich-Debug] enrichedFields 可用键:`, Object.keys(enrichedFields).slice(0, 10));
-      
-      // 【关键】尝试用ID和name都读取一遍，使用能获取到数据的那个
-      const byId = enrichedFields[fieldId];
-      const byName = enrichedFields[fieldName];
-      const byIdIsArray = Array.isArray(byId);
-      const byNameIsArray = Array.isArray(byName);
-      console.log(`[AttachmentEnrich-Debug] 通过ID读取['${fieldId}']:`, byIdIsArray ? `数组(${byId.length})` : typeof byId);
-      console.log(`[AttachmentEnrich-Debug] 通过Name读取['${fieldName}']:`, byNameIsArray ? `数组(${byName.length})` : typeof byName, byName);
-      
-      // 【关键】选择实际有数据的键名（优先ID，如果没有则尝试Name）
-      let actualKey = fieldId;
-      let fieldValue = byId;
-      
-      if (!byIdIsArray && byName !== undefined && byName !== null) {
-        console.log(`[AttachmentEnrich-Fix] 数据使用字段名称作为键，切换到 '${fieldName}'`);
-        actualKey = fieldName;
-        fieldValue = byName;
-      }
-      
-      console.log(`[AttachmentEnrich] 检查字段: ${fieldName} (key: ${actualKey}), 值类型:`, typeof fieldValue, '是否数组:', Array.isArray(fieldValue));
-      
-      // 【关键】如果 fields 中没有附件数据，通过字段对象获取
-      if (!Array.isArray(fieldValue) || fieldValue.length === 0) {
-        console.log(`[AttachmentEnrich] 字段 ${fieldName} 在 record.fields 中不存在，尝试通过字段对象获取...`);
-        try {
-          const field = await table.getField(fieldId);
-          // 获取字段值
-          const fieldCellValue = await field.getValue(recordId);
-          console.log(`[AttachmentEnrich] 通过 field.getValue() 获取到:`, Array.isArray(fieldCellValue) ? `数组(${fieldCellValue.length})` : typeof fieldCellValue);
-          
-          if (Array.isArray(fieldCellValue) && fieldCellValue.length > 0) {
-            fieldValue = fieldCellValue;
-            console.log(`[AttachmentEnrich] 成功获取附件数据，包含 ${fieldValue.length} 个附件`);
-          } else {
-            console.warn(`[AttachmentEnrich-Warn] 字段 ${fieldName} 通过 field.getValue() 也未获取到有效数据`);
-            continue;
-          }
-        } catch (err) {
-          console.error(`[AttachmentEnrich] 通过字段对象获取 ${fieldName} 失败:`, err);
-          continue;
-        }
-      }
-      
-      console.log(`[AttachmentEnrich] 处理附件字段: ${fieldName} (ID: ${fieldId}, key: ${actualKey}), 包含 ${fieldValue.length} 个附件`);
-      
-      // 【核心修复】确保使用正确的源数据进行合并
-      // 如果 fieldValue 是从 field.getValue() 获取的新数组，它可能不在 enrichedFields 中
-      // 所以我们需要先把 fieldValue 同步到 enrichedFields，然后再进行合并
-      if (enrichedFields[actualKey] !== fieldValue) {
-        console.log(`[AttachmentEnrich-Sync] 将 fieldValue 同步到 enrichedFields['${actualKey}']`);
-        enrichedFields[actualKey] = fieldValue;
-      }
-      
-      // 现在从 enrichedFields 读取用于合并的源数据
-      const sourceValue = enrichedFields[actualKey];
-      
-      // 安全检查：确保源数据是数组
-      if (!Array.isArray(sourceValue) || sourceValue.length === 0) {
-        console.warn(`[AttachmentEnrich-Warn] 字段 ${fieldName} 的源数据不是有效数组`);
-        continue;
-      }
-      
-      try {
-        // 获取字段对象
-        const field = await table.getField(fieldId);
-        
-        // 调用 getAttachmentUrls 获取真实URL（返回 string[]）
-        console.log(`[AttachmentEnrich] 调用 getAttachmentUrls for record ${recordId}`);
-        const urlList: string[] = await (field as any).getAttachmentUrls(recordId);
-        
-        console.log(`[Merge-Debug] 字段 ${fieldName}: 原始文件数=${sourceValue.length}, 获取URL数=${urlList?.length || 0}`);
-        
-        if (urlList && urlList.length > 0) {
-          // 【核心修复】按索引严格合并 - 飞书保证 urlList 顺序与 sourceValue 一致
-          const enrichedValue = sourceValue.map((fileItem: any, index: number) => {
-            const targetUrl = urlList[index];
-            
-            // 只有当 URL 存在时才注入，防止覆盖原有数据
-            if (targetUrl) {
-              return {
-                ...fileItem,
-                url: targetUrl,        // 标准字段
-                fileUrl: targetUrl,    // 兼容别名
-                downloadUrl: targetUrl // 备用别名
-              };
-            }
-            // 如果没有对应的 URL (比如权限问题)，保留原样但打印警告
-            console.warn(`[Merge-Warn] 索引 ${index} 的文件 ${fileItem.name} 未获取到 URL`);
-            return fileItem;
-          });
-          
-          // 【关键修改】将对象数组转换为 HTML 字符串，以便渲染组件正确显示图片
-          const htmlString = enrichedValue.map((file: any) => {
-            // 如果是图片类型，生成 img 标签
-            if (file.type && file.type.startsWith('image/')) {
-              return `<div style="margin-bottom: 8px;"><img src="${file.url}" style="max-width: 200px; max-height: 200px; object-fit: cover; border: 1px solid #ddd;" /></div>`;
-            } 
-            // 如果是其他文件，生成下载链接
-            else {
-              return `<div style="margin-bottom: 4px;">📎 <a href="${file.url}" target="_blank" style="color: #337ab7; text-decoration: none;">${file.name}</a></div>`;
-            }
-          }).join('');
-          
-          // 存储 HTML 字符串到 actualKey
-          enrichedFields[actualKey] = htmlString;
-          
-          // 双键更新：存储 HTML 字符串到 otherKey
-          const otherKey = actualKey === fieldId ? fieldName : fieldId;
-          if (otherKey && otherKey !== actualKey) {
-            enrichedFields[otherKey] = htmlString;
-            console.log(`[AttachmentEnrich-HTML] ✅ 已转换并双键更新: ${actualKey} & ${otherKey}`);
-            console.log(`[AttachmentEnrich-HTML] 生成的 HTML 预览:`, htmlString.substring(0, 100) + '...');
-          }
-          
-          console.log(`[Merge-Success] 字段 ${fieldName} 注入完成，已转换为 HTML 字符串，长度:`, htmlString.length);
-          
-        } else {
-          console.warn(`[AttachmentEnrich-Warn] 字段 ${fieldName} 未返回任何URL`);
-        }
-      } catch (error) {
-        console.error(`[AttachmentEnrich-Error] 处理字段 ${fieldName} 失败:`, error);
-      }
-    }
-  } catch (error) {
-    console.error('[AttachmentEnrich] 获取附件URL失败:', error);
-  }
-  
-  console.log('[AttachmentEnrich] ========== 附件URL处理完成 ==========');
-  
-  // 【FINAL-CHECK】返回前检查所有附件字段的数据
-  console.log('🔍 [FINAL-CHECK-ALL] 返回前 enrichedFields 中的所有附件数据:');
-  for (const [key, value] of Object.entries(enrichedFields)) {
-    if (Array.isArray(value) && value.length > 0 && value[0]?.name) {
-      console.log(`  [${key}]:`, value.map((i: any) => ({ name: i.name, hasUrl: !!i.url })));
-    }
-  }
-  
-  return enrichedFields;
-};
-
 // ==================== 附件URL调试函数 ====================
 // 用于测试 getAttachmentUrls API 是否能获取附件URL
 const debugAttachmentUrls = async (recordId: string, fieldId: string, fieldName: string) => {
@@ -456,13 +263,8 @@ const debugAttachmentUrls = async (recordId: string, fieldId: string, fieldName:
 const debugRecordAttachments = async (record: any, fieldMetaList: any[]) => {
   console.log('[AttachmentDebug] 开始检查记录中的附件字段');
   
-  // 查找附件类型字段（原始类型为17，映射后为 'attachment'）
-  const attachmentFields = fieldMetaList.filter(f => {
-    const typeNum = Number(f.type);
-    const isAttachmentType = typeNum === 17; // 17 = Attachment
-    const isTypeName = f.type === 'attachment' || f.type === 'Attachment';
-    return isAttachmentType || isTypeName;
-  });
+  // 查找附件类型字段
+  const attachmentFields = fieldMetaList.filter(f => f.type === 17 || f.type === 'Attachment'); // 17 是附件字段类型
   console.log('[AttachmentDebug] 找到附件字段数量:', attachmentFields.length);
   
   if (attachmentFields.length === 0) {
@@ -1079,15 +881,10 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
   if (sourceText) {
     const variableMatches = sourceText.match(/\[([^\]]+)\]/g);
     if (variableMatches && variableMatches.length > 0) {
-      // 【关键修复】检查是否有附件字段（对象数组）或 HTML 字符串
+      // 检查是否有附件字段
       const hasAttachmentField = variableMatches.some((match: string) => {
         const fieldName = match.slice(1, -1);
         const fieldValue = data[fieldName];
-        // 检查是否是 HTML 字符串（由 enrichAttachmentUrls 转换）
-        if (typeof fieldValue === 'string' && (fieldValue.includes('<img') || fieldValue.includes('<div'))) {
-          return true;
-        }
-        // 检查是否是对象数组
         if (Array.isArray(fieldValue) && fieldValue.length > 0) {
           const firstItem = fieldValue[0];
           return firstItem && (firstItem.url || firstItem.fileUrl) && (firstItem.name || firstItem.fileName);
@@ -1100,7 +897,7 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
         const parts: React.ReactNode[] = [];
         let lastIndex = 0;
         
-        // 使用正则匹配所有变量 - 注意：每次 exec 后 lastIndex 会自动更新
+        // 使用正则匹配所有变量
         const varRegex = /\[([^\]]+)\]/g;
         let match: RegExpExecArray | null;
         let partIndex = 0;
@@ -1122,21 +919,9 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
           // 获取字段值
           const fieldValue = data[varName];
           
-          // 【情景 A】HTML 字符串 (已转换的附件)
-          if (typeof fieldValue === 'string' && (fieldValue.includes('<img') || fieldValue.includes('<div'))) {
-            console.log(`[renderComponent] 字段 ${varName} 是 HTML 字符串，使用 dangerouslySetInnerHTML 渲染`);
-            parts.push(
-              <span 
-                key={`html-${partIndex}`}
-                className="inline-block align-middle"
-                dangerouslySetInnerHTML={{ __html: fieldValue }} 
-              />
-            );
-          }
-          // 【情景 B】原始附件数组 (兜底逻辑)
-          else if (Array.isArray(fieldValue) && fieldValue.length > 0 && 
+          // 检查是否是图片附件
+          if (Array.isArray(fieldValue) && fieldValue.length > 0 && 
               fieldValue[0] && (fieldValue[0].url || fieldValue[0].fileUrl)) {
-            console.log(`[renderComponent] 字段 ${varName} 是附件数组，渲染图片列表`);
             // 渲染图片网格
             const images = fieldValue
               .filter((item: any) => item && (item.url || item.fileUrl))
@@ -1187,26 +972,24 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
               });
             
             parts.push(
-              <span key={`img-${partIndex}`} style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '4px' }}>
+              <div key={`img-${partIndex}`} style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                 {images}
+              </div>
+            );
+          } else {
+            // 普通字段，使用变量替换后的值
+            parts.push(
+              <span key={`var-${partIndex}`}>
+                {replaceVariables(match[0], data)}
               </span>
             );
           }
-          // 【情景 C】普通字段
-          else {
-            // 使用 replaceVariables 正确处理对象值（会调用 formatFieldValue）
-            const replacedValue = replaceVariables(match[0], data);
-            parts.push(
-              <span key={`var-${partIndex}`}>{replacedValue}</span>
-            );
-          }
           
-          // 【至关重要】更新 lastIndex 到当前变量结束之后
           lastIndex = matchEnd;
           partIndex++;
         }
         
-        // 添加最后一个变量之后的剩余文本
+        // 添加剩余文本
         if (lastIndex < sourceText.length) {
           parts.push(
             <span key={`text-end`}>
@@ -1593,22 +1376,16 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       }
       
       console.log('[TP] 原始字段数量:', Object.keys(rawFields).length);
-      console.log('[TP] 原始字段ID列表:', Object.keys(rawFields).slice(0, 10));
-      
-      // 【关键】先获取附件字段的真实URL并注入（在转换字段键之前！）
-      console.log('[TP] ========== 开始为附件字段获取真实URL ==========');
-      console.log('[TP] 传入 enrichAttachmentUrls 的字段键:', Object.keys(rawFields));
-      const enrichedRawFields = await enrichAttachmentUrls(recordId, tableId, rawFields, fieldMetaList);
-      console.log('[TP] ========== 附件URL获取完成 ==========');
+      console.log('[TP] 原始字段ID列表:', Object.keys(rawFields).slice(0, 10)); // 只显示前10个
       
       // 转换格式：将字段ID键转换为字段名键
       const formattedFields: Record<string, any> = {};
       
-      for (const [fieldId, value] of Object.entries(enrichedRawFields)) {
+      for (const [fieldId, value] of Object.entries(rawFields)) {
         // 使用字段映射表，如果没有映射则保持原ID
         const fieldName = fieldMap[fieldId] || fieldId;
         formattedFields[fieldName] = value;
-        console.log(`[TP] 字段映射: ${fieldId} -> ${fieldName}, 值类型:`, typeof value, '是否是数组:', Array.isArray(value));
+        console.log(`[TP] 字段映射: ${fieldId} -> ${fieldName}`);
       }
       
       console.log('[TP] 转换后字段数量:', Object.keys(formattedFields).length);
@@ -1618,33 +1395,21 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       const fieldNames = Object.keys(formattedFields);
       toast.info(`获取到 ${fieldNames.length} 个字段: ${fieldNames.slice(0, 3).join(', ')}${fieldNames.length > 3 ? '...' : ''}`);
       
-      const enrichedRecord = {
+      const formattedRecord = {
         ...formattedFields,
         id: recordId,
         _sourceRecordId: recordId,
         _rowIndex: availableRecords.length,
       };
       
-      // 【验证】检查附件字段是否正确转换为 HTML
-      const attachmentFieldName = Object.keys(formattedFields).find(key => {
-        const val = formattedFields[key];
-        return typeof val === 'string' && val.includes('<img');
-      });
-      if (attachmentFieldName) {
-        console.log(`✅ [TP-VERIFY] 附件字段 ${attachmentFieldName} 已转换为 HTML，长度:`, formattedFields[attachmentFieldName].length);
-        console.log(`✅ [TP-VERIFY] HTML 预览:`, formattedFields[attachmentFieldName].substring(0, 100));
-      } else {
-        console.warn(`⚠️ [TP-VERIFY] 未找到已转换的附件字段，所有字段类型:`, Object.entries(formattedFields).map(([k, v]) => `${k}=${typeof v}`));
-      }
+      console.log('[TP] 最终格式化记录:', formattedRecord);
       
-      console.log('[TP] 最终格式化记录（已注入附件URL）:', enrichedRecord);
-      
-      // 【调试】测试附件字段 getAttachmentUrls API（可选，保留用于调试）
+      // 【调试】测试附件字段 getAttachmentUrls API
       console.log('[TP] 开始调试附件字段...');
-      await debugRecordAttachments(enrichedRecord, fieldMetaList);
+      await debugRecordAttachments(formattedRecord, fieldMetaList);
       
       // 添加到列表
-      setAvailableRecords(prev => [...prev, enrichedRecord]);
+      setAvailableRecords(prev => [...prev, formattedRecord]);
       console.log('[TP] 记录已添加到列表');
       toast.success('已添加记录');
       
@@ -1688,15 +1453,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     
     try {
       console.log('[TP] ========== fetchSelectedRecordsFromEnv 开始 ==========');
-      
-      // 获取表格和字段元数据（用于后续附件URL获取）
-      const { bitable } = await import('@lark-base-open/js-sdk');
-      const base = await bitable.base;
-      const table = await base.getActiveTable();
-      const tableId = table.id;
-      const fieldMetaList = await table.getFieldMetaList();
-      console.log('[TP] 获取字段元数据:', fieldMetaList?.length || 0, '个字段');
-      
       const selRecords = await feishuEnv.getSelectedRecords();
       console.log('[TP] getSelectedRecords 返回:', selRecords.length, '条记录');
       
@@ -1705,40 +1461,22 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         console.log('[TP] 第一条记录结构:', JSON.stringify(selRecords[0], null, 2));
         console.log('[TP] 第一条记录 fields:', JSON.stringify(selRecords[0].fields, null, 2));
         
-        // 转换格式并获取附件URL - 确保每条记录都有唯一 ID
-        const enrichedRecords: any[] = [];
-        
-        for (let index = 0; index < selRecords.length; index++) {
-          const record = selRecords[index];
+        // 转换格式 - 确保每条记录都有唯一 ID
+        const formattedRecords = selRecords.map((record, index) => {
           // 生成唯一 ID：优先使用 record.id，其次是 recordId
+          // 注意：不使用 Date.now()，确保同一记录多次点击生成相同 ID
           const uniqueId = record.id || (record as any).recordId || `record_${index}`;
-          const sourceRecordId = record.id || (record as any).recordId;
-          
-          console.log(`[TP] 处理记录 ${index}:`, { id: uniqueId, sourceRecordId });
-          
-          // 获取原始字段数据
-          const rawFields = record.fields || {};
-          
-          // 【关键】为附件字段获取真实URL
-          const enrichedFields = await enrichAttachmentUrls(
-            sourceRecordId,
-            tableId,
-            rawFields,
-            fieldMetaList
-          );
-          
-          const enrichedRecord = {
-            ...enrichedFields,
+          const formattedRecord = {
+            ...record.fields,
             id: uniqueId,
-            _sourceRecordId: sourceRecordId,
+            _sourceRecordId: record.id || (record as any).recordId, // 保存原始记录ID用于调试
             _rowIndex: index,
           };
-          
-          enrichedRecords.push(enrichedRecord);
-          console.log(`[TP] 记录 ${index} 处理完成，字段数:`, Object.keys(enrichedFields).length);
-        }
+          console.log(`[TP] 格式化记录 ${index}:`, { id: uniqueId, fields: Object.keys(record.fields || {}) });
+          return formattedRecord;
+        });
         
-        console.log('[TP] 所有记录处理完成，共:', enrichedRecords.length, '条');
+        console.log('[TP] 格式化后记录数:', formattedRecords.length);
         
         // 只追加到可用记录列表，不自动设置为当前记录
         setAvailableRecords(prev => {
@@ -1748,7 +1486,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           let skippedCount = 0;
           let ignoredCount = 0;
           
-          enrichedRecords.forEach(record => {
+          formattedRecords.forEach(record => {
             // 获取所有可能的ID用于去重检查
             const recordId = record.id;
             const sourceRecordId = record._sourceRecordId;
