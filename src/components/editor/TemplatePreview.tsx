@@ -235,8 +235,8 @@ const enrichAttachmentUrls = async (
   
   const enrichedFields = { ...fields };
   
-  // 查找附件类型字段（类型ID为17 或字符串 'attachment'）
-  const attachmentFields = fieldMetaList.filter(f => f.type === 17 || f.type === 'attachment' || f.type === 'Attachment');
+  // 查找附件类型字段（原始类型为11，映射后为 'attachment'）
+  const attachmentFields = fieldMetaList.filter(f => f.type === 11 || f.type === 'attachment' || f.type === 'Attachment');
   console.log('[AttachmentEnrich] 找到附件字段数量:', attachmentFields.length);
   
   if (attachmentFields.length === 0) {
@@ -347,8 +347,8 @@ const debugAttachmentUrls = async (recordId: string, fieldId: string, fieldName:
 const debugRecordAttachments = async (record: any, fieldMetaList: any[]) => {
   console.log('[AttachmentDebug] 开始检查记录中的附件字段');
   
-  // 查找附件类型字段
-  const attachmentFields = fieldMetaList.filter(f => f.type === 17 || f.type === 'Attachment'); // 17 是附件字段类型
+  // 查找附件类型字段（原始类型为11，映射后为 'attachment'）
+  const attachmentFields = fieldMetaList.filter(f => f.type === 11 || f.type === 'attachment' || f.type === 'Attachment');
   console.log('[AttachmentDebug] 找到附件字段数量:', attachmentFields.length);
   
   if (attachmentFields.length === 0) {

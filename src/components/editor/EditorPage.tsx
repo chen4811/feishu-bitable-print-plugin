@@ -80,8 +80,8 @@ const enrichAttachmentUrls = async (
   
   const enrichedFields = { ...fields };
   
-  // 查找附件类型字段（类型ID为17 或字符串 'attachment'）
-  const attachmentFields = fieldMetaList.filter(f => f.type === 17 || f.type === 'attachment' || f.type === 11);
+  // 查找附件类型字段（原始类型为11，映射后为 'attachment'）
+  const attachmentFields = fieldMetaList.filter(f => f.type === 11 || f.type === 'attachment');
   console.log('[EditorPage-Attachment] 找到附件字段数量:', attachmentFields.length);
   
   if (attachmentFields.length === 0) {
