@@ -561,11 +561,19 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     // 有变量，阻止默认粘贴行为，手动处理
     e.preventDefault();
     
-    // 获取当前单元格内容
-    const currentContent = tableEditData[rowIndex]?.[colIndex] || '';
+    // 从当前活动的 textarea 获取最新内容和光标位置
+    const activeElement = document.activeElement as HTMLTextAreaElement;
+    if (!activeElement || activeElement.tagName !== 'TEXTAREA') {
+      return;
+    }
+    
+    // 获取当前内容（从 DOM 获取，确保是最新的）
+    const currentContent = activeElement.value || '';
+    const selectionStart = activeElement.selectionStart || 0;
+    const selectionEnd = activeElement.selectionEnd || 0;
     
     // 处理每个变量
-    let newContent = currentContent;
+    let variablesText = '';
     const attachmentFields: string[] = [];
     
     variables.forEach(fieldName => {
@@ -588,11 +596,19 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       }
       
       // 将变量插入到内容中（使用 [字段名] 格式）
-      newContent += `[${fieldName}]`;
+      variablesText += `[${fieldName}]`;
     });
+    
+    // 在光标位置插入变量文本
+    const newContent = currentContent.substring(0, selectionStart) + variablesText + currentContent.substring(selectionEnd);
     
     // 更新单元格内容
     handleTableCellChange(rowIndex, colIndex, newContent);
+    
+    // 更新 textarea 的值和光标位置
+    activeElement.value = newContent;
+    const newCursorPosition = selectionStart + variablesText.length;
+    activeElement.setSelectionRange(newCursorPosition, newCursorPosition);
     
     // 如果有附件字段且没有配置，打开配置弹窗（只处理第一个）
     if (attachmentFields.length > 0) {
@@ -608,7 +624,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         toast.info(`检测到 ${attachmentFields.length} 个附件字段，请先配置第一个`);
       }
     }
-  }, [records, attachmentConfigs, tableEditData]);
+  }, [records, attachmentConfigs]);
 
   // 处理附件变量配置确认
   const handleAttachmentConfirm = useCallback((config: AttachmentVariableConfig) => {
