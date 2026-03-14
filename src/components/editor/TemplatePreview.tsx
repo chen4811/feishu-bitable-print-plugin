@@ -3294,22 +3294,24 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                     console.group(`🎨 [RenderMonitor] 渲染页面 ${pageIndex + 1}`);
                     console.log('记录ID:', record.id);
                     
-                    // 检查附件字段
+                    // 检查附件字段（查找 _html 后缀的字段）
                     Object.entries(record.data).forEach(([key, value]) => {
-                      if (key.includes('照片') || key.includes('附件') || key.includes('image')) {
+                      // 检查是否是预处理的HTML字段（_字段名_html）
+                      if (key.endsWith('_html') && key.includes('_')) {
+                        const baseFieldName = key.slice(1, -5); // 去掉开头的_和结尾的_html
+                        const originalValue = record.data[baseFieldName];
                         const isHTML = typeof value === 'string' && value.includes('<img');
-                        const isArray = Array.isArray(value);
-                        console.log(`  📎 ${key}:`, {
-                          type: isArray ? 'array' : typeof value,
+                        const isOriginalArray = Array.isArray(originalValue);
+                        
+                        console.log(`  📎 ${baseFieldName}:`, {
+                          htmlType: typeof value,
                           isHTML,
-                          isArray,
-                          isCorrectlyProcessed: isHTML && !isArray
+                          originalType: isOriginalArray ? 'array' : typeof originalValue,
+                          isCorrectlyProcessed: isHTML && isOriginalArray
                         });
                         
-                        if (isArray) {
-                          console.error(`  ❌ 渲染前数据仍是数组！数据传递失败！`);
-                        } else if (isHTML) {
-                          console.log(`  ✅ 数据正确，HTML已就绪`);
+                        if (isOriginalArray) {
+                          console.log(`  ✅ ${baseFieldName} 原始数据保留为数组，HTML已生成`);
                         }
                       }
                     });
