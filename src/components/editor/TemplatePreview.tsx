@@ -1473,16 +1473,22 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       }
       
       console.log('[TP] 原始字段数量:', Object.keys(rawFields).length);
-      console.log('[TP] 原始字段ID列表:', Object.keys(rawFields).slice(0, 10)); // 只显示前10个
+      console.log('[TP] 原始字段ID列表:', Object.keys(rawFields).slice(0, 10));
+      
+      // 【关键】先获取附件字段的真实URL并注入（在转换字段键之前！）
+      console.log('[TP] ========== 开始为附件字段获取真实URL ==========');
+      console.log('[TP] 传入 enrichAttachmentUrls 的字段键:', Object.keys(rawFields));
+      const enrichedRawFields = await enrichAttachmentUrls(recordId, tableId, rawFields, fieldMetaList);
+      console.log('[TP] ========== 附件URL获取完成 ==========');
       
       // 转换格式：将字段ID键转换为字段名键
       const formattedFields: Record<string, any> = {};
       
-      for (const [fieldId, value] of Object.entries(rawFields)) {
+      for (const [fieldId, value] of Object.entries(enrichedRawFields)) {
         // 使用字段映射表，如果没有映射则保持原ID
         const fieldName = fieldMap[fieldId] || fieldId;
         formattedFields[fieldName] = value;
-        console.log(`[TP] 字段映射: ${fieldId} -> ${fieldName}`);
+        console.log(`[TP] 字段映射: ${fieldId} -> ${fieldName}, 值类型:`, typeof value, '是否是数组:', Array.isArray(value));
       }
       
       console.log('[TP] 转换后字段数量:', Object.keys(formattedFields).length);
@@ -1492,21 +1498,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       const fieldNames = Object.keys(formattedFields);
       toast.info(`获取到 ${fieldNames.length} 个字段: ${fieldNames.slice(0, 3).join(', ')}${fieldNames.length > 3 ? '...' : ''}`);
       
-      const formattedRecord = {
-        ...formattedFields,
-        id: recordId,
-        _sourceRecordId: recordId,
-        _rowIndex: availableRecords.length,
-      };
-      
-      console.log('[TP] 格式化记录（原始）:', formattedRecord);
-      
-      // 【关键】获取附件字段的真实URL并注入
-      console.log('[TP] 开始为附件字段获取真实URL...');
-      const enrichedFields = await enrichAttachmentUrls(recordId, tableId, formattedFields, fieldMetaList);
-      
       const enrichedRecord = {
-        ...enrichedFields,
+        ...formattedFields,
         id: recordId,
         _sourceRecordId: recordId,
         _rowIndex: availableRecords.length,
