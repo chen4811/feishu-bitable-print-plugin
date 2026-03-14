@@ -8,12 +8,14 @@ const AutoResizingTextarea = ({
   onChange, 
   onClick, 
   onKeyDown,
+  onPaste,
   style
 }: { 
   value: string;
   onChange: (value: string) => void;
   onClick: (e: React.MouseEvent) => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
+  onPaste?: (e: React.ClipboardEvent) => void;
   style?: React.CSSProperties;
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -98,6 +100,7 @@ const AutoResizingTextarea = ({
       onKeyDown={handleKeyDown}
       onKeyUp={handleKeyUp}
       onKeyPress={handleKeyPress}
+      onPaste={onPaste}
       className="w-full border-0 outline-none resize-none overflow-hidden"
       style={{ 
         height: '24px', // 初始高度设为24px，由 adjustHeight 动态调整
@@ -118,6 +121,10 @@ import { Copy, Pencil, Trash2 } from 'lucide-react';
 import { parseVariables } from '@/utils/variableParser';
 import { VariableTextRenderer } from '@/components/VariableTextRenderer';
 import { VARIABLE_CHIP_STYLES } from '@/utils/smartVariableRenderer';
+import { InsertAttachmentDialog } from '@/components/editor/variables/InsertAttachmentDialog';
+import { AttachmentVariableConfig } from '@/components/editor/variables/AttachmentVariable';
+import { extractVariables } from '@/utils/variableParser';
+import { toast } from 'sonner';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { HoverToolbar } from '../table/HoverToolbar';
@@ -143,6 +150,9 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     records,
     fields,
     selectComponent,
+    attachmentConfigs,
+    setAttachmentConfig,
+    deleteAttachmentConfig,
   } = useEditorStore();
 
   // 获取预览用的记录（优先使用第一条记录）
@@ -222,6 +232,11 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   const [editContent, setEditContent] = useState('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  // 附件变量弹窗状态
+  const [attachmentDialogOpen, setAttachmentDialogOpen] = useState(false);
+  const [attachmentDialogField, setAttachmentDialogField] = useState<string>('');
+  const [editingVariable, setEditingVariable] = useState<string | null>(null);
   
   const textComponentRef = useRef<HTMLDivElement>(null);
   
@@ -509,6 +524,99 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       });
     }
   };
+
+  // 处理粘贴事件 - 检测附件字段
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    // 获取粘贴的文本内容
+    const pastedText = e.clipboardData.getData('text');
+    
+    if (!pastedText) return;
+    
+    // 提取变量
+    const variables = extractVariables(pastedText);
+    
+    if (variables.length === 0) return;
+    
+    // 检查是否有附件字段
+    const attachmentFields = variables.filter(fieldName => {
+      if (!records || records.length === 0) return false;
+      const record = records[0] as any;
+      const value = record[fieldName] || record.fields?.[fieldName];
+      
+      if (!Array.isArray(value) || value.length === 0) return false;
+      
+      const firstItem = value[0];
+      return firstItem && (
+        'token' in firstItem || 
+        'name' in firstItem || 
+        'type' in firstItem ||
+        'url' in firstItem
+      );
+    });
+    
+    if (attachmentFields.length > 0) {
+      // 阻止默认粘贴行为
+      e.preventDefault();
+      
+      // 处理第一个附件字段
+      const fieldName = attachmentFields[0];
+      
+      // 检查是否已有配置
+      const existingConfig = attachmentConfigs[fieldName];
+      
+      if (!existingConfig) {
+        // 没有配置，打开弹窗
+        setAttachmentDialogField(fieldName);
+        setAttachmentDialogOpen(true);
+        
+        // 将变量插入到文本中（临时）
+        const textarea = textareaRef.current;
+        if (textarea) {
+          const start = textarea.selectionStart;
+          const end = textarea.selectionEnd;
+          const newContent = editContent.substring(0, start) + `[${fieldName}]` + editContent.substring(end);
+          setEditContent(newContent);
+        }
+      }
+      
+      // 如果有多个附件字段，提示用户
+      if (attachmentFields.length > 1) {
+        toast.info(`检测到 ${attachmentFields.length} 个附件字段，请先配置第一个`);
+      }
+    }
+  }, [records, attachmentConfigs, editContent]);
+
+  // 处理附件变量配置确认
+  const handleAttachmentConfirm = useCallback((config: AttachmentVariableConfig) => {
+    // 保存配置到 store
+    setAttachmentConfig(config.fieldName, config);
+    
+    // 关闭弹窗
+    setAttachmentDialogOpen(false);
+    setAttachmentDialogField('');
+    
+    toast.success(`附件字段 "${config.fieldName}" 配置已保存`);
+  }, [setAttachmentConfig]);
+
+  // 处理编辑附件变量
+  const handleEditAttachmentVariable = useCallback((fieldName: string) => {
+    setEditingVariable(fieldName);
+    setAttachmentDialogField(fieldName);
+    setAttachmentDialogOpen(true);
+  }, []);
+
+  // 处理删除附件变量
+  const handleDeleteAttachmentVariable = useCallback((fieldName: string) => {
+    // 从配置中删除
+    deleteAttachmentConfig(fieldName);
+    
+    // 从文本中删除
+    const content = (component as any).content || '';
+    const newContent = content.replace(new RegExp(`\\[${fieldName}\\]|\\{\\{${fieldName}\\}\\}`, 'g'), '');
+    updateComponent(component.id, { content: newContent });
+    
+    toast.success(`附件字段 "${fieldName}" 已删除`);
+  }, [component.id, deleteAttachmentConfig, updateComponent]);
 
   // 监听文本内容变化，自动计算并保存高度
   useEffect(() => {
@@ -1743,6 +1851,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     setIsEditing(false);
                   }
                 }}
+                onPaste={handlePaste}
                 style={{
                   fontSize: '1em',
                   fontWeight: 'inherit',
@@ -2003,6 +2112,18 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   return (
     <div ref={componentContainerRef} className="w-full">
       {renderContent()}
+      
+      {/* 附件配置弹窗 */}
+      <InsertAttachmentDialog
+        isOpen={attachmentDialogOpen}
+        onClose={() => {
+          setAttachmentDialogOpen(false);
+          setAttachmentDialogField('');
+        }}
+        availableFields={attachmentDialogField ? [attachmentDialogField] : []}
+        initialField={attachmentDialogField}
+        onConfirm={handleAttachmentConfirm}
+      />
     </div>
   );
 }

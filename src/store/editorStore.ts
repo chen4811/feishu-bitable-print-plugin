@@ -14,6 +14,7 @@ import {
   ComponentTextStyle,
   TableConfig,
 } from '@/types/editor';
+import { AttachmentVariableConfig } from '@/components/editor/variables';
 
 // 表格单元格编辑状态（用于内容编辑）
 interface TableCellEditingState {
@@ -40,6 +41,9 @@ interface EditorState {
   templateName: string;
   components: any[];
   selectedComponentId: string | null;
+  
+  // 附件变量配置（按字段名存储）
+  attachmentConfigs: Record<string, AttachmentVariableConfig>;
   
   // 表格编辑状态
   tableEditing: TableEditingState;
@@ -88,6 +92,11 @@ interface EditorState {
   setFields: (fields: Field[]) => void;
   setSystemFields: (fields: Field[]) => void;
   setFeishuEnvironment: (isFeishu: boolean) => void;
+  
+  // 附件变量配置
+  setAttachmentConfig: (fieldName: string, config: AttachmentVariableConfig) => void;
+  deleteAttachmentConfig: (fieldName: string) => void;
+  clearAttachmentConfigs: () => void;
   
   // 飞书上下文
   setFeishuContext: (context: FeishuContext | null) => void;
@@ -175,6 +184,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   templateName: '未命名排版',
   components: [],
   selectedComponentId: null,
+  
+  // 附件变量配置
+  attachmentConfigs: {},
   
   // 表格编辑状态
   tableEditing: {
@@ -372,6 +384,26 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setFields: (fields) => set({ fields }),
   setSystemFields: (fields) => set({ systemFields: fields }),
   setFeishuEnvironment: (isFeishu) => set({ isFeishuEnvironment: isFeishu }),
+  
+  // 附件变量配置管理
+  setAttachmentConfig: (fieldName: string, config: AttachmentVariableConfig) => {
+    set((state) => ({
+      attachmentConfigs: {
+        ...state.attachmentConfigs,
+        [fieldName]: config,
+      },
+    }));
+  },
+  
+  deleteAttachmentConfig: (fieldName: string) => {
+    set((state) => {
+      const newConfigs = { ...state.attachmentConfigs };
+      delete newConfigs[fieldName];
+      return { attachmentConfigs: newConfigs };
+    });
+  },
+  
+  clearAttachmentConfigs: () => set({ attachmentConfigs: {} }),
   
   // 设置飞书上下文
   setFeishuContext: (context) => set({ feishuContext: context }),

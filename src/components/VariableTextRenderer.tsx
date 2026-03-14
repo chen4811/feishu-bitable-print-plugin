@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { VariableChip } from './VariableChip';
+import { AttachmentVariableChip } from './AttachmentVariableChip';
 import { 
   parseVariables, 
   getFieldValue,
@@ -9,6 +10,36 @@ import {
   type VariableMatch 
 } from '@/utils/smartVariableRenderer';
 import { Field, ComponentTextStyle } from '@/types/editor';
+import { AttachmentVariableConfig } from '@/components/editor/variables';
+
+// 判断是否为附件字段
+function isAttachmentField(fieldName: string, records: any[], fields: Field[]): boolean {
+  if (!records || records.length === 0) return false;
+  
+  const record = records[0];
+  const value = record[fieldName] || record.fields?.[fieldName];
+  
+  if (!Array.isArray(value) || value.length === 0) return false;
+  
+  const firstItem = value[0];
+  return firstItem && (
+    'token' in firstItem || 
+    'name' in firstItem || 
+    'type' in firstItem ||
+    'url' in firstItem
+  );
+}
+
+// 获取附件数据
+function getAttachmentData(fieldName: string, records: any[]): any[] | null {
+  if (!records || records.length === 0) return null;
+  
+  const record = records[0];
+  const value = record[fieldName] || record.fields?.[fieldName];
+  
+  if (!Array.isArray(value)) return null;
+  return value;
+}
 
 interface VariableTextRendererProps {
   text: string;
@@ -17,11 +48,19 @@ interface VariableTextRendererProps {
   className?: string;
   tagName?: 'p' | 'div' | 'span' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
   textStyle?: Partial<ComponentTextStyle>;
+  // 附件变量配置
+  attachmentConfigs?: Record<string, AttachmentVariableConfig>;
+  // 事件处理
+  onEditAttachment?: (fieldName: string) => void;
+  onDeleteAttachment?: (fieldName: string) => void;
+  // 选中的变量
+  selectedVariable?: string | null;
 }
 
 /**
- * 变量文本渲染组件
+ * 变量文本渲染组件（增强版）
  * 将文本中的 {{字段名}} 替换为带样式的变量芯片
+ * 支持附件字段使用 AttachmentVariableChip 组件渲染
  * 支持继承父组件的文本样式（字体大小、颜色等）
  */
 export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
@@ -31,6 +70,10 @@ export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
   className = '',
   tagName: Tag = 'span',
   textStyle,
+  attachmentConfigs = {},
+  onEditAttachment,
+  onDeleteAttachment,
+  selectedVariable,
 }) => {
   if (!text) {
     return <Tag className={className}>&nbsp;</Tag>;
@@ -60,16 +103,38 @@ export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
       );
     }
     
-    // 获取变量值并添加芯片
-    const value = getFieldValue(variable.fieldName, records, fields);
-    parts.push(
-      <VariableChip
-        key={`var-${index}`}
-        fieldName={variable.fieldName}
-        value={value}
-        textStyle={textStyle}
-      />
-    );
+    const fieldName = variable.fieldName;
+    
+    // 检查是否为附件字段
+    if (isAttachmentField(fieldName, records, fields)) {
+      // 使用 AttachmentVariableChip 渲染附件变量
+      const attachmentData = getAttachmentData(fieldName, records);
+      const config = attachmentConfigs[fieldName];
+      
+      parts.push(
+        <AttachmentVariableChip
+          key={`var-${index}`}
+          fieldName={fieldName}
+          data={attachmentData}
+          config={config}
+          textStyle={textStyle}
+          isSelected={selectedVariable === fieldName}
+          onEdit={() => onEditAttachment?.(fieldName)}
+          onDelete={() => onDeleteAttachment?.(fieldName)}
+        />
+      );
+    } else {
+      // 普通字段使用 VariableChip
+      const value = getFieldValue(fieldName, records, fields);
+      parts.push(
+        <VariableChip
+          key={`var-${index}`}
+          fieldName={fieldName}
+          value={value}
+          textStyle={textStyle}
+        />
+      );
+    }
     
     lastIndex = startIndex + variable.original.length;
   });
