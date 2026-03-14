@@ -166,6 +166,10 @@ export function EditorPage({ onExit }: EditorPageProps) {
   const [feishuFields, setFeishuFields] = useState<any[]>([]);
   const [feishuLoading, setFeishuLoading] = useState(false);
   
+  // 使用 ref 存储字段元数据和表格ID，避免触发 useEffect 重新执行
+  const fieldMetaListRef = useRef<any[]>([]);
+  const tableIdRef = useRef<string>('');
+  
   // 当前表格信息
   const [currentTableInfo, setCurrentTableInfo] = useState<{
     tableId: string | null;
@@ -242,6 +246,11 @@ export function EditorPage({ onExit }: EditorPageProps) {
         }));
         setFeishuFields(fields);
         setFields(appFields);
+        
+        // 【关键】将字段元数据和表格ID存储到 ref，供 onSelectionChange 使用
+        fieldMetaListRef.current = fields;
+        tableIdRef.current = selection?.tableId || '';
+        console.log('[EditorPage] 字段元数据已存储到 ref，表格ID:', tableIdRef.current);
 
         // 2. 默认获取第一条记录
         console.log('[EditorPage] 获取第一条记录...');
@@ -293,10 +302,13 @@ export function EditorPage({ onExit }: EditorPageProps) {
           const records = await feishuEnv.getSelectedRecords();
           console.log('[EditorPage] 获取到新的选中记录:', records);
           
-          // 获取当前表格ID
-          const currentTableId = currentTableInfo.tableId;
-          // 获取字段元数据（从已保存的feishuFields）
-          const fieldMetaList = feishuFields;
+          // 【关键】从 ref 获取字段元数据和表格ID，避免依赖状态导致循环
+          const currentTableId = tableIdRef.current;
+          const fieldMetaList = fieldMetaListRef.current;
+          
+          if (!currentTableId || fieldMetaList.length === 0) {
+            console.warn('[EditorPage] 表格信息尚未初始化，跳过附件URL获取');
+          }
           
           if (records.length > 0) {
             // 【关键】为每条记录获取附件URL并转换格式
@@ -334,7 +346,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
     };
     
     init();
-  }, [setFeishuEnvironment, setFields, setRecords, currentTableInfo.tableId, feishuFields]);
+  }, [setFeishuEnvironment, setFields, setRecords]);
 
   // 初始化当前编辑的模板
   useEffect(() => {
