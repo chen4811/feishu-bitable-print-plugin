@@ -553,13 +553,17 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   const cellPasteDataRef = useRef<{rowIndex: number, colIndex: number, cursorPosition: number} | null>(null);
   
   const handleCellPaste = useCallback((rowIndex: number, colIndex: number) => (e: React.ClipboardEvent) => {
+    console.log('[CanvasComponent] handleCellPaste called:', { rowIndex, colIndex });
+    
     // 获取粘贴的文本内容
     const pastedText = e.clipboardData.getData('text');
+    console.log('[CanvasComponent] pastedText:', pastedText.substring(0, 50));
     
     if (!pastedText) return;
     
     // 提取变量
     const variables = extractVariables(pastedText);
+    console.log('[CanvasComponent] extracted variables:', variables);
     
     if (variables.length === 0) {
       // 没有变量，允许默认粘贴行为
@@ -571,6 +575,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     
     // 从 ref 获取最新内容，避免闭包问题
     const currentContent = tableEditDataRef.current[rowIndex]?.[colIndex] || '';
+    console.log('[CanvasComponent] currentContent from ref:', currentContent.substring(0, 50));
     
     // 尝试从当前活动的 textarea 获取光标位置
     const activeElement = document.activeElement as HTMLTextAreaElement;
@@ -581,6 +586,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       selectionStart = activeElement.selectionStart || 0;
       selectionEnd = activeElement.selectionEnd || 0;
     }
+    console.log('[CanvasComponent] cursor position:', { selectionStart, selectionEnd });
     
     // 处理每个变量
     let variablesText = '';
@@ -611,6 +617,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     
     // 在光标位置插入变量文本
     const newContent = currentContent.substring(0, selectionStart) + variablesText + currentContent.substring(selectionEnd);
+    console.log('[CanvasComponent] newContent:', newContent.substring(0, 50));
     
     // 记录光标位置，用于后续恢复
     const newCursorPosition = selectionStart + variablesText.length;
@@ -756,6 +763,15 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
 
   // 表格单元格编辑
   const handleTableCellChange = useCallback((row: number, col: number, value: string) => {
+    console.log('[CanvasComponent] handleTableCellChange called:', { 
+      row, 
+      col, 
+      valuePreview: value.substring(0, 50),
+      valueLength: value.length,
+      refCurrentPreview: tableEditDataRef.current[row]?.[col]?.substring(0, 50),
+      componentId: component.id
+    });
+    
     // 先同步更新 ref，确保立即生效
     const currentData = tableEditDataRef.current;
     if (currentData[row]) {
@@ -763,10 +779,16 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       newData[row] = [...newData[row]];
       newData[row][col] = value;
       tableEditDataRef.current = newData;
+      console.log('[CanvasComponent] tableEditDataRef updated:', {
+        row, col, newValuePreview: value.substring(0, 30)
+      });
     }
     
     // 使用函数式更新确保状态同步
     setTableEditData(prevData => {
+      console.log('[CanvasComponent] setTableEditData functional update:', {
+        row, col, prevValuePreview: prevData[row]?.[col]?.substring(0, 30)
+      });
       const newData = [...prevData];
       if (newData[row]) {
         newData[row] = [...newData[row]];
@@ -792,6 +814,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         })
       );
       
+      console.log('[CanvasComponent] Calling updateComponent for cell:', { row, col });
       updateComponent(component.id, {
         tableConfig: {
           ...tableComp.tableConfig,
@@ -1231,6 +1254,17 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
 
   // 初始化/同步表格编辑数据
   useEffect(() => {
+    console.log('[CanvasComponent] tableEditData sync effect triggered:', {
+      componentId: component.id,
+      hasCells: !!(component as any).tableConfig?.cells,
+      tableCellEditing: {
+        isEditing: tableCellEditing.isEditing,
+        tableId: tableCellEditing.tableId,
+        rowIndex: tableCellEditing.rowIndex,
+        colIndex: tableCellEditing.colIndex,
+      }
+    });
+    
     if (component.type === 'table') {
       const tableComp = component as any;
       if (tableComp.tableConfig?.cells) {
@@ -1242,34 +1276,31 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
           const newRows = cells.length;
           const newCols = cells[0]?.length || 0;
           
+          console.log('[CanvasComponent] setTableEditData sync:', {
+            prevRows, prevCols, newRows, newCols,
+            prevPreview: prev[0]?.[0]?.substring(0, 20),
+            cellsPreview: cells[0]?.[0]?.content?.substring(0, 20),
+          });
+          
           if (prevRows !== newRows || prevCols !== newCols) {
+            console.log('[CanvasComponent] Reinitializing tableEditData (dimension changed)');
             return cells.map((row: any[]) => 
               row.map((cell: any) => cell?.content || '')
             );
           }
           
-          // 如果行列数匹配，从 cells 读取最新内容
-          // 只有在当前没有单元格处于编辑状态时才同步
-          const isAnyCellEditing = tableCellEditing.isEditing && tableCellEditing.tableId === component.id;
+          // 🔥🔥🔥 关键修复：只要当前表格有单元格在编辑中，就保留所有本地数据！
+          // 不要只保留当前编辑的单元格，因为切换单元格时会导致其他单元格丢失
+          const isCurrentTableBeingEdited = tableCellEditing.isEditing && tableCellEditing.tableId === component.id;
           
-          if (isAnyCellEditing) {
-            // 有单元格在编辑中，保留本地编辑数据
-            return cells.map((row: any[], rowIdx: number) => 
-              row.map((cell: any, colIdx: number) => {
-                // 如果当前单元格正在编辑，保留本地值
-                const isThisCellEditing = 
-                  tableCellEditing.rowIndex === rowIdx && 
-                  tableCellEditing.colIndex === colIdx;
-                
-                if (isThisCellEditing && prev[rowIdx]?.[colIdx] !== undefined) {
-                  return prev[rowIdx][colIdx];
-                }
-                return cell?.content || '';
-              })
-            );
+          if (isCurrentTableBeingEdited) {
+            console.log('[CanvasComponent] Table being edited, preserving all local data');
+            // 保留所有本地编辑数据，不从 cells 同步
+            return prev;
           }
           
           // 没有单元格在编辑中，从 cells 同步最新内容
+          console.log('[CanvasComponent] Syncing from cells (no cell editing)');
           return cells.map((row: any[]) => 
             row.map((cell: any) => cell?.content || '')
           );
