@@ -1573,68 +1573,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                         minHeight: '20px',
                       };
 
-                      // 编辑模式 - 应用样式到 textarea
-                      if (isCurrentTableEditing) {
-                        // 为 textarea 构建样式（只应用影响文本显示的样式）
-                        const textareaStyles: React.CSSProperties = {
-                          fontSize: textStyles.fontSize,
-                          fontWeight: textStyles.fontWeight,
-                          fontStyle: textStyles.fontStyle,
-                          color: textStyles.color,
-                          textAlign: textStyles.textAlign,
-                          lineHeight: textStyles.lineHeight,
-                          textDecoration: textStyles.textDecoration,
-                          textTransform: textStyles.textTransform,
-                        };
-                        
-                        // 关键修复：容器 div 只做样式传递，不干扰高度计算
-                        const containerStyles = {
-                          // 只传递影响文本显示的样式，不传递可能影响高度的样式
-                          fontSize: textStyles.fontSize,
-                          fontWeight: textStyles.fontWeight,
-                          fontStyle: textStyles.fontStyle,
-                          color: textStyles.color,
-                          textAlign: textStyles.textAlign,
-                          lineHeight: textStyles.lineHeight,
-                          textDecoration: textStyles.textDecoration,
-                          textTransform: textStyles.textTransform,
-                          backgroundColor: textStyles.backgroundColor,
-                          // 确保容器不会限制高度
-                          minHeight: undefined,
-                          height: undefined,
-                          overflow: 'visible',
-                        };
-                        
-                        return (
-                          <div 
-                            className="w-full" 
-                            style={containerStyles}
-                            // 关键：防止容器 div 干扰键盘事件
-                            onKeyDown={(e) => e.stopPropagation()}
-                            onKeyUp={(e) => e.stopPropagation()}
-                            onKeyPress={(e) => e.stopPropagation()}
-                          >
-                            <AutoResizingTextarea
-                              value={cellContent || ''}
-                              onChange={(value) => handleTableCellChange(rowIndex, colIndex, value)}
-                              onClick={(e) => {}} // AutoResizingTextarea 内部已处理冒泡
-                              onKeyDown={(e) => {
-                                // 只有单独的 Enter（不带 Shift）才阻止默认行为
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                  e.preventDefault();
-                                }
-                                // Shift+Enter、Delete、Backspace 等键：不阻止默认行为，正常编辑
-                                
-                                // 注意：e.stopPropagation() 已经在 AutoResizingTextarea 内部先调用了
-                              }}
-                              style={textareaStyles}
-                            />
-                          </div>
-                        );
-                      }
-
-                      // 预览模式 - 渲染带样式的内容
-                      // 处理标题、列表等特殊样式
+                      // 渲染带样式的内容函数定义
                       const renderContentWithStyle = () => {
                         // 基础文本样式
                         const baseTextStyle: React.CSSProperties = {
@@ -1711,6 +1650,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                   fields={fields || []}
                                   tagName="span"
                                   textStyle={cellStyle}
+                                  isEditing={isCurrentTableEditing}
                                 />
                               </li>
                             </ul>
@@ -1737,21 +1677,22 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                   fields={fields || []}
                                   tagName="span"
                                   textStyle={cellStyle}
+                                  isEditing={isCurrentTableEditing}
                                 />
                               </li>
                             </ol>
                           );
                         }
                         // 链接样式
-                        if (cellStyle.linkUrl) {
+                        if (cellStyle.link) {
                           return (
                             <a 
-                              href={cellStyle.linkUrl} 
+                              href={cellStyle.link}
                               target="_blank" 
                               rel="noopener noreferrer"
-                              style={{ 
+                              style={{
                                 ...baseTextStyle,
-                                color: '#3b82f6', 
+                                color: '#3b82f6',
                                 textDecoration: 'underline',
                                 display: 'inline',
                               }}
@@ -1777,17 +1718,72 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                               fields={fields || []}
                               tagName="span"
                               textStyle={cellStyle}
+                              isEditing={isCurrentTableEditing}
                             />
                           </span>
                         );
                       };
 
+                      // 编辑模式 - 显示组件（可以悬停编辑）
+                      if (isCurrentTableEditing) {
+                        return renderContentWithStyle();
+                      }
+
+                      // 预览模式 - 显示纯文本
+                      // 为 textarea 构建样式（只应用影响文本显示的样式）
+                      const textareaStyles: React.CSSProperties = {
+                        fontSize: textStyles.fontSize,
+                        fontWeight: textStyles.fontWeight,
+                        fontStyle: textStyles.fontStyle,
+                        color: textStyles.color,
+                        textAlign: textStyles.textAlign,
+                        lineHeight: textStyles.lineHeight,
+                        textDecoration: textStyles.textDecoration,
+                        textTransform: textStyles.textTransform,
+                      };
+                      
+                      // 关键修复：容器 div 只做样式传递，不干扰高度计算
+                      const containerStyles = {
+                        // 只传递影响文本显示的样式，不传递可能影响高度的样式
+                        fontSize: textStyles.fontSize,
+                        fontWeight: textStyles.fontWeight,
+                        fontStyle: textStyles.fontStyle,
+                        color: textStyles.color,
+                        textAlign: textStyles.textAlign,
+                        lineHeight: textStyles.lineHeight,
+                        textDecoration: textStyles.textDecoration,
+                        textTransform: textStyles.textTransform,
+                        backgroundColor: textStyles.backgroundColor,
+                        // 确保容器不会限制高度
+                        minHeight: undefined,
+                        height: undefined,
+                        overflow: 'visible',
+                      };
+                      
                       return (
                         <div 
-                          className="whitespace-pre-wrap" 
-                          style={textStyles}
+                          className="w-full" 
+                          style={containerStyles}
+                          // 关键：防止容器 div 干扰键盘事件
+                          onKeyDown={(e) => e.stopPropagation()}
+                          onKeyUp={(e) => e.stopPropagation()}
+                          onKeyPress={(e) => e.stopPropagation()}
                         >
-                          {renderContentWithStyle()}
+                          <AutoResizingTextarea
+                            value={cellContent || ''}
+                            onChange={(value) => handleTableCellChange(rowIndex, colIndex, value)}
+                            onClick={(e) => {}} // AutoResizingTextarea 内部已处理冒泡
+                            onKeyDown={(e) => {
+                              // 只有单独的 Enter（不带 Shift）才阻止默认行为
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                              }
+                              // Shift+Enter、Delete、Backspace 等键：不阻止默认行为，正常编辑
+                              
+                              // 注意：e.stopPropagation() 已经在 AutoResizingTextarea 内部先调用了
+                            }}
+                            style={textareaStyles}
+                          />
                         </div>
                       );
                     })()}
