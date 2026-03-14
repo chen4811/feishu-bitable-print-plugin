@@ -6,9 +6,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useEditorStore } from '@/store/editorStore';
-import { Search, Copy, AlertCircle, Check, FileText, Hash, Calendar, List, Image, User } from 'lucide-react';
+import { Search, Copy, AlertCircle, Check, FileText, Hash, Calendar, List, Image, User, RefreshCw } from 'lucide-react';
 import { Field } from '@/types/editor';
 import { toast } from 'sonner';
+import { feishuEnv } from '@/lib/feishu-env';
 
 interface DataSourcePanelProps {
   onAddField?: (field: Field) => void;
@@ -46,13 +47,78 @@ export function DataSourcePanel({ onAddField }: DataSourcePanelProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'field' | 'system'>('field');
   const [copiedFieldId, setCopiedFieldId] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
-  const { fields, systemFields, isFeishuEnvironment } = useEditorStore();
+  const { fields, systemFields, isFeishuEnvironment, setFields, setRecords } = useEditorStore();
 
   // 过滤字段
   const filteredFields = (activeTab === 'field' ? fields : systemFields).filter(
     (field) => field.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  
+  // 🔥 【新增】手动刷新字段列表
+  const handleRefreshFields = async () => {
+    if (!isFeishuEnvironment) {
+      toast.error('不在飞书环境中，无法刷新');
+      return;
+    }
+    
+    setIsRefreshing(true);
+    try {
+      const fields = await feishuEnv.fetchFields();
+      
+      // 转换字段格式（添加 fieldKind）
+      const appFields = fields.map((field: any) => {
+        let fieldKind: Field['fieldKind'] = 'other';
+        const fieldType = String(field.type);
+        
+        if (fieldType === '17' || fieldType === 'attachment') {
+          fieldKind = 'attachment';
+        } else if (fieldType === '11' || fieldType === 'user' || fieldType === 'person') {
+          fieldKind = 'person';
+        } else if (fieldType === '1' || fieldType === 'text') {
+          fieldKind = 'text';
+        } else if (fieldType === '2' || fieldType === 'number') {
+          fieldKind = 'number';
+        } else if (fieldType === '5' || fieldType === 'date') {
+          fieldKind = 'date';
+        }
+        
+        return {
+          id: field.id,
+          name: field.name,
+          type: field.type,
+          placeholder: `[${field.name}]`,
+          isSystem: false,
+          fieldKind,
+        };
+      });
+      
+      setFields(appFields);
+      
+      // 同时刷新记录
+      const records = await feishuEnv.getSelectedRecords();
+      if (records.length > 0) {
+        const appRecords = records.map((record, index) => ({
+          id: record.id,
+          ...record.fields,
+          _rowIndex: index,
+        }));
+        setRecords(appRecords as Record<string, unknown>[]);
+      }
+      
+      toast.success('字段列表已刷新', {
+        description: `共 ${appFields.length} 个字段`,
+      });
+    } catch (error) {
+      console.error('刷新字段失败:', error);
+      toast.error('刷新失败', {
+        description: error instanceof Error ? error.message : '未知错误',
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   /**
    * 兼容 iframe 环境的复制函数
@@ -172,15 +238,27 @@ export function DataSourcePanel({ onAddField }: DataSourcePanelProps) {
         </div>
       )}
 
-      {/* 搜索 */}
-      <div className="relative">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="搜索字段..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-8 h-9"
-        />
+      {/* 搜索和刷新 */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="搜索字段..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8 h-9"
+          />
+        </div>
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-9 w-9 shrink-0"
+          onClick={handleRefreshFields}
+          disabled={isRefreshing || !isFeishuEnvironment}
+          title="刷新字段列表"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+        </Button>
       </div>
 
       {/* 标签切换 */}

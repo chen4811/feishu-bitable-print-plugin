@@ -102,6 +102,14 @@ export function EditorPage({ onExit }: EditorPageProps) {
     tableName: string | null;
     baseId: string | null;
   }>({ tableId: null, tableName: null, baseId: null });
+  
+  // 🔥 【关键】使用 ref 存储当前 tableId，确保回调中能访问最新值
+  const currentTableIdRef = useRef<string | null>(null);
+  
+  // 同步 ref 和 state
+  useEffect(() => {
+    currentTableIdRef.current = currentTableInfo.tableId;
+  }, [currentTableInfo.tableId]);
 
   const {
     templateName,
@@ -217,16 +225,87 @@ export function EditorPage({ onExit }: EditorPageProps) {
       // 设置点击行监听
       console.log('[EditorPage] 设置点击行监听...');
       const unsubscribe = feishuEnv.onSelectionChange(async (event) => {
-        console.log('[EditorPage] ======== 收到点击行事件 ========');
+        console.log('[EditorPage] ======== 收到选中变化事件 ========');
         console.log('[EditorPage] 事件数据:', event);
         
-        // 获取新的选中记录
+        const newTableId = event.data?.tableId;
+        const currentTableId = currentTableIdRef.current; // 使用 ref 获取最新值
+        
+        // 🔥 【关键修复】检测表格是否变化
+        if (newTableId && newTableId !== currentTableId) {
+          console.log('[EditorPage] 检测到表格变化:', { from: currentTableId, to: newTableId });
+          
+          try {
+            setFeishuLoading(true);
+            
+            // 获取新表格信息
+            const tableName = await feishuEnv.fetchTableName();
+            setCurrentTableInfo({
+              tableId: newTableId,
+              tableName: tableName,
+              baseId: event.data?.baseId || null,
+            });
+            
+            // 重新获取字段（带 fieldKind）
+            console.log('[EditorPage] 重新获取字段...');
+            const fields = await feishuEnv.fetchFields();
+            const appFields = fields.map((field: any) => {
+              let fieldKind: Field['fieldKind'] = 'other';
+              const fieldType = String(field.type);
+              
+              if (fieldType === '17' || fieldType === 'attachment') {
+                fieldKind = 'attachment';
+              } else if (fieldType === '11' || fieldType === 'user' || fieldType === 'person') {
+                fieldKind = 'person';
+              } else if (fieldType === '1' || fieldType === 'text') {
+                fieldKind = 'text';
+              } else if (fieldType === '2' || fieldType === 'number') {
+                fieldKind = 'number';
+              } else if (fieldType === '5' || fieldType === 'date') {
+                fieldKind = 'date';
+              }
+              
+              return {
+                id: field.id,
+                name: field.name,
+                type: field.type,
+                placeholder: `[${field.name}]`,
+                isSystem: false,
+                fieldKind,
+              };
+            });
+            setFeishuFields(fields);
+            setFields(appFields);
+            console.log('[EditorPage] 字段已刷新:', appFields);
+            
+            // 重新获取记录
+            const records = await feishuEnv.getSelectedRecords();
+            if (records.length > 0) {
+              const appRecords = records.map((record, index) => ({
+                id: record.id,
+                ...record.fields,
+                _rowIndex: index,
+              }));
+              setFeishuRecords(records);
+              setRecords(appRecords as unknown as Record<string, unknown>[]);
+            }
+            
+            setFeishuLoading(false);
+            console.log('[EditorPage] 表格切换完成，数据已刷新');
+          } catch (error) {
+            console.error('[EditorPage] 表格切换刷新数据失败:', error);
+            setFeishuLoading(false);
+          }
+          
+          return; // 表格变化已处理，不再执行下面的记录更新
+        }
+        
+        // 表格未变化，只更新记录
         try {
           const records = await feishuEnv.getSelectedRecords();
           console.log('[EditorPage] 获取到新的选中记录:', records);
           
           if (records.length > 0) {
-            // 转换记录格式
             const appRecords = records.map((record, index) => ({
               id: record.id,
               ...record.fields,
