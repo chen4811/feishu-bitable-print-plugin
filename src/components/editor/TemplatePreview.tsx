@@ -496,14 +496,15 @@ class AttachmentProcessor {
     fieldMetaList: any[],
     table: any
   ): Promise<Record<string, any>> {
-    const processedRecord = { ...record };
+    // 【关键修复】创建深拷贝，避免修改原始数据引用
+    const processedRecord = JSON.parse(JSON.stringify(record));
     
     // 查找附件类型字段（type === 17）
     const attachmentFieldMetas = fieldMetaList.filter(f => f.type === 17 || f.type === 'Attachment');
     
     console.log(`[AttachmentProcessor] 字段元数据总数: ${fieldMetaList.length}`);
     console.log(`[AttachmentProcessor] 附件字段元数据:`, attachmentFieldMetas.map(f => ({ id: f.id, name: f.name })));
-    console.log(`[AttachmentProcessor] 记录中的所有字段:`, Object.keys(record));
+    console.log(`[AttachmentProcessor] 记录中的所有字段:`, Object.keys(processedRecord));
     
     if (attachmentFieldMetas.length === 0) {
       console.log('[AttachmentProcessor] 记录中没有附件字段');
@@ -512,7 +513,8 @@ class AttachmentProcessor {
     
     console.log(`[AttachmentProcessor] 发现 ${attachmentFieldMetas.length} 个附件字段，开始处理...`);
     
-    // 收集所有附件处理Promise
+    // 【关键修复】收集所有附件处理Promise，使用数组记录处理结果
+    const processingResults: { fieldName: string; success: boolean; error?: string }[] = [];
     const processingPromises: Promise<void>[] = [];
     
     for (const fieldMeta of attachmentFieldMetas) {
@@ -520,9 +522,9 @@ class AttachmentProcessor {
       const fieldId = fieldMeta.id;
       
       // 尝试通过字段名或字段ID获取值
-      let fieldValue = record[fieldName];
+      let fieldValue = processedRecord[fieldName];
       if (fieldValue === undefined) {
-        fieldValue = record[fieldId];
+        fieldValue = processedRecord[fieldId];
       }
       
       console.log(`[AttachmentProcessor] 检查字段 "${fieldName}" (ID: ${fieldId}):`, 
@@ -543,20 +545,38 @@ class AttachmentProcessor {
         
         const processPromise = (async () => {
           try {
+            // 【关键修复】确保获取正确的记录ID
+            const recordId = processedRecord.id || processedRecord._sourceRecordId || processedRecord.recordId;
+            
+            if (!recordId) {
+              console.error(`[AttachmentProcessor] ❌ 无法获取记录ID用于处理附件字段 "${fieldName}"`);
+              processingResults.push({ fieldName, success: false, error: '缺少记录ID' });
+              return;
+            }
+            
             const htmlContent = await this.convertAttachmentFieldToHTML(
               fieldValue, 
               fieldId, 
-              record.id || record._sourceRecordId,
+              recordId,
               table
             );
             
-            // 存储处理后的HTML内容（使用原始字段名作为key）
+            // 【关键修复】存储处理后的HTML内容（使用原始字段名作为key）
             if (htmlContent) {
               processedRecord[fieldName] = htmlContent;
               processedRecord[`_${fieldName}_original`] = fieldValue; // 保留原始数据备用
-              console.log(`[AttachmentProcessor] ✅ 附件字段 "${fieldName}" 处理完成，已转换为HTML`);
+              processingResults.push({ fieldName, success: true });
+              console.log(`[AttachmentProcessor] ✅ 附件字段 "${fieldName}" 处理完成，已转换为HTML，长度: ${htmlContent.length}`);
+              
+              // 【关键修复】同时按字段ID存储一份，确保后续能通过ID访问
+              processedRecord[fieldId] = htmlContent;
+            } else {
+              processingResults.push({ fieldName, success: false, error: 'HTML内容为空' });
+              console.warn(`[AttachmentProcessor] ⚠️ 附件字段 "${fieldName}" 转换结果为空`);
             }
           } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            processingResults.push({ fieldName, success: false, error: errorMsg });
             console.error(`[AttachmentProcessor] ❌ 处理附件字段 "${fieldName}" 失败:`, error);
             // 保持原始数据，不影响其他字段
           }
@@ -564,18 +584,21 @@ class AttachmentProcessor {
         
         processingPromises.push(processPromise);
       } else if (fieldValue !== undefined) {
-        console.log(`[AttachmentProcessor] ⚠️ 字段 "${fieldName}" 不是附件格式`);
+        console.log(`[AttachmentProcessor] ⚠️ 字段 "${fieldName}" 不是附件格式，类型: ${typeof fieldValue}`);
       }
     }
     
     // 等待所有附件处理完成
     if (processingPromises.length > 0) {
       await Promise.allSettled(processingPromises);
-      console.log(`[AttachmentProcessor] 所有附件字段处理完成`);
+      const successCount = processingResults.filter(r => r.success).length;
+      console.log(`[AttachmentProcessor] 所有附件字段处理完成，成功: ${successCount}/${processingResults.length}`);
+      console.log(`[AttachmentProcessor] 处理结果详情:`, processingResults);
     } else {
       console.log(`[AttachmentProcessor] 没有需要处理的附件字段`);
     }
     
+    // 【关键修复】返回处理后的深拷贝对象
     return processedRecord;
   }
 }
@@ -1620,24 +1643,57 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     console.log('[TP] 选中记录变化:', selectedRecords.length, '条');
   }, [selectedRecords]);
 
-  // 监听 availableRecords 变化
+  // 监听 availableRecords 变化 - 增强版监控
   useEffect(() => {
     console.log('[TP] 可用记录变化:', availableRecords.length, '条');
     
     // 调试：检查每条记录的附件字段状态
     availableRecords.forEach((record, idx) => {
-      console.log(`[TP] 记录 ${idx} (${record.id}) 字段分析:`);
-      Object.entries(record).forEach(([key, value]) => {
-        // 检查是否是附件相关字段
-        if (key.includes('照片') || key.includes('附件') || key.includes('image') || key.includes('attachment')) {
+      console.group(`[TP] 记录 ${idx} (${record.id}) 字段分析:`);
+      
+      // 检查所有可能的附件字段
+      const attachmentFieldNames = Object.keys(record).filter(key => 
+        key.includes('照片') || 
+        key.includes('附件') || 
+        key.includes('image') || 
+        key.includes('attachment') ||
+        key.includes('图片')
+      );
+      
+      if (attachmentFieldNames.length === 0) {
+        console.log('  未发现附件相关字段');
+      } else {
+        console.log('  发现附件相关字段:', attachmentFieldNames);
+        
+        attachmentFieldNames.forEach(fieldName => {
+          const value = record[fieldName];
           const valueType = Array.isArray(value) ? 'array' : typeof value;
           const isHTML = typeof value === 'string' && value.includes('<img');
-          const preview = typeof value === 'string' 
-            ? value.substring(0, 100) + (value.length > 100 ? '...' : '')
-            : JSON.stringify(value).substring(0, 100);
-          console.log(`  - ${key}: 类型=${valueType}, 是HTML=${isHTML}, 内容预览=${preview}`);
-        }
-      });
+          const isDiv = typeof value === 'string' && value.includes('<div');
+          
+          console.log(`  📎 ${fieldName}:`);
+          console.log(`     类型: ${valueType}`);
+          console.log(`     是图片HTML: ${isHTML}`);
+          console.log(`     是DIV HTML: ${isDiv}`);
+          
+          if (isHTML) {
+            const imgCount = (value.match(/<img/g) || []).length;
+            console.log(`     图片数量: ${imgCount}`);
+            console.log(`     HTML长度: ${value.length}`);
+            console.log(`     ✅ 正确转换为HTML`);
+          } else if (Array.isArray(value)) {
+            console.log(`     ❌ 仍是数组格式，数据传递失败！`);
+            console.log(`     数组长度: ${value.length}`);
+            if (value.length > 0) {
+              console.log(`     第一项:`, value[0]);
+            }
+          } else if (typeof value === 'string') {
+            console.log(`     内容预览: ${value.substring(0, 100)}...`);
+          }
+        });
+      }
+      
+      console.groupEnd();
     });
     
     // 执行渲染验证
@@ -1650,7 +1706,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   const validateRendering = (record: Record<string, any>) => {
     const issues: string[] = [];
     
-    console.group('🔍 渲染验证报告');
+    console.group('🔍 渲染验证报告 - 数据传递层');
     
     if (!record) {
       issues.push('❌ 无记录数据');
@@ -1659,42 +1715,73 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       return issues;
     }
     
+    console.log('📋 记录基本信息:');
+    console.log('  - 记录ID:', record.id);
+    console.log('  - 源记录ID:', record._sourceRecordId);
+    console.log('  - 所有字段:', Object.keys(record));
+    
     // 检查所有字段
     Object.entries(record).forEach(([fieldName, fieldValue]) => {
       // 检查附件相关字段
-      if (fieldName.includes('照片') || fieldName.includes('附件') || fieldName.includes('image')) {
+      if (fieldName.includes('照片') || fieldName.includes('附件') || fieldName.includes('image') || fieldName.includes('attachment')) {
         console.log(`\n📎 检查附件字段: "${fieldName}"`);
         
         if (fieldValue === undefined || fieldValue === null) {
           issues.push(`❌ "${fieldName}" 字段为空`);
           console.log(`  ❌ 字段为空`);
         } else if (Array.isArray(fieldValue)) {
-          issues.push(`⚠️ "${fieldName}" 仍是数组格式，未转换为HTML`);
-          console.log(`  ⚠️ 仍是数组格式，未转换为HTML`);
-          console.log(`  内容:`, fieldValue);
+          // 【关键】检测是否仍是数组格式（未转换成功）
+          issues.push(`❌ "${fieldName}" 仍是数组格式，数据传递失败！`);
+          console.log(`  ❌ 仍是数组格式，数据传递失败！`);
+          console.log(`  数组长度:`, fieldValue.length);
+          console.log(`  数组内容:`, fieldValue.slice(0, 2));
         } else if (typeof fieldValue === 'string') {
-          if (fieldValue.includes('<img')) {
-            issues.push(`✅ "${fieldName}" 已转换为HTML（包含图片）`);
-            console.log(`  ✅ 已转换为HTML（包含图片）`);
+          // 检查是否是有效的HTML
+          const hasImgTag = fieldValue.includes('<img');
+          const hasDivTag = fieldValue.includes('<div');
+          
+          if (hasImgTag) {
+            issues.push(`✅ "${fieldName}" 已正确转换为HTML（包含图片）`);
+            console.log(`  ✅ 已正确转换为HTML（包含图片）`);
+            console.log(`  HTML长度: ${fieldValue.length}`);
             
             // 提取并测试所有图片URL
             testAllImageUrls(fieldValue).then(results => {
               const validCount = results.filter(r => r.valid).length;
               console.log(`  📊 ${validCount}/${results.length} 个URL有效`);
             });
+          } else if (hasDivTag) {
+            issues.push(`✅ "${fieldName}" 是HTML字符串（无图片）`);
+            console.log(`  ✅ 是HTML字符串（无图片）`);
+            console.log(`  HTML长度: ${fieldValue.length}`);
           } else {
-            issues.push(`⚠️ "${fieldName}" 是字符串但不包含图片`);
-            console.log(`  ⚠️ 是字符串但不包含图片`);
-            console.log(`  内容: ${fieldValue.substring(0, 100)}`);
+            issues.push(`⚠️ "${fieldName}" 是字符串但不是HTML`);
+            console.log(`  ⚠️ 是字符串但不是HTML`);
+            console.log(`  内容: ${fieldValue.substring(0, 200)}`);
           }
         } else {
-          issues.push(`❌ "${fieldName}"  unexpected type: ${typeof fieldValue}`);
-          console.log(`  ❌ unexpected type: ${typeof fieldValue}`);
+          issues.push(`❌ "${fieldName}" 类型异常: ${typeof fieldValue}`);
+          console.log(`  ❌ 类型异常: ${typeof fieldValue}`);
         }
       }
     });
     
-    console.log('\n📊 验证完成，发现问题:', issues.filter(i => i.startsWith('❌')).length);
+    // 统计结果
+    const successCount = issues.filter(i => i.startsWith('✅')).length;
+    const errorCount = issues.filter(i => i.startsWith('❌')).length;
+    const warningCount = issues.filter(i => i.startsWith('⚠️')).length;
+    
+    console.log('\n📊 验证统计:');
+    console.log(`  ✅ 成功: ${successCount}`);
+    console.log(`  ❌ 错误: ${errorCount}`);
+    console.log(`  ⚠️ 警告: ${warningCount}`);
+    
+    if (errorCount > 0) {
+      console.error('🔴 发现严重问题，需要修复数据传递！');
+    } else if (successCount > 0) {
+      console.log('🟢 数据传递正常，HTML已正确生成');
+    }
+    
     console.groupEnd();
     
     return issues;
@@ -1918,18 +2005,44 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       
       // 【精细化附件处理】处理记录中的附件字段
       console.log('[TP] 开始精细化处理附件字段...');
+      console.log('[TP] 处理前 formattedRecord.id:', formattedRecord.id);
+      console.log('[TP] 处理前 formattedRecord 字段列表:', Object.keys(formattedRecord));
+      
       const recordWithAttachments = await processRecordAttachments(
         formattedRecord, 
         fieldMetaList,
         table
       );
       
+      // 【关键验证】确保处理后的数据是新的对象
+      console.log('[TP] 处理后 recordWithAttachments.id:', recordWithAttachments.id);
+      console.log('[TP] 处理后 recordWithAttachments 字段列表:', Object.keys(recordWithAttachments));
+      console.log('[TP] 是同一引用?', formattedRecord === recordWithAttachments);
+      
+      // 检查照片字段是否被正确处理
+      const photoBefore = (formattedRecord as Record<string, any>)['照片'];
+      const photoAfter = (recordWithAttachments as Record<string, any>)['照片'];
+      console.log('[TP] 照片字段处理前类型:', Array.isArray(photoBefore) ? 'array' : typeof photoBefore);
+      console.log('[TP] 照片字段处理后类型:', typeof photoAfter);
+      console.log('[TP] 照片字段处理后是否为HTML:', typeof photoAfter === 'string' && photoAfter.includes('<img'));
+      
       // 【调试】测试附件字段 getAttachmentUrls API（保留用于对比）
       console.log('[TP] 开始调试附件字段...');
       await debugRecordAttachments(formattedRecord, fieldMetaList);
       
-      // 添加到列表（使用处理后的记录）
-      setAvailableRecords(prev => [...prev, recordWithAttachments]);
+      // 【关键修复】确保使用处理后的记录添加到列表
+      setAvailableRecords(prev => {
+        // 再次验证新记录是否已正确处理
+        const finalRecord = recordWithAttachments;
+        console.log('[TP] 添加到列表前的最终验证:');
+        console.log('  - 记录ID:', finalRecord.id);
+        console.log('  - 照片字段存在:', '照片' in finalRecord);
+        console.log('  - 照片字段类型:', typeof finalRecord['照片']);
+        console.log('  - 照片字段是HTML:', typeof finalRecord['照片'] === 'string' && finalRecord['照片'].includes('<img'));
+        
+        return [...prev, finalRecord];
+      });
+      
       console.log('[TP] 记录已添加到列表（含附件处理）');
       toast.success('已添加记录');
       
@@ -2031,24 +2144,35 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
               formattedRecords.map(async (record, idx) => {
                 console.log(`[TP] 处理记录 ${idx}:`, record.id);
                 try {
+                  // 【关键修复】确保每条记录都进行深拷贝处理
                   const result = await attachmentProcessor.processRecordAttachments(
                     record as Record<string, any>,
                     fieldMetaList,
                     table
-                  ) as typeof record;
+                  );
+                  
+                  // 【关键验证】验证处理结果
+                  const processedRecord = result as typeof record;
                   
                   // 检查附件字段是否被处理
                   attachmentFields.forEach(field => {
                     const originalValue = (record as Record<string, any>)[field.name];
-                    const processedValue = (result as Record<string, any>)[field.name];
-                    console.log(`[TP] 记录 ${idx} 字段 "${field.name}":`, 
-                      typeof originalValue === 'string' ? '已转为HTML' : '仍是原始数据',
-                      '原始类型:', Array.isArray(originalValue) ? 'array' : typeof originalValue,
-                      '处理后类型:', typeof processedValue
-                    );
+                    const processedValue = (processedRecord as Record<string, any>)[field.name];
+                    const isProcessed = typeof processedValue === 'string' && processedValue.includes('<img');
+                    const wasArray = Array.isArray(originalValue);
+                    
+                    console.log(`[TP] 记录 ${idx} 字段 "${field.name}":`, {
+                      isProcessed,
+                      wasArray,
+                      originalType: wasArray ? `array(${originalValue.length})` : typeof originalValue,
+                      processedType: typeof processedValue,
+                      isHTML: isProcessed,
+                      hasImages: typeof processedValue === 'string' && processedValue.includes('<img'),
+                      htmlLength: typeof processedValue === 'string' ? processedValue.length : 0
+                    });
                   });
                   
-                  return result;
+                  return processedRecord;
                 } catch (error) {
                   console.error(`[TP] 处理记录 ${idx} 附件失败:`, record.id, error);
                   return record; // 保持原始记录
@@ -2056,6 +2180,16 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
               })
             );
             console.log('[TP] ========== 附件字段处理完成 ==========');
+            
+            // 【关键验证】验证所有记录的处理结果
+            console.log('[TP] 验证所有记录的处理结果:');
+            processedRecords.forEach((record, idx) => {
+              attachmentFields.forEach(field => {
+                const value = (record as Record<string, any>)[field.name];
+                const isHTML = typeof value === 'string' && value.includes('<img');
+                console.log(`[TP] 最终验证 记录${idx} "${field.name}": 类型=${typeof value}, 是HTML=${isHTML}`);
+              });
+            });
           } else {
             console.warn('[TP] 无法获取 tableId，跳过附件处理');
           }
@@ -2073,9 +2207,12 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           let ignoredCount = 0;
           
           processedRecords.forEach(record => {
+            // 【关键修复】确保使用处理后的记录
+            const finalRecord = record;
+            
             // 获取所有可能的ID用于去重检查
-            const recordId = record.id;
-            const sourceRecordId = record._sourceRecordId;
+            const recordId = finalRecord.id;
+            const sourceRecordId = finalRecord._sourceRecordId;
             
             // 检查是否在忽略列表中（用户手动删除过）
             // 同时检查 id 和 _sourceRecordId
@@ -2098,12 +2235,19 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
             });
             
             if (!isDuplicate) {
-              newRecords.push(record);
+              // 【关键验证】验证附件字段是否正确传递
+              const photoField = (finalRecord as Record<string, any>)['照片'];
+              const isPhotoHTML = typeof photoField === 'string' && photoField.includes('<img');
+              
+              newRecords.push(finalRecord);
               addedCount++;
               console.log('[TP] 添加记录:', { 
                 id: recordId, 
                 sourceRecordId,
-                fields: Object.keys(record).filter(k => !k.startsWith('_') && k !== 'id').slice(0, 5)
+                fields: Object.keys(finalRecord).filter(k => !k.startsWith('_') && k !== 'id').slice(0, 5),
+                photoFieldType: typeof photoField,
+                isPhotoHTML: isPhotoHTML,
+                photoFieldLength: typeof photoField === 'string' ? photoField.length : 0
               });
             } else {
               skippedCount++;
@@ -3282,6 +3426,33 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
                 // 渲染单个数据页面的函数
                 const renderDataPage = (record: SelectedRecord, pageIndex: number, isLast: boolean) => {
+                  // 【渲染层数据监控】验证传递给渲染组件的数据
+                  if (record.data) {
+                    console.group(`🎨 [RenderMonitor] 渲染页面 ${pageIndex + 1}`);
+                    console.log('记录ID:', record.id);
+                    
+                    // 检查附件字段
+                    Object.entries(record.data).forEach(([key, value]) => {
+                      if (key.includes('照片') || key.includes('附件') || key.includes('image')) {
+                        const isHTML = typeof value === 'string' && value.includes('<img');
+                        const isArray = Array.isArray(value);
+                        console.log(`  📎 ${key}:`, {
+                          type: isArray ? 'array' : typeof value,
+                          isHTML,
+                          isArray,
+                          isCorrectlyProcessed: isHTML && !isArray
+                        });
+                        
+                        if (isArray) {
+                          console.error(`  ❌ 渲染前数据仍是数组！数据传递失败！`);
+                        } else if (isHTML) {
+                          console.log(`  ✅ 数据正确，HTML已就绪`);
+                        }
+                      }
+                    });
+                    console.groupEnd();
+                  }
+                  
                   return (
                     <div
                       key={record.id}
