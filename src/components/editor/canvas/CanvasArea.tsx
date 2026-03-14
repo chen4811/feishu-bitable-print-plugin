@@ -327,13 +327,15 @@ export function CanvasArea() {
             }}
             onClick={handleCanvasClick}
           >
-            {/* 使用 flex-wrap 实现并排 - 修复：移除 maxWidth 限制，允许内容溢出 */}
+            {/* 使用 flex-wrap 实现并排 - 修复：添加 overflowX visible 防止内容截断 */}
             <div
               id="canvas-grid"
               className="flex flex-wrap content-start gap-3"
               style={{ 
                 width: `${contentWidth}px`,
                 minHeight: `${contentHeight}px`,
+                overflowX: 'visible',
+                boxSizing: 'border-box',
               }}
             >
               <SortableContext

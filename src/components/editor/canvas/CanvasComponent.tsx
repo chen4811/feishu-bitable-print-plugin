@@ -1719,6 +1719,9 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 textDecoration: textComp.textStyle?.underline ? 'underline' : textComp.textStyle?.textDecoration || 'none',
                 textTransform: textComp.textStyle?.textTransform || 'none',
                 whiteSpace: 'pre-wrap',
+                wordWrap: 'break-word',        // ✅ 允许单词内换行
+                overflowWrap: 'anywhere',      // ✅ 更激进的换行策略
+                maxWidth: '100%',              // ✅ 不超过父容器
                 border: '1px solid transparent',
               }}
               onDoubleClick={(e) => e.stopPropagation()}
@@ -1776,6 +1779,9 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               textDecoration: textComp.textStyle?.underline ? 'underline' : textComp.textStyle?.textDecoration || 'none',
               textTransform: textComp.textStyle?.textTransform || 'none',
               whiteSpace: 'pre-wrap',
+              wordWrap: 'break-word',        // ✅ 允许单词内换行
+              overflowWrap: 'anywhere',      // ✅ 更激进的换行策略
+              maxWidth: '100%',              // ✅ 不超过父容器
               border: '1px solid transparent',
             }}
             onDoubleClick={handleDoubleClickText}

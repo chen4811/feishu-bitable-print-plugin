@@ -105,6 +105,8 @@ const PrintComponentRenderer = ({
         width: '100%',
         whiteSpace: 'pre-wrap',
         wordBreak: 'break-word',
+        overflowWrap: 'anywhere',      // ✅ 更激进的换行策略
+        maxWidth: '100%',              // ✅ 确保不超过父容器
       };
 
       // 标题样式
