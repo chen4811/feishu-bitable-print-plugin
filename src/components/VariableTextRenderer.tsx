@@ -106,8 +106,19 @@ export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
       console.log(`🖼️ [RENDER-VAR] 第一个元素:`, { name: rawValue[0]?.name, hasUrl: !!rawValue[0]?.url, url: rawValue[0]?.url?.substring(0, 50) });
     }
     
+    // 【关键修复】检测是否为 HTML 字符串（附件字段已转换为 HTML）
+    if (typeof rawValue === 'string' && (rawValue.includes('<img') || rawValue.includes('<div') || rawValue.includes('<a href'))) {
+      console.log(`🖼️ [RENDER-VAR] 字段 "${variable.fieldName}" 是 HTML 字符串，使用 dangerouslySetInnerHTML 渲染`);
+      parts.push(
+        <span 
+          key={`var-${index}`} 
+          className="inline-block"
+          dangerouslySetInnerHTML={{ __html: rawValue }}
+        />
+      );
+    }
     // 检测是否为附件字段（图片）
-    if (isAttachmentField(rawValue)) {
+    else if (isAttachmentField(rawValue)) {
       // 获取图片URL列表
       const imageUrls = getAttachmentImageUrls(rawValue);
       
