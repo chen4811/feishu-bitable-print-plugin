@@ -80,13 +80,11 @@ const enrichAttachmentUrls = async (
   
   const enrichedFields = { ...fields };
   
-  // 查找附件类型字段（类型ID为17或字符串'Attachment'）
-  const attachmentFields = fieldMetaList.filter(f => f.type === 17 || f.type === 'Attachment' || String(f.type).toLowerCase() === 'attachment');
+  // 查找附件类型字段（类型ID为17）
+  const attachmentFields = fieldMetaList.filter(f => f.type === 17);
   console.log('[EditorPage-Attachment] 找到附件字段数量:', attachmentFields.length);
-  console.log('[EditorPage-Attachment] 所有字段类型:', fieldMetaList.map(f => ({ name: f.name, type: f.type })));
   
   if (attachmentFields.length === 0) {
-    console.log('[EditorPage-Attachment] 没有附件字段，跳过处理');
     return enrichedFields;
   }
   
@@ -100,15 +98,12 @@ const enrichAttachmentUrls = async (
       const fieldId = fieldMeta.id;
       const fieldValue = enrichedFields[fieldName];
       
-      console.log(`[EditorPage-Attachment] 检查字段: ${fieldName}, 值类型: ${typeof fieldValue}, 是否数组: ${Array.isArray(fieldValue)}`);
-      
       // 检查字段值是否为附件数组
       if (!Array.isArray(fieldValue) || fieldValue.length === 0) {
-        console.log(`[EditorPage-Attachment] 字段 ${fieldName} 不是数组或为空，跳过`);
         continue;
       }
       
-      console.log(`[EditorPage-Attachment] 处理字段: ${fieldName} (ID: ${fieldId}), 包含 ${fieldValue.length} 个附件`);
+      console.log(`[EditorPage-Attachment] 处理字段: ${fieldName}, 包含 ${fieldValue.length} 个附件`);
       
       try {
         const field = await table.getField(fieldId);
@@ -119,26 +114,6 @@ const enrichAttachmentUrls = async (
         if (realUrls && realUrls.length > 0) {
           enrichedFields[fieldName] = fieldValue.map((item: any, index: number) => {
             const realUrl = realUrls[index] || '';
-            
-            // 【深度调试】检查 URL 完整性
-            if (!realUrl) {
-              console.error(`[EditorPage-Attachment] [${index}] ${item.name || item.fileName}: ❌ URL 为空!`);
-            } else {
-              const urlLen = realUrl.length;
-              const hasQueryParams = realUrl.includes('?');
-              const last20Chars = realUrl.slice(-20);
-              
-              console.log(`[EditorPage-Attachment] [${index}] ${item.name || item.fileName}:`);
-              console.log(`  - URL 长度: ${urlLen} (正常应 > 150)`);
-              console.log(`  - 包含参数(?): ${hasQueryParams}`);
-              console.log(`  - 后缀: ...${last20Chars}`);
-              
-              // 检查是否被截断（长度异常短）
-              if (urlLen < 100) {
-                console.warn(`[EditorPage-Attachment] [${index}] ⚠️ URL 长度异常短(${urlLen})，可能被截断!`);
-              }
-            }
-            
             return {
               ...item,
               url: realUrl,

@@ -217,47 +217,6 @@ const formatFieldValue = (key: string, value: any): string => {
 // ==================== 附件URL获取与处理函数 ====================
 
 /**
- * 手动拼接飞书附件预览URL（备选方案）
- * @param fileId 文件ID
- * @param tableId 表格ID
- * @param fieldId 字段ID
- * @param recordId 记录ID
- * @param fileToken 文件Token（可选）
- * @returns 拼接好的URL
- */
-const buildAttachmentUrl = (
-  fileId: string,
-  tableId: string,
-  fieldId: string,
-  recordId: string,
-  fileToken?: string
-): string => {
-  const baseUrl = "https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/preview";
-  
-  // 构造 extra 参数的原始 JSON 对象
-  const extraObj = {
-    bitablePerm: {
-      tableId: tableId,
-      rev: 1, // 使用固定版本，飞书通常会接受
-      attachments: {
-        [fieldId]: {
-          [recordId]: [fileId]
-        }
-      }
-    }
-  };
-
-  // 将 JSON 转为字符串并进行 URL 编码
-  const extraStr = encodeURIComponent(JSON.stringify(extraObj));
-
-  // 生成 version (使用当前时间戳)
-  const version = Date.now();
-
-  // 拼接最终 URL
-  return `${baseUrl}/${fileId}?extra=${extraStr}&mount_point=bitable&preview_type=16&version=${version}`;
-};
-
-/**
  * 为记录的附件字段获取真实的可访问URL
  * @param recordId 记录ID
  * @param tableId 表格ID
@@ -276,10 +235,9 @@ const enrichAttachmentUrls = async (
   
   const enrichedFields = { ...fields };
   
-  // 查找附件类型字段（类型ID为17或字符串'Attachment'）
-  const attachmentFields = fieldMetaList.filter(f => f.type === 17 || f.type === 'Attachment' || String(f.type).toLowerCase() === 'attachment');
+  // 查找附件类型字段（类型ID为17）
+  const attachmentFields = fieldMetaList.filter(f => f.type === 17);
   console.log('[AttachmentEnrich] 找到附件字段数量:', attachmentFields.length);
-  console.log('[AttachmentEnrich] 所有字段类型:', fieldMetaList.map(f => ({ name: f.name, type: f.type })));
   
   if (attachmentFields.length === 0) {
     console.log('[AttachmentEnrich] 没有附件字段，跳过处理');
@@ -296,11 +254,8 @@ const enrichAttachmentUrls = async (
       const fieldId = fieldMeta.id;
       const fieldValue = enrichedFields[fieldName];
       
-      console.log(`[AttachmentEnrich] 检查字段: ${fieldName}, 值类型: ${typeof fieldValue}, 是否数组: ${Array.isArray(fieldValue)}`);
-      
       // 检查字段值是否为附件数组
       if (!Array.isArray(fieldValue) || fieldValue.length === 0) {
-        console.log(`[AttachmentEnrich] 字段 ${fieldName} 不是数组或为空，跳过`);
         continue;
       }
       
@@ -320,33 +275,7 @@ const enrichAttachmentUrls = async (
           // 将真实URL注入到附件数据中
           enrichedFields[fieldName] = fieldValue.map((item: any, index: number) => {
             const realUrl = realUrls[index] || '';
-            
-            // 【深度调试】检查 URL 完整性
-            if (!realUrl) {
-              console.error(`[AttachmentEnrich] [${index}] ${item.name || item.fileName}: ❌ URL 为空!`);
-            } else {
-              const urlLen = realUrl.length;
-              const hasQueryParams = realUrl.includes('?');
-              const last20Chars = realUrl.slice(-20);
-              const first50Chars = realUrl.substring(0, 50);
-              
-              console.log(`[AttachmentEnrich] [${index}] ${item.name || item.fileName}:`);
-              console.log(`  - URL 长度: ${urlLen} (正常应 > 150)`);
-              console.log(`  - 包含参数(?): ${hasQueryParams}`);
-              console.log(`  - 前缀: ${first50Chars}...`);
-              console.log(`  - 后缀: ...${last20Chars}`);
-              
-              // 检查是否被截断（长度异常短）
-              if (urlLen < 100) {
-                console.warn(`[AttachmentEnrich] [${index}] ⚠️ URL 长度异常短(${urlLen})，可能被截断!`);
-              }
-              
-              // 测试图片加载
-              const testImg = new Image();
-              testImg.onload = () => console.log(`[AttachmentEnrich] [${index}] ✅ 图片加载测试成功`);
-              testImg.onerror = () => console.error(`[AttachmentEnrich] [${index}] ❌ 图片加载测试失败`);
-              testImg.src = realUrl;
-            }
+            console.log(`[AttachmentEnrich] [${index}] ${item.name || item.fileName}: 注入URL ${realUrl.substring(0, 50)}...`);
             
             return {
               ...item,
@@ -523,8 +452,6 @@ const formatFieldValueToHTML = (key: string, value: any, textStyle?: any): strin
             <img 
               src="${url}" 
               alt="${name}"
-              referrerpolicy="no-referrer"
-              crossorigin="anonymous"
               style="
                 max-width: 120px;
                 max-height: 120px;
@@ -577,8 +504,6 @@ const formatFieldValueToHTML = (key: string, value: any, textStyle?: any): strin
           <img 
             src="${url}" 
             alt="${name}"
-            referrerpolicy="no-referrer"
-            crossorigin="anonymous"
             style="
               max-width: 200px;
               max-height: 200px;
@@ -1100,8 +1025,6 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
                     <img
                       src={url}
                       alt={name}
-                      referrerPolicy="no-referrer"
-                      crossOrigin="anonymous"
                       style={{
                         maxWidth: '120px',
                         maxHeight: '120px',
@@ -1113,9 +1036,7 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
                         padding: '2px',
                         background: '#f9fafb',
                       }}
-                      onLoad={() => console.log(`✅ Image Loaded: ${name}`)}
                       onError={(e) => {
-                        console.error(`❌ Image Failed: ${name}`, e);
                         (e.target as HTMLImageElement).style.display = 'none';
                       }}
                     />
