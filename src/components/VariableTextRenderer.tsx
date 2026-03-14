@@ -49,14 +49,23 @@ function isAttachmentField(fieldName: string, records: any[], fields: Field[]): 
   
   const firstItem = value[0];
   
-  // 🔥 排除人员字段 (IOpenUser: 有 id+name，无 token)
-  if (firstItem && ('id' in firstItem) && ('name' in firstItem) && !('token' in firstItem)) {
+  // 🔥 排除人员字段 (IOpenUser: 有 id+name+avatar_url，无 fileToken/previewUrl 等文件属性)
+  // 人员字段可能有 token（飞书内部标识），但不能有文件相关属性
+  if (firstItem && ('id' in firstItem) && ('name' in firstItem) && ('avatar_url' in firstItem)) {
     return false;
   }
   
-  // 更严格的附件判断：必须包含 token 或特定的文件属性
+  // 进一步排除：如果对象包含 IOpenUser 特有的属性组合（但无文件属性）
+  if (firstItem && 
+      ('id' in firstItem) && 
+      ('name' in firstItem) && 
+      !('fileToken' in firstItem) && 
+      !('previewUrl' in firstItem)) {
+    return false;
+  }
+  
+  // 更严格的附件判断：必须包含文件相关的 token 或属性
   return firstItem && (
-    ('token' in firstItem && typeof firstItem.token === 'string') || 
     ('fileToken' in firstItem && typeof firstItem.fileToken === 'string') ||
     ('previewUrl' in firstItem && typeof firstItem.previewUrl === 'string')
   );
