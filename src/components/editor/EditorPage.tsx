@@ -119,6 +119,26 @@ const enrichAttachmentUrls = async (
         if (realUrls && realUrls.length > 0) {
           enrichedFields[fieldName] = fieldValue.map((item: any, index: number) => {
             const realUrl = realUrls[index] || '';
+            
+            // 【深度调试】检查 URL 完整性
+            if (!realUrl) {
+              console.error(`[EditorPage-Attachment] [${index}] ${item.name || item.fileName}: ❌ URL 为空!`);
+            } else {
+              const urlLen = realUrl.length;
+              const hasQueryParams = realUrl.includes('?');
+              const last20Chars = realUrl.slice(-20);
+              
+              console.log(`[EditorPage-Attachment] [${index}] ${item.name || item.fileName}:`);
+              console.log(`  - URL 长度: ${urlLen} (正常应 > 150)`);
+              console.log(`  - 包含参数(?): ${hasQueryParams}`);
+              console.log(`  - 后缀: ...${last20Chars}`);
+              
+              // 检查是否被截断（长度异常短）
+              if (urlLen < 100) {
+                console.warn(`[EditorPage-Attachment] [${index}] ⚠️ URL 长度异常短(${urlLen})，可能被截断!`);
+              }
+            }
+            
             return {
               ...item,
               url: realUrl,

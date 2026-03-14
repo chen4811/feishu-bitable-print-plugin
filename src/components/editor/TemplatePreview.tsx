@@ -279,7 +279,33 @@ const enrichAttachmentUrls = async (
           // 将真实URL注入到附件数据中
           enrichedFields[fieldName] = fieldValue.map((item: any, index: number) => {
             const realUrl = realUrls[index] || '';
-            console.log(`[AttachmentEnrich] [${index}] ${item.name || item.fileName}: 注入URL ${realUrl.substring(0, 50)}...`);
+            
+            // 【深度调试】检查 URL 完整性
+            if (!realUrl) {
+              console.error(`[AttachmentEnrich] [${index}] ${item.name || item.fileName}: ❌ URL 为空!`);
+            } else {
+              const urlLen = realUrl.length;
+              const hasQueryParams = realUrl.includes('?');
+              const last20Chars = realUrl.slice(-20);
+              const first50Chars = realUrl.substring(0, 50);
+              
+              console.log(`[AttachmentEnrich] [${index}] ${item.name || item.fileName}:`);
+              console.log(`  - URL 长度: ${urlLen} (正常应 > 150)`);
+              console.log(`  - 包含参数(?): ${hasQueryParams}`);
+              console.log(`  - 前缀: ${first50Chars}...`);
+              console.log(`  - 后缀: ...${last20Chars}`);
+              
+              // 检查是否被截断（长度异常短）
+              if (urlLen < 100) {
+                console.warn(`[AttachmentEnrich] [${index}] ⚠️ URL 长度异常短(${urlLen})，可能被截断!`);
+              }
+              
+              // 测试图片加载
+              const testImg = new Image();
+              testImg.onload = () => console.log(`[AttachmentEnrich] [${index}] ✅ 图片加载测试成功`);
+              testImg.onerror = () => console.error(`[AttachmentEnrich] [${index}] ❌ 图片加载测试失败`);
+              testImg.src = realUrl;
+            }
             
             return {
               ...item,
