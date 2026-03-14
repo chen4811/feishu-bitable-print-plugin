@@ -290,11 +290,274 @@ const debugRecordAttachments = async (record: any, fieldMetaList: any[]) => {
       fieldValue.forEach((item: any, idx: number) => {
         console.log(`[AttachmentDebug] [${idx}] name: ${item.name || item.fileName}`);
         console.log(`[AttachmentDebug] [${idx}] url: ${(item.url || item.fileUrl || '').substring(0, 100)}...`);
+        console.log(`[AttachmentDebug] [${idx}] token: ${item.token || '无 token'}`);
+        console.log(`[AttachmentDebug] [${idx}] type: ${item.type || item.mimeType || '未知类型'}`);
       });
     }
   }
 };
 // ==================== 附件URL调试函数结束 ====================
+
+// ==================== 精细化附件字段处理方案 ====================
+
+// 附件URL缓存 - 缓存时间略小于有效期（约10分钟）
+const attachmentUrlCache = new Map<string, { url: string; expiresAt: number }>();
+
+// 识别附件字段类型
+// 附件字段数据格式：[{name: 'xxx.jpg', url: '...', type: 'image/jpeg', token: '...'}, ...]
+const isAttachmentField = (fieldValue: any): boolean => {
+  if (!Array.isArray(fieldValue)) return false;
+  if (fieldValue.length === 0) return false;
+  
+  // 检查数组中的每一项是否都有附件特征属性
+  return fieldValue.every(item => 
+    item && typeof item === 'object' && 
+    ('token' in item || 'name' in item || 'url' in item || 'fileUrl' in item)
+  );
+};
+
+// 获取附件临时URL - 支持缓存
+async function getAttachmentUrlWithCache(
+  token: string, 
+  fieldId: string, 
+  recordId: string,
+  table: any
+): Promise<string | null> {
+  const cacheKey = `${token}-${fieldId}-${recordId}`;
+  
+  // 检查缓存
+  const cached = attachmentUrlCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    console.log(`[Attachment] 使用缓存的URL: ${token.substring(0, 20)}...`);
+    return cached.url;
+  }
+  
+  try {
+    // 获取附件字段对象
+    const attachmentField = await table.getField(fieldId);
+    
+    // 调用 getAttachmentUrl 方法获取临时URL
+    let url: string | null = null;
+    
+    // 方法1: 使用字段的 getAttachmentUrl 方法（如果可用）
+    if (typeof (attachmentField as any).getAttachmentUrl === 'function') {
+      url = await (attachmentField as any).getAttachmentUrl(token, recordId);
+      console.log(`[Attachment] 通过 getAttachmentUrl 获取到URL`);
+    }
+    // 方法2: 使用 getAttachmentUrls 批量获取
+    else if (typeof (attachmentField as any).getAttachmentUrls === 'function') {
+      const urls = await (attachmentField as any).getAttachmentUrls(recordId);
+      // 从返回的URL列表中找到对应的URL（这里假设按顺序对应）
+      const attachmentIndex = 0; // 需要根据token找到正确的索引
+      url = urls?.[attachmentIndex] || null;
+      console.log(`[Attachment] 通过 getAttachmentUrls 获取到URL`);
+    }
+    
+    if (url) {
+      // 缓存URL，设置9分钟过期（略小于飞书的有效期）
+      attachmentUrlCache.set(cacheKey, {
+        url,
+        expiresAt: Date.now() + 9 * 60 * 1000
+      });
+    }
+    
+    return url;
+  } catch (error) {
+    console.error(`[Attachment] 获取附件URL失败:`, { token: token.substring(0, 20), error });
+    return null;
+  }
+}
+
+// 获取所有附件的URL
+async function getAttachmentUrls(
+  attachments: any[], 
+  fieldId: string, 
+  recordId: string,
+  table: any
+): Promise<string[]> {
+  const urls: string[] = [];
+  
+  for (const attachment of attachments) {
+    try {
+      // 直接从附件数据中获取URL（如果已有）
+      const directUrl = attachment.url || attachment.fileUrl || attachment.tmpUrl;
+      if (directUrl && !directUrl.includes('expire')) {
+        // URL看起来是有效的，直接使用
+        urls.push(directUrl);
+        console.log(`[Attachment] 使用附件数据中的直接URL: ${attachment.name}`);
+        continue;
+      }
+      
+      // 如果有token，尝试获取临时URL
+      if (attachment.token) {
+        const tempUrl = await getAttachmentUrlWithCache(
+          attachment.token, 
+          fieldId, 
+          recordId,
+          table
+        );
+        if (tempUrl) {
+          urls.push(tempUrl);
+          console.log(`[Attachment] 通过API获取到临时URL: ${attachment.name}`);
+        } else {
+          // 降级：使用直接URL（即使可能已过期）
+          if (directUrl) {
+            urls.push(directUrl);
+            console.log(`[Attachment] 降级使用直接URL: ${attachment.name}`);
+          }
+        }
+      } else if (directUrl) {
+        // 没有token但有URL，直接使用
+        urls.push(directUrl);
+      }
+    } catch (error) {
+      console.warn(`[Attachment] 处理附件失败:`, attachment.name, error);
+    }
+  }
+  
+  return urls;
+}
+
+// 专用附件处理函数 - 转换为HTML字符串
+async function processAttachmentField(
+  attachmentData: any[], 
+  fieldId: string,
+  recordId: string,
+  table: any
+): Promise<string> {
+  if (!attachmentData || attachmentData.length === 0) return '';
+  
+  try {
+    // 获取附件临时URL
+    const urls = await getAttachmentUrls(attachmentData, fieldId, recordId, table);
+    
+    if (urls.length === 0) {
+      console.warn('[Attachment] 未获取到任何附件URL');
+      // 降级显示文件名列表
+      const fileNames = attachmentData
+        .map(a => a.name || a.fileName || '未命名附件')
+        .join(', ');
+      return `<span style="color: #6b7280; font-style: italic;">${fileNames}</span>`;
+    }
+    
+    // 转换为HTML字符串
+    const imagesHtml = urls.map((url, index) => {
+      const attachment = attachmentData[index] || {};
+      const name = attachment.name || attachment.fileName || `附件${index + 1}`;
+      
+      return `
+        <div style="
+          display: inline-block;
+          margin: 4px;
+          text-align: center;
+          vertical-align: top;
+        ">
+          <img 
+            src="${url}" 
+            alt="${name}"
+            style="
+              max-width: 120px;
+              max-height: 120px;
+              width: auto;
+              height: auto;
+              object-fit: contain;
+              border: 1px solid #e5e7eb;
+              border-radius: 4px;
+              padding: 2px;
+              background: #f9fafb;
+            "
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+          />
+          <div style="
+            display: none;
+            padding: 8px;
+            background: #f3f4f6;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #6b7280;
+            max-width: 120px;
+            word-break: break-word;
+          ">${name}</div>
+          <div style="
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 4px;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          ">${name}</div>
+        </div>
+      `;
+    }).join('');
+    
+    return `<div style="display: flex; flex-wrap: wrap; gap: 4px;">${imagesHtml}</div>`;
+  } catch (error) {
+    console.error('[Attachment] 处理附件字段失败:', error);
+    // 降级：显示文件名
+    const fileNames = attachmentData
+      .map(a => a.name || a.fileName || '未命名附件')
+      .join(', ');
+    return `<span style="color: #ef4444;">附件加载失败: ${fileNames}</span>`;
+  }
+}
+
+// 安全地处理记录中的附件字段 - 集成到数据处理流程
+async function processRecordAttachments(
+  record: Record<string, any>,
+  fieldMetaList: any[],
+  table: any
+): Promise<Record<string, any>> {
+  const processedRecord = { ...record };
+  
+  // 查找附件类型字段
+  const attachmentFieldMetas = fieldMetaList.filter(f => f.type === 17 || f.type === 'Attachment');
+  
+  if (attachmentFieldMetas.length === 0) {
+    console.log('[Attachment] 记录中没有附件字段');
+    return processedRecord;
+  }
+  
+  console.log(`[Attachment] 发现 ${attachmentFieldMetas.length} 个附件字段，开始处理...`);
+  
+  for (const fieldMeta of attachmentFieldMetas) {
+    const fieldName = fieldMeta.name;
+    const fieldId = fieldMeta.id;
+    const fieldValue = record[fieldName] || record[fieldId];
+    
+    // 识别并处理附件字段
+    if (isAttachmentField(fieldValue)) {
+      console.log(`[Attachment] 处理附件字段: ${fieldName} (${fieldValue.length} 个附件)`);
+      
+      try {
+        const htmlContent = await processAttachmentField(
+          fieldValue, 
+          fieldId, 
+          record.id || record._sourceRecordId,
+          table
+        );
+        
+        // 存储处理后的HTML内容
+        processedRecord[`_${fieldName}_html`] = htmlContent;
+        processedRecord[`_${fieldId}_html`] = htmlContent;
+        
+        console.log(`[Attachment] 附件字段 ${fieldName} 处理完成`);
+      } catch (error) {
+        console.error(`[Attachment] 处理附件字段 ${fieldName} 失败:`, error);
+        processedRecord[`_${fieldName}_html`] = '<span style="color: #ef4444;">附件处理失败</span>';
+      }
+    }
+  }
+  
+  return processedRecord;
+}
+
+// 从处理后的记录中获取附件的HTML内容
+function getAttachmentHtml(record: Record<string, any>, fieldName: string): string | null {
+  // 优先返回处理后的HTML
+  return record[`_${fieldName}_html`] || record[`_${fieldName}_html`] || null;
+}
+// ==================== 精细化附件字段处理方案结束 ====================
 
 // 格式化字段值为带样式的HTML（用于打印预览）
 const formatFieldValueToHTML = (key: string, value: any, textStyle?: any): string => {
@@ -336,7 +599,7 @@ const formatFieldValueToHTML = (key: string, value: any, textStyle?: any): strin
   }
   
   // 检查是否是图片附件
-  // 附件字段数据格式：[{name: 'xxx.jpg', url: '...', type: 'image/jpeg'}, ...]
+  // 附件字段数据格式：[{name: 'xxx.jpg', url: '...', type: 'image/jpeg', token: '...'}, ...]
   const isImageAttachment = (item: any): boolean => {
     if (typeof item !== 'object' || item === null) return false;
     const name = item.name || item.fileName || '';
@@ -349,68 +612,121 @@ const formatFieldValueToHTML = (key: string, value: any, textStyle?: any): strin
     return isImageByName || isImageByType;
   };
 
-  // 处理附件/图片字段
-  if (Array.isArray(value) && value.length > 0 && isImageAttachment(value[0])) {
-    // 生成图片网格 HTML
-    const imagesHtml = value
-      .filter((item: any) => isImageAttachment(item))
-      .map((item: any, index: number) => {
-        const url = item.url || item.fileUrl || '';
-        const name = item.name || item.fileName || `图片${index + 1}`;
-        if (!url) return '';
-        return `
-          <div style="
-            display: inline-block;
-            margin: 4px;
-            text-align: center;
-            vertical-align: top;
-          ">
-            <img 
-              src="${url}" 
-              alt="${name}"
-              style="
-                max-width: 120px;
-                max-height: 120px;
-                width: auto;
-                height: auto;
-                object-fit: contain;
-                border: 1px solid #e5e7eb;
-                border-radius: 4px;
-                padding: 2px;
-                background: #f9fafb;
-              "
-              onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
-            />
-            <div style="
-              display: none;
-              padding: 8px;
-              background: #f3f4f6;
-              border-radius: 4px;
-              font-size: 12px;
-              color: #6b7280;
-              max-width: 120px;
-              word-break: break-word;
-            ">${name}</div>
-            <div style="
-              font-size: 11px;
-              color: #6b7280;
-              margin-top: 4px;
-              max-width: 120px;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              white-space: nowrap;
-            ">${name}</div>
-          </div>
-        `;
-      })
-      .join('');
+  // 使用新的 isAttachmentField 函数识别附件字段
+  if (isAttachmentField(value)) {
+    // 优先检查是否有预处理好的HTML内容（通过 processRecordAttachments 处理）
+    const preprocessedHtml = (value as any)?._preprocessedHtml;
+    if (preprocessedHtml) {
+      return preprocessedHtml;
+    }
     
-    if (imagesHtml) {
-      return `<div style="display: flex; flex-wrap: wrap; gap: 4px;">${imagesHtml}</div>`;
+    // 如果没有预处理内容，使用现有的渲染逻辑
+    // 只处理图片附件
+    const imageAttachments = value.filter((item: any) => isImageAttachment(item));
+    
+    if (imageAttachments.length > 0) {
+      // 生成图片网格 HTML
+      const imagesHtml = imageAttachments
+        .map((item: any, index: number) => {
+          const url = item.url || item.fileUrl || item.tmpUrl || '';
+          const name = item.name || item.fileName || `图片${index + 1}`;
+          if (!url) return '';
+          return `
+            <div style="
+              display: inline-block;
+              margin: 4px;
+              text-align: center;
+              vertical-align: top;
+            ">
+              <img 
+                src="${url}" 
+                alt="${name}"
+                style="
+                  max-width: 120px;
+                  max-height: 120px;
+                  width: auto;
+                  height: auto;
+                  object-fit: contain;
+                  border: 1px solid #e5e7eb;
+                  border-radius: 4px;
+                  padding: 2px;
+                  background: #f9fafb;
+                "
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+              />
+              <div style="
+                display: none;
+                padding: 8px;
+                background: #f3f4f6;
+                border-radius: 4px;
+                font-size: 12px;
+                color: #6b7280;
+                max-width: 120px;
+                word-break: break-word;
+              ">${name}</div>
+              <div style="
+                font-size: 11px;
+                color: #6b7280;
+                margin-top: 4px;
+                max-width: 120px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+              ">${name}</div>
+            </div>
+          `;
+        })
+        .join('');
+      
+      if (imagesHtml) {
+        return `<div style="display: flex; flex-wrap: wrap; gap: 4px;">${imagesHtml}</div>`;
+      }
+    }
+    
+    // 非图片附件，显示文件名列表
+    const fileNames = value
+      .map((item: any) => item.name || item.fileName || '未命名附件')
+      .join(', ');
+    return `<span style="color: #6b7280;">${fileNames}</span>`;
+  }
+  
+  // 单个图片附件
+  if (!Array.isArray(value) && isImageAttachment(value)) {
+    const url = value.url || value.fileUrl || '';
+    const name = value.name || value.fileName || '图片';
+    if (url) {
+      return `
+        <div style="text-align: center;">
+          <img 
+            src="${url}" 
+            alt="${name}"
+            style="
+              max-width: 200px;
+              max-height: 200px;
+              width: auto;
+              height: auto;
+              object-fit: contain;
+              border: 1px solid #e5e7eb;
+              border-radius: 4px;
+              padding: 4px;
+              background: #f9fafb;
+            "
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+          />
+          <div style="
+            display: none;
+            padding: 8px;
+            background: #f3f4f6;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #6b7280;
+          ">${name}</div>
+        </div>
+      `;
     }
   }
-
-  // 单个图片附件
+  
+  // 检查是否是流程选项（有颜色信息）
   if (!Array.isArray(value) && isImageAttachment(value)) {
     const url = value.url || value.fileUrl || '';
     const name = value.name || value.fileName || '图片';
@@ -919,63 +1235,74 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
           // 获取字段值
           const fieldValue = data[varName];
           
-          // 检查是否是图片附件
-          if (Array.isArray(fieldValue) && fieldValue.length > 0 && 
-              fieldValue[0] && (fieldValue[0].url || fieldValue[0].fileUrl)) {
-            // 渲染图片网格
-            const images = fieldValue
-              .filter((item: any) => item && (item.url || item.fileUrl))
-              .map((item: any, idx: number) => {
-                const url = item.url || item.fileUrl;
-                const name = item.name || item.fileName || `图片${idx + 1}`;
-                return (
-                  <div 
-                    key={idx}
-                    style={{
-                      display: 'inline-block',
-                      margin: '4px',
-                      textAlign: 'center',
-                      verticalAlign: 'top',
-                    }}
-                  >
-                    <img
-                      src={url}
-                      alt={name}
+          // 使用新的 isAttachmentField 函数识别附件字段
+          if (isAttachmentField(fieldValue)) {
+            // 优先检查是否有预处理好的HTML内容
+            const preprocessedHtml = data[`_${varName}_html`];
+            if (preprocessedHtml) {
+              // 使用 dangerouslySetInnerHTML 渲染预处理好的HTML
+              parts.push(
+                <div 
+                  key={`img-${partIndex}`} 
+                  dangerouslySetInnerHTML={{ __html: preprocessedHtml }}
+                />
+              );
+            } else {
+              // 回退到直接渲染图片
+              const images = fieldValue
+                .filter((item: any) => item && (item.url || item.fileUrl || item.tmpUrl))
+                .map((item: any, idx: number) => {
+                  const url = item.url || item.fileUrl || item.tmpUrl;
+                  const name = item.name || item.fileName || `图片${idx + 1}`;
+                  return (
+                    <div 
+                      key={idx}
                       style={{
+                        display: 'inline-block',
+                        margin: '4px',
+                        textAlign: 'center',
+                        verticalAlign: 'top',
+                      }}
+                    >
+                      <img
+                        src={url}
+                        alt={name}
+                        style={{
+                          maxWidth: '120px',
+                          maxHeight: '120px',
+                          width: 'auto',
+                          height: 'auto',
+                          objectFit: 'contain',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '4px',
+                          padding: '2px',
+                          background: '#f9fafb',
+                        }}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                      <div style={{
+                        fontSize: '11px',
+                        color: '#6b7280',
+                        marginTop: '4px',
                         maxWidth: '120px',
-                        maxHeight: '120px',
-                        width: 'auto',
-                        height: 'auto',
-                        objectFit: 'contain',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '4px',
-                        padding: '2px',
-                        background: '#f9fafb',
-                      }}
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                    <div style={{
-                      fontSize: '11px',
-                      color: '#6b7280',
-                      marginTop: '4px',
-                      maxWidth: '120px',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}>
-                      {name}
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {name}
+                      </div>
                     </div>
-                  </div>
-                );
-              });
-            
-            parts.push(
-              <div key={`img-${partIndex}`} style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                {images}
-              </div>
-            );
+                  );
+                });
+              
+              parts.push(
+                <div key={`img-${partIndex}`} style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                  {images}
+                </div>
+              );
+            }
           } else {
             // 普通字段，使用变量替换后的值
             parts.push(
@@ -1404,13 +1731,21 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       
       console.log('[TP] 最终格式化记录:', formattedRecord);
       
-      // 【调试】测试附件字段 getAttachmentUrls API
+      // 【精细化附件处理】处理记录中的附件字段
+      console.log('[TP] 开始精细化处理附件字段...');
+      const recordWithAttachments = await processRecordAttachments(
+        formattedRecord, 
+        fieldMetaList,
+        table
+      );
+      
+      // 【调试】测试附件字段 getAttachmentUrls API（保留用于对比）
       console.log('[TP] 开始调试附件字段...');
       await debugRecordAttachments(formattedRecord, fieldMetaList);
       
-      // 添加到列表
-      setAvailableRecords(prev => [...prev, formattedRecord]);
-      console.log('[TP] 记录已添加到列表');
+      // 添加到列表（使用处理后的记录）
+      setAvailableRecords(prev => [...prev, recordWithAttachments]);
+      console.log('[TP] 记录已添加到列表（含附件处理）');
       toast.success('已添加记录');
       
     } catch (err) {
