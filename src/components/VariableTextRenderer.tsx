@@ -16,15 +16,24 @@ import { AttachmentVariableConfig } from '@/components/editor/variables';
 
 // 判断是否为附件字段（使用预存的 fieldKind 优先）
 function isAttachmentField(fieldName: string, records: any[], fields: Field[]): boolean {
+  console.log('[isAttachmentField] ====== 开始判断 ======', { fieldName, fieldsCount: fields.length });
+  
+  // 显示所有字段信息
+  console.log('[isAttachmentField] 所有字段:', fields.map(f => ({ name: f.name, id: f.id, type: f.type, fieldKind: f.fieldKind })));
+  
   // 🔥 【核心修复】优先使用预存的 fieldKind（在字段获取时确定）
   const field = fields.find(f => f.name === fieldName || f.id === fieldName);
+  console.log('[isAttachmentField] 查找字段结果:', { fieldName, found: !!field, field });
   
   if (field?.fieldKind) {
+    console.log('[isAttachmentField] 使用 fieldKind:', field.fieldKind);
     // 如果预存了 fieldKind，直接使用（最可靠）
     if (field.fieldKind === 'attachment') {
+      console.log('[isAttachmentField] => true (fieldKind=attachment)');
       return true;
     }
     if (field.fieldKind === 'person' || field.fieldKind === 'text' || field.fieldKind === 'number') {
+      console.log('[isAttachmentField] => false (fieldKind=' + field.fieldKind + ')');
       return false;
     }
   }
@@ -32,9 +41,11 @@ function isAttachmentField(fieldName: string, records: any[], fields: Field[]): 
   // 其次使用字段元数据中的 type 判断
   if (field) {
     const fieldType = field.type;
+    console.log('[isAttachmentField] 使用 field.type:', fieldType);
     
     // 飞书附件字段类型为 'attachment' 或 '17'
     if (fieldType === 'attachment' || String(fieldType) === '17') {
+      console.log('[isAttachmentField] => true (type=attachment/17)');
       return true;
     }
     
@@ -47,19 +58,29 @@ function isAttachmentField(fieldName: string, records: any[], fields: Field[]): 
     ];
     
     if (nonAttachmentTypes.includes(fieldType) || nonAttachmentTypes.includes(String(fieldType))) {
+      console.log('[isAttachmentField] => false (non-attachment type)');
       return false;
     }
   }
   
   // 如果没有字段元数据，回退到值判断（兜底逻辑）
-  if (!records || records.length === 0) return false;
+  console.log('[isAttachmentField] 回退到值判断');
+  if (!records || records.length === 0) {
+    console.log('[isAttachmentField] => false (no records)');
+    return false;
+  }
   
   const record = records[0];
   const value = record[fieldName] || record.fields?.[fieldName];
+  console.log('[isAttachmentField] 值判断:', { fieldName, hasValue: !!value, isArray: Array.isArray(value) });
   
-  if (!Array.isArray(value) || value.length === 0) return false;
+  if (!Array.isArray(value) || value.length === 0) {
+    console.log('[isAttachmentField] => false (not array or empty)');
+    return false;
+  }
   
   const firstItem = value[0];
+  console.log('[isAttachmentField] 第一个元素:', firstItem);
   
   // 🔥 【修复】排除人员字段：有 id+name，无 fileToken/previewUrl
   // 人员字段特征：id 以 'ou_' 开头（飞书用户ID），有 name，可能有 enName/en_name
@@ -69,27 +90,34 @@ function isAttachmentField(fieldName: string, records: any[], fields: Field[]): 
     const hasEnName = 'enName' in firstItem || 'en_name' in firstItem;
     const hasFileToken = 'fileToken' in firstItem || ('token' in firstItem && firstItem.permission);
     
+    console.log('[isAttachmentField] 详细检查:', { id, hasEnName, hasFileToken, idStartsWithOu: id.startsWith('ou_') });
+    
     // 如果有 enName/en_name，说明是人员字段
     if (hasEnName) {
+      console.log('[isAttachmentField] => false (has enName/en_name)');
       return false;
     }
     
     // 如果有 fileToken 或 permission（附件特有），说明是附件
     if (hasFileToken) {
+      console.log('[isAttachmentField] => true (has fileToken/permission)');
       return true;
     }
     
     // id 以 'ou_' 开头是飞书用户ID，说明是人员字段
     if (id.startsWith('ou_')) {
+      console.log('[isAttachmentField] => false (id starts with ou_)');
       return false;
     }
   }
   
   // 附件判断：必须有文件相关属性
-  return firstItem && (
+  const result = firstItem && (
     ('fileToken' in firstItem && typeof firstItem.fileToken === 'string') ||
     ('previewUrl' in firstItem && typeof firstItem.previewUrl === 'string')
   );
+  console.log('[isAttachmentField] =>', result, '(by fileToken/previewUrl)');
+  return result;
 }
 
 // 获取附件数据
