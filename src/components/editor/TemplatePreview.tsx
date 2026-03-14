@@ -1194,9 +1194,10 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
           }
           // 【情景 C】普通字段
           else {
-            const value = fieldValue !== undefined && fieldValue !== null ? String(fieldValue) : '';
+            // 使用 replaceVariables 正确处理对象值（会调用 formatFieldValue）
+            const replacedValue = replaceVariables(match[0], data);
             parts.push(
-              <span key={`var-${partIndex}`}>{value}</span>
+              <span key={`var-${partIndex}`}>{replacedValue}</span>
             );
           }
           
