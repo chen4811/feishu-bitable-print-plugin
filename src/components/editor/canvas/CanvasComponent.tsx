@@ -146,6 +146,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     deleteComponent,
     tableEditing,
     setTableEditing,
+    tableCellEditing,
     setTableCellEditing,
     records,
     fields,
@@ -1779,7 +1780,58 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                         );
                       };
 
-                      // 编辑模式 - 显示组件（可以悬停编辑）
+                      // 判断当前单元格是否处于编辑状态
+                      const isCurrentCellEditing = tableCellEditing.isEditing && 
+                        tableCellEditing.tableId === component.id &&
+                        tableCellEditing.cellId === cellId;
+
+                      // 当前单元格处于编辑状态 - 显示 textarea
+                      if (isCurrentCellEditing) {
+                        return (
+                          <AutoResizingTextarea
+                            value={cellContent || ''}
+                            onChange={(value) => handleTableCellChange(rowIndex, colIndex, value)}
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => {
+                              // Escape 退出单元格编辑
+                              if (e.key === 'Escape') {
+                                e.preventDefault();
+                                setTableCellEditing({
+                                  isEditing: false,
+                                  tableId: null,
+                                  cellId: null,
+                                  rowIndex: null,
+                                  colIndex: null,
+                                });
+                              }
+                              // Enter 保存并退出（Shift+Enter 换行）
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                setTableCellEditing({
+                                  isEditing: false,
+                                  tableId: null,
+                                  cellId: null,
+                                  rowIndex: null,
+                                  colIndex: null,
+                                });
+                              }
+                            }}
+                            onPaste={handlePaste}
+                            style={{
+                              fontSize: `${cellStyle.fontSize || styleConfig.fontSize}px`,
+                              fontWeight: cellStyle.bold ? 'bold' : 'normal',
+                              fontStyle: cellStyle.italic ? 'italic' : 'normal',
+                              color: cellStyle.color || '#000000',
+                              backgroundColor: 'transparent',
+                              textAlign: cellStyle.align || 'left',
+                              lineHeight: cellStyle.lineHeight || styleConfig.lineHeight,
+                              textDecoration: cellStyle.underline ? 'underline' : cellStyle.textDecoration || 'none',
+                            }}
+                          />
+                        );
+                      }
+
+                      // 表格编辑模式但当前单元格不处于编辑状态 - 显示变量标签
                       if (isCurrentTableEditing) {
                         return renderContentWithStyle();
                       }
