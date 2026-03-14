@@ -357,18 +357,19 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       return;
     }
     
-    // 记录鼠标按下位置
+    // 记录鼠标按下位置和时间
     mouseDownPositionRef.current = { x: e.clientX, y: e.clientY };
     
-    // 先关闭单元格编辑状态，避免 textarea 干扰选择
-    setTableCellEditing({
-      isEditing: false,
-      tableId: null,
-      cellId: null,
-      rowIndex: null,
-      colIndex: null,
-      cellStyle: {},
-    });
+    // 先关闭单元格编辑状态（如果有其他单元格在编辑）
+    if (tableCellEditing.isEditing) {
+      setTableCellEditing({
+        isEditing: false,
+        tableId: null,
+        cellId: null,
+        rowIndex: null,
+        colIndex: null,
+      });
+    }
     
     // 先选中当前单元格
     const cellId = (component as any).tableConfig?.cells?.[rowIndex]?.[colIndex]?.id || `cell-${rowIndex}-${colIndex}`;
@@ -376,7 +377,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       selectedCells: [cellId],
     });
     
-    // 设置选择开始
+    // 设置选择开始（但不立即标记为正在选择，等待 mouseMove 触发）
     const tableComp = component as any;
     tableDataRef.current = { tableComp };
     
@@ -385,14 +386,26 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       startCol: colIndex,
       endRow: rowIndex,
       endCol: colIndex,
-      isSelecting: true,
+      isSelecting: false, // 先不标记为正在选择
     });
   };
 
   // 处理单元格鼠标移动
   const handleCellMouseMove = (rowIndex: number, colIndex: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isCurrentTableEditing || !cellSelection.isSelecting) {
+    if (!isCurrentTableEditing) {
+      return;
+    }
+    
+    // 如果还没有开始选择，但鼠标已经移动，则标记为开始选择
+    if (!cellSelection.isSelecting && cellSelection.startRow !== null) {
+      setCellSelection(prev => ({
+        ...prev,
+        isSelecting: true,
+      }));
+    }
+    
+    if (!cellSelection.isSelecting) {
       return;
     }
     
@@ -1540,8 +1553,28 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       onMouseEnter={(e) => handleCellMouseMove(rowIndex, colIndex, e)}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (isCurrentTableEditing && !cellSelection.isSelecting) {
-                          // 只有在没有选择进行中时才进入编辑模式
+                        if (isCurrentTableEditing) {
+                          // 如果当前单元格已经在编辑中，不做任何操作
+                          const isCurrentCellEditing = tableCellEditing.isEditing && 
+                            tableCellEditing.tableId === component.id &&
+                            tableCellEditing.cellId === cellId;
+                          
+                          if (isCurrentCellEditing) {
+                            return;
+                          }
+                          
+                          // 关闭之前的单元格编辑状态
+                          if (tableCellEditing.isEditing) {
+                            setTableCellEditing({
+                              isEditing: false,
+                              tableId: null,
+                              cellId: null,
+                              rowIndex: null,
+                              colIndex: null,
+                            });
+                          }
+                          
+                          // 进入当前单元格编辑模式
                           setTableEditing({
                             selectedCells: [cellId],
                           });
