@@ -19,23 +19,6 @@ const AutoResizingTextarea = ({
   style?: React.CSSProperties;
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const componentId = useRef(`textarea-${Math.random().toString(36).substr(2, 9)}`);
-
-  // 自动调整高度
-  const adjustHeight = useCallback(() => {
-    if (textareaRef.current) {
-      // 关键修复：先重置高度，然后精确计算
-      textareaRef.current.style.height = '0px'; // 强制重置为0，确保scrollHeight计算准确
-      
-      // 获取真实的内容高度
-      const contentHeight = textareaRef.current.scrollHeight;
-      
-      // 设置最小高度为24px，最大高度不做限制（让表格自然扩展）
-      const newHeight = Math.max(contentHeight, 24);
-      
-      textareaRef.current.style.height = `${newHeight}px`;
-    }
-  }, [value]);
 
   // 处理点击事件，确保阻止冒泡
   const handleClick = useCallback((e: React.MouseEvent) => {
@@ -45,51 +28,25 @@ const AutoResizingTextarea = ({
 
   // 处理键盘事件 - 先阻止冒泡，再调用外部处理
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    // 先阻止冒泡，构建事件防火墙，防止任何事件逃逸到父组件
     e.stopPropagation();
-    
-    // 再调用外部传入的 onKeyDown（它会处理单独 Enter 的默认行为阻止）
     onKeyDown(e);
-    
-    // 注意：默认行为由外部 onKeyDown 决定是否阻止
   }, [onKeyDown]);
-
-  // 处理 KeyUp 事件 - 阻止冒泡
-  const handleKeyUp = useCallback((e: React.KeyboardEvent) => {
-    e.stopPropagation();
-  }, []);
-
-  // 处理 KeyPress 事件 - 阻止冒泡
-  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
-    e.stopPropagation();
-  }, []);
 
   // 处理变化事件
   const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onChange(e.target.value);
   }, [onChange]);
 
-  // 内容变化时调整高度
-  useEffect(() => {
-    adjustHeight();
-  }, [value]); // 移除 adjustHeight 依赖，避免循环调用
-
-  // 组件挂载时调整高度
-  useEffect(() => {
-    adjustHeight();
-  }, []); // 只在挂载时执行一次
-
-  // 监听输入事件，实时调整高度
+  // 自动调整高度 - 使用 requestAnimationFrame 避免干扰输入
   useEffect(() => {
     const textarea = textareaRef.current;
     if (textarea) {
-      const handleInputEvent = () => {
-        adjustHeight();
-      };
-      textarea.addEventListener('input', handleInputEvent);
-      return () => textarea.removeEventListener('input', handleInputEvent);
+      requestAnimationFrame(() => {
+        textarea.style.height = 'auto';
+        textarea.style.height = `${Math.max(textarea.scrollHeight, 24)}px`;
+      });
     }
-  }, []); // 只在挂载时设置一次监听器
+  }, [value]);
 
   return (
     <textarea
@@ -98,17 +55,14 @@ const AutoResizingTextarea = ({
       onChange={handleChange}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      onKeyUp={handleKeyUp}
-      onKeyPress={handleKeyPress}
       onPaste={onPaste}
       className="w-full border-0 outline-none resize-none overflow-hidden"
       style={{ 
-        height: '24px', // 初始高度设为24px，由 adjustHeight 动态调整
         minHeight: '24px',
         backgroundColor: 'transparent',
-        padding: '4px', // 稍微增加一点 padding，避免文本紧贴边缘
-        boxSizing: 'border-box', // 确保 padding 包含在高度计算中
-        lineHeight: '1.5', // 确保行高稳定
+        padding: '4px',
+        boxSizing: 'border-box',
+        lineHeight: '1.5',
         ...style,
       }}
     />
@@ -360,17 +314,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     // 记录鼠标按下位置和时间
     mouseDownPositionRef.current = { x: e.clientX, y: e.clientY };
     
-    // 先关闭单元格编辑状态（如果有其他单元格在编辑）
-    if (tableCellEditing.isEditing) {
-      setTableCellEditing({
-        isEditing: false,
-        tableId: null,
-        cellId: null,
-        rowIndex: null,
-        colIndex: null,
-      });
-    }
-    
     // 先选中当前单元格
     const cellId = (component as any).tableConfig?.cells?.[rowIndex]?.[colIndex]?.id || `cell-${rowIndex}-${colIndex}`;
     setTableEditing({
@@ -600,6 +543,73 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     }
   }, [records, attachmentConfigs, editContent]);
 
+  // 处理表格单元格粘贴事件 - 检测所有字段变量
+  const handleCellPaste = useCallback((rowIndex: number, colIndex: number) => (e: React.ClipboardEvent) => {
+    // 获取粘贴的文本内容
+    const pastedText = e.clipboardData.getData('text');
+    
+    if (!pastedText) return;
+    
+    // 提取变量
+    const variables = extractVariables(pastedText);
+    
+    if (variables.length === 0) {
+      // 没有变量，允许默认粘贴行为
+      return;
+    }
+    
+    // 有变量，阻止默认粘贴行为，手动处理
+    e.preventDefault();
+    
+    // 获取当前单元格内容
+    const currentContent = tableEditData[rowIndex]?.[colIndex] || '';
+    
+    // 处理每个变量
+    let newContent = currentContent;
+    const attachmentFields: string[] = [];
+    
+    variables.forEach(fieldName => {
+      // 检查是否为附件字段
+      if (records && records.length > 0) {
+        const record = records[0] as any;
+        const value = record[fieldName] || record.fields?.[fieldName];
+        
+        if (Array.isArray(value) && value.length > 0) {
+          const firstItem = value[0];
+          if (firstItem && (
+            'token' in firstItem || 
+            'name' in firstItem || 
+            'type' in firstItem ||
+            'url' in firstItem
+          )) {
+            attachmentFields.push(fieldName);
+          }
+        }
+      }
+      
+      // 将变量插入到内容中（使用 [字段名] 格式）
+      newContent += `[${fieldName}]`;
+    });
+    
+    // 更新单元格内容
+    handleTableCellChange(rowIndex, colIndex, newContent);
+    
+    // 如果有附件字段且没有配置，打开配置弹窗（只处理第一个）
+    if (attachmentFields.length > 0) {
+      const firstAttachmentField = attachmentFields[0];
+      const existingConfig = attachmentConfigs[firstAttachmentField];
+      
+      if (!existingConfig) {
+        setAttachmentDialogField(firstAttachmentField);
+        setAttachmentDialogOpen(true);
+      }
+      
+      if (attachmentFields.length > 1) {
+        toast.info(`检测到 ${attachmentFields.length} 个附件字段，请先配置第一个`);
+      }
+    }
+  }, [records, attachmentConfigs, tableEditData]);
+
   // 处理附件变量配置确认
   const handleAttachmentConfirm = useCallback((config: AttachmentVariableConfig) => {
     // 保存配置到 store
@@ -701,11 +711,16 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   };
 
   // 表格单元格编辑
-  const handleTableCellChange = (row: number, col: number, value: string) => {
-    const newData = [...tableEditData];
-    newData[row] = [...newData[row]];
-    newData[row][col] = value;
-    setTableEditData(newData);
+  const handleTableCellChange = useCallback((row: number, col: number, value: string) => {
+    // 使用函数式更新确保状态同步
+    setTableEditData(prevData => {
+      const newData = [...prevData];
+      if (newData[row]) {
+        newData[row] = [...newData[row]];
+        newData[row][col] = value;
+      }
+      return newData;
+    });
     
     const tableComp = component as any;
     if (tableComp.tableConfig?.cells) {
@@ -731,7 +746,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         },
       });
     }
-  };
+  }, [component.id, updateComponent]);
 
   // ========== 表格行/列操作核心逻辑 ==========
   
@@ -1553,39 +1568,29 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       onMouseEnter={(e) => handleCellMouseMove(rowIndex, colIndex, e)}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (isCurrentTableEditing) {
-                          // 如果当前单元格已经在编辑中，不做任何操作
-                          const isCurrentCellEditing = tableCellEditing.isEditing && 
-                            tableCellEditing.tableId === component.id &&
-                            tableCellEditing.cellId === cellId;
-                          
-                          if (isCurrentCellEditing) {
-                            return;
-                          }
-                          
-                          // 关闭之前的单元格编辑状态
-                          if (tableCellEditing.isEditing) {
-                            setTableCellEditing({
-                              isEditing: false,
-                              tableId: null,
-                              cellId: null,
-                              rowIndex: null,
-                              colIndex: null,
-                            });
-                          }
-                          
-                          // 进入当前单元格编辑模式
-                          setTableEditing({
-                            selectedCells: [cellId],
-                          });
-                          setTableCellEditing({
-                            isEditing: true,
-                            tableId: component.id,
-                            cellId,
-                            rowIndex,
-                            colIndex,
-                          });
+                        if (!isCurrentTableEditing) return;
+                        
+                        // 检查当前单元格是否已经在编辑中
+                        const isCurrentCellAlreadyEditing = tableCellEditing.isEditing && 
+                          tableCellEditing.tableId === component.id &&
+                          tableCellEditing.cellId === cellId;
+                        
+                        // 如果已经在编辑中，不做任何操作
+                        if (isCurrentCellAlreadyEditing) {
+                          return;
                         }
+                        
+                        // 直接进入当前单元格编辑模式（会自动关闭其他单元格的编辑）
+                        setTableEditing({
+                          selectedCells: [cellId],
+                        });
+                        setTableCellEditing({
+                          isEditing: true,
+                          tableId: component.id,
+                          cellId,
+                          rowIndex,
+                          colIndex,
+                        });
                       }}
                     >
                     {(() => {
@@ -1849,7 +1854,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                 });
                               }
                             }}
-                            onPaste={handlePaste}
+                            onPaste={handleCellPaste(rowIndex, colIndex)}
                             style={{
                               fontSize: `${cellStyle.fontSize || styleConfig.fontSize}px`,
                               fontWeight: cellStyle.bold ? 'bold' : 'normal',
