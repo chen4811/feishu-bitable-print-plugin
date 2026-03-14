@@ -4,6 +4,8 @@ export type { AttachmentVariableConfig } from './AttachmentVariable';
 
 export { AttachmentVariableTag } from './AttachmentVariableTag';
 
+export { TextVariableTag } from './TextVariableTag';
+
 export { InsertAttachmentDialog } from './InsertAttachmentDialog';
 
 export { 

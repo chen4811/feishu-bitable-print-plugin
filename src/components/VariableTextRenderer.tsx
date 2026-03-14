@@ -4,6 +4,7 @@ import React from 'react';
 import { VariableChip } from './VariableChip';
 import { AttachmentVariableChip } from './AttachmentVariableChip';
 import { AttachmentVariableTag } from '@/components/editor/variables/AttachmentVariableTag';
+import { TextVariableTag } from '@/components/editor/variables/TextVariableTag';
 import { 
   parseVariables, 
   getFieldValue,
@@ -142,16 +143,30 @@ export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
         );
       }
     } else {
-      // 普通字段使用 VariableChip
-      const value = getFieldValue(fieldName, records, fields);
-      parts.push(
-        <VariableChip
-          key={`var-${index}`}
-          fieldName={fieldName}
-          value={value}
-          textStyle={textStyle}
-        />
-      );
+      // 普通文本字段
+      if (isEditing) {
+        // 编辑状态：显示变量标签 [字段名]
+        parts.push(
+          <TextVariableTag
+            key={`var-${index}`}
+            fieldName={fieldName}
+            isEditing={true}
+            onEdit={() => onEditAttachment?.(fieldName)}
+            onDelete={() => onDeleteAttachment?.(fieldName)}
+          />
+        );
+      } else {
+        // 预览状态：显示字段值
+        const value = getFieldValue(fieldName, records, fields);
+        parts.push(
+          <VariableChip
+            key={`var-${index}`}
+            fieldName={fieldName}
+            value={value}
+            textStyle={textStyle}
+          />
+        );
+      }
     }
     
     lastIndex = startIndex + variable.original.length;
