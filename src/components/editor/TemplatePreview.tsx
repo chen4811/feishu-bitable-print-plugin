@@ -1100,7 +1100,7 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
         const parts: React.ReactNode[] = [];
         let lastIndex = 0;
         
-        // 使用正则匹配所有变量
+        // 使用正则匹配所有变量 - 注意：每次 exec 后 lastIndex 会自动更新
         const varRegex = /\[([^\]]+)\]/g;
         let match: RegExpExecArray | null;
         let partIndex = 0;
@@ -1122,20 +1122,21 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
           // 获取字段值
           const fieldValue = data[varName];
           
-          // 【关键修复】检查是否是 HTML 字符串
+          // 【情景 A】HTML 字符串 (已转换的附件)
           if (typeof fieldValue === 'string' && (fieldValue.includes('<img') || fieldValue.includes('<div'))) {
             console.log(`[renderComponent] 字段 ${varName} 是 HTML 字符串，使用 dangerouslySetInnerHTML 渲染`);
             parts.push(
-              <div 
+              <span 
                 key={`html-${partIndex}`}
-                dangerouslySetInnerHTML={{ __html: fieldValue }}
-                style={{ display: 'inline-block' }}
+                className="inline-block align-middle"
+                dangerouslySetInnerHTML={{ __html: fieldValue }} 
               />
             );
           }
-          // 检查是否是图片附件（对象数组）
+          // 【情景 B】原始附件数组 (兜底逻辑)
           else if (Array.isArray(fieldValue) && fieldValue.length > 0 && 
               fieldValue[0] && (fieldValue[0].url || fieldValue[0].fileUrl)) {
+            console.log(`[renderComponent] 字段 ${varName} 是附件数组，渲染图片列表`);
             // 渲染图片网格
             const images = fieldValue
               .filter((item: any) => item && (item.url || item.fileUrl))
@@ -1186,24 +1187,25 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
               });
             
             parts.push(
-              <div key={`img-${partIndex}`} style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+              <span key={`img-${partIndex}`} style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '4px' }}>
                 {images}
-              </div>
-            );
-          } else {
-            // 普通字段，使用变量替换后的值
-            parts.push(
-              <span key={`var-${partIndex}`}>
-                {replaceVariables(match[0], data)}
               </span>
             );
           }
+          // 【情景 C】普通字段
+          else {
+            const value = fieldValue !== undefined && fieldValue !== null ? String(fieldValue) : '';
+            parts.push(
+              <span key={`var-${partIndex}`}>{value}</span>
+            );
+          }
           
+          // 【至关重要】更新 lastIndex 到当前变量结束之后
           lastIndex = matchEnd;
           partIndex++;
         }
         
-        // 添加剩余文本
+        // 添加最后一个变量之后的剩余文本
         if (lastIndex < sourceText.length) {
           parts.push(
             <span key={`text-end`}>
