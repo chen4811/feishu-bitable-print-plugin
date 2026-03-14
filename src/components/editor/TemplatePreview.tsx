@@ -217,6 +217,47 @@ const formatFieldValue = (key: string, value: any): string => {
 // ==================== 附件URL获取与处理函数 ====================
 
 /**
+ * 手动拼接飞书附件预览URL（备选方案）
+ * @param fileId 文件ID
+ * @param tableId 表格ID
+ * @param fieldId 字段ID
+ * @param recordId 记录ID
+ * @param fileToken 文件Token（可选）
+ * @returns 拼接好的URL
+ */
+const buildAttachmentUrl = (
+  fileId: string,
+  tableId: string,
+  fieldId: string,
+  recordId: string,
+  fileToken?: string
+): string => {
+  const baseUrl = "https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/preview";
+  
+  // 构造 extra 参数的原始 JSON 对象
+  const extraObj = {
+    bitablePerm: {
+      tableId: tableId,
+      rev: 1, // 使用固定版本，飞书通常会接受
+      attachments: {
+        [fieldId]: {
+          [recordId]: [fileId]
+        }
+      }
+    }
+  };
+
+  // 将 JSON 转为字符串并进行 URL 编码
+  const extraStr = encodeURIComponent(JSON.stringify(extraObj));
+
+  // 生成 version (使用当前时间戳)
+  const version = Date.now();
+
+  // 拼接最终 URL
+  return `${baseUrl}/${fileId}?extra=${extraStr}&mount_point=bitable&preview_type=16&version=${version}`;
+};
+
+/**
  * 为记录的附件字段获取真实的可访问URL
  * @param recordId 记录ID
  * @param tableId 表格ID
