@@ -47,9 +47,21 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
   // 判断是否有数据
   const hasData = data && Array.isArray(data) && data.length > 0;
 
-  // 获取第一张图片预览
+  // 获取第一张图片预览 - 支持多种飞书云文档字段格式
   const firstImage = hasData ? data![0] : null;
-  const imageUrl = firstImage?.url || firstImage?.fileUrl || firstImage?.tmpUrl;
+  const imageUrl = firstImage?.url 
+    || firstImage?.fileUrl 
+    || firstImage?.tmpUrl
+    || firstImage?.link
+    || firstImage?.downloadUrl
+    || firstImage?.previewUrl
+    || firstImage?.src;
+
+  // 获取文件名
+  const fileName = firstImage?.name 
+    || firstImage?.fileName 
+    || firstImage?.title 
+    || fieldName;
 
   // 空数据渲染
   if (!hasData) {
@@ -200,15 +212,31 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
     >
           {/* 显示模式：只显示图片 */}
           {displayMode === 'image_only' && imageUrl && (
-            <img
-              src={imageUrl}
-              alt={firstImage?.name || fieldName}
-              style={getImageStyle()}
-              className="rounded"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
+            <div className="relative inline-block">
+              <img
+                src={imageUrl}
+                alt={fileName}
+                style={getImageStyle()}
+                className="rounded"
+                crossOrigin="anonymous"
+                onError={(e) => {
+                  const img = e.target as HTMLImageElement;
+                  img.style.display = 'none';
+                  // 显示文件名作为降级
+                  const fallback = img.nextElementSibling as HTMLElement;
+                  if (fallback) {
+                    fallback.style.display = 'block';
+                  }
+                }}
+              />
+              {/* 图片加载失败时的降级显示 */}
+              <div 
+                className="hidden px-2 py-1 bg-gray-100 rounded text-xs text-gray-600 max-w-[120px] break-words"
+              >
+                <FileImage className="w-4 h-4 mx-auto mb-1 text-gray-400" />
+                {fileName}
+              </div>
+            </div>
           )}
 
           {/* 显示模式：基础信息 */}
@@ -216,7 +244,7 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
             <>
               <FileImage className="w-4 h-4 text-blue-500" />
               <span className="text-sm text-blue-700 truncate max-w-[100px]">
-                {firstImage?.name || fieldName}
+                {fileName}
               </span>
               {data!.length > 1 && (
                 <span className="text-xs text-blue-500">+{data!.length - 1}</span>
@@ -228,18 +256,32 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
           {displayMode === 'advanced' && (
             <>
               {imageUrl ? (
-                <img
-                  src={imageUrl}
-                  alt={firstImage?.name || fieldName}
-                  style={{ ...getImageStyle(), maxWidth: '60px', maxHeight: '60px' }}
-                  className="rounded"
-                />
+                <div className="relative inline-block">
+                  <img
+                    src={imageUrl}
+                    alt={fileName}
+                    style={{ ...getImageStyle(), maxWidth: '60px', maxHeight: '60px' }}
+                    className="rounded"
+                    crossOrigin="anonymous"
+                    onError={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      img.style.display = 'none';
+                      const fallback = img.nextElementSibling as HTMLElement;
+                      if (fallback) {
+                        fallback.style.display = 'block';
+                      }
+                    }}
+                  />
+                  <div className="hidden">
+                    <FileImage className="w-6 h-6 text-blue-500" />
+                  </div>
+                </div>
               ) : (
                 <FileImage className="w-6 h-6 text-blue-500" />
               )}
               <div className="flex flex-col">
                 <span className="text-sm text-blue-700 truncate max-w-[100px]">
-                  {firstImage?.name || fieldName}
+                  {fileName}
                 </span>
                 {data!.length > 1 && (
                   <span className="text-xs text-blue-500">共 {data!.length} 张</span>
