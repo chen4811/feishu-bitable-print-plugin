@@ -562,15 +562,18 @@ class AttachmentProcessor {
               table
             );
             
-            // 【关键修复】存储处理后的HTML内容（使用原始字段名作为key）
+            // 【关键修复】存储处理后的HTML内容（使用字段名_html作为key，保留原始字段名给组件使用）
             if (htmlContent) {
-              processedRecord[fieldName] = htmlContent;
-              processedRecord[`_${fieldName}_original`] = fieldValue; // 保留原始数据备用
+              // 保留原始附件数组数据，供 VariableTextRenderer 等组件使用
+              processedRecord[fieldName] = fieldValue;
+              // HTML 内容存储在 _字段名_html 中，供打印预览使用
+              processedRecord[`_${fieldName}_html`] = htmlContent;
               processingResults.push({ fieldName, success: true });
-              console.log(`[AttachmentProcessor] ✅ 附件字段 "${fieldName}" 处理完成，已转换为HTML，长度: ${htmlContent.length}`);
+              console.log(`[AttachmentProcessor] ✅ 附件字段 "${fieldName}" 处理完成，原始数据保留，HTML存储在 _${fieldName}_html，长度: ${htmlContent.length}`);
               
-              // 【关键修复】同时按字段ID存储一份，确保后续能通过ID访问
-              processedRecord[fieldId] = htmlContent;
+              // 【关键修复】同时按字段ID存储HTML，确保后续能通过ID访问
+              processedRecord[fieldId] = fieldValue; // 保留原始数据
+              processedRecord[`_${fieldId}_html`] = htmlContent; // HTML
             } else {
               processingResults.push({ fieldName, success: false, error: 'HTML内容为空' });
               console.warn(`[AttachmentProcessor] ⚠️ 附件字段 "${fieldName}" 转换结果为空`);
@@ -971,13 +974,21 @@ const replaceVariablesToHTML = (text: string, data: Record<string, any>, textSty
     const varName = (bracketName || braceName)?.trim();
     if (!varName) return match;
     
-    const value = data[varName];
-    if (value === undefined || value === null) {
+    // 【关键修复】优先使用处理后的HTML内容（_字段名_html），如果不存在则使用原始值
+    const htmlValue = data[`_${varName}_html`];
+    const originalValue = data[varName];
+    
+    // 如果有预处理的HTML内容，直接使用它（用于附件等复杂字段）
+    if (htmlValue !== undefined && htmlValue !== null) {
+      return htmlValue;
+    }
+    
+    if (originalValue === undefined || originalValue === null) {
       return match; // 保留原变量格式
     }
     
     // 使用 formatFieldValueToHTML 格式化字段值，特别是流程字段的颜色样式
-    return formatFieldValueToHTML(varName, value, textStyle);
+    return formatFieldValueToHTML(varName, originalValue, textStyle);
   });
 };
 
