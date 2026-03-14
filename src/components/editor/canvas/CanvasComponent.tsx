@@ -1729,60 +1729,16 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                         return renderContentWithStyle();
                       }
 
-                      // 预览模式 - 显示纯文本
-                      // 为 textarea 构建样式（只应用影响文本显示的样式）
-                      const textareaStyles: React.CSSProperties = {
-                        fontSize: textStyles.fontSize,
-                        fontWeight: textStyles.fontWeight,
-                        fontStyle: textStyles.fontStyle,
-                        color: textStyles.color,
-                        textAlign: textStyles.textAlign,
-                        lineHeight: textStyles.lineHeight,
-                        textDecoration: textStyles.textDecoration,
-                        textTransform: textStyles.textTransform,
-                      };
-                      
-                      // 关键修复：容器 div 只做样式传递，不干扰高度计算
-                      const containerStyles = {
-                        // 只传递影响文本显示的样式，不传递可能影响高度的样式
-                        fontSize: textStyles.fontSize,
-                        fontWeight: textStyles.fontWeight,
-                        fontStyle: textStyles.fontStyle,
-                        color: textStyles.color,
-                        textAlign: textStyles.textAlign,
-                        lineHeight: textStyles.lineHeight,
-                        textDecoration: textStyles.textDecoration,
-                        textTransform: textStyles.textTransform,
-                        backgroundColor: textStyles.backgroundColor,
-                        // 确保容器不会限制高度
-                        minHeight: undefined,
-                        height: undefined,
-                        overflow: 'visible',
-                      };
-                      
+                      // 预览模式 - 显示读入的字段值
                       return (
-                        <div 
-                          className="w-full" 
-                          style={containerStyles}
-                          // 关键：防止容器 div 干扰键盘事件
-                          onKeyDown={(e) => e.stopPropagation()}
-                          onKeyUp={(e) => e.stopPropagation()}
-                          onKeyPress={(e) => e.stopPropagation()}
-                        >
-                          <AutoResizingTextarea
-                            value={cellContent || ''}
-                            onChange={(value) => handleTableCellChange(rowIndex, colIndex, value)}
-                            onClick={(e) => {}} // AutoResizingTextarea 内部已处理冒泡
-                            onKeyDown={(e) => {
-                              // 只有单独的 Enter（不带 Shift）才阻止默认行为
-                              if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                              }
-                              // Shift+Enter、Delete、Backspace 等键：不阻止默认行为，正常编辑
-                              
-                              // 注意：e.stopPropagation() 已经在 AutoResizingTextarea 内部先调用了
-                            }}
-                            style={textareaStyles}
+                        <div className="whitespace-pre-wrap" style={textStyles}>
+                          <VariableTextRenderer
+                            text={cellContent || ''}
+                            records={records || []}
+                            fields={fields || []}
+                            tagName="span"
+                            textStyle={cellStyle}
+                            isEditing={false}
                           />
                         </div>
                       );

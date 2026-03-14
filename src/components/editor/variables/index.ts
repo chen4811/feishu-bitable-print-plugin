@@ -2,6 +2,8 @@
 export { AttachmentVariable, AttachmentVariablePreview } from './AttachmentVariable';
 export type { AttachmentVariableConfig } from './AttachmentVariable';
 
+export { AttachmentVariableTag } from './AttachmentVariableTag';
+
 export { InsertAttachmentDialog } from './InsertAttachmentDialog';
 
 export { 

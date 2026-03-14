@@ -3,6 +3,7 @@
 import React from 'react';
 import { VariableChip } from './VariableChip';
 import { AttachmentVariableChip } from './AttachmentVariableChip';
+import { AttachmentVariableTag } from '@/components/editor/variables/AttachmentVariableTag';
 import { 
   parseVariables, 
   getFieldValue,
@@ -110,23 +111,36 @@ export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
     
     // 检查是否为附件字段
     if (isAttachmentField(fieldName, records, fields)) {
-      // 使用 AttachmentVariableChip 渲染附件变量
-      const attachmentData = getAttachmentData(fieldName, records);
-      const config = attachmentConfigs[fieldName];
-      
-      parts.push(
-        <AttachmentVariableChip
-          key={`var-${index}`}
-          fieldName={fieldName}
-          data={attachmentData}
-          config={config}
-          textStyle={textStyle}
-          isSelected={selectedVariable === fieldName}
-          isEditing={isEditing}
-          onEdit={() => onEditAttachment?.(fieldName)}
-          onDelete={() => onDeleteAttachment?.(fieldName)}
-        />
-      );
+      if (isEditing) {
+        // 编辑状态：显示简单的变量标签 [字段名]
+        parts.push(
+          <AttachmentVariableTag
+            key={`var-${index}`}
+            fieldName={fieldName}
+            isEditing={true}
+            onEdit={() => onEditAttachment?.(fieldName)}
+            onDelete={() => onDeleteAttachment?.(fieldName)}
+          />
+        );
+      } else {
+        // 预览状态：显示实际的附件内容
+        const attachmentData = getAttachmentData(fieldName, records);
+        const config = attachmentConfigs[fieldName];
+        
+        parts.push(
+          <AttachmentVariableChip
+            key={`var-${index}`}
+            fieldName={fieldName}
+            data={attachmentData}
+            config={config}
+            textStyle={textStyle}
+            isSelected={selectedVariable === fieldName}
+            isEditing={false}
+            onEdit={() => onEditAttachment?.(fieldName)}
+            onDelete={() => onDeleteAttachment?.(fieldName)}
+          />
+        );
+      }
     } else {
       // 普通字段使用 VariableChip
       const value = getFieldValue(fieldName, records, fields);
