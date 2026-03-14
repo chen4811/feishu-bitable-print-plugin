@@ -312,39 +312,58 @@ const enrichAttachmentUrls = async (
       
       console.log(`[AttachmentEnrich] 处理附件字段: ${fieldName} (ID: ${fieldId}, key: ${actualKey}), 包含 ${fieldValue.length} 个附件`);
       
+      // 【核心修复】保存原始值用于后续合并
+      const originalValue = enrichedFields[actualKey];
+      
+      // 安全检查：确保原始值是数组
+      if (!Array.isArray(originalValue) || originalValue.length === 0) {
+        console.warn(`[AttachmentEnrich-Warn] 字段 ${fieldName} 的原始值不是有效数组`);
+        continue;
+      }
+      
       try {
         // 获取字段对象
         const field = await table.getField(fieldId);
         
-        // 调用 getAttachmentUrls 获取真实URL
+        // 调用 getAttachmentUrls 获取真实URL（返回 string[]）
         console.log(`[AttachmentEnrich] 调用 getAttachmentUrls for record ${recordId}`);
-        const realUrls = await (field as any).getAttachmentUrls(recordId);
+        const urlList: string[] = await (field as any).getAttachmentUrls(recordId);
         
-        console.log(`[AttachmentEnrich] 获取到 ${realUrls?.length || 0} 个真实URL`);
+        console.log(`[Merge-Debug] 字段 ${fieldName}: 原始数量 ${originalValue.length}, URL数量 ${urlList?.length || 0}`);
         
-        if (realUrls && realUrls.length > 0) {
-          // 【关键】使用 actualKey（可能是ID或Name）更新字段值
-          enrichedFields[actualKey] = fieldValue.map((item: any, index: number) => {
-            const realUrl = realUrls[index] || '';
-            console.log(`[AttachmentEnrich] [${index}] ${item.name || item.fileName}: 注入URL ${realUrl.substring(0, 50)}...`);
+        if (urlList && urlList.length > 0) {
+          // 【核心修复】按索引严格合并 - 飞书保证 urlList 顺序与 originalValue 一致
+          const enrichedValue = originalValue.map((fileItem: any, index: number) => {
+            const targetUrl = urlList[index];
             
-            return {
-              ...item,
-              url: realUrl,        // 注入真实URL
-              fileUrl: realUrl,    // 兼容不同字段名
-            };
+            // 只有当 URL 存在时才注入，防止覆盖原有数据
+            if (targetUrl) {
+              return {
+                ...fileItem,
+                url: targetUrl,        // 标准字段
+                fileUrl: targetUrl,    // 兼容别名
+                downloadUrl: targetUrl // 备用别名
+              };
+            }
+            // 如果没有对应的 URL (比如权限问题)，保留原样但打印警告
+            console.warn(`[Merge-Warn] 索引 ${index} 的文件 ${fileItem.name} 未获取到 URL`);
+            return fileItem;
           });
           
-          // 【FINAL-CHECK】确认数据已正确注入
-          console.log(`🔍 [FINAL-CHECK] 字段 ${fieldName} (key=${actualKey}) 注入后数据:`, 
-            JSON.stringify(enrichedFields[actualKey]?.map((i: any) => ({ name: i.name, hasUrl: !!i.url, url: i.url?.substring(0, 50) })))
-          );
+          // 更新增强后的数据
+          enrichedFields[actualKey] = enrichedValue;
+          
+          console.log(`[Merge-Success] 字段 ${fieldName} 注入完成，样例:`, {
+            name: enrichedValue[0]?.name,
+            hasUrl: !!enrichedValue[0]?.url,
+            url: enrichedValue[0]?.url?.substring(0, 80)
+          });
           
         } else {
-          console.warn(`[AttachmentEnrich] 字段 ${fieldName} 未返回任何URL`);
+          console.warn(`[AttachmentEnrich-Warn] 字段 ${fieldName} 未返回任何URL`);
         }
       } catch (error) {
-        console.error(`[AttachmentEnrich] 处理字段 ${fieldName} 失败:`, error);
+        console.error(`[AttachmentEnrich-Error] 处理字段 ${fieldName} 失败:`, error);
       }
     }
   } catch (error) {
