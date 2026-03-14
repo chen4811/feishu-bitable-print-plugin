@@ -756,6 +756,15 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
 
   // 表格单元格编辑
   const handleTableCellChange = useCallback((row: number, col: number, value: string) => {
+    // 先同步更新 ref，确保立即生效
+    const currentData = tableEditDataRef.current;
+    if (currentData[row]) {
+      const newData = [...currentData];
+      newData[row] = [...newData[row]];
+      newData[row][col] = value;
+      tableEditDataRef.current = newData;
+    }
+    
     // 使用函数式更新确保状态同步
     setTableEditData(prevData => {
       const newData = [...prevData];

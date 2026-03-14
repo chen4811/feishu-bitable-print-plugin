@@ -1161,6 +1161,15 @@ export function EditorPage({ onExit }: EditorPageProps) {
                       name: templateName,
                       data: editorData,
                     });
+                    // 🔥 关键修复：更新 initialEditorState，避免提示未保存
+                    const currentState = JSON.stringify({
+                      templateName,
+                      pageConfig,
+                      styleConfig,
+                      components,
+                    });
+                    setInitialEditorState(currentState);
+                    setHasUnsavedChanges(false);
                     setLastSavedAt(new Date());
                     console.log('[EditorPage] 手动保存成功');
                   } catch (error) {
