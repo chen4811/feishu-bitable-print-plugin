@@ -518,10 +518,21 @@ const renderComponentToHTML = (component: any, data: Record<string, any>): strin
   const processedText = text ? replaceVariablesToHTML(text, data, actualTextStyle) : '';
   const processedContent = content ? replaceVariablesToHTML(content, data, actualTextStyle) : '';
   
+  // 计算宽度 - 与 CanvasArea.tsx 保持一致
+  const getWidthCalc = (width: string) => {
+    const gap = 12;
+    switch (width) {
+      case '50%': return `calc((100% - ${gap}px) / 2)`;
+      case '33%': return `calc((100% - ${2 * gap}px) / 3)`;
+      case '25%': return `calc((100% - ${3 * gap}px) / 4)`;
+      default: return '100%';
+    }
+  };
+  
   const styleStr = `
     position: relative;
-    width: ${component.layout?.width || '100%'};
-    flex: 0 0 ${component.layout?.width || '100%'};
+    width: ${getWidthCalc(component.layout?.width || '100%')};
+    flex-shrink: 0;
     max-width: 100%;
     font-size: ${style.fontSize || '16px'};
     font-weight: ${style.fontWeight || 'normal'};
@@ -532,7 +543,7 @@ const renderComponentToHTML = (component: any, data: Record<string, any>): strin
     white-space: pre-wrap;
     word-wrap: break-word;
     box-sizing: border-box;
-    overflow-x: auto;
+    overflow-x: visible;
   `;
 
   switch (type) {
@@ -616,6 +627,37 @@ const renderComponentToHTML = (component: any, data: Record<string, any>): strin
   }
 };
 
+// 获取组件宽度样式 - 与 CanvasArea.tsx 保持一致
+function getComponentWidthStyle(width: string) {
+  const gap = 12; // gap-3 = 12px
+  switch (width) {
+    case '50%': 
+      return { 
+        width: `calc((100% - ${gap}px) / 2)`,
+        flexShrink: 0,
+        boxSizing: 'border-box' as const,
+      };
+    case '33%': 
+      return { 
+        width: `calc((100% - ${2 * gap}px) / 3)`,
+        flexShrink: 0,
+        boxSizing: 'border-box' as const,
+      };
+    case '25%': 
+      return { 
+        width: `calc((100% - ${3 * gap}px) / 4)`,
+        flexShrink: 0,
+        boxSizing: 'border-box' as const,
+      };
+    default: 
+      return { 
+        width: '100%',
+        flexShrink: 0,
+        boxSizing: 'border-box' as const,
+      };
+  }
+}
+
 // 渲染单个组件（带变量替换）
 const renderComponent = (component: any, data: Record<string, any>): React.ReactNode => {
   if (!component) {
@@ -644,16 +686,17 @@ const renderComponent = (component: any, data: Record<string, any>): React.React
   // 兼容处理：编辑器中使用 textStyle，模板预览中可能使用 style
   const actualStyle = Object.keys(textStyle).length > 0 ? textStyle : style;
 
+  // 使用统一的宽度计算
+  const widthStyle = getComponentWidthStyle(component.layout?.width || '100%');
+
   const baseStyle: React.CSSProperties = {
     position: 'relative',
-    width: component.layout?.width || '100%',
-    flex: `0 0 ${component.layout?.width || '100%'}`,
-    maxWidth: component.layout?.width || '100%',
+    ...widthStyle,
+    maxWidth: '100%',
     whiteSpace: 'pre-wrap',
     wordWrap: 'break-word',
     overflowWrap: 'break-word',
     overflow: 'visible',
-    boxSizing: 'border-box',
     height: 'auto',
     minHeight: 'auto',
   };
@@ -2309,10 +2352,13 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                       </div>
                       {/* 流式布局容器 - 内容区域 */}
                       <div style={{
-                        minWidth: 'max-content',
-                        display: 'block',
-                        padding: '0',
-                        margin: '0',
+                        width: '100%',
+                        maxWidth: '100%',
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        alignContent: 'flex-start',
+                        gap: '12px',
+                        boxSizing: 'border-box',
                       }}>
                         {components.map((component: any) => 
                           renderComponent(component, {})
@@ -2349,10 +2395,13 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                       </div>
                       {/* 流式布局容器 - 内容区域 */}
                       <div style={{
-                        minWidth: 'max-content',   // 【关键】确保容器宽度由内容决定
-                        display: 'block',          // 【关键】改为 block 避免 flex 压缩
-                        padding: '0',
-                        margin: '0',
+                        width: '100%',
+                        maxWidth: '100%',
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        alignContent: 'flex-start',
+                        gap: '12px',
+                        boxSizing: 'border-box',
                       }}>
                         {components.map((component: any) => 
                           renderComponent(component, record.data)
@@ -2399,10 +2448,13 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                             }}
                           >
                             <div style={{
-                              minWidth: 'max-content',   // 【关键】确保容器宽度由内容决定
-                              display: 'block',          // 【关键】改为 block 避免 flex 压缩
-                              padding: '0',
-                              margin: '0',
+                              width: '100%',
+                              maxWidth: '100%',
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              alignContent: 'flex-start',
+                              gap: '12px',
+                              boxSizing: 'border-box',
                             }}>
                               {components.map((component: any) => 
                                 renderComponent(component, record.data)
@@ -2442,10 +2494,13 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                               }}
                             >
                               <div style={{
-                                minWidth: 'max-content',   // 【关键】确保容器宽度由内容决定
-                                display: 'block',          // 【关键】改为 block 避免 flex 压缩
-                                padding: '0',
-                                margin: '0',
+                                width: '100%',
+                                maxWidth: '100%',
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                alignContent: 'flex-start',
+                                gap: '8px',
+                                boxSizing: 'border-box',
                               }}>
                                 {components.map((component: any) => 
                                   renderComponent(component, record.data)
