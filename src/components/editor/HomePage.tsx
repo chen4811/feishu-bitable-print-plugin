@@ -30,6 +30,7 @@ import { PresetTemplate } from '@/types/editor';
 import { usePrintSDK } from '@/hooks/usePrintSDK';
 import { FeishuEnvStatus } from '@/lib/feishu-env';
 import { TemplateSidebar } from './TemplateSidebar';
+import { AIGenerateTemplateDialog } from './AIGenerateTemplateDialog';
 import { UserTemplate } from '@/store/templateStore';
 
 interface HomePageProps {
@@ -43,7 +44,7 @@ interface HomePageProps {
 // 创建方式卡片
 const createOptions = [
   { icon: Plus, title: '创建排版', description: '空白自定义排版', action: 'create' },
-  { icon: Table, title: '自动生成表格排版', description: '基于表格数据生成', action: 'auto-table' },
+  { icon: Sparkles, title: 'AI生成模板', description: '智能生成专业排版', action: 'ai-generate' },
   { icon: Upload, title: '导入排版', description: '导入已有排版文件', action: 'import' },
   { icon: FileText, title: '创建文档模板', description: 'Word格式模板', action: 'docx' },
   { icon: FileSpreadsheet, title: '创建表格模板', description: 'Excel格式模板', action: 'excel' },
@@ -90,6 +91,7 @@ export function HomePage({ onCreateNew, onSelectTemplate, onSelectUserTemplate, 
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showDebug, setShowDebug] = useState(false);
+  const [isAIGenerateDialogOpen, setIsAIGenerateDialogOpen] = useState(false);
   
   const { 
     isLoading, 
@@ -112,8 +114,10 @@ export function HomePage({ onCreateNew, onSelectTemplate, onSelectUserTemplate, 
   });
 
   const handleCreateAction = (action: string) => {
-    if (action === 'create' || action === 'auto-table') {
+    if (action === 'create') {
       onCreateNew();
+    } else if (action === 'ai-generate') {
+      setIsAIGenerateDialogOpen(true);
     } else {
       alert(`${action} 功能开发中...`);
     }
@@ -363,6 +367,14 @@ export function HomePage({ onCreateNew, onSelectTemplate, onSelectUserTemplate, 
           </div>
         </footer>
       </div>
+      <AIGenerateTemplateDialog
+        open={isAIGenerateDialogOpen}
+        onOpenChange={setIsAIGenerateDialogOpen}
+        onTemplateGenerated={(template) => {
+          // TODO: Handle the generated template
+          console.log('Generated template:', template);
+        }}
+      />
     </div>
   );
 }
