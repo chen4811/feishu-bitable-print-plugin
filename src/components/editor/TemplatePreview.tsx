@@ -1639,7 +1639,84 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         }
       });
     });
+    
+    // 执行渲染验证
+    if (availableRecords.length > 0) {
+      validateRendering(availableRecords[0]);
+    }
   }, [availableRecords]);
+  
+  // 渲染验证函数
+  const validateRendering = (record: Record<string, any>) => {
+    const issues: string[] = [];
+    
+    console.group('🔍 渲染验证报告');
+    
+    if (!record) {
+      issues.push('❌ 无记录数据');
+      console.log('❌ 无记录数据');
+      console.groupEnd();
+      return issues;
+    }
+    
+    // 检查所有字段
+    Object.entries(record).forEach(([fieldName, fieldValue]) => {
+      // 检查附件相关字段
+      if (fieldName.includes('照片') || fieldName.includes('附件') || fieldName.includes('image')) {
+        console.log(`\n📎 检查附件字段: "${fieldName}"`);
+        
+        if (fieldValue === undefined || fieldValue === null) {
+          issues.push(`❌ "${fieldName}" 字段为空`);
+          console.log(`  ❌ 字段为空`);
+        } else if (Array.isArray(fieldValue)) {
+          issues.push(`⚠️ "${fieldName}" 仍是数组格式，未转换为HTML`);
+          console.log(`  ⚠️ 仍是数组格式，未转换为HTML`);
+          console.log(`  内容:`, fieldValue);
+        } else if (typeof fieldValue === 'string') {
+          if (fieldValue.includes('<img')) {
+            issues.push(`✅ "${fieldName}" 已转换为HTML（包含图片）`);
+            console.log(`  ✅ 已转换为HTML（包含图片）`);
+            
+            // 提取图片URL
+            const imgMatches = fieldValue.match(/src="([^"]+)"/g);
+            if (imgMatches) {
+              imgMatches.forEach((match, idx) => {
+                const url = match.replace('src="', '').replace('"', '');
+                console.log(`  📸 图片 ${idx + 1} URL: ${url.substring(0, 80)}...`);
+                
+                // 测试URL有效性
+                testImageUrl(url).then(valid => {
+                  console.log(`     URL有效性: ${valid ? '✅ 可访问' : '❌ 无法访问'}`);
+                });
+              });
+            }
+          } else {
+            issues.push(`⚠️ "${fieldName}" 是字符串但不包含图片`);
+            console.log(`  ⚠️ 是字符串但不包含图片`);
+            console.log(`  内容: ${fieldValue.substring(0, 100)}`);
+          }
+        } else {
+          issues.push(`❌ "${fieldName}"  unexpected type: ${typeof fieldValue}`);
+          console.log(`  ❌ unexpected type: ${typeof fieldValue}`);
+        }
+      }
+    });
+    
+    console.log('\n📊 验证完成，发现问题:', issues.filter(i => i.startsWith('❌')).length);
+    console.groupEnd();
+    
+    return issues;
+  };
+  
+  // 测试图片URL有效性
+  const testImageUrl = async (url: string): Promise<boolean> => {
+    try {
+      const response = await fetch(url, { method: 'HEAD', mode: 'no-cors' });
+      return true; // no-cors 模式下无法读取响应状态，但请求会发出
+    } catch (error) {
+      return false;
+    }
+  };
 
   // 加载模板列表
   useEffect(() => {
