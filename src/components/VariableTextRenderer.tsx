@@ -61,9 +61,28 @@ function isAttachmentField(fieldName: string, records: any[], fields: Field[]): 
   
   const firstItem = value[0];
   
-  // 排除人员字段：有 avatar_url 无 fileToken/previewUrl
-  if (firstItem && ('id' in firstItem) && ('name' in firstItem) && ('avatar_url' in firstItem)) {
-    return false;
+  // 🔥 【修复】排除人员字段：有 id+name，无 fileToken/previewUrl
+  // 人员字段特征：id 以 'ou_' 开头（飞书用户ID），有 name，可能有 enName/en_name
+  // 附件字段特征：有 token 或 fileToken，有 name（文件名）
+  if (firstItem && ('id' in firstItem) && ('name' in firstItem)) {
+    const id = String(firstItem.id || '');
+    const hasEnName = 'enName' in firstItem || 'en_name' in firstItem;
+    const hasFileToken = 'fileToken' in firstItem || ('token' in firstItem && firstItem.permission);
+    
+    // 如果有 enName/en_name，说明是人员字段
+    if (hasEnName) {
+      return false;
+    }
+    
+    // 如果有 fileToken 或 permission（附件特有），说明是附件
+    if (hasFileToken) {
+      return true;
+    }
+    
+    // id 以 'ou_' 开头是飞书用户ID，说明是人员字段
+    if (id.startsWith('ou_')) {
+      return false;
+    }
   }
   
   // 附件判断：必须有文件相关属性
