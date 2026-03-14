@@ -1580,7 +1580,12 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                         ...borderStyles,
                       }}
                       onMouseDown={(e) => handleCellMouseDown(rowIndex, colIndex, e)}
-                      onMouseEnter={(e) => handleCellMouseMove(rowIndex, colIndex, e)}
+                      onMouseEnter={(e) => {
+                        // 只有在已经开始拖动选择的情况下才处理鼠标进入
+                        if (cellSelection.isSelecting && cellSelection.startRow !== null) {
+                          handleCellMouseMove(rowIndex, colIndex, e);
+                        }
+                      }}
                       onClick={(e) => {
                         e.stopPropagation();
                         if (!isCurrentTableEditing) return;
