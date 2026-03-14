@@ -136,9 +136,26 @@ const enrichAttachmentUrls = async (
       
       console.log(`[AttachmentEnrich-Debug] 字段 ${fieldName} (${actualKey}) 值类型:`, typeof fieldValue, ', 是否数组:', Array.isArray(fieldValue));
       
-      if (!Array.isArray(fieldValue)) {
-        console.warn(`[AttachmentEnrich-Warn] 字段 ${fieldName} (ID:${fieldId}, Name:${fieldName}) 的值不是数组，跳过`);
-        continue;
+      // 【关键】如果 fields 中没有附件数据，通过字段对象获取
+      if (!Array.isArray(fieldValue) || fieldValue.length === 0) {
+        console.log(`[AttachmentEnrich] 字段 ${fieldName} 在 record.fields 中不存在，尝试通过字段对象获取...`);
+        try {
+          const field = await table.getField(fieldId);
+          // 获取字段值
+          const fieldCellValue = await field.getValue(recordId);
+          console.log(`[AttachmentEnrich] 通过 field.getValue() 获取到:`, Array.isArray(fieldCellValue) ? `数组(${fieldCellValue.length})` : typeof fieldCellValue);
+          
+          if (Array.isArray(fieldCellValue) && fieldCellValue.length > 0) {
+            fieldValue = fieldCellValue;
+            console.log(`[AttachmentEnrich] 成功获取附件数据，包含 ${fieldValue.length} 个附件`);
+          } else {
+            console.warn(`[AttachmentEnrich-Warn] 字段 ${fieldName} 通过 field.getValue() 也未获取到有效数据`);
+            continue;
+          }
+        } catch (err) {
+          console.error(`[AttachmentEnrich] 通过字段对象获取 ${fieldName} 失败:`, err);
+          continue;
+        }
       }
       
       if (fieldValue.length === 0) {
