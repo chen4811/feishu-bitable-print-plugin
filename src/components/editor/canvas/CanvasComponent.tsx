@@ -110,7 +110,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     deleteAttachmentConfig,
   } = useEditorStore();
 
-  // 获取预览用的记录（优先使用第一条记录）
+  // 获取预览用的记录（优先使用第一条记录）- 用于非编辑状态下的变量渲染
   const previewRecord = (() => {
     if (records && records.length > 0) {
       const firstRecord = records[0] as any;
@@ -152,6 +152,16 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       return recordData;
     }
     return {};
+  })();
+  
+  // 【关键修复】构建用于 VariableTextRenderer 的 records 数组
+  // 确保包含字段名到值的映射，使附件和人员字段能正确读取
+  const recordsForVariableRenderer = (() => {
+    if (records && records.length > 0) {
+      // 使用处理后的 previewRecord 作为第一条记录
+      return [previewRecord, ...records.slice(1)];
+    }
+    return records;
   })();
   
   // 添加全局键盘事件监听器来检测事件是否逃逸
@@ -1744,7 +1754,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                             }}>
                               <VariableTextRenderer
                                 text={cellContent || ''}
-                                records={records || []}
+                                records={recordsForVariableRenderer || []}
                                 fields={fields || []}
                                 tagName="span"
                                 textStyle={cellStyle}
@@ -1772,7 +1782,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                             }}>
                               <VariableTextRenderer
                                 text={cellContent || ''}
-                                records={records || []}
+                                records={recordsForVariableRenderer || []}
                                 fields={fields || []}
                                 tagName="span"
                                 textStyle={cellStyle}
@@ -1808,7 +1818,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                               }}>
                                 <VariableTextRenderer
                                   text={cellContent || ''}
-                                  records={records || []}
+                                  records={recordsForVariableRenderer || []}
                                   fields={fields || []}
                                   tagName="span"
                                   textStyle={cellStyle}
@@ -1844,7 +1854,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                               }}>
                                 <VariableTextRenderer
                                   text={cellContent || ''}
-                                  records={records || []}
+                                  records={recordsForVariableRenderer || []}
                                   fields={fields || []}
                                   tagName="span"
                                   textStyle={cellStyle}
@@ -1880,7 +1890,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                             >
                               <VariableTextRenderer
                                 text={cellContent || ''}
-                                records={records || []}
+                                records={recordsForVariableRenderer || []}
                                 fields={fields || []}
                                 tagName="span"
                                 textStyle={cellStyle}
@@ -1903,7 +1913,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                           <span style={baseTextStyle}>
                             <VariableTextRenderer
                               text={cellContent || ''}
-                              records={records || []}
+                              records={recordsForVariableRenderer || []}
                               fields={fields || []}
                               tagName="span"
                               textStyle={cellStyle}
@@ -1983,7 +1993,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                         <div className="whitespace-pre-wrap" style={textStyles}>
                           <VariableTextRenderer
                             text={cellContent || ''}
-                            records={records || []}
+                            records={recordsForVariableRenderer || []}
                             fields={fields || []}
                             tagName="span"
                             textStyle={cellStyle}
@@ -2110,7 +2120,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               }}>
                 <VariableTextRenderer
                   text={textComp.content || '显示'}
-                  records={records || []}
+                  records={recordsForVariableRenderer || []}
                   fields={fields || []}
                   tagName="span"
                   textStyle={textComp.textStyle}
@@ -2128,7 +2138,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
               }}>
                 <VariableTextRenderer
                   text={textComp.content || '显示'}
-                  records={records || []}
+                  records={recordsForVariableRenderer || []}
                   fields={fields || []}
                   tagName="span"
                   textStyle={textComp.textStyle}
@@ -2143,7 +2153,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 <li>
                   <VariableTextRenderer
                     text={textComp.content || '显示'}
-                    records={records || []}
+                    records={recordsForVariableRenderer || []}
                     fields={fields || []}
                     tagName="span"
                     textStyle={textComp.textStyle}
@@ -2159,7 +2169,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 <li>
                   <VariableTextRenderer
                     text={textComp.content || '显示'}
-                    records={records || []}
+                    records={recordsForVariableRenderer || []}
                     fields={fields || []}
                     tagName="span"
                     textStyle={textComp.textStyle}
@@ -2182,7 +2192,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   >
                     <VariableTextRenderer
                       text={textComp.content || '显示'}
-                      records={records || []}
+                      records={recordsForVariableRenderer || []}
                       fields={fields || []}
                       tagName="span"
                       textStyle={textComp.textStyle}
@@ -2191,7 +2201,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                 ) : (
                   <VariableTextRenderer
                     text={textComp.content || '显示'}
-                    records={records || []}
+                    records={recordsForVariableRenderer || []}
                     fields={fields || []}
                     tagName="span"
                     textStyle={textComp.textStyle}
