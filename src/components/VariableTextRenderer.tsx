@@ -19,12 +19,22 @@ function isAttachmentField(fieldName: string, records: any[], fields: Field[]): 
   // 🔥 优先使用字段元数据中的类型判断（更可靠）
   const field = fields.find(f => f.name === fieldName || f.id === fieldName);
   if (field) {
-    // 飞书附件字段类型为 'attachment'
-    if (field.type === 'attachment') {
+    const fieldType = field.type;
+    
+    // 飞书附件字段类型为 'attachment' 或 '17'
+    if (fieldType === 'attachment' || String(fieldType) === '17') {
       return true;
     }
-    // 明确排除非附件字段类型，避免误判
-    if (['text', 'number', 'singleSelect', 'multiSelect', 'date', 'phone', 'email', 'url', 'user', 'person'].includes(field.type)) {
+    
+    // 明确排除非附件字段类型（支持字符串和数字编码）
+    const nonAttachmentTypes = [
+      // 字符串类型
+      'text', 'number', 'singleSelect', 'multiSelect', 'date', 'phone', 'email', 'url', 'user', 'person',
+      // 数字类型字符串（飞书字段类型编码）
+      '1', '2', '3', '4', '5', '11', '13', '15',
+    ];
+    
+    if (nonAttachmentTypes.includes(fieldType) || nonAttachmentTypes.includes(String(fieldType))) {
       return false;
     }
   }
@@ -39,7 +49,7 @@ function isAttachmentField(fieldName: string, records: any[], fields: Field[]): 
   
   const firstItem = value[0];
   
-  // 🔥 排除人员字段 (IOpenUser)
+  // 🔥 排除人员字段 (IOpenUser: 有 id+name，无 token)
   if (firstItem && ('id' in firstItem) && ('name' in firstItem) && !('token' in firstItem)) {
     return false;
   }
