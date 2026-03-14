@@ -312,12 +312,20 @@ const enrichAttachmentUrls = async (
       
       console.log(`[AttachmentEnrich] 处理附件字段: ${fieldName} (ID: ${fieldId}, key: ${actualKey}), 包含 ${fieldValue.length} 个附件`);
       
-      // 【核心修复】保存原始值用于后续合并
-      const originalValue = enrichedFields[actualKey];
+      // 【核心修复】确保使用正确的源数据进行合并
+      // 如果 fieldValue 是从 field.getValue() 获取的新数组，它可能不在 enrichedFields 中
+      // 所以我们需要先把 fieldValue 同步到 enrichedFields，然后再进行合并
+      if (enrichedFields[actualKey] !== fieldValue) {
+        console.log(`[AttachmentEnrich-Sync] 将 fieldValue 同步到 enrichedFields['${actualKey}']`);
+        enrichedFields[actualKey] = fieldValue;
+      }
       
-      // 安全检查：确保原始值是数组
-      if (!Array.isArray(originalValue) || originalValue.length === 0) {
-        console.warn(`[AttachmentEnrich-Warn] 字段 ${fieldName} 的原始值不是有效数组`);
+      // 现在从 enrichedFields 读取用于合并的源数据
+      const sourceValue = enrichedFields[actualKey];
+      
+      // 安全检查：确保源数据是数组
+      if (!Array.isArray(sourceValue) || sourceValue.length === 0) {
+        console.warn(`[AttachmentEnrich-Warn] 字段 ${fieldName} 的源数据不是有效数组`);
         continue;
       }
       
@@ -329,11 +337,11 @@ const enrichAttachmentUrls = async (
         console.log(`[AttachmentEnrich] 调用 getAttachmentUrls for record ${recordId}`);
         const urlList: string[] = await (field as any).getAttachmentUrls(recordId);
         
-        console.log(`[Merge-Debug] 字段 ${fieldName}: 原始数量 ${originalValue.length}, URL数量 ${urlList?.length || 0}`);
+        console.log(`[Merge-Debug] 字段 ${fieldName}: 原始文件数=${sourceValue.length}, 获取URL数=${urlList?.length || 0}`);
         
         if (urlList && urlList.length > 0) {
-          // 【核心修复】按索引严格合并 - 飞书保证 urlList 顺序与 originalValue 一致
-          const enrichedValue = originalValue.map((fileItem: any, index: number) => {
+          // 【核心修复】按索引严格合并 - 飞书保证 urlList 顺序与 sourceValue 一致
+          const enrichedValue = sourceValue.map((fileItem: any, index: number) => {
             const targetUrl = urlList[index];
             
             // 只有当 URL 存在时才注入，防止覆盖原有数据
