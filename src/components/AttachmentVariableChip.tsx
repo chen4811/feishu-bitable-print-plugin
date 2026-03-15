@@ -212,26 +212,39 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
   // 获取附件数量
   const attachmentCount = rawData?.length || fileNames?.length || 0;
 
-  // 获取第一张图片预览 - 支持多种飞书云文档字段格式
-  const firstImage = rawData && rawData.length > 0 ? rawData[0] : null;
-  
-  // 尝试从原始数据获取 URL
-  let imageUrl = firstImage?.url 
-    || firstImage?.fileUrl 
-    || firstImage?.tmpUrl
-    || firstImage?.link
-    || firstImage?.downloadUrl
-    || firstImage?.previewUrl
-    || firstImage?.src;
-  
-  // 【关键修复】如果原始数据没有 URL，尝试从 HTML 内容中提取
-  if (!imageUrl && htmlContent) {
-    const imgMatch = htmlContent.match(/<img[^>]+src="([^"]+)"/);
-    if (imgMatch && imgMatch[1]) {
-      imageUrl = imgMatch[1];
-      console.log('[AttachmentVariableChip] 从 HTML 提取图片 URL:', imageUrl?.substring(0, 50));
+  // 【重构】提取所有图片 URL - 支持多图渲染
+  const imageUrls = useMemo(() => {
+    const urls: string[] = [];
+    
+    // 1. 从 rawData 提取所有 URL
+    if (rawData && rawData.length > 0) {
+      rawData.forEach((item: any) => {
+        const url = item?.url 
+          || item?.fileUrl 
+          || item?.tmpUrl
+          || item?.link
+          || item?.downloadUrl
+          || item?.previewUrl
+          || item?.src;
+        if (url) urls.push(url);
+      });
     }
-  }
+    
+    // 2. 如果 rawData 没有 URL，从 HTML 中提取所有图片 URL
+    if (urls.length === 0 && htmlContent) {
+      const imgMatches = htmlContent.matchAll(/<img[^>]+src="([^"]+)"/g);
+      for (const match of imgMatches) {
+        if (match[1]) urls.push(match[1]);
+      }
+      console.log('[AttachmentVariableChip] 从 HTML 提取到', urls.length, '个图片 URL');
+    }
+    
+    return urls;
+  }, [rawData, htmlContent]);
+
+  // 【保留】获取第一张图片信息（用于 basic_info 和 advanced 模式）
+  const firstImage = rawData && rawData.length > 0 ? rawData[0] : null;
+  let imageUrl = imageUrls.length > 0 ? imageUrls[0] : null;
 
   // 【修改】获取文件名 - 优先使用 fileNames 数组，其次从 firstImage 获取
   const fileName = (fileNames && fileNames.length > 0)
@@ -314,27 +327,32 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
   // 计算图片样式
   const getImageStyle = (): React.CSSProperties => {
     const style: React.CSSProperties = {
-      objectFit: 'cover',
+      objectFit: 'contain',
       borderRadius: '4px',
+      flexShrink: 0,
     };
 
     switch (sizeMode) {
       case 'fixed_width':
         style.width = config?.width ? `${config.width}px` : '80px';
         style.height = 'auto';
+        style.objectFit = 'cover';
         break;
       case 'fixed_height':
         style.width = 'auto';
         style.height = config?.height ? `${config.height}px` : '80px';
+        style.objectFit = 'cover';
         break;
       case 'fixed_size':
         style.width = config?.width ? `${config.width}px` : '80px';
         style.height = config?.height ? `${config.height}px` : '80px';
+        style.objectFit = 'cover';
         break;
       case 'auto':
       default:
-        style.maxWidth = '80px';
-        style.maxHeight = '80px';
+        // 自动模式：限制最大尺寸，保持比例
+        style.maxWidth = '120px';
+        style.maxHeight = '120px';
         style.width = 'auto';
         style.height = 'auto';
         break;
@@ -348,13 +366,16 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
     const style: React.CSSProperties = {
       display: 'inline-flex',
       flexWrap: 'wrap',
-      gap: '4px',
+      gap: onePerLine ? '8px' : '6px',
       verticalAlign: 'middle',
+      alignItems: 'flex-start',
     };
 
     if (onePerLine) {
       style.flexDirection = 'column';
       style.alignItems = align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center';
+    } else {
+      style.justifyContent = align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center';
     }
 
     return style;
@@ -364,7 +385,7 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
     <span
       ref={containerRef}
       className={`
-        inline-flex items-center relative
+        inline-flex relative
         cursor-pointer
         transition-all duration-200
         ${displayMode === 'image_only' ? 'p-0' : 'px-1 py-0.5 rounded bg-blue-50 border border-blue-200 hover:bg-blue-100 hover:border-blue-300'}
@@ -384,26 +405,30 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
       }}
       data-field-name={fieldName}
       data-variable-type="attachment"
-      data-attachment-count={rawData?.length}
+      data-attachment-count={attachmentCount}
     >
-          {/* 显示模式：只显示图片 - 仅显示图片，无任何文字 */}
+          {/* 显示模式：只显示图片 - 渲染所有图片，无任何文字 */}
           {displayMode === 'image_only' && (
             <>
-              {imageUrl ? (
-                <img
-                  src={imageUrl}
-                  alt=""
-                  style={getImageStyle()}
-                  className="rounded"
-                  crossOrigin="anonymous"
-                  onError={(e) => {
-                    // 图片加载失败时，隐藏图片，不显示任何文字
-                    const img = e.target as HTMLImageElement;
-                    img.style.display = 'none';
-                  }}
-                />
+              {imageUrls.length > 0 ? (
+                // 【重构】渲染所有图片
+                imageUrls.map((url, index) => (
+                  <img
+                    key={index}
+                    src={url}
+                    alt=""
+                    style={getImageStyle()}
+                    className="rounded"
+                    crossOrigin="anonymous"
+                    onError={(e) => {
+                      // 图片加载失败时，隐藏图片
+                      const img = e.target as HTMLImageElement;
+                      img.style.display = 'none';
+                    }}
+                  />
+                ))
               ) : (
-                // 【关键】没有图片 URL 时显示空白占位符，不显示文件名
+                // 没有图片 URL 时显示空白占位符
                 <div 
                   style={{ 
                     width: config?.width || 80, 
@@ -419,11 +444,10 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
 
           {/* 显示模式：基础信息 - 只显示文件名，无图片 */}
           {displayMode === 'basic_info' && (
-            <span className="text-sm text-blue-700 truncate max-w-[150px]">
-              {fileName}
-              {attachmentCount > 1 && (
-                <span className="text-xs text-blue-500 ml-1">+{attachmentCount - 1}</span>
-              )}
+            <span className="text-sm text-blue-700 truncate max-w-[200px]">
+              {fileNames && fileNames.length > 0 
+                ? fileNames.join(', ')
+                : fileName}
             </span>
           )}
 
