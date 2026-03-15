@@ -1046,8 +1046,10 @@ export function EditorPage({ onExit }: EditorPageProps) {
 
   // 完成表格编辑
   const handleFinishEdit = useCallback(() => {
+    console.log('[handleFinishEdit] 开始执行');
     // 先取消选中，再退出编辑
     useEditorStore.getState().selectComponent(null);
+    console.log('[handleFinishEdit] 已取消组件选中');
     // 清除单元格编辑状态
     setTableCellEditing({
       isEditing: false,
@@ -1056,12 +1058,14 @@ export function EditorPage({ onExit }: EditorPageProps) {
       rowIndex: null,
       colIndex: null,
     });
+    console.log('[handleFinishEdit] 已清除单元格编辑状态');
     setTableEditing({
       isEditing: false,
       tableId: null,
       selectedCells: [],
       headerFooterDialogOpen: false,
     });
+    console.log('[handleFinishEdit] 已退出表格编辑状态');
   }, [setTableEditing, setTableCellEditing]);
 
   // 处理颜色变化

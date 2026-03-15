@@ -354,6 +354,20 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   // 判断当前是否在编辑这个表格
   const isCurrentTableEditing = tableEditing.isEditing && tableEditing.tableId === component.id;
 
+  // 当表格退出编辑状态时，重置本地状态
+  useEffect(() => {
+    if (!isCurrentTableEditing) {
+      // 重置单元格选择状态
+      setCellSelection({
+        startRow: null,
+        startCol: null,
+        endRow: null,
+        endCol: null,
+        isSelecting: false,
+      });
+    }
+  }, [isCurrentTableEditing]);
+
   // 检查单元格是否在选中范围内
   const isCellInSelection = (rowIndex: number, colIndex: number): boolean => {
     if (cellSelection.startRow === null || cellSelection.startCol === null) {
@@ -2100,6 +2114,18 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       const isCurrentCellEditing = tableCellEditing.isEditing && 
                         tableCellEditing.tableId === component.id &&
                         tableCellEditing.cellId === cellId;
+                      
+                      // 调试日志
+                      if (tableCellEditing.isEditing) {
+                        console.log('[CanvasComponent] isCurrentCellEditing check:', {
+                          cellId,
+                          'tableCellEditing.isEditing': tableCellEditing.isEditing,
+                          'tableCellEditing.tableId': tableCellEditing.tableId,
+                          'tableCellEditing.cellId': tableCellEditing.cellId,
+                          'component.id': component.id,
+                          isCurrentCellEditing,
+                        });
+                      }
 
                       // 当前单元格处于编辑状态 - 显示 textarea
                       if (isCurrentCellEditing) {

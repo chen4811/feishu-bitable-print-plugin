@@ -337,6 +337,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   
   // 选择组件
   selectComponent: (id) => {
+    console.log('[selectComponent] 设置选中组件:', id);
     set({ selectedComponentId: id });
   },
   
@@ -487,6 +488,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   
   // 设置表格单元格编辑状态
   setTableCellEditing: (tableCellEditing: Partial<TableCellEditingState>) => {
+    console.log('[setTableCellEditing] 更新单元格编辑状态:', tableCellEditing);
     set((state) => ({
       tableCellEditing: {
         ...state.tableCellEditing,
