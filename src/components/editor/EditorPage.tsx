@@ -143,6 +143,9 @@ export function EditorPage({ onExit }: EditorPageProps) {
 
   // 从 feishu-env 获取数据并监听点击行
   useEffect(() => {
+    // 🔥 【关键修复】声明 unsubscribe 变量，用于清理监听器
+    let unsubscribe: (() => void) | null = null;
+    
     const init = async () => {
       // 先初始化 SDK
       const isReady = await feishuEnv.init();
@@ -267,9 +270,8 @@ export function EditorPage({ onExit }: EditorPageProps) {
         setFeishuLoading(false);
       }
 
-      // 设置点击行监听
-      console.log('[EditorPage] 设置点击行监听...');
-      const unsubscribe = feishuEnv.onSelectionChange(async (event) => {
+      // 🔥 【关键修复】将 unsubscribe 保存到变量，而不是通过 async 函数返回
+      unsubscribe = feishuEnv.onSelectionChange(async (event) => {
         console.log('[EditorPage] ======== 收到选中变化事件 ========');
         console.log('[EditorPage] 事件数据:', event);
         
@@ -424,11 +426,17 @@ export function EditorPage({ onExit }: EditorPageProps) {
           console.error('[EditorPage] 获取选中记录失败:', error);
         }
       });
-
-      return unsubscribe;
     };
     
     init();
+    
+    // 🔥 【关键修复】返回正确的清理函数
+    return () => {
+      console.log('[EditorPage] 清理选中变化监听器');
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [setFeishuEnvironment, setFields, setRecords, addRecords]);
 
   // 初始化当前编辑的模板
