@@ -1576,19 +1576,37 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     
     // 检查所有字段
     Object.entries(record).forEach(([fieldName, fieldValue]) => {
-      // 检查附件相关字段
-      if (fieldName.includes('照片') || fieldName.includes('附件') || fieldName.includes('image') || fieldName.includes('attachment')) {
+      // 检查附件相关字段（只检查原始字段，不检查 _xxx_html 字段）
+      if ((fieldName.includes('照片') || fieldName.includes('附件') || fieldName.includes('image') || fieldName.includes('attachment')) 
+          && !fieldName.startsWith('_')) {
         console.log(`\n📎 检查附件字段: "${fieldName}"`);
+        
+        // 检查是否有对应的 _html 字段
+        const htmlFieldName = `_${fieldName}_html`;
+        const htmlContent = record[htmlFieldName];
         
         if (fieldValue === undefined || fieldValue === null) {
           issues.push(`❌ "${fieldName}" 字段为空`);
           console.log(`  ❌ 字段为空`);
         } else if (Array.isArray(fieldValue)) {
-          // 【关键】检测是否仍是数组格式（未转换成功）
-          issues.push(`❌ "${fieldName}" 仍是数组格式，数据传递失败！`);
-          console.log(`  ❌ 仍是数组格式，数据传递失败！`);
-          console.log(`  数组长度:`, fieldValue.length);
-          console.log(`  数组内容:`, fieldValue.slice(0, 2));
+          // 【关键修复】原始字段是数组是正常的，应该检查 _html 字段是否存在
+          console.log(`  📋 原始字段是数组（正常），长度: ${fieldValue.length}`);
+          
+          if (htmlContent && typeof htmlContent === 'string' && htmlContent.includes('<img')) {
+            issues.push(`✅ "${fieldName}" 附件已预处理，HTML已生成`);
+            console.log(`  ✅ 已预处理，HTML字段存在`);
+            console.log(`  HTML长度: ${htmlContent.length}`);
+            
+            // 提取并测试所有图片URL
+            testAllImageUrls(htmlContent).then(results => {
+              const validCount = results.filter(r => r.valid).length;
+              console.log(`  📊 ${validCount}/${results.length} 个URL有效`);
+            });
+          } else {
+            issues.push(`⚠️ "${fieldName}" 原始数据存在，但未生成HTML`);
+            console.log(`  ⚠️ 未找到 _html 字段或内容为空`);
+            console.log(`  _html 字段值:`, htmlContent?.substring?.(0, 100) || '不存在');
+          }
         } else if (typeof fieldValue === 'string') {
           // 检查是否是有效的HTML
           const hasImgTag = fieldValue.includes('<img');
