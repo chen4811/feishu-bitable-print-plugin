@@ -336,7 +336,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
   
   // 选择组件
-  selectComponent: (id) => set({ selectedComponentId: id }),
+  selectComponent: (id) => {
+    console.log('[selectComponent] 被调用，id:', id);
+    set({ selectedComponentId: id });
+  },
   
   // 重新排序组件
   reorderComponents: (fromIndex, toIndex) => {

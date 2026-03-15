@@ -1046,15 +1046,25 @@ export function EditorPage({ onExit }: EditorPageProps) {
 
   // 完成表格编辑
   const handleFinishEdit = useCallback(() => {
+    console.log('[handleFinishEdit] 开始执行');
+    
+    // 先取消选中，再退出编辑
+    console.log('[handleFinishEdit] 调用 selectComponent(null)');
+    useEditorStore.getState().selectComponent(null);
+    
+    // 使用 setTimeout 确保 selectComponent 执行完成
+    setTimeout(() => {
+      console.log('[handleFinishEdit] 延迟检查 selectedComponentId:', useEditorStore.getState().selectedComponentId);
+    }, 100);
+    
     setTableEditing({
       isEditing: false,
       tableId: null,
       selectedCells: [],
       headerFooterDialogOpen: false,
     });
-    // 完成编辑时取消组件选中
-    selectComponent(null);
-  }, [setTableEditing, selectComponent]);
+    console.log('[handleFinishEdit] 执行完成');
+  }, [setTableEditing]);
 
   // 处理颜色变化
   const handleColorChange = useCallback((colorType: 'text' | 'fill', color: string) => {

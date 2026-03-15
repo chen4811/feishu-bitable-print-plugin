@@ -65,6 +65,9 @@ export function SortableItem({
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     
+    // 表格编辑状态下不触发选中
+    if (isTableEditing) return;
+    
     clickCountRef.current += 1;
     
     if (clickCountRef.current === 1) {
