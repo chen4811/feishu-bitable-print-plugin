@@ -1928,6 +1928,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                 text={cellContent || ''}
                                 records={recordsForVariableRenderer || []}
                                 fields={fields || []}
+                                fieldTypeMap={fieldTypeMap}
                                 tagName="span"
                                 textStyle={cellStyle}
                                 attachmentConfigs={attachmentConfigs}
@@ -1965,6 +1966,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                   text={cellContent || ''}
                                   records={recordsForVariableRenderer || []}
                                   fields={fields || []}
+                                  fieldTypeMap={fieldTypeMap}
                                   tagName="span"
                                   textStyle={cellStyle}
                                   isEditing={isCurrentTableEditing}
@@ -2002,6 +2004,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                   text={cellContent || ''}
                                   records={recordsForVariableRenderer || []}
                                   fields={fields || []}
+                                  fieldTypeMap={fieldTypeMap}
                                   tagName="span"
                                   textStyle={cellStyle}
                                   isEditing={isCurrentTableEditing}
@@ -2039,6 +2042,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                 text={cellContent || ''}
                                 records={recordsForVariableRenderer || []}
                                 fields={fields || []}
+                                fieldTypeMap={fieldTypeMap}
                                 tagName="span"
                                 textStyle={cellStyle}
                                 attachmentConfigs={attachmentConfigs}
@@ -2063,6 +2067,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                               text={cellContent || ''}
                               records={recordsForVariableRenderer || []}
                               fields={fields || []}
+                              fieldTypeMap={fieldTypeMap}
                               tagName="span"
                               textStyle={cellStyle}
                               attachmentConfigs={attachmentConfigs}
@@ -2144,6 +2149,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                             text={cellContent || ''}
                             records={recordsForVariableRenderer || []}
                             fields={fields || []}
+                            fieldTypeMap={fieldTypeMap}
                             tagName="span"
                             textStyle={cellStyle}
                             attachmentConfigs={attachmentConfigs}
@@ -2272,6 +2278,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   text={textComp.content || '显示'}
                   records={recordsForVariableRenderer || []}
                   fields={fields || []}
+                  fieldTypeMap={fieldTypeMap}
                   tagName="span"
                   textStyle={textComp.textStyle}
                   attachmentConfigs={attachmentConfigs}
@@ -2291,6 +2298,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   text={textComp.content || '显示'}
                   records={recordsForVariableRenderer || []}
                   fields={fields || []}
+                  fieldTypeMap={fieldTypeMap}
                   tagName="span"
                   textStyle={textComp.textStyle}
                   attachmentConfigs={attachmentConfigs}
@@ -2307,6 +2315,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     text={textComp.content || '显示'}
                     records={recordsForVariableRenderer || []}
                     fields={fields || []}
+                    fieldTypeMap={fieldTypeMap}
                     tagName="span"
                     textStyle={textComp.textStyle}
                     attachmentConfigs={attachmentConfigs}
@@ -2324,6 +2333,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     text={textComp.content || '显示'}
                     records={recordsForVariableRenderer || []}
                     fields={fields || []}
+                    fieldTypeMap={fieldTypeMap}
                     tagName="span"
                     textStyle={textComp.textStyle}
                     attachmentConfigs={attachmentConfigs}
@@ -2348,6 +2358,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       text={textComp.content || '显示'}
                       records={recordsForVariableRenderer || []}
                       fields={fields || []}
+                      fieldTypeMap={fieldTypeMap}
                       tagName="span"
                       textStyle={textComp.textStyle}
                       attachmentConfigs={attachmentConfigs}
@@ -2358,6 +2369,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     text={textComp.content || '显示'}
                     records={recordsForVariableRenderer || []}
                     fields={fields || []}
+                    fieldTypeMap={fieldTypeMap}
                     tagName="span"
                     textStyle={textComp.textStyle}
                     attachmentConfigs={attachmentConfigs}
