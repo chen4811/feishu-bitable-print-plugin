@@ -52,7 +52,6 @@ export const AdvancedToolbar: React.FC<AdvancedToolbarProps> = React.memo(({
           onClick={(e) => {
             e.stopPropagation();
             e.preventDefault();
-            console.log('[AdvancedToolbar] 完成编辑按钮被点击');
             onFinishEdit();
           }}
           className="h-8 w-8 bg-blue-500 hover:bg-blue-600"

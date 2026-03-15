@@ -337,7 +337,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   
   // 选择组件
   selectComponent: (id) => {
-    console.log('[selectComponent] 被调用，id:', id);
     set({ selectedComponentId: id });
   },
   
