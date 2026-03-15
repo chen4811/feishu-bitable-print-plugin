@@ -281,11 +281,17 @@ export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
       } else {
         // 预览状态：显示字段值
         const value = getFieldValue(fieldName, records, fields);
+        
+        // 【修复】如果字段值为空占位符，在打印预览模式下显示原始变量名
+        const displayValue = (value === '[空]' || value === '[暂无数据]')
+          ? `{{${fieldName}}}` // 显示原始变量名作为占位符
+          : value;
+        
         parts.push(
           <VariableChip
             key={`var-${index}`}
             fieldName={fieldName}
-            value={value}
+            value={displayValue}
             textStyle={textStyle}
           />
         );
