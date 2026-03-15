@@ -1804,15 +1804,15 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                           const cellBgColor = cell?.backgroundColor;
                           const cellTextBgColor = cell?.style?.backgroundColor;
                           
+                          // 选中状态不改变背景色，使用边框高亮
                           if (isCellSelected) {
-                            // 选中状态使用更明显的蓝色背景
-                            return '#3b82f6';
+                            return cellBgColor || cellTextBgColor || 'transparent';
                           }
                           
                           // 优先使用单元格背景色，其次是文本背景色
                           return cellBgColor || cellTextBgColor || 'transparent';
                         })(),
-                        color: isCellSelected ? '#ffffff' : undefined,
+                        color: undefined, // 选中状态不改变文字颜色
                         userSelect: 'none',
                         verticalAlign: cell?.verticalAlign || 'middle',
                         width: colWidth ? `${colWidth}px` : undefined,
@@ -1820,6 +1820,9 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                         height: rowHeight ? `${rowHeight}px` : undefined,
                         // 强制添加默认边框，确保表格线明显
                         border: !hasCellBorder ? `${borderWidth}px solid ${borderColor}` : undefined,
+                        // 选中状态使用蓝色边框高亮
+                        outline: isCellSelected ? '2px solid #3b82f6' : undefined,
+                        outlineOffset: '-2px',
                         ...borderStyles,
                       }}
                       onMouseDown={(e) => handleCellMouseDown(rowIndex, colIndex, e)}
