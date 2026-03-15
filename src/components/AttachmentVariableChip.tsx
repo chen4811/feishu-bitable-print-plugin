@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { FileImage, Pencil, Trash2, GripVertical } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ComponentTextStyle } from '@/types/editor';
@@ -67,17 +67,102 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
   const hasConfig = config && config.displayMode;
   const shouldUseRawData = hasConfig && rawData && rawData.length > 0;
   
+  // 【新增】当有配置但无原始数据时，从 HTML 中提取图片 URL 用于 image_only 模式
+  const extractedImageUrl = useMemo(() => {
+    if (!hasConfig || config.displayMode !== 'image_only' || !htmlContent) return null;
+    
+    // 从 HTML 中提取第一个图片 URL
+    const imgMatch = htmlContent.match(/<img[^>]+src="([^"]+)"/);
+    return imgMatch && imgMatch[1] ? imgMatch[1] : null;
+  }, [hasConfig, config?.displayMode, htmlContent]);
+  
   console.log('[AttachmentVariableChip] 渲染决策:', {
     hasConfig,
     shouldUseRawData,
     configKeys: config ? Object.keys(config) : [],
-    displayMode: config?.displayMode
+    displayMode: config?.displayMode,
+    extractedImageUrl: extractedImageUrl?.substring(0, 50)
   });
   
   // 【场景1】有配置且有原始数据 → 使用配置渲染（支持 displayMode）
   if (shouldUseRawData) {
     console.log('[AttachmentVariableChip] ✅ 使用配置渲染原始数据');
     // 继续往下渲染...
+  }
+  // 【场景1.5】有配置但无原始数据，但 displayMode 是 image_only 且能从 HTML 提取图片 → 仅显示图片
+  else if (hasConfig && config.displayMode === 'image_only' && extractedImageUrl) {
+    console.log('[AttachmentVariableChip] ✅ 使用配置从 HTML 提取图片渲染（image_only 模式）');
+    return (
+      <span
+        ref={containerRef}
+        className={`
+          inline-flex items-center relative p-0
+          cursor-pointer
+          transition-all duration-200
+          ${isSelected ? 'ring-2 ring-blue-400' : ''}
+          ${className}
+        `}
+        title={`附件字段：${fieldName}。双击编辑配置`}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          onEdit?.();
+        }}
+        data-field-name={fieldName}
+        data-variable-type="attachment"
+      >
+        <img
+          src={extractedImageUrl}
+          alt=""
+          style={{
+            maxWidth: config?.width ? `${config.width}px` : '80px',
+            maxHeight: config?.height ? `${config.height}px` : '80px',
+            width: 'auto',
+            height: 'auto',
+            objectFit: 'cover',
+            borderRadius: '4px',
+          }}
+          className="rounded"
+          crossOrigin="anonymous"
+          onError={(e) => {
+            const img = e.target as HTMLImageElement;
+            img.style.display = 'none';
+          }}
+        />
+        
+        {/* 悬停浮窗按钮 - 仅在编辑状态下显示 */}
+        {isEditing && isHovered && (
+          <span 
+            className="absolute -top-9 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-gray-800 rounded-md px-2 py-1 shadow-lg z-[60]"
+            onMouseEnter={() => setIsHovered(true)}
+          >
+            <GripVertical className="w-3 h-3 text-gray-400 cursor-grab" />
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit?.();
+              }}
+              className="p-1 hover:bg-gray-700 rounded text-white"
+              title="编辑附件变量"
+            >
+              <Pencil className="w-3 h-3" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete?.();
+              }}
+              className="p-1 hover:bg-red-600 rounded text-white"
+              title="删除"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          </span>
+        )}
+      </span>
+    );
   }
   // 【场景2】没有配置但有 HTML → 使用 HTML 渲染
   else if (htmlContent) {
