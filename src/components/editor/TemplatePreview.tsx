@@ -314,20 +314,15 @@ class AttachmentProcessor {
    * FieldType.Attachment = 17
    */
   isAttachmentField(fieldValue: any, fieldType?: number | string): boolean {
-    // 优先根据字段元数据的 type 判断
+    // 只根据字段元数据的 type 判断（FieldType.Attachment = 17）
     if (fieldType !== undefined) {
       const typeNum = typeof fieldType === 'string' ? parseInt(fieldType, 10) : fieldType;
       return typeNum === 17;
     }
     
-    // 后备：根据值结构判断（仅用于兼容性）
-    if (!Array.isArray(fieldValue)) return false;
-    if (fieldValue.length === 0) return false;
-    
-    return fieldValue.every(item => 
-      item && typeof item === 'object' && 
-      ('token' in item || 'fileToken' in item)
-    );
+    // 没有 fieldType 时，无法确定是否为附件字段，返回 false
+    // 不再使用值特征扫描，避免误判
+    return false;
   }
   
   /**
@@ -699,78 +694,6 @@ const formatFieldValueToHTML = (key: string, value: any, textStyle?: any): strin
     return isImageByName || isImageByType;
   };
 
-  // 使用新的 isAttachmentField 函数识别附件字段
-  if (isAttachmentField(value)) {
-    // 如果没有预处理内容，使用现有的渲染逻辑
-    // 只处理图片附件
-    const imageAttachments = value.filter((item: any) => isImageAttachment(item));
-    
-    if (imageAttachments.length > 0) {
-      // 生成图片网格 HTML
-      const imagesHtml = imageAttachments
-        .map((item: any, index: number) => {
-          const url = item.url || item.fileUrl || item.tmpUrl || '';
-          const name = item.name || item.fileName || `图片${index + 1}`;
-          if (!url) return '';
-          return `
-            <div style="
-              display: inline-block;
-              margin: 4px;
-              text-align: center;
-              vertical-align: top;
-            ">
-              <img 
-                src="${url}" 
-                alt="${name}"
-                style="
-                  max-width: 120px;
-                  max-height: 120px;
-                  width: auto;
-                  height: auto;
-                  object-fit: contain;
-                  border: 1px solid #e5e7eb;
-                  border-radius: 4px;
-                  padding: 2px;
-                  background: #f9fafb;
-                "
-                onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
-              />
-              <div style="
-                display: none;
-                padding: 8px;
-                background: #f3f4f6;
-                border-radius: 4px;
-                font-size: 12px;
-                color: #6b7280;
-                max-width: 120px;
-                word-break: break-word;
-              ">${name}</div>
-              <div style="
-                font-size: 11px;
-                color: #6b7280;
-                margin-top: 4px;
-                max-width: 120px;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-              ">${name}</div>
-            </div>
-          `;
-        })
-        .join('');
-      
-      if (imagesHtml) {
-        return `<div style="display: flex; flex-wrap: wrap; gap: 4px;">${imagesHtml}</div>`;
-      }
-    }
-    
-    // 非图片附件，显示文件名列表
-    const fileNames = value
-      .map((item: any) => item.name || item.fileName || '未命名附件')
-      .join(', ');
-    return `<span style="color: #6b7280;">${fileNames}</span>`;
-  }
-  
   // 检查值是否已经是HTML字符串（通过附件处理器转换后的）
   // 更精确地检测附件HTML：包含 <img 或 <div 标签
   if (typeof value === 'string' && (value.includes('<img') || (value.includes('<') && value.includes('</div>')))) {
@@ -779,7 +702,7 @@ const formatFieldValueToHTML = (key: string, value: any, textStyle?: any): strin
     return value;
   }
   
-  // 单个图片附件
+  // 单个图片附件（直接对象格式）
   if (!Array.isArray(value) && isImageAttachment(value)) {
     const url = value.url || value.fileUrl || '';
     const name = value.name || value.fileName || '图片';

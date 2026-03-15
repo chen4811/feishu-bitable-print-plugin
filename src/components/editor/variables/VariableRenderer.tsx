@@ -223,16 +223,18 @@ export function detectFieldType(fieldName: string, value: any): VariableType {
 }
 
 /**
- * 判断是否为附件字段
+ * 【简化修复】判断是否为附件字段
+ * 只根据飞书 SDK 返回的附件特征判断（必须有 token 或 fileToken）
+ * 不再使用容易误判的特征（如 name、type、url）
  */
 function isAttachmentField(value: any): boolean {
   if (!Array.isArray(value)) return false;
   if (value.length === 0) return false;
 
-  // 检查数组中的每一项是否都有附件特征属性
+  // 只检查附件特有的 token 属性，避免误判其他数组字段
   return value.every(item => 
     item && typeof item === 'object' && 
-    ('token' in item || 'name' in item || 'type' in item || 'url' in item)
+    ('token' in item || 'fileToken' in item)
   );
 }
 
