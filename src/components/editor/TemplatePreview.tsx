@@ -618,6 +618,18 @@ class AttachmentProcessor {
       console.log(`[AttachmentProcessor] 所有附件字段处理完成，成功: ${successCount}/${processingResults.length}`);
     }
     
+    // 【调试】验证 processedRecord 中是否有 _html 字段
+    const htmlFields = Object.keys(processedRecord).filter(k => k.includes('_html'));
+    console.log('[AttachmentProcessor] 返回前验证，所有 _html 字段:', htmlFields);
+    if (htmlFields.length > 0) {
+      htmlFields.forEach(field => {
+        const value = processedRecord[field];
+        console.log(`[AttachmentProcessor]   ${field}: 类型=${typeof value}, 长度=${typeof value === 'string' ? value.length : 0}`);
+      });
+    } else {
+      console.warn('[AttachmentProcessor] ⚠️ 没有找到任何 _html 字段！');
+    }
+    
     return processedRecord;
   }
 }
@@ -2100,8 +2112,10 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
             processedRecords.forEach((record, idx) => {
               attachmentFields.forEach(field => {
                 const value = (record as Record<string, any>)[field.name];
+                const htmlValue = (record as Record<string, any>)[`_${field.name}_html`];
                 const isHTML = typeof value === 'string' && value.includes('<img');
-                console.log(`[TP] 最终验证 记录${idx} "${field.name}": 类型=${typeof value}, 是HTML=${isHTML}`);
+                const hasHtmlField = !!htmlValue && typeof htmlValue === 'string';
+                console.log(`[TP] 最终验证 记录${idx} "${field.name}": 原始类型=${typeof value}, 有HTML字段=${hasHtmlField}, HTML长度=${hasHtmlField ? htmlValue.length : 0}`);
               });
             });
           } else {
@@ -2113,6 +2127,13 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         }
         
         // 只追加到可用记录列表，不自动设置为当前记录
+        // 【调试】验证 processedRecords 的内容
+        console.log('[TP] 准备调用 setAvailableRecords，processedRecords 数量:', processedRecords.length);
+        processedRecords.forEach((record, idx) => {
+          const htmlFields = Object.keys(record).filter(k => k.includes('_html'));
+          console.log(`[TP] processedRecords[${idx}] 的 _html 字段:`, htmlFields);
+        });
+        
         setAvailableRecords(prev => {
           console.log('[TP] setAvailableRecords 回调，当前记录数:', prev.length);
           const newRecords = [...prev];
