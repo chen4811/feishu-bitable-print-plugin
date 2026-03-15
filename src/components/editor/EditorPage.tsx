@@ -120,7 +120,6 @@ export function EditorPage({ onExit }: EditorPageProps) {
     selectedComponentId,
     addComponent,
     updateComponent,
-    selectComponent,
     undo,
     redo,
     clearCanvas,
@@ -1052,9 +1051,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
       selectedCells: [],
       headerFooterDialogOpen: false,
     });
-    // 取消选中组件
-    selectComponent(null);
-  }, [setTableEditing, selectComponent]);
+  }, [setTableEditing]);
 
   // 处理颜色变化
   const handleColorChange = useCallback((colorType: 'text' | 'fill', color: string) => {

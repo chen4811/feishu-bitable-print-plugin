@@ -1898,8 +1898,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                 text={cellContent || ''}
                                 records={recordsForVariableRenderer || []}
                                 fields={fields || []}
-                                fieldTypeMap={fieldTypeMap}
-                                attachmentConfigs={attachmentConfigs}
+                                fieldTypeMap={fieldTypeMap} // 【新增】
                                 tagName="span"
                                 textStyle={cellStyle}
                                 isEditing={isCurrentTableEditing}
@@ -1928,7 +1927,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                 text={cellContent || ''}
                                 records={recordsForVariableRenderer || []}
                                 fields={fields || []}
-                                attachmentConfigs={attachmentConfigs}
                                 tagName="span"
                                 textStyle={cellStyle}
                                 isEditing={isCurrentTableEditing}
@@ -1965,7 +1963,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                   text={cellContent || ''}
                                   records={recordsForVariableRenderer || []}
                                   fields={fields || []}
-                                  attachmentConfigs={attachmentConfigs}
                                   tagName="span"
                                   textStyle={cellStyle}
                                   isEditing={isCurrentTableEditing}
@@ -2002,7 +1999,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                   text={cellContent || ''}
                                   records={recordsForVariableRenderer || []}
                                   fields={fields || []}
-                                  attachmentConfigs={attachmentConfigs}
                                   tagName="span"
                                   textStyle={cellStyle}
                                   isEditing={isCurrentTableEditing}
@@ -2039,7 +2035,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                 text={cellContent || ''}
                                 records={recordsForVariableRenderer || []}
                                 fields={fields || []}
-                                attachmentConfigs={attachmentConfigs}
                                 tagName="span"
                                 textStyle={cellStyle}
                                 isEditing={isCurrentTableEditing}
@@ -2063,7 +2058,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                               text={cellContent || ''}
                               records={recordsForVariableRenderer || []}
                               fields={fields || []}
-                              attachmentConfigs={attachmentConfigs}
                               tagName="span"
                               textStyle={cellStyle}
                               isEditing={isCurrentTableEditing}
@@ -2144,7 +2138,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                             text={cellContent || ''}
                             records={recordsForVariableRenderer || []}
                             fields={fields || []}
-                            attachmentConfigs={attachmentConfigs}
                             tagName="span"
                             textStyle={cellStyle}
                             isEditing={false}
@@ -2272,7 +2265,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   text={textComp.content || '显示'}
                   records={recordsForVariableRenderer || []}
                   fields={fields || []}
-                  attachmentConfigs={attachmentConfigs}
                   tagName="span"
                   textStyle={textComp.textStyle}
                   isEditing={isEditing}
@@ -2291,7 +2283,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   text={textComp.content || '显示'}
                   records={recordsForVariableRenderer || []}
                   fields={fields || []}
-                  attachmentConfigs={attachmentConfigs}
                   tagName="span"
                   textStyle={textComp.textStyle}
                   isEditing={isEditing}
@@ -2307,7 +2298,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     text={textComp.content || '显示'}
                     records={recordsForVariableRenderer || []}
                     fields={fields || []}
-                    attachmentConfigs={attachmentConfigs}
                     tagName="span"
                     textStyle={textComp.textStyle}
                     isEditing={isEditing}
@@ -2324,7 +2314,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     text={textComp.content || '显示'}
                     records={recordsForVariableRenderer || []}
                     fields={fields || []}
-                    attachmentConfigs={attachmentConfigs}
                     tagName="span"
                     textStyle={textComp.textStyle}
                     isEditing={isEditing}
@@ -2348,7 +2337,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       text={textComp.content || '显示'}
                       records={recordsForVariableRenderer || []}
                       fields={fields || []}
-                      attachmentConfigs={attachmentConfigs}
                       tagName="span"
                       textStyle={textComp.textStyle}
                     />
@@ -2358,7 +2346,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     text={textComp.content || '显示'}
                     records={recordsForVariableRenderer || []}
                     fields={fields || []}
-                    attachmentConfigs={attachmentConfigs}
                     tagName="span"
                     textStyle={textComp.textStyle}
                     isEditing={isEditing}
