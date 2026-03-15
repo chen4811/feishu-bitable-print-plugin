@@ -214,14 +214,13 @@ export function AttachmentVariable({
     );
   }
 
-  // 基础信息模式 - 显示文件名列表
+  // 基础信息模式 - 只显示文件名列表
   if (displayMode === 'basic_info') {
     return (
       <div className="inline-flex flex-col gap-1">
         {data.map((item, index) => (
-          <div key={index} className="flex items-center gap-2 text-sm text-gray-600">
-            <FileText className="w-4 h-4 text-blue-500" />
-            <span className="truncate max-w-[200px]">{item.name}</span>
+          <div key={index} className="text-sm text-gray-700">
+            {item.name}
           </div>
         ))}
       </div>
@@ -324,9 +323,14 @@ export function AttachmentVariable({
                   onLoad={() => handleImageLoad(index)}
                 />
                 {displayMode === 'advanced' && (
-                  <span className="text-xs text-gray-500 mt-1 max-w-[120px] truncate">
-                    {item.name}
-                  </span>
+                  <div className="mt-1 text-xs text-gray-500 max-w-[200px]">
+                    <div className="truncate" title={`File: ${item.name}`}>
+                      File: [{item.name}]
+                    </div>
+                    <div className="truncate text-gray-400" title={`URL: ${url}`}>
+                      URL: [{url}]
+                    </div>
+                  </div>
                 )}
               </>
             )}
@@ -345,23 +349,33 @@ export function AttachmentVariablePreview({
   config: AttachmentVariableConfig;
   data?: AttachmentItem[] | null;
 }) {
-  // 如果没有提供数据，使用模拟数据用于预览
-  const mockData: AttachmentItem[] = [
-    { name: '示例图片1.jpg', url: 'https://picsum.photos/100/100?random=1', type: 'image/jpeg' },
-    { name: '示例图片2.jpg', url: 'https://picsum.photos/100/100?random=2', type: 'image/jpeg' },
-  ];
+  // 判断是否有实际数据
+  const hasRealData = data && data.length > 0;
   
-  const previewData = data && data.length > 0 ? data : mockData;
-  const isRealData = data && data.length > 0;
+  // 根据字段名判断是否选中了字段
+  const hasSelectedField = config.fieldName && config.fieldName.length > 0;
 
   return (
     <div className="border rounded-lg p-4 bg-gray-50">
       <p className="text-xs text-gray-500 mb-2">
         预览效果：
-        {isRealData && <span className="text-blue-500 ml-1">（实际数据）</span>}
+        {hasRealData && <span className="text-blue-500 ml-1">（实际数据）</span>}
+        {!hasRealData && hasSelectedField && <span className="text-orange-500 ml-1">（该字段暂无附件）</span>}
       </p>
       <div className="bg-white rounded p-4">
-        <AttachmentVariable config={config} data={previewData} />
+        {hasRealData ? (
+          <AttachmentVariable config={config} data={data} />
+        ) : hasSelectedField ? (
+          // 已选择字段但无附件数据
+          <span className="text-gray-400 italic text-sm">
+            [{config.fieldName}]
+          </span>
+        ) : (
+          // 未选择字段
+          <span className="text-gray-300 italic text-sm">
+            请选择附件字段
+          </span>
+        )}
       </div>
     </div>
   );

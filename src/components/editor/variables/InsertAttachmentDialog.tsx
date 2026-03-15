@@ -140,7 +140,23 @@ export function InsertAttachmentDialog({
                       <Info className="w-4 h-4 text-gray-400" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>仅显示图片，不显示文件名</p>
+                      <p>仅显示图片，不显示文件名和详细信息</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="basic_info" id="basic_info" />
+                  <Label htmlFor="basic_info" className="text-sm cursor-pointer">基础信息</Label>
+                </div>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="w-4 h-4 text-gray-400" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>只显示文件名称，如：XXX.JPG、XXX.docx</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -156,7 +172,7 @@ export function InsertAttachmentDialog({
                       <Info className="w-4 h-4 text-gray-400" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>显示图片和文件名</p>
+                      <p>显示图片和详细信息（File、URL）</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
