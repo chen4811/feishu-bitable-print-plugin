@@ -623,6 +623,137 @@ export const feishuSDK = {
       }
     };
   },
+
+  /**
+   * 弹出选择记录对话框，让用户从指定表格和视图中选择记录
+   * @param tableId 表格ID
+   * @param viewId 视图ID
+   * @returns 选中的记录ID数组
+   */
+  async selectRecordIdList(tableId: string, viewId: string): Promise<string[]> {
+    debugLog('======== selectRecordIdList() 开始 ========');
+    debugLog('参数:', { tableId, viewId });
+    
+    try {
+      const bitable = await getBitable();
+      
+      if (!bitable) {
+        debugLog('❌ bitable 未初始化');
+        return [];
+      }
+
+      // 检查 ui 接口是否存在
+      if (!bitable.ui) {
+        debugLog('❌ bitable.ui 不存在');
+        // 如果 UI 接口不存在，返回模拟数据（开发环境）
+        if (!this.isFeishuEnvironment()) {
+          debugLog('非飞书环境，返回模拟数据');
+          return ['rec_mock_1', 'rec_mock_2'];
+        }
+        return [];
+      }
+
+      // 检查 selectRecordIdList 方法是否存在
+      if (typeof bitable.ui.selectRecordIdList !== 'function') {
+        debugLog('❌ bitable.ui.selectRecordIdList 不是函数');
+        // 开发环境返回模拟数据
+        if (!this.isFeishuEnvironment()) {
+          debugLog('非飞书环境，返回模拟数据');
+          return ['rec_mock_1', 'rec_mock_2'];
+        }
+        return [];
+      }
+
+      debugLog('调用 bitable.ui.selectRecordIdList...');
+      const selectedIds = await bitable.ui.selectRecordIdList(tableId, viewId);
+      debugLog('✅ 用户选择的记录ID:', selectedIds);
+      debugLog('======== selectRecordIdList() 结束 ========');
+      
+      return selectedIds || [];
+    } catch (error) {
+      debugLog('❌ selectRecordIdList() 失败:', error);
+      console.error('[FeishuSDK] selectRecordIdList() 失败:', error);
+      debugLog('======== selectRecordIdList() 结束 ========');
+      return [];
+    }
+  },
+
+  /**
+   * 根据记录ID列表获取完整记录数据
+   * @param tableId 表格ID
+   * @param recordIds 记录ID数组
+   * @returns 完整记录数据数组
+   */
+  async getRecordsByIds(tableId: string, recordIds: string[]): Promise<BitableRecord[]> {
+    debugLog('======== getRecordsByIds() 开始 ========');
+    debugLog('参数:', { tableId, recordCount: recordIds.length });
+    
+    if (!recordIds || recordIds.length === 0) {
+      debugLog('记录ID列表为空，直接返回');
+      return [];
+    }
+
+    try {
+      const bitable = await getBitable();
+      
+      if (!bitable) {
+        debugLog('❌ bitable 未初始化');
+        return [];
+      }
+
+      // 获取表格实例
+      let table: any = null;
+      if (bitable.base && typeof bitable.base.getTable === 'function') {
+        table = await bitable.base.getTable(tableId);
+      } else if (typeof bitable.getTable === 'function') {
+        table = await bitable.getTable(tableId);
+      }
+
+      if (!table) {
+        debugLog('❌ 无法获取表格实例');
+        return [];
+      }
+
+      // 获取字段元信息
+      let fieldMetaList: any[] = [];
+      if (typeof table.getFieldMetaList === 'function') {
+        fieldMetaList = await table.getFieldMetaList();
+      } else if (typeof table.getFieldList === 'function') {
+        fieldMetaList = await table.getFieldList();
+      }
+
+      // 批量获取记录详情
+      const records: BitableRecord[] = [];
+      for (const recordId of recordIds) {
+        try {
+          let recordData: any = null;
+          
+          if (typeof table.getRecordById === 'function') {
+            recordData = await table.getRecordById(recordId);
+          } else if (typeof table.getRecord === 'function') {
+            recordData = await table.getRecord(recordId);
+          }
+
+          if (recordData) {
+            const processedRecord = processRecordData(recordData, fieldMetaList);
+            records.push(processedRecord);
+          }
+        } catch (err) {
+          debugLog(`获取记录 ${recordId} 失败:`, err);
+        }
+      }
+
+      debugLog('✅ 成功获取记录数量:', records.length);
+      debugLog('======== getRecordsByIds() 结束 ========');
+      
+      return records;
+    } catch (error) {
+      debugLog('❌ getRecordsByIds() 失败:', error);
+      console.error('[FeishuSDK] getRecordsByIds() 失败:', error);
+      debugLog('======== getRecordsByIds() 结束 ========');
+      return [];
+    }
+  },
 };
 
 /**

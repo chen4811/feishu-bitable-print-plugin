@@ -31,6 +31,7 @@ import {
   Database,
   Layout,
   RefreshCw,
+  ListChecks,
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -431,6 +432,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
     clearRecordSelection,
     setRecords,
     setFields,
+    setSelectedRecordIds,
   } = useEditorStore();
   
   const [previewMode, setPreviewMode] = useState<'default' | 'continuous' | 'label'>('default');
@@ -670,6 +672,69 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
     }
   };
 
+  // 选择记录 - 使用 selectRecordIdList API
+  const handleSelectRecords = useCallback(async () => {
+    setIsLoadingData(true);
+    setPrintError(null);
+    
+    try {
+      // 动态导入 feishu-sdk-real
+      const { feishuSDK } = await import('@/lib/feishu-sdk-real');
+      
+      // 获取当前选中的表和视图
+      const selection = await feishuSDK.getSelection();
+      if (!selection || !selection.tableId) {
+        setPrintError('无法获取当前表格信息，请确保在飞书环境中');
+        return;
+      }
+      
+      const { tableId, viewId } = selection;
+      console.log('[PrintPreview] 当前选择:', { tableId, viewId });
+      
+      // 弹出记录选择对话框
+      const selectedIds = await feishuSDK.selectRecordIdList(tableId, viewId || '');
+      
+      if (!selectedIds || selectedIds.length === 0) {
+        console.log('[PrintPreview] 用户未选择任何记录');
+        return;
+      }
+      
+      console.log('[PrintPreview] 用户选择的记录ID:', selectedIds);
+      
+      // 获取选中记录的完整数据
+      const selectedRecords = await feishuSDK.getRecordsByIds(tableId, selectedIds);
+      
+      if (selectedRecords.length === 0) {
+        setPrintError('无法获取选中记录的详细数据');
+        return;
+      }
+      
+      console.log('[PrintPreview] 获取到的记录数据:', selectedRecords);
+      
+      // 转换为应用格式
+      const appRecords = selectedRecords.map((record: any) => ({
+        id: record.id,
+        ...record.fields,
+      }));
+      
+      // 更新记录列表和选中状态
+      setRecords(appRecords as Record<string, unknown>[]);
+      setSelectedRecordIds(selectedIds);
+      
+      // 切换到数据模式
+      setDataSourceMode('data');
+      
+      // 重置页码
+      setCurrentPage(0);
+      
+    } catch (error) {
+      console.error('选择记录失败:', error);
+      setPrintError('选择记录失败，请确保在飞书环境中');
+    } finally {
+      setIsLoadingData(false);
+    }
+  }, [setRecords, setSelectedRecordIds]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0">
@@ -720,16 +785,28 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
               </Tabs>
               
               {dataSourceMode === 'data' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full mt-3"
-                  onClick={loadFeishuData}
-                  disabled={isLoadingData}
-                >
-                  <RefreshCw className={`w-3 h-3 mr-1 ${isLoadingData ? 'animate-spin' : ''}`} />
-                  {isLoadingData ? '加载中...' : '加载表格数据'}
-                </Button>
+                <>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="w-full mt-3"
+                    onClick={handleSelectRecords}
+                    disabled={isLoadingData}
+                  >
+                    <ListChecks className={`w-3 h-3 mr-1`} />
+                    {isLoadingData ? '加载中...' : '选择记录'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-2"
+                    onClick={loadFeishuData}
+                    disabled={isLoadingData}
+                  >
+                    <RefreshCw className={`w-3 h-3 mr-1 ${isLoadingData ? 'animate-spin' : ''}`} />
+                    {isLoadingData ? '加载中...' : '加载全部数据'}
+                  </Button>
+                </>
               )}
               
               {dataSourceMode === 'template' && (
