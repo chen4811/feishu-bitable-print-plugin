@@ -33,69 +33,157 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
   onEdit,
   onDelete,
 }) => {
+  // ==================== 所有 Hooks 必须在顶层调用 ====================
   const [isHovered, setIsHovered] = useState(false);
   const containerRef = useRef<HTMLSpanElement>(null);
 
-  // 【修复】解析数据格式
+  // 【解析数据格式】
   // data 可能是：{ htmlContent?: string; rawData?: any[]; fileNames?: string[] } 或 any[] 或 null
-  let htmlContent: string | undefined;
-  let rawData: any[] | undefined;
-  let fileNames: string[] | undefined;
-  
-  if (data && typeof data === 'object') {
-    if (Array.isArray(data)) {
-      // 旧格式：直接是数组
-      rawData = data;
-    } else if ('htmlContent' in data || 'rawData' in data || 'fileNames' in data) {
-      // 新格式：{ htmlContent, rawData, fileNames }
-      htmlContent = data.htmlContent;
-      rawData = data.rawData;
-      fileNames = data.fileNames;
+  const parsedData = useMemo(() => {
+    let htmlContent: string | undefined;
+    let rawData: any[] | undefined;
+    let fileNames: string[] | undefined;
+    
+    if (data && typeof data === 'object') {
+      if (Array.isArray(data)) {
+        // 旧格式：直接是数组
+        rawData = data;
+      } else if ('htmlContent' in data || 'rawData' in data || 'fileNames' in data) {
+        // 新格式：{ htmlContent, rawData, fileNames }
+        htmlContent = data.htmlContent;
+        rawData = data.rawData;
+        fileNames = data.fileNames;
+      }
     }
-  }
+    
+    return { htmlContent, rawData, fileNames };
+  }, [data]);
 
-  // 【调试日志】
-  console.log('[AttachmentVariableChip] 接收数据:', {
-    fieldName,
-    hasConfig: !!config,
-    displayMode: config?.displayMode,
-    hasHtmlContent: !!htmlContent,
-    hasRawData: !!rawData,
-    hasFileNames: !!fileNames,
-    rawDataLength: rawData?.length,
-    fileNamesLength: fileNames?.length,
-  });
+  const { htmlContent, rawData, fileNames } = parsedData;
 
   // 【关键逻辑】当有配置且有 displayMode 时，使用原始数据渲染
-  // 注意：只检查 displayMode 是否存在，不要求配置对象有多个 key
   const hasConfig = config && config.displayMode;
   const shouldUseRawData = hasConfig && rawData && rawData.length > 0;
-  
-  // 【新增】当有配置但无原始数据时，从 HTML 中提取图片 URL 用于 image_only 模式
-  const extractedImageUrl = useMemo(() => {
-    if (!hasConfig || config.displayMode !== 'image_only' || !htmlContent) return null;
+
+  // 【提取所有图片 URL】支持多图渲染
+  const imageUrls = useMemo(() => {
+    const urls: string[] = [];
     
-    // 从 HTML 中提取第一个图片 URL
-    const imgMatch = htmlContent.match(/<img[^>]+src="([^"]+)"/);
-    return imgMatch && imgMatch[1] ? imgMatch[1] : null;
-  }, [hasConfig, config?.displayMode, htmlContent]);
-  
-  console.log('[AttachmentVariableChip] 渲染决策:', {
-    hasConfig,
-    shouldUseRawData,
-    configKeys: config ? Object.keys(config) : [],
-    displayMode: config?.displayMode,
-    extractedImageUrl: extractedImageUrl?.substring(0, 50)
-  });
-  
-  // 【场景1】有配置且有原始数据 → 使用配置渲染（支持 displayMode）
-  if (shouldUseRawData) {
-    console.log('[AttachmentVariableChip] ✅ 使用配置渲染原始数据');
-    // 继续往下渲染...
-  }
-  // 【场景1.5】有配置但无原始数据，但 displayMode 是 image_only 且能从 HTML 提取图片 → 仅显示图片
-  else if (hasConfig && config.displayMode === 'image_only' && extractedImageUrl) {
-    console.log('[AttachmentVariableChip] ✅ 使用配置从 HTML 提取图片渲染（image_only 模式）');
+    // 1. 从 rawData 提取所有 URL
+    if (rawData && rawData.length > 0) {
+      rawData.forEach((item: any) => {
+        const url = item?.url 
+          || item?.fileUrl 
+          || item?.tmpUrl
+          || item?.link
+          || item?.downloadUrl
+          || item?.previewUrl
+          || item?.src;
+        if (url) urls.push(url);
+      });
+    }
+    
+    // 2. 如果 rawData 没有 URL，从 HTML 中提取所有图片 URL
+    if (urls.length === 0 && htmlContent) {
+      const imgMatches = htmlContent.matchAll(/<img[^>]+src="([^"]+)"/g);
+      for (const match of imgMatches) {
+        if (match[1]) urls.push(match[1]);
+      }
+    }
+    
+    return urls;
+  }, [rawData, htmlContent]);
+
+  // 【配置变量】
+  const displayMode = config?.displayMode || 'image_only';
+  const sizeMode = config?.sizeMode || 'auto';
+  const onePerLine = config?.onePerLine || false;
+  const align = config?.align || 'left';
+  const emptyDisplay = config?.emptyDisplay || 'default';
+  const emptyCustomText = config?.emptyCustomText;
+
+  // 【判断是否有数据】
+  const hasData = (rawData && rawData.length > 0) || (fileNames && fileNames.length > 0) || imageUrls.length > 0;
+
+  // 【获取附件数量】
+  const attachmentCount = rawData?.length || fileNames?.length || imageUrls.length || 0;
+
+  // 【获取第一张图片信息】
+  const firstImage = rawData && rawData.length > 0 ? rawData[0] : null;
+  const imageUrl = imageUrls.length > 0 ? imageUrls[0] : null;
+
+  // 【获取文件名】
+  const fileName = (fileNames && fileNames.length > 0)
+    ? fileNames[0]
+    : (firstImage?.name 
+      || firstImage?.fileName 
+      || firstImage?.title 
+      || fieldName);
+
+  // 【计算图片样式】
+  const getImageStyle = useMemo(() => {
+    return (): React.CSSProperties => {
+      const style: React.CSSProperties = {
+        objectFit: 'contain',
+        borderRadius: '4px',
+        flexShrink: 0,
+      };
+
+      switch (sizeMode) {
+        case 'fixed_width':
+          style.width = config?.width ? `${config.width}px` : '80px';
+          style.height = 'auto';
+          style.objectFit = 'cover';
+          break;
+        case 'fixed_height':
+          style.width = 'auto';
+          style.height = config?.height ? `${config.height}px` : '80px';
+          style.objectFit = 'cover';
+          break;
+        case 'fixed_size':
+          style.width = config?.width ? `${config.width}px` : '80px';
+          style.height = config?.height ? `${config.height}px` : '80px';
+          style.objectFit = 'cover';
+          break;
+        case 'auto':
+        default:
+          style.maxWidth = '120px';
+          style.maxHeight = '120px';
+          style.width = 'auto';
+          style.height = 'auto';
+          break;
+      }
+
+      return style;
+    };
+  }, [sizeMode, config?.width, config?.height]);
+
+  // 【容器样式】
+  const getContainerStyle = useMemo(() => {
+    return (): React.CSSProperties => {
+      const style: React.CSSProperties = {
+        display: 'inline-flex',
+        flexWrap: 'wrap',
+        gap: onePerLine ? '8px' : '6px',
+        verticalAlign: 'middle',
+        alignItems: 'flex-start',
+      };
+
+      if (onePerLine) {
+        style.flexDirection = 'column';
+        style.alignItems = align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center';
+      } else {
+        style.justifyContent = align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center';
+      }
+
+      return style;
+    };
+  }, [onePerLine, align]);
+
+  // ==================== 条件渲染逻辑（在所有 Hooks 之后）====================
+
+  // 【场景1】有配置但无原始数据，displayMode 是 image_only 且能从 HTML 提取图片
+  if (hasConfig && config.displayMode === 'image_only' && imageUrls.length > 0 && !shouldUseRawData) {
     return (
       <span
         ref={containerRef}
@@ -117,24 +205,27 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
         data-field-name={fieldName}
         data-variable-type="attachment"
       >
-        <img
-          src={extractedImageUrl}
-          alt=""
-          style={{
-            maxWidth: config?.width ? `${config.width}px` : '80px',
-            maxHeight: config?.height ? `${config.height}px` : '80px',
-            width: 'auto',
-            height: 'auto',
-            objectFit: 'cover',
-            borderRadius: '4px',
-          }}
-          className="rounded"
-          crossOrigin="anonymous"
-          onError={(e) => {
-            const img = e.target as HTMLImageElement;
-            img.style.display = 'none';
-          }}
-        />
+        {imageUrls.map((url, index) => (
+          <img
+            key={index}
+            src={url}
+            alt=""
+            style={{
+              maxWidth: config?.width ? `${config.width}px` : '80px',
+              maxHeight: config?.height ? `${config.height}px` : '80px',
+              width: 'auto',
+              height: 'auto',
+              objectFit: 'cover',
+              borderRadius: '4px',
+            }}
+            className="rounded"
+            crossOrigin="anonymous"
+            onError={(e) => {
+              const img = e.target as HTMLImageElement;
+              img.style.display = 'none';
+            }}
+          />
+        ))}
         
         {/* 悬停浮窗按钮 - 仅在编辑状态下显示 */}
         {isEditing && isHovered && (
@@ -168,13 +259,9 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
       </span>
     );
   }
+
   // 【场景2】没有配置但有 HTML → 使用 HTML 渲染
-  else if (htmlContent) {
-    console.log('[AttachmentVariableChip] ⚠️ 降级使用预处理HTML渲染，原因：', {
-      hasConfig,
-      hasRawData: !!rawData,
-      rawDataLength: rawData?.length
-    });
+  if (!hasConfig && htmlContent) {
     return (
       <span
         ref={containerRef}
@@ -197,64 +284,8 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
       />
     );
   }
-  
-  // 配置变量声明
-  const displayMode = config?.displayMode || 'image_only';
-  const sizeMode = config?.sizeMode || 'auto';
-  const onePerLine = config?.onePerLine || false;
-  const align = config?.align || 'left';
-  const emptyDisplay = config?.emptyDisplay || 'default';
-  const emptyCustomText = config?.emptyCustomText;
 
-  // 【修改】判断是否有数据 - 检查 rawData 或 fileNames
-  const hasData = (rawData && rawData.length > 0) || (fileNames && fileNames.length > 0);
-  
-  // 获取附件数量
-  const attachmentCount = rawData?.length || fileNames?.length || 0;
-
-  // 【重构】提取所有图片 URL - 支持多图渲染
-  const imageUrls = useMemo(() => {
-    const urls: string[] = [];
-    
-    // 1. 从 rawData 提取所有 URL
-    if (rawData && rawData.length > 0) {
-      rawData.forEach((item: any) => {
-        const url = item?.url 
-          || item?.fileUrl 
-          || item?.tmpUrl
-          || item?.link
-          || item?.downloadUrl
-          || item?.previewUrl
-          || item?.src;
-        if (url) urls.push(url);
-      });
-    }
-    
-    // 2. 如果 rawData 没有 URL，从 HTML 中提取所有图片 URL
-    if (urls.length === 0 && htmlContent) {
-      const imgMatches = htmlContent.matchAll(/<img[^>]+src="([^"]+)"/g);
-      for (const match of imgMatches) {
-        if (match[1]) urls.push(match[1]);
-      }
-      console.log('[AttachmentVariableChip] 从 HTML 提取到', urls.length, '个图片 URL');
-    }
-    
-    return urls;
-  }, [rawData, htmlContent]);
-
-  // 【保留】获取第一张图片信息（用于 basic_info 和 advanced 模式）
-  const firstImage = rawData && rawData.length > 0 ? rawData[0] : null;
-  let imageUrl = imageUrls.length > 0 ? imageUrls[0] : null;
-
-  // 【修改】获取文件名 - 优先使用 fileNames 数组，其次从 firstImage 获取
-  const fileName = (fileNames && fileNames.length > 0)
-    ? fileNames[0]
-    : (firstImage?.name 
-      || firstImage?.fileName 
-      || firstImage?.title 
-      || fieldName);
-
-  // 空数据渲染
+  // 【场景3】空数据渲染
   if (!hasData) {
     const emptyText = emptyDisplay === 'custom' && emptyCustomText 
       ? emptyCustomText 
@@ -324,62 +355,7 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
     );
   }
 
-  // 计算图片样式
-  const getImageStyle = (): React.CSSProperties => {
-    const style: React.CSSProperties = {
-      objectFit: 'contain',
-      borderRadius: '4px',
-      flexShrink: 0,
-    };
-
-    switch (sizeMode) {
-      case 'fixed_width':
-        style.width = config?.width ? `${config.width}px` : '80px';
-        style.height = 'auto';
-        style.objectFit = 'cover';
-        break;
-      case 'fixed_height':
-        style.width = 'auto';
-        style.height = config?.height ? `${config.height}px` : '80px';
-        style.objectFit = 'cover';
-        break;
-      case 'fixed_size':
-        style.width = config?.width ? `${config.width}px` : '80px';
-        style.height = config?.height ? `${config.height}px` : '80px';
-        style.objectFit = 'cover';
-        break;
-      case 'auto':
-      default:
-        // 自动模式：限制最大尺寸，保持比例
-        style.maxWidth = '120px';
-        style.maxHeight = '120px';
-        style.width = 'auto';
-        style.height = 'auto';
-        break;
-    }
-
-    return style;
-  };
-
-  // 容器样式
-  const getContainerStyle = (): React.CSSProperties => {
-    const style: React.CSSProperties = {
-      display: 'inline-flex',
-      flexWrap: 'wrap',
-      gap: onePerLine ? '8px' : '6px',
-      verticalAlign: 'middle',
-      alignItems: 'flex-start',
-    };
-
-    if (onePerLine) {
-      style.flexDirection = 'column';
-      style.alignItems = align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center';
-    } else {
-      style.justifyContent = align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center';
-    }
-
-    return style;
-  };
+  // ==================== 主渲染逻辑 ====================
 
   return (
     <span
@@ -506,7 +482,7 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
                   onEdit?.();
                 }}
                 className="p-1 hover:bg-gray-700 rounded text-white"
-                title="编辑附件变量"
+                title="编辑"
               >
                 <Pencil className="w-3 h-3" />
               </button>
@@ -516,7 +492,7 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
                   onDelete?.();
                 }}
                 className="p-1 hover:bg-red-600 rounded text-white"
-                title="删除附件变量"
+                title="删除"
               >
                 <Trash2 className="w-3 h-3" />
               </button>
