@@ -12,7 +12,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { useTemplateStore, type Template } from '@/store/templateStore';
-import { useSelectedDataStore } from '@/store/selectedDataStore';
+import { useSelectedDataStore, type SelectedRecord } from '@/store/selectedDataStore';
 import { useEditorStore } from '@/store/editorStore';
 import { PageSettingsDialog } from '@/components/editor/dialogs/PageSettingsDialog';
 import { PAGE_SIZES, PageConfig } from '@/types/editor';
@@ -52,8 +52,8 @@ const checkTableMatch = (template: { data?: { tableId?: string } } | null, table
   return templateTableId === tableId;
 };
 
-// 选中的数据记录类型
-interface SelectedRecord {
+// 选中的数据记录类型（用于TemplatePreview内部）
+interface PreviewSelectedRecord {
   id: string;
   data: Record<string, any>;
   addedAt: number;
@@ -1376,7 +1376,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   const {
     records: storeRecords,
     currentIndex,
-    setRecords,
+    setRecords: setSelectedDataRecords,
     setCurrentIndex,
     nextRecord,
     prevRecord,
@@ -1384,6 +1384,9 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     setIsFromFeishu,
     getCurrentRecord,
   } = useSelectedDataStore();
+  
+  // 【关键修复】获取 editorStore 的 setRecords 方法，确保 CanvasComponent 能获取到处理后的数据
+  const { setRecords: setEditorStoreRecords, records: editorStoreRecords } = useEditorStore();
 
   // 使用飞书SDK（使用 feishu-env）
   const isFeishuEnvironment = feishuEnv.isFeishuEnvironment();
@@ -1397,7 +1400,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   
   // 新增状态：排版方式和选中数据列表
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('default');
-  const [selectedRecords, setSelectedRecords] = useState<SelectedRecord[]>([]);
+  const [selectedRecords, setSelectedRecords] = useState<PreviewSelectedRecord[]>([]);
   const [availableRecords, setAvailableRecords] = useState<Record<string, any>[]>([]);
   
   // 表格匹配状态
@@ -1907,6 +1910,13 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         return [...prev, finalRecord];
       });
       
+      // 【关键修复】同时更新 editorStore 的 records，确保 CanvasComponent 能获取到包含 _html 字段的数据
+      const currentEditorRecords = useEditorStore.getState().records;
+      const newEditorRecords = [...currentEditorRecords, recordWithAttachments];
+      setEditorStoreRecords(newEditorRecords);
+      console.log('[TP] 已更新 editorStore.records:', newEditorRecords.length, '条记录');
+      console.log('[TP] 最新记录包含 _html 字段:', Object.keys(recordWithAttachments).filter(k => k.includes('_html')));
+      
       console.log('[TP] 记录已添加到列表（含附件处理）');
       toast.success('已添加记录');
       
@@ -1918,7 +1928,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       requestLockRef.current.isLocked = false;
     }
     console.log('[TP] ========== 获取单条记录结束 ==========');
-  }, [selectedTemplate, availableRecords, ignoredRecordIds]);
+  }, [selectedTemplate, availableRecords, ignoredRecordIds, setEditorStoreRecords]);
 
   // 从 feishu-env 获取选中记录（多选时使用）
   const fetchSelectedRecordsFromEnv = useCallback(async () => {
@@ -2480,8 +2490,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         console.log('[TP] 第一条记录:', JSON.stringify(records[0], null, 2));
         
         // 转换格式
-        const formattedRecords = records.map((record, index) => {
-          const formatted = {
+        let formattedRecords: Record<string, any>[] = records.map((record, index) => {
+          const formatted: Record<string, any> = {
             ...record.fields,
             id: record.id,
             _rowIndex: index,
@@ -2489,9 +2499,38 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           console.log(`[TP] 格式化记录 ${index}:`, { id: record.id, fieldKeys: Object.keys(record.fields || {}) });
           return formatted;
         });
+        
+        // 【关键修复】批量处理附件字段
+        try {
+          const { base } = await import('@lark-base-open/js-sdk');
+          const table = await base.getActiveTable();
+          const fieldMetaList = await table.getFieldMetaList();
+          
+          console.log('[TP] 开始批量处理附件字段...');
+          formattedRecords = await Promise.all(
+            formattedRecords.map(async (record) => {
+              try {
+                return await processRecordAttachments(record, fieldMetaList, table);
+              } catch (err) {
+                console.warn('[TP] 处理记录附件失败:', record.id, err);
+                return record;
+              }
+            })
+          );
+          console.log('[TP] 批量附件处理完成');
+          
+          // 检查处理结果
+          const sampleRecord = formattedRecords[0];
+          const htmlFields = Object.keys(sampleRecord).filter(k => k.includes('_html'));
+          console.log('[TP] 第一条记录的 _html 字段:', htmlFields);
+        } catch (attachmentErr) {
+          console.warn('[TP] 附件预处理失败:', attachmentErr);
+          // 继续，不阻断主流程
+        }
 
         console.log('[TP] 设置 records:', formattedRecords.length, '条');
-        setRecords(formattedRecords);
+        setSelectedDataRecords(formattedRecords as SelectedRecord[]);
+        setEditorStoreRecords(formattedRecords); // 【关键修复】同时更新 editorStore，使 CanvasComponent 能获取数据
         setCurrentIndex(0);
         // 更新可用记录列表
         setAvailableRecords(formattedRecords);
@@ -2504,7 +2543,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       } else {
         console.log('[TP] 未获取到任何记录');
         toast.info('未获取到任何记录');
-        setRecords([]);
+        setSelectedDataRecords([]);
+        setEditorStoreRecords([]); // 【关键修复】同时清空 editorStore
         setCurrentIndex(0);
         setAvailableRecords([]);
       }
@@ -2514,7 +2554,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     } finally {
       setIsLoading(false);
     }
-  }, [isFeishuEnvironment, setRecords, setCurrentIndex, showDebugInfo]);
+  }, [isFeishuEnvironment, setSelectedDataRecords, setEditorStoreRecords, setCurrentIndex, showDebugInfo]);
 
   // 扫描 Checkbox（功能已移除，显示提示）
   // 获取当前选中的模板
@@ -3323,7 +3363,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
                 const components = selectedTemplate?.data?.components || [];
 
                 // 渲染单个数据页面的函数
-                const renderDataPage = (record: SelectedRecord, pageIndex: number, isLast: boolean) => {
+                const renderDataPage = (record: PreviewSelectedRecord, pageIndex: number, isLast: boolean) => {
                   // 【渲染层数据监控】验证传递给渲染组件的数据
                   if (record.data) {
                     console.group(`🎨 [RenderMonitor] 渲染页面 ${pageIndex + 1}`);
