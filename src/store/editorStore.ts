@@ -109,6 +109,9 @@ interface EditorState {
   
   // 记录数据
   setRecords: (records: Record<string, unknown>[]) => void;
+  addRecords: (records: Record<string, unknown>[]) => void; // 累积添加记录，不覆盖已有记录
+  removeRecord: (id: string) => void; // 移除单条记录
+  clearRecords: () => void; // 清空所有记录
   setSelectedRecordIds: (ids: string[]) => void;
   toggleRecordSelection: (id: string) => void;
   selectAllRecords: () => void;
@@ -419,7 +422,42 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setFeishuContextLoading: (loading) => set({ isFeishuContextLoading: loading }),
   
   // 记录数据管理
-  setRecords: (records) => set({ records }),
+  setRecords: (records) => set({ records, selectedRecordIds: [] }), // 设置记录时清空选择
+  
+  addRecords: (newRecords) => {
+    const state = get();
+    const existingIds = new Set(state.records.map(r => r.id as string));
+    
+    // 过滤出不存在的记录
+    const recordsToAdd = newRecords.filter(r => !existingIds.has(r.id as string));
+    
+    if (recordsToAdd.length > 0) {
+      // 重新计算 _rowIndex
+      const updatedRecords = [...state.records];
+      const startIndex = updatedRecords.length;
+      recordsToAdd.forEach((record, idx) => {
+        updatedRecords.push({
+          ...record,
+          _rowIndex: startIndex + idx,
+        });
+      });
+      set({ records: updatedRecords });
+    }
+  },
+  
+  removeRecord: (id) => {
+    const state = get();
+    const updatedRecords = state.records
+      .filter(r => r.id !== id)
+      .map((r, idx) => ({ ...r, _rowIndex: idx })); // 重新计算索引
+    set({ 
+      records: updatedRecords,
+      selectedRecordIds: state.selectedRecordIds.filter(rid => rid !== id),
+    });
+  },
+  
+  clearRecords: () => set({ records: [], selectedRecordIds: [] }),
+  
   setSelectedRecordIds: (ids) => set({ selectedRecordIds: ids }),
   
   toggleRecordSelection: (id) => {

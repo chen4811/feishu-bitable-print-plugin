@@ -130,6 +130,8 @@ export function EditorPage({ onExit }: EditorPageProps) {
     tableCellEditing,
     setTableCellEditing,
     setRecords,
+    addRecords,
+    clearRecords,
     setFeishuEnvironment,
     fields: storeFields,
     setFields,
@@ -324,7 +326,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
           return; // 表格变化已处理，不再执行下面的记录更新
         }
         
-        // 表格未变化，只更新记录
+        // 表格未变化，累积记录而不是覆盖
         try {
           const records = await feishuEnv.getSelectedRecords();
           console.log('[EditorPage] 获取到新的选中记录:', records);
@@ -335,12 +337,13 @@ export function EditorPage({ onExit }: EditorPageProps) {
               ...record.fields,
               _rowIndex: index,
             }));
-            console.log('[EditorPage] Setting records to store:', {
+            console.log('[EditorPage] 累积添加记录到 store:', {
               count: appRecords.length,
               firstRecordKeys: Object.keys(appRecords[0]).slice(0, 10),
             });
             setFeishuRecords(records);
-            setRecords(appRecords as unknown as Record<string, unknown>[]);
+            // 🔥 【关键修复】使用 addRecords 累积记录，而不是 setRecords 覆盖
+            addRecords(appRecords as unknown as Record<string, unknown>[]);
           }
         } catch (error) {
           console.error('[EditorPage] 获取选中记录失败:', error);
@@ -351,7 +354,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
     };
     
     init();
-  }, [setFeishuEnvironment, setFields, setRecords]);
+  }, [setFeishuEnvironment, setFields, setRecords, addRecords]);
 
   // 初始化当前编辑的模板
   useEffect(() => {
