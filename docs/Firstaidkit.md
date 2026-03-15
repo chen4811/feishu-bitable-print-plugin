@@ -488,6 +488,30 @@ try {
 }
 ```
 
+**【重要修复】传入 table 参数**:
+```typescript
+// 在获取字段后，需要获取 table 对象：
+const { base } = await import('@lark-base-open/js-sdk');
+const activeTable = await base.getActiveTable();
+
+// 然后传入 table 参数：
+const processedRecords = await Promise.all(
+  appRecords.map(async (record) => {
+    return await processRecordAttachments(
+      record,
+      appFields,
+      fieldTypeMap,
+      activeTable  // 【关键】传入 table 参数
+    );
+  })
+);
+```
+
+**重要说明**:
+- `processRecordAttachments` 需要 `table` 参数来调用飞书 API 获取附件 URL
+- 如果不传入 `table`，函数会尝试通过 `getFeishuTable()` 自动获取，但可能在某些情况下失败
+- 建议在调用前显式获取 `table` 并传入
+
 ---
 
 ## 5. 字段值检测逻辑
