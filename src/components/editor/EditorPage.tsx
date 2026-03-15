@@ -1048,13 +1048,21 @@ export function EditorPage({ onExit }: EditorPageProps) {
   const handleFinishEdit = useCallback(() => {
     // 先取消选中，再退出编辑
     useEditorStore.getState().selectComponent(null);
+    // 清除单元格编辑状态
+    setTableCellEditing({
+      isEditing: false,
+      tableId: null,
+      cellId: null,
+      rowIndex: null,
+      colIndex: null,
+    });
     setTableEditing({
       isEditing: false,
       tableId: null,
       selectedCells: [],
       headerFooterDialogOpen: false,
     });
-  }, [setTableEditing]);
+  }, [setTableEditing, setTableCellEditing]);
 
   // 处理颜色变化
   const handleColorChange = useCallback((colorType: 'text' | 'fill', color: string) => {
