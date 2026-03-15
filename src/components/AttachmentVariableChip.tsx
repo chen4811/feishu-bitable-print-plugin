@@ -62,9 +62,17 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
     rawDataLength: rawData?.length,
   });
 
-  // 【关键逻辑】当有配置时，优先使用原始数据渲染（支持 displayMode）
-  const hasConfig = config && Object.keys(config).length > 0;
+  // 【关键逻辑】当有配置且有 displayMode 时，使用原始数据渲染
+  // 注意：只检查 displayMode 是否存在，不要求配置对象有多个 key
+  const hasConfig = config && config.displayMode;
   const shouldUseRawData = hasConfig && rawData && rawData.length > 0;
+  
+  console.log('[AttachmentVariableChip] 渲染决策:', {
+    hasConfig,
+    shouldUseRawData,
+    configKeys: config ? Object.keys(config) : [],
+    displayMode: config?.displayMode
+  });
   
   // 【场景1】有配置且有原始数据 → 使用配置渲染（支持 displayMode）
   if (shouldUseRawData) {
@@ -72,8 +80,12 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
     // 继续往下渲染...
   }
   // 【场景2】没有配置但有 HTML → 使用 HTML 渲染
-  else if (htmlContent && !shouldUseRawData) {
-    console.log('[AttachmentVariableChip] ✅ 使用预处理HTML渲染');
+  else if (htmlContent) {
+    console.log('[AttachmentVariableChip] ⚠️ 降级使用预处理HTML渲染，原因：', {
+      hasConfig,
+      hasRawData: !!rawData,
+      rawDataLength: rawData?.length
+    });
     return (
       <span
         ref={containerRef}
@@ -284,37 +296,29 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
           {displayMode === 'image_only' && (
             <>
               {imageUrl ? (
-                <div className="relative inline-block" style={{ margin: 0, padding: 0 }}>
-                  <img
-                    src={imageUrl}
-                    alt={fileName}
-                    style={getImageStyle()}
-                    className="rounded"
-                    crossOrigin="anonymous"
-                    onError={(e) => {
-                      const img = e.target as HTMLImageElement;
-                      img.style.display = 'none';
-                      // 显示文件名作为降级
-                      const fallback = img.nextElementSibling as HTMLElement;
-                      if (fallback) {
-                        fallback.style.display = 'block';
-                      }
-                    }}
-                  />
-                  {/* 图片加载失败时的降级显示 */}
-                  <div 
-                    className="hidden px-2 py-1 bg-gray-100 rounded text-xs text-gray-600 max-w-[120px] break-words"
-                  >
-                    <FileImage className="w-4 h-4 mx-auto mb-1 text-gray-400" />
-                    {fileName}
-                  </div>
-                </div>
+                <img
+                  src={imageUrl}
+                  alt=""
+                  style={getImageStyle()}
+                  className="rounded"
+                  crossOrigin="anonymous"
+                  onError={(e) => {
+                    // 图片加载失败时，隐藏图片，不显示任何文字
+                    const img = e.target as HTMLImageElement;
+                    img.style.display = 'none';
+                  }}
+                />
               ) : (
-                // 【关键修复】没有图片 URL 时显示占位符
-                <div className="inline-flex items-center justify-center px-2 py-1 bg-gray-100 rounded text-xs text-gray-500">
-                  <FileImage className="w-4 h-4 mr-1" />
-                  {fileName}
-                </div>
+                // 【关键】没有图片 URL 时显示空白占位符，不显示文件名
+                <div 
+                  style={{ 
+                    width: config?.width || 80, 
+                    height: config?.height || 80,
+                    background: '#f3f4f6',
+                    borderRadius: '4px'
+                  }}
+                  title={fileName}
+                />
               )}
             </>
           )}
