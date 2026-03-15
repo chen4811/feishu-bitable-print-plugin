@@ -205,61 +205,27 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
         data-field-name={fieldName}
         data-variable-type="attachment"
       >
-        {imageUrls.map((url, index) => {
-          // 获取对应索引的文件名作为降级显示
-          const fallbackName = (fileNames && fileNames[index]) 
-            || (rawData && rawData[index]?.name) 
-            || (rawData && rawData[index]?.fileName)
-            || `图片${index + 1}`;
-          
-          return (
-            <span key={index} className="inline-block">
-              <img
-                src={url}
-                alt=""
-                style={{
-                  maxWidth: config?.width ? `${config.width}px` : '80px',
-                  maxHeight: config?.height ? `${config.height}px` : '80px',
-                  width: 'auto',
-                  height: 'auto',
-                  objectFit: 'cover',
-                  borderRadius: '4px',
-                }}
-                className="rounded"
-                crossOrigin="anonymous"
-                onError={(e) => {
-                  const img = e.target as HTMLImageElement;
-                  // 隐藏失败的图片
-                  img.style.display = 'none';
-                  // 显示降级内容（文件名）
-                  const fallback = img.nextElementSibling as HTMLElement;
-                  if (fallback) fallback.style.display = 'inline-flex';
-                }}
-              />
-              {/* 图片加载失败时的降级显示 */}
-              <span
-                style={{
-                  display: 'none',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '4px 8px',
-                  background: '#f3f4f6',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  color: '#6b7280',
-                  maxWidth: config?.width ? `${config.width}px` : '80px',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-                title={`图片加载失败：${fallbackName}`}
-              >
-                <FileImage className="w-3 h-3 flex-shrink-0" />
-                <span className="truncate">{fallbackName}</span>
-              </span>
-            </span>
-          );
-        })}
+        {imageUrls.map((url, index) => (
+          <img
+            key={index}
+            src={url}
+            alt=""
+            style={{
+              maxWidth: config?.width ? `${config.width}px` : '80px',
+              maxHeight: config?.height ? `${config.height}px` : '80px',
+              width: 'auto',
+              height: 'auto',
+              objectFit: 'cover',
+              borderRadius: '4px',
+            }}
+            className="rounded"
+            crossOrigin="anonymous"
+            onError={(e) => {
+              const img = e.target as HTMLImageElement;
+              img.style.display = 'none';
+            }}
+          />
+        ))}
         
         {/* 悬停浮窗按钮 - 仅在编辑状态下显示 */}
         {isEditing && isHovered && (
@@ -294,125 +260,33 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
     );
   }
 
-  // 【场景2】没有配置但有 HTML/图片URL → 使用 React <img> 渲染（支持降级显示）
-  if (!hasConfig && (htmlContent || imageUrls.length > 0)) {
-    // 【关键修复】提取图片URL，使用React img标签渲染，支持onError降级显示
-    if (imageUrls.length > 0) {
-      return (
-        <span
-          ref={containerRef}
-          className={`
-            inline-flex items-center gap-1 relative flex-wrap
-            ${isSelected ? 'ring-2 ring-blue-400 rounded' : ''}
-            ${className}
-          `}
-          style={{
-            fontSize: textStyle?.fontSize ? `${textStyle.fontSize}px` : undefined,
-          }}
-          onClick={(e) => e.stopPropagation()}
-          onDoubleClick={(e) => {
-            e.stopPropagation();
-            onEdit?.();
-          }}
-          data-field-name={fieldName}
-          data-variable-type="attachment"
-        >
-          {imageUrls.map((url, index) => {
-            // 获取对应索引的文件名作为降级显示
-            const fallbackName = (fileNames && fileNames[index]) 
-              || (rawData && rawData[index]?.name) 
-              || (rawData && rawData[index]?.fileName)
-              || `图片${index + 1}`;
-            
-            return (
-              <span key={index} className="inline-block">
-                <img
-                  src={url}
-                  alt=""
-                  style={{
-                    maxWidth: '80px',
-                    maxHeight: '80px',
-                    width: 'auto',
-                    height: 'auto',
-                    objectFit: 'contain',
-                    borderRadius: '4px',
-                    border: '1px solid #e5e7eb',
-                    padding: '2px',
-                    background: '#f9fafb',
-                  }}
-                  className="rounded"
-                  crossOrigin="anonymous"
-                  onError={(e) => {
-                    const img = e.target as HTMLImageElement;
-                    // 隐藏失败的图片
-                    img.style.display = 'none';
-                    // 显示降级内容（文件名）
-                    const fallback = img.nextElementSibling as HTMLElement;
-                    if (fallback) fallback.style.display = 'inline-flex';
-                  }}
-                />
-                {/* 图片加载失败时的降级显示 */}
-                <span
-                  style={{
-                    display: 'none',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '4px 8px',
-                    background: '#f3f4f6',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                    color: '#6b7280',
-                    maxWidth: '80px',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                  title={`图片加载失败：${fallbackName}`}
-                >
-                  <FileImage className="w-3 h-3 flex-shrink-0" />
-                  <span className="truncate">{fallbackName}</span>
-                </span>
-              </span>
-            );
-          })}
-        </span>
-      );
-    }
-    
-    // 没有图片URL，但仍有HTML内容（非图片附件）
-    if (htmlContent) {
-      return (
-        <span
-          ref={containerRef}
-          className={`
-            inline-flex items-center gap-1 relative
-            ${isSelected ? 'ring-2 ring-blue-400 rounded' : ''}
-            ${className}
-          `}
-          style={{
-            fontSize: textStyle?.fontSize ? `${textStyle.fontSize}px` : undefined,
-          }}
-          onClick={(e) => e.stopPropagation()}
-          onDoubleClick={(e) => {
-            e.stopPropagation();
-            onEdit?.();
-          }}
-          data-field-name={fieldName}
-          data-variable-type="attachment"
-          dangerouslySetInnerHTML={{ __html: htmlContent }}
-        />
-      );
-    }
+  // 【场景2】没有配置但有 HTML → 使用 HTML 渲染
+  if (!hasConfig && htmlContent) {
+    return (
+      <span
+        ref={containerRef}
+        className={`
+          inline-flex items-center gap-1 relative
+          ${isSelected ? 'ring-2 ring-blue-400 rounded' : ''}
+          ${className}
+        `}
+        style={{
+          fontSize: textStyle?.fontSize ? `${textStyle.fontSize}px` : undefined,
+        }}
+        onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          onEdit?.();
+        }}
+        data-field-name={fieldName}
+        data-variable-type="attachment"
+        dangerouslySetInnerHTML={{ __html: htmlContent }}
+      />
+    );
   }
 
   // 【场景3】空数据渲染
   if (!hasData) {
-    // 【修复】打印预览模式下（非编辑状态），空字段不显示任何内容
-    if (!isEditing) {
-      return null;
-    }
-    
-    // 编辑状态下，显示占位符方便用户操作
     const emptyText = emptyDisplay === 'custom' && emptyCustomText 
       ? emptyCustomText 
       : `[${fieldName}]`;
@@ -514,54 +388,21 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
             <>
               {imageUrls.length > 0 ? (
                 // 【重构】渲染所有图片
-                imageUrls.map((url, index) => {
-                  // 获取对应索引的文件名作为降级显示
-                  const fallbackName = (fileNames && fileNames[index]) 
-                    || (rawData && rawData[index]?.name) 
-                    || (rawData && rawData[index]?.fileName)
-                    || `图片${index + 1}`;
-                  
-                  return (
-                    <span key={index} className="inline-block">
-                      <img
-                        src={url}
-                        alt=""
-                        style={getImageStyle()}
-                        className="rounded"
-                        crossOrigin="anonymous"
-                        onError={(e) => {
-                          // 图片加载失败时，隐藏失败的图片
-                          const img = e.target as HTMLImageElement;
-                          img.style.display = 'none';
-                          // 显示降级内容（文件名）
-                          const fallback = img.nextElementSibling as HTMLElement;
-                          if (fallback) fallback.style.display = 'inline-flex';
-                        }}
-                      />
-                      {/* 图片加载失败时的降级显示 */}
-                      <span
-                        style={{
-                          display: 'none',
-                          alignItems: 'center',
-                          gap: '4px',
-                          padding: '4px 8px',
-                          background: '#f3f4f6',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          color: '#6b7280',
-                          maxWidth: config?.width ? `${config.width}px` : '80px',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                        title={`图片加载失败：${fallbackName}`}
-                      >
-                        <FileImage className="w-3 h-3 flex-shrink-0" />
-                        <span className="truncate">{fallbackName}</span>
-                      </span>
-                    </span>
-                  );
-                })
+                imageUrls.map((url, index) => (
+                  <img
+                    key={index}
+                    src={url}
+                    alt=""
+                    style={getImageStyle()}
+                    className="rounded"
+                    crossOrigin="anonymous"
+                    onError={(e) => {
+                      // 图片加载失败时，隐藏图片
+                      const img = e.target as HTMLImageElement;
+                      img.style.display = 'none';
+                    }}
+                  />
+                ))
               ) : (
                 // 没有图片 URL 时显示空白占位符
                 <div 
@@ -590,28 +431,17 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
           {displayMode === 'advanced' && (
             <>
               {imageUrl ? (
-                <span className="inline-block">
-                  <img
-                    src={imageUrl}
-                    alt={fileName}
-                    style={{ maxWidth: '60px', maxHeight: '60px', borderRadius: '4px' }}
-                    className="rounded mr-2"
-                    crossOrigin="anonymous"
-                    onError={(e) => {
-                      // 图片加载失败时，隐藏失败的图片
-                      const img = e.target as HTMLImageElement;
-                      img.style.display = 'none';
-                      // 显示降级图标
-                      const fallback = img.nextElementSibling as HTMLElement;
-                      if (fallback) fallback.style.display = 'inline-flex';
-                    }}
-                  />
-                  {/* 图片加载失败时的降级图标 */}
-                  <FileImage 
-                    className="w-6 h-6 text-blue-500 mr-2" 
-                    style={{ display: 'none' }}
-                  />
-                </span>
+                <img
+                  src={imageUrl}
+                  alt={fileName}
+                  style={{ maxWidth: '60px', maxHeight: '60px', borderRadius: '4px' }}
+                  className="rounded mr-2"
+                  crossOrigin="anonymous"
+                  onError={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    img.style.display = 'none';
+                  }}
+                />
               ) : (
                 <FileImage className="w-6 h-6 text-blue-500 mr-2" />
               )}
