@@ -2520,6 +2520,39 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
           </div>
         );
 
+      case 'fieldContainer':
+        // 字段容器组件 - 在编辑模式下显示虚线边框标识
+        const fieldContainerComp = component as any;
+        const fieldNames = fieldContainerComp.fieldNames || [];
+        const children = fieldContainerComp.children || [];
+        
+        return (
+          <div 
+            className="w-full"
+            style={{
+              border: '2px dashed #e5e7eb',
+              borderRadius: '4px',
+              padding: '8px',
+              backgroundColor: '#f9fafb',
+            }}
+          >
+            <div className="text-xs text-gray-400 mb-2 flex items-center gap-1">
+              <span>📦 字段容器</span>
+              <span className="text-blue-500">[{fieldNames.join(', ')}]</span>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {children.map((child: any) => (
+                <CanvasComponent
+                  key={child.id}
+                  component={child}
+                  isSelected={false}
+                  onSelect={() => {}}
+                />
+              ))}
+            </div>
+          </div>
+        );
+
       default:
         const unknownComp = component as any;
         return (
