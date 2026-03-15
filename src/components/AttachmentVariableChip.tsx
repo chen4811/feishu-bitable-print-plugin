@@ -205,27 +205,61 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
         data-field-name={fieldName}
         data-variable-type="attachment"
       >
-        {imageUrls.map((url, index) => (
-          <img
-            key={index}
-            src={url}
-            alt=""
-            style={{
-              maxWidth: config?.width ? `${config.width}px` : '80px',
-              maxHeight: config?.height ? `${config.height}px` : '80px',
-              width: 'auto',
-              height: 'auto',
-              objectFit: 'cover',
-              borderRadius: '4px',
-            }}
-            className="rounded"
-            crossOrigin="anonymous"
-            onError={(e) => {
-              const img = e.target as HTMLImageElement;
-              img.style.display = 'none';
-            }}
-          />
-        ))}
+        {imageUrls.map((url, index) => {
+          // 获取对应索引的文件名作为降级显示
+          const fallbackName = (fileNames && fileNames[index]) 
+            || (rawData && rawData[index]?.name) 
+            || (rawData && rawData[index]?.fileName)
+            || `图片${index + 1}`;
+          
+          return (
+            <span key={index} className="inline-block">
+              <img
+                src={url}
+                alt=""
+                style={{
+                  maxWidth: config?.width ? `${config.width}px` : '80px',
+                  maxHeight: config?.height ? `${config.height}px` : '80px',
+                  width: 'auto',
+                  height: 'auto',
+                  objectFit: 'cover',
+                  borderRadius: '4px',
+                }}
+                className="rounded"
+                crossOrigin="anonymous"
+                onError={(e) => {
+                  const img = e.target as HTMLImageElement;
+                  // 隐藏失败的图片
+                  img.style.display = 'none';
+                  // 显示降级内容（文件名）
+                  const fallback = img.nextElementSibling as HTMLElement;
+                  if (fallback) fallback.style.display = 'inline-flex';
+                }}
+              />
+              {/* 图片加载失败时的降级显示 */}
+              <span
+                style={{
+                  display: 'none',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 8px',
+                  background: '#f3f4f6',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  maxWidth: config?.width ? `${config.width}px` : '80px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+                title={`图片加载失败：${fallbackName}`}
+              >
+                <FileImage className="w-3 h-3 flex-shrink-0" />
+                <span className="truncate">{fallbackName}</span>
+              </span>
+            </span>
+          );
+        })}
         
         {/* 悬停浮窗按钮 - 仅在编辑状态下显示 */}
         {isEditing && isHovered && (
@@ -287,6 +321,12 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
 
   // 【场景3】空数据渲染
   if (!hasData) {
+    // 【修复】打印预览模式下（非编辑状态），空字段不显示任何内容
+    if (!isEditing) {
+      return null;
+    }
+    
+    // 编辑状态下，显示占位符方便用户操作
     const emptyText = emptyDisplay === 'custom' && emptyCustomText 
       ? emptyCustomText 
       : `[${fieldName}]`;
