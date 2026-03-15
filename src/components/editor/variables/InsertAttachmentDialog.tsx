@@ -18,6 +18,16 @@ interface InsertAttachmentDialogProps {
   onConfirm: (config: AttachmentVariableConfig) => void;
   availableFields: string[];  // 可用的附件字段列表
   initialField?: string;      // 初始选中的字段
+  previewData?: {             // 【新增】预览数据（实际附件数据）
+    fieldName: string;
+    attachments: {
+      name: string;
+      url?: string;
+      token?: string;
+      type?: string;
+      size?: number;
+    }[];
+  } | null;
 }
 
 export function InsertAttachmentDialog({
@@ -25,7 +35,8 @@ export function InsertAttachmentDialog({
   onClose,
   onConfirm,
   availableFields,
-  initialField
+  initialField,
+  previewData
 }: InsertAttachmentDialogProps) {
   // 表单状态
   const [selectedField, setSelectedField] = useState(initialField || '');
@@ -43,6 +54,18 @@ export function InsertAttachmentDialog({
   const filteredFields = availableFields.filter(field => 
     field.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // 【新增】获取当前选中字段的预览数据
+  const currentFieldPreviewData = React.useMemo(() => {
+    if (!previewData || !selectedField) return null;
+    
+    // 如果 previewData 是当前选中字段的数据，直接返回
+    if (previewData.fieldName === selectedField) {
+      return previewData.attachments;
+    }
+    
+    return null;
+  }, [previewData, selectedField]);
 
   // 重置表单
   useEffect(() => {
@@ -242,7 +265,10 @@ export function InsertAttachmentDialog({
           </div>
 
           {/* 预览区域 */}
-          <AttachmentVariablePreview config={buildConfig()} />
+          <AttachmentVariablePreview 
+            config={buildConfig()} 
+            data={currentFieldPreviewData}
+          />
         </div>
 
         {/* 底部按钮 */}

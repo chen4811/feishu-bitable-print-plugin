@@ -204,6 +204,60 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   const [attachmentDialogField, setAttachmentDialogField] = useState<string>('');
   const [editingVariable, setEditingVariable] = useState<string | null>(null);
   
+  // 【新增】计算附件预览数据（用于弹窗预览）
+  const attachmentPreviewData = useMemo(() => {
+    if (!attachmentDialogField || !records || records.length === 0) return null;
+    
+    const firstRecord = records[0] as any;
+    if (!firstRecord) return null;
+    
+    // 获取附件数据（优先从 _html 字段获取处理后的数据，否则获取原始数据）
+    const htmlContent = firstRecord[`_${attachmentDialogField}_html`];
+    const rawAttachments = firstRecord[attachmentDialogField];
+    
+    // 如果是预处理后的 HTML 内容，提取图片 URL
+    if (htmlContent && typeof htmlContent === 'string') {
+      // 从 HTML 中提取图片 URL
+      const imgRegex = /<img[^>]+src="([^"]+)"/g;
+      const matches = [];
+      let match;
+      while ((match = imgRegex.exec(htmlContent)) !== null) {
+        matches.push({
+          name: '图片',
+          url: match[1],
+          type: 'image/jpeg'
+        });
+      }
+      
+      if (matches.length > 0) {
+        console.log('[CanvasComponent] 从 HTML 提取的预览数据:', matches.length, '张图片');
+        return {
+          fieldName: attachmentDialogField,
+          attachments: matches
+        };
+      }
+    }
+    
+    // 使用原始附件数据
+    if (Array.isArray(rawAttachments) && rawAttachments.length > 0) {
+      const attachments = rawAttachments.map((att: any) => ({
+        name: att.name || '未命名文件',
+        url: att.url || att.tmpUrl || att.fileUrl,
+        token: att.token,
+        type: att.type || 'image/jpeg',
+        size: att.size
+      }));
+      
+      console.log('[CanvasComponent] 原始附件预览数据:', attachments.length, '个附件');
+      return {
+        fieldName: attachmentDialogField,
+        attachments
+      };
+    }
+    
+    return null;
+  }, [attachmentDialogField, records]);
+  
   // 【关键修复】计算所有可用的附件字段列表
   const availableAttachmentFields = useMemo(() => {
     if (!fields || fields.length === 0) return [];
@@ -2440,6 +2494,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         }}
         availableFields={availableAttachmentFields}
         initialField={attachmentDialogField}
+        previewData={attachmentPreviewData}
         onConfirm={handleAttachmentConfirm}
       />
     </div>

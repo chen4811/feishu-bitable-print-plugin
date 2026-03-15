@@ -339,22 +339,29 @@ export function AttachmentVariable({
 
 // 预览组件（用于弹窗中的实时预览）
 export function AttachmentVariablePreview({ 
-  config 
+  config,
+  data
 }: { 
-  config: AttachmentVariableConfig 
+  config: AttachmentVariableConfig;
+  data?: AttachmentItem[] | null;
 }) {
-  // 模拟数据用于预览
+  // 如果没有提供数据，使用模拟数据用于预览
   const mockData: AttachmentItem[] = [
-    { name: '图片1.jpg', url: 'https://picsum.photos/100/100?random=1', type: 'image/jpeg' },
-    { name: '图片2.jpg', url: 'https://picsum.photos/100/100?random=2', type: 'image/jpeg' },
-    { name: '图片3.jpg', url: 'https://picsum.photos/100/100?random=3', type: 'image/jpeg' },
+    { name: '示例图片1.jpg', url: 'https://picsum.photos/100/100?random=1', type: 'image/jpeg' },
+    { name: '示例图片2.jpg', url: 'https://picsum.photos/100/100?random=2', type: 'image/jpeg' },
   ];
+  
+  const previewData = data && data.length > 0 ? data : mockData;
+  const isRealData = data && data.length > 0;
 
   return (
     <div className="border rounded-lg p-4 bg-gray-50">
-      <p className="text-xs text-gray-500 mb-2">预览效果：</p>
+      <p className="text-xs text-gray-500 mb-2">
+        预览效果：
+        {isRealData && <span className="text-blue-500 ml-1">（实际数据）</span>}
+      </p>
       <div className="bg-white rounded p-4">
-        <AttachmentVariable config={config} data={mockData} />
+        <AttachmentVariable config={config} data={previewData} />
       </div>
     </div>
   );
