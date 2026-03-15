@@ -35,6 +35,8 @@ import {
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { VariableTextRenderer } from '@/components/VariableTextRenderer';
+import { UnifiedComponentRenderer, RenderMode } from '@/components/editor/canvas/UnifiedComponentRenderer';
+import { FieldTypeMap } from '@/types/editor';
 
 interface PrintPreviewDialogProps {
   open: boolean;
@@ -49,373 +51,6 @@ interface DataSource {
   fields: Field[];
   records: Record<string, unknown>[];
 }
-
-// 统一的组件渲染器，与 CanvasComponent 保持一致
-const PrintComponentRenderer = ({ 
-  component, 
-  record, 
-  fields, 
-  styleConfig,
-  isEmptyPreview = false,
-}: { 
-  component: CanvasComponentNode;
-  record: Record<string, unknown>;
-  fields: Field[];
-  styleConfig: any;
-  isEmptyPreview?: boolean;
-}) => {
-  // 变量解析函数
-  const resolveVariables = (text: string) => {
-    if (!text) return '';
-    // 空预览模式下，保留变量占位符格式
-    if (isEmptyPreview) {
-      return text.replace(/\[([^\]]+)\]/g, (match, varName) => {
-        const hasValue = record[varName] !== undefined && record[varName] !== '';
-        if (hasValue) {
-          return String(record[varName]);
-        }
-        // 空预览模式下显示占位符
-        return match;
-      });
-    }
-    return text.replace(/\[([^\]]+)\]/g, (match, varName) => {
-      return String(record[varName] || match);
-    });
-  };
-
-  switch (component.type) {
-    case 'text': {
-      const textComp = component as any;
-      const textStyle = textComp.textStyle || {};
-      const content = textComp.content || textComp.text || '';
-      const displayContent = resolveVariables(content);
-
-      // 基础文本样式
-      const baseStyles: React.CSSProperties = {
-        fontFamily: styleConfig.fontFamily,
-        fontSize: `${textStyle.fontSize || styleConfig.fontSize}px`,
-        lineHeight: textStyle.lineHeight || styleConfig.lineHeight,
-        color: textStyle.color || '#000000',
-        textAlign: (textStyle.align as any) || 'left',
-        fontWeight: textStyle.bold ? 'bold' : 'normal',
-        fontStyle: textStyle.italic ? 'italic' : 'normal',
-        textDecoration: textStyle.underline ? 'underline' : textStyle.lineThrough ? 'line-through' : 'none',
-        minHeight: '1em',
-        display: 'block',
-        width: '100%',
-        whiteSpace: 'pre-wrap',
-        wordBreak: 'break-word',
-        overflowWrap: 'anywhere',      // ✅ 更激进的换行策略
-        maxWidth: '100%',              // ✅ 确保不超过父容器
-      };
-
-      // 标题样式
-      if (textStyle.headingLevel) {
-        const headingSizes: Record<number, number> = { 1: 24, 2: 20, 3: 18, 4: 16, 5: 14, 6: 12 };
-        const headingStyle = {
-          ...baseStyles,
-          fontSize: `${headingSizes[textStyle.headingLevel] || 18}px`,
-          fontWeight: 'bold',
-          marginBottom: '0.5em',
-          marginTop: '0.5em',
-        };
-        
-        const Tag = `h${textStyle.headingLevel}` as React.ElementType;
-        return (
-          <Tag style={headingStyle}>
-            <VariableTextRenderer
-              text={displayContent || '文本组件'}
-              records={record ? [record] : []}
-              fields={fields || []}
-              tagName="span"
-              textStyle={textStyle}
-            />
-          </Tag>
-        );
-      }
-
-      // 列表样式
-      if (textStyle.listType === 'unordered') {
-        return (
-          <ul style={{ ...baseStyles, marginLeft: '1.5rem', listStyleType: 'disc' }}>
-            <li>
-              <VariableTextRenderer
-                text={displayContent || '文本组件'}
-                records={record ? [record] : []}
-                fields={fields || []}
-                tagName="span"
-                textStyle={textStyle}
-              />
-            </li>
-          </ul>
-        );
-      }
-
-      if (textStyle.listType === 'ordered') {
-        return (
-          <ol style={{ ...baseStyles, marginLeft: '1.5rem', listStyleType: 'decimal' }}>
-            <li>
-              <VariableTextRenderer
-                text={displayContent || '文本组件'}
-                records={record ? [record] : []}
-                fields={fields || []}
-                tagName="span"
-                textStyle={textStyle}
-              />
-            </li>
-          </ol>
-        );
-      }
-
-      // 普通文本
-      return (
-        <div style={baseStyles}>
-          <VariableTextRenderer
-            text={displayContent || '文本组件'}
-            records={record ? [record] : []}
-            fields={fields || []}
-            tagName="span"
-            textStyle={textStyle}
-          />
-        </div>
-      );
-    }
-
-    case 'heading': {
-      const headingComp = component as any;
-      const level = headingComp.level || 1;
-      const headingSizes: Record<number, number> = { 1: 24, 2: 20, 3: 18, 4: 16, 5: 14, 6: 12 };
-      const textStyle = headingComp.textStyle || {};
-      const content = headingComp.content || '';
-      const displayContent = resolveVariables(content);
-
-      const style: React.CSSProperties = {
-        fontFamily: styleConfig.fontFamily,
-        fontSize: textStyle.fontSize ? `${textStyle.fontSize}px` : `${headingSizes[level]}px`,
-        fontWeight: textStyle.bold !== false ? 'bold' : 'normal',
-        color: textStyle.color || '#000000',
-        textAlign: (textStyle.align as any) || 'center',
-        lineHeight: textStyle.lineHeight || 1.5,
-        margin: '0 0 16px 0',
-        padding: '8px 0',
-        minHeight: '1em',
-        width: '100%',
-        wordBreak: 'break-word',
-        overflowWrap: 'break-word',
-      };
-
-      const Tag = `h${level}` as React.ElementType;
-      return (
-        <Tag style={style}>
-          <VariableTextRenderer
-            text={displayContent || '标题组件'}
-            records={record ? [record] : []}
-            fields={fields || []}
-            tagName="span"
-            textStyle={textStyle}
-          />
-        </Tag>
-      );
-    }
-
-    case 'paragraph': {
-      const paraComp = component as any;
-      const textStyle = paraComp.textStyle || {};
-      const content = paraComp.content || '';
-      const displayContent = resolveVariables(content);
-      const lines = displayContent.split('\n');
-
-      const style: React.CSSProperties = {
-        fontFamily: styleConfig.fontFamily,
-        fontSize: textStyle.fontSize ? `${textStyle.fontSize}px` : `${styleConfig.fontSize}px`,
-        fontWeight: textStyle.bold ? 'bold' : 'normal',
-        color: textStyle.color || '#000000',
-        textAlign: (textStyle.align as any) || 'justify',
-        lineHeight: textStyle.lineHeight || 1.8,
-        textIndent: `${(paraComp.indent || 2) * 2}em`,
-        margin: '0 0 12px 0',
-        padding: '4px 0',
-        minHeight: '1em',
-        width: '100%',
-        wordBreak: 'break-word',
-        overflowWrap: 'break-word',
-      };
-
-      return (
-        <p style={style}>
-          {lines.length > 0 ? lines.map((line, index) => (
-            <React.Fragment key={index}>
-              <VariableTextRenderer
-                text={line}
-                records={record ? [record] : []}
-                fields={fields || []}
-                tagName="span"
-                textStyle={textStyle}
-              />
-              {index < lines.length - 1 && <br />}
-            </React.Fragment>
-          )) : '段落组件'}
-        </p>
-      );
-    }
-
-    case 'list': {
-      const listComp = component as any;
-      const textStyle = listComp.textStyle || {};
-      const items = listComp.items || [];
-      const ListTag = listComp.listType === 'ordered' ? 'ol' : 'ul';
-
-      const style: React.CSSProperties = {
-        fontFamily: styleConfig.fontFamily,
-        fontSize: textStyle.fontSize ? `${textStyle.fontSize}px` : `${styleConfig.fontSize}px`,
-        fontWeight: textStyle.bold ? 'bold' : 'normal',
-        color: textStyle.color || '#000000',
-        lineHeight: textStyle.lineHeight || 1.8,
-        margin: '0 0 12px 0',
-        paddingLeft: '2em',
-        minHeight: '1em',
-        width: '100%',
-        wordBreak: 'break-word',
-        overflowWrap: 'break-word',
-      };
-
-      return (
-        <ListTag style={style}>
-          {items.length > 0 ? items.map((item: string, index: number) => (
-            <li key={index} style={{ marginBottom: '4px' }}>
-              <VariableTextRenderer
-                text={resolveVariables(item)}
-                records={record ? [record] : []}
-                fields={fields || []}
-                tagName="span"
-                textStyle={textStyle}
-              />
-            </li>
-          )) : <li>列表组件</li>}
-        </ListTag>
-      );
-    }
-
-    case 'table': {
-      const tableComp = component as any;
-      const tableConfig = tableComp.tableConfig;
-      
-      if (!tableConfig?.cells || tableConfig.cells.length === 0) {
-        return (
-          <div className="w-full border border-gray-300 bg-gray-50 p-4 text-center text-gray-500">
-            空表格
-          </div>
-        );
-      }
-      
-      const colWidths = tableConfig.colWidths || [];
-      
-      return (
-        <table style={{
-          width: '100%',
-          borderCollapse: 'collapse',
-          tableLayout: 'fixed',
-          fontFamily: styleConfig.fontFamily,
-          fontSize: `${styleConfig.fontSize}px`,
-        }}>
-          <tbody>
-            {tableConfig.cells.map((row: any[], rowIndex: number) => (
-              <tr key={rowIndex}>
-                {row.map((cell: any, colIndex: number) => {
-                  if (cell.rowSpan === 0 || cell.colSpan === 0) {
-                    return null;
-                  }
-                  
-                  const colWidth = colWidths[colIndex];
-                  
-                  return (
-                    <td
-                      key={colIndex}
-                      rowSpan={cell.rowSpan || 1}
-                      colSpan={cell.colSpan || 1}
-                      style={{
-                        border: '1px solid #000',
-                        padding: '8px',
-                        textAlign: cell.align || 'left',
-                        verticalAlign: cell.verticalAlign || 'top',
-                        fontWeight: cell.bold ? 'bold' : 'normal',
-                        fontStyle: cell.italic ? 'italic' : 'normal',
-                        textDecoration: cell.underline ? 'underline' : 'none',
-                        backgroundColor: cell.backgroundColor || 'transparent',
-                        color: cell.color || '#000000',
-                        fontSize: cell.fontSize ? `${cell.fontSize}px` : undefined,
-                        width: colWidth ? `${colWidth}px` : undefined,
-                        minWidth: colWidth ? `${colWidth}px` : undefined,
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word',
-                      }}
-                    >
-                      {resolveVariables(cell.content || '')}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      );
-    }
-
-    case 'line': {
-      const lineComp = component as any;
-      return (
-        <hr
-          style={{
-            border: 'none',
-            height: `${lineComp.thickness || 1}px`,
-            backgroundColor: lineComp.color || '#000000',
-            margin: '16px 0',
-          }}
-        />
-      );
-    }
-
-    case 'qrcode':
-      return (
-        <div className="flex items-center justify-center">
-          <div className="w-24 h-24 bg-gray-100 border border-gray-300" />
-        </div>
-      );
-
-    case 'barcode':
-      return (
-        <div className="flex items-center justify-center">
-          <div className="w-32 h-12 bg-gray-100 border border-gray-300" />
-        </div>
-      );
-
-    case 'image': {
-      const imageComp = component as any;
-      return (
-        <div className="flex items-center justify-center">
-          {imageComp.src ? (
-            <img
-              src={imageComp.src}
-              alt={imageComp.alt || ''}
-              className="max-w-full max-h-48 object-contain"
-            />
-          ) : (
-            <div className="w-full h-32 bg-gray-100 border border-gray-300 flex items-center justify-center">
-              <span className="text-gray-400">图片</span>
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    default:
-      return (
-        <div className="text-gray-500 p-4">
-          未知组件类型: {(component as any).type || 'unknown'}
-        </div>
-      );
-  }
-};
 
 export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogProps) {
   const {
@@ -519,6 +154,21 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
     }
   }, []);
 
+  // 构建 fieldTypeMap
+  const fieldTypeMap = React.useMemo(() => {
+    return fields.reduce((map, field) => {
+      // 使用 fieldKind（如果已定义），否则根据 type 推断
+      const fieldType = field.fieldKind || 
+        (field.type === '17' || field.type === 'attachment' ? 'attachment' :
+         field.type === '11' || field.type === 'user' ? 'person' :
+         field.type === '1' || field.type === 'text' ? 'text' :
+         field.type === '2' || field.type === 'number' ? 'number' :
+         field.type === '5' || field.type === 'date' ? 'date' : 'other');
+      map[field.name] = fieldType;
+      return map;
+    }, {} as FieldTypeMap);
+  }, [fields]);
+
   // 渲染单页内容（流式布局）
   const renderPageContent = useCallback((record: Record<string, unknown>) => {
     // 空状态：没有组件时显示提示
@@ -552,11 +202,13 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
                 boxSizing: 'border-box',
               }}
             >
-              <PrintComponentRenderer
+              <UnifiedComponentRenderer
                 component={component}
-                record={record}
-                fields={fields}
+                mode="preview"
                 styleConfig={styleConfig}
+                fields={fields}
+                fieldTypeMap={fieldTypeMap}
+                record={record}
                 isEmptyPreview={isEmptyPreview}
               />
             </div>

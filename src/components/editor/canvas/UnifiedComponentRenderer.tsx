@@ -1,51 +1,173 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { CanvasComponentNode, PageConfig, StyleConfig } from '@/types/editor';
+import React from 'react';
+import { CanvasComponentNode, Field, FieldTypeMap, StyleConfig, ComponentTextStyle } from '@/types/editor';
 import { VariableTextRenderer } from '@/components/VariableTextRenderer';
-import { parseVariables } from '@/utils/variableParser';
+import { AttachmentVariableConfig } from '@/components/editor/variables';
 
-// 统一的样式上下文
-interface StyleContext {
-  pageConfig: PageConfig;
+// 渲染模式
+export type RenderMode = 'edit' | 'preview' | 'print';
+
+// 统一渲染器 Props
+export interface UnifiedRenderProps {
+  component: CanvasComponentNode;
+  mode: RenderMode;
+  
+  // 通用数据
   styleConfig: StyleConfig;
-  isPreview: boolean;
-  isPrint: boolean;
-  scale?: number;
+  fields?: Field[];
+  fieldTypeMap?: FieldTypeMap;
+  record?: Record<string, unknown>;
+  attachmentConfigs?: Record<string, AttachmentVariableConfig>;
+  
+  // 预览模式特有
+  isEmptyPreview?: boolean;
 }
 
-// 获取基础文本样式 - 确保各状态一致
-function getBaseTextStyles(styleConfig: StyleConfig, textStyle?: any): React.CSSProperties {
-  return {
+/**
+ * 统一组件渲染器
+ * 用于编辑状态和打印预览的统一渲染逻辑
+ */
+export function UnifiedComponentRenderer({
+  component,
+  mode,
+  styleConfig,
+  fields = [],
+  fieldTypeMap,
+  record,
+  attachmentConfigs,
+  isEmptyPreview = false,
+}: UnifiedRenderProps) {
+  
+  switch (component.type) {
+    case 'text':
+      return renderTextComponent({
+        component,
+        styleConfig,
+        fields,
+        fieldTypeMap,
+        record,
+        attachmentConfigs,
+        isEmptyPreview,
+        mode,
+      });
+    
+    case 'heading':
+      return renderHeadingComponent({
+        component,
+        styleConfig,
+        fields,
+        fieldTypeMap,
+        record,
+        attachmentConfigs,
+        isEmptyPreview,
+        mode,
+      });
+    
+    case 'paragraph':
+      return renderParagraphComponent({
+        component,
+        styleConfig,
+        fields,
+        fieldTypeMap,
+        record,
+        attachmentConfigs,
+        isEmptyPreview,
+        mode,
+      });
+    
+    case 'list':
+      return renderListComponent({
+        component,
+        styleConfig,
+        fields,
+        fieldTypeMap,
+        record,
+        attachmentConfigs,
+        isEmptyPreview,
+        mode,
+      });
+    
+    case 'table':
+      return renderTableComponent({
+        component,
+        styleConfig,
+        fields,
+        fieldTypeMap,
+        record,
+        attachmentConfigs,
+        isEmptyPreview,
+        mode,
+      });
+    
+    case 'line':
+      return renderLineComponent(component);
+    
+    case 'qrcode':
+      return renderQrcodeComponent(component);
+    
+    case 'barcode':
+      return renderBarcodeComponent(component);
+    
+    case 'image':
+      return renderImageComponent(component);
+    
+    default:
+      return (
+        <div className="text-gray-500 p-4">
+          未知组件类型: {(component as any).type || 'unknown'}
+        </div>
+      );
+  }
+}
+
+// ==================== 文本组件渲染 ====================
+
+interface TextRenderProps {
+  component: CanvasComponentNode;
+  styleConfig: StyleConfig;
+  fields: Field[];
+  fieldTypeMap?: FieldTypeMap;
+  record?: Record<string, unknown>;
+  attachmentConfigs?: Record<string, AttachmentVariableConfig>;
+  isEmptyPreview: boolean;
+  mode: RenderMode;
+}
+
+function renderTextComponent({
+  component,
+  styleConfig,
+  fields,
+  fieldTypeMap,
+  record,
+  attachmentConfigs,
+  isEmptyPreview,
+  mode,
+}: TextRenderProps) {
+  const textComp = component as any;
+  const textStyle = textComp.textStyle || {};
+  const content = textComp.content || textComp.text || '';
+  
+  // 基础文本样式
+  const baseStyles: React.CSSProperties = {
     fontFamily: styleConfig.fontFamily,
-    fontSize: `${textStyle?.fontSize || styleConfig.fontSize}px`,
-    lineHeight: textStyle?.lineHeight || styleConfig.lineHeight,
-    color: textStyle?.color || '#000000',
-    textAlign: (textStyle?.align as any) || 'left',
-    fontWeight: textStyle?.bold ? 'bold' : textStyle?.fontWeight || 'normal',
-    fontStyle: textStyle?.italic ? 'italic' : 'normal',
-    textDecoration: textStyle?.underline ? 'underline' : textStyle?.lineThrough ? 'line-through' : 'none',
+    fontSize: `${textStyle.fontSize || styleConfig.fontSize}px`,
+    lineHeight: textStyle.lineHeight || styleConfig.lineHeight,
+    color: textStyle.color || '#000000',
+    textAlign: (textStyle.align as any) || 'left',
+    fontWeight: textStyle.bold ? 'bold' : 'normal',
+    fontStyle: textStyle.italic ? 'italic' : 'normal',
+    textDecoration: textStyle.underline ? 'underline' : textStyle.lineThrough ? 'line-through' : 'none',
+    minHeight: '1em',
+    display: 'block',
+    width: '100%',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+    overflowWrap: 'anywhere',
+    maxWidth: '100%',
   };
-}
-
-// 渲染文本组件 - 统一渲染逻辑
-function renderTextComponent(
-  component: any,
-  context: StyleContext,
-  previewRecord?: any,
-  fields?: any[]
-) {
-  const { styleConfig, isPreview, isPrint } = context;
-  const { content = '', textStyle = {} } = component;
   
-  const baseStyles = getBaseTextStyles(styleConfig, textStyle);
-  
-  // 处理变量替换
-  const displayContent = isPreview && previewRecord 
-    ? parseVariables(content, previewRecord, fields || [])
-    : content;
-
-  // 处理特殊样式
+  // 标题样式
   if (textStyle.headingLevel) {
     const headingSizes: Record<number, number> = { 1: 24, 2: 20, 3: 18, 4: 16, 5: 14, 6: 12 };
     const headingStyle = {
@@ -56,273 +178,392 @@ function renderTextComponent(
       marginTop: '0.5em',
     };
     
-    const headingContent = (
-      <VariableTextRenderer
-        text={displayContent || ''}
-        records={previewRecord ? [previewRecord] : []}
-        fields={fields || []}
-        tagName="span"
-        textStyle={textStyle}
-      />
+    const Tag = `h${textStyle.headingLevel}` as React.ElementType;
+    return (
+      <Tag style={headingStyle}>
+        <VariableTextRenderer
+          text={content || '文本组件'}
+          records={record ? [record] : []}
+          fields={fields}
+          fieldTypeMap={fieldTypeMap}
+          tagName="span"
+          textStyle={textStyle}
+          attachmentConfigs={attachmentConfigs}
+          isEditing={mode === 'edit'}
+        />
+      </Tag>
     );
-    
-    switch (textStyle.headingLevel) {
-      case 1: return <h1 style={headingStyle}>{headingContent}</h1>;
-      case 2: return <h2 style={headingStyle}>{headingContent}</h2>;
-      case 3: return <h3 style={headingStyle}>{headingContent}</h3>;
-      case 4: return <h4 style={headingStyle}>{headingContent}</h4>;
-      case 5: return <h5 style={headingStyle}>{headingContent}</h5>;
-      case 6: return <h6 style={headingStyle}>{headingContent}</h6>;
-      default: return <h1 style={headingStyle}>{headingContent}</h1>;
-    }
   }
-
+  
   // 列表样式
   if (textStyle.listType === 'unordered') {
     return (
-      <ul style={{ 
-        ...baseStyles,
-        marginLeft: '1.5rem',
-        listStyleType: 'disc',
-      }}>
+      <ul style={{ ...baseStyles, marginLeft: '1.5rem', listStyleType: 'disc' }}>
         <li>
           <VariableTextRenderer
-            text={displayContent || ''}
-            records={previewRecord ? [previewRecord] : []}
-            fields={fields || []}
+            text={content || '文本组件'}
+            records={record ? [record] : []}
+            fields={fields}
+            fieldTypeMap={fieldTypeMap}
             tagName="span"
             textStyle={textStyle}
+            attachmentConfigs={attachmentConfigs}
+            isEditing={mode === 'edit'}
           />
         </li>
       </ul>
     );
   }
-
+  
   if (textStyle.listType === 'ordered') {
     return (
-      <ol style={{ 
-        ...baseStyles,
-        marginLeft: '1.5rem',
-        listStyleType: 'decimal',
-      }}>
+      <ol style={{ ...baseStyles, marginLeft: '1.5rem', listStyleType: 'decimal' }}>
         <li>
           <VariableTextRenderer
-            text={displayContent || ''}
-            records={previewRecord ? [previewRecord] : []}
-            fields={fields || []}
+            text={content || '文本组件'}
+            records={record ? [record] : []}
+            fields={fields}
+            fieldTypeMap={fieldTypeMap}
             tagName="span"
             textStyle={textStyle}
+            attachmentConfigs={attachmentConfigs}
+            isEditing={mode === 'edit'}
           />
         </li>
       </ol>
     );
   }
-
-  // 链接样式
-  if (textStyle.linkUrl) {
-    return (
-      <a 
-        href={textStyle.linkUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{
-          ...baseStyles,
-          color: '#3b82f6',
-          textDecoration: 'underline',
-        }}
-      >
-        <VariableTextRenderer
-          text={displayContent || ''}
-          records={previewRecord ? [previewRecord] : []}
-          fields={fields || []}
-          tagName="span"
-          textStyle={textStyle}
-        />
-      </a>
-    );
-  }
-
+  
   // 普通文本
   return (
-    <span style={baseStyles}>
+    <div style={baseStyles}>
       <VariableTextRenderer
-        text={displayContent || ''}
-        records={previewRecord ? [previewRecord] : []}
-        fields={fields || []}
+        text={content || '文本组件'}
+        records={record ? [record] : []}
+        fields={fields}
+        fieldTypeMap={fieldTypeMap}
         tagName="span"
         textStyle={textStyle}
+        attachmentConfigs={attachmentConfigs}
+        isEditing={mode === 'edit'}
       />
-    </span>
+    </div>
   );
 }
 
-// 渲染标题组件
-function renderHeadingComponent(
-  component: any,
-  context: StyleContext,
-  previewRecord?: any,
-  fields?: any[]
-) {
-  const { content = '', level = 1, textStyle = {} } = component;
-  const { styleConfig, isPreview } = context;
-  
-  const displayContent = isPreview && previewRecord
-    ? parseVariables(content, previewRecord, fields || [])
-    : content;
+// ==================== 标题组件渲染 ====================
 
+function renderHeadingComponent({
+  component,
+  styleConfig,
+  fields,
+  fieldTypeMap,
+  record,
+  attachmentConfigs,
+  isEmptyPreview,
+  mode,
+}: TextRenderProps) {
+  const headingComp = component as any;
+  const level = headingComp.level || 1;
+  const headingSizes: Record<number, number> = { 1: 24, 2: 20, 3: 18, 4: 16, 5: 14, 6: 12 };
+  const textStyle = headingComp.textStyle || {};
+  const content = headingComp.content || '';
+  
   const style: React.CSSProperties = {
     fontFamily: styleConfig.fontFamily,
-    fontSize: textStyle.fontSize || (level === 1 ? 24 : level === 2 ? 20 : level === 3 ? 18 : 16),
+    fontSize: textStyle.fontSize ? `${textStyle.fontSize}px` : `${headingSizes[level]}px`,
     fontWeight: textStyle.bold !== false ? 'bold' : 'normal',
     color: textStyle.color || '#000000',
     textAlign: (textStyle.align as any) || 'center',
     lineHeight: textStyle.lineHeight || 1.5,
     margin: '0 0 16px 0',
     padding: '8px 0',
+    minHeight: '1em',
+    width: '100%',
+    wordBreak: 'break-word',
+    overflowWrap: 'break-word',
   };
   
-  const headingContent = (
-    <VariableTextRenderer
-      text={displayContent || ''}
-      records={previewRecord ? [previewRecord] : []}
-      fields={fields || []}
-      tagName="span"
-      textStyle={textStyle}
-    />
+  const Tag = `h${level}` as React.ElementType;
+  return (
+    <Tag style={style}>
+      <VariableTextRenderer
+        text={content || '标题组件'}
+        records={record ? [record] : []}
+        fields={fields}
+        fieldTypeMap={fieldTypeMap}
+        tagName="span"
+        textStyle={textStyle}
+        attachmentConfigs={attachmentConfigs}
+        isEditing={mode === 'edit'}
+      />
+    </Tag>
   );
-  
-  switch (level) {
-    case 1: return <h1 style={style}>{headingContent}</h1>;
-    case 2: return <h2 style={style}>{headingContent}</h2>;
-    case 3: return <h3 style={style}>{headingContent}</h3>;
-    case 4: return <h4 style={style}>{headingContent}</h4>;
-    case 5: return <h5 style={style}>{headingContent}</h5>;
-    case 6: return <h6 style={style}>{headingContent}</h6>;
-    default: return <h1 style={style}>{headingContent}</h1>;
-  }
 }
 
-// 渲染段落组件
-function renderParagraphComponent(
-  component: any,
-  context: StyleContext,
-  previewRecord?: any,
-  fields?: any[]
-) {
-  const { content = '', indent = 2, textStyle = {} } = component;
-  const { styleConfig, isPreview } = context;
-  
-  const displayContent = isPreview && previewRecord
-    ? parseVariables(content, previewRecord, fields || [])
-    : content;
+// ==================== 段落组件渲染 ====================
 
+function renderParagraphComponent({
+  component,
+  styleConfig,
+  fields,
+  fieldTypeMap,
+  record,
+  attachmentConfigs,
+  isEmptyPreview,
+  mode,
+}: TextRenderProps) {
+  const paraComp = component as any;
+  const textStyle = paraComp.textStyle || {};
+  const content = paraComp.content || '';
+  const lines = content.split('\n');
+  
   const style: React.CSSProperties = {
     fontFamily: styleConfig.fontFamily,
-    fontSize: textStyle.fontSize || styleConfig.fontSize,
+    fontSize: textStyle.fontSize ? `${textStyle.fontSize}px` : `${styleConfig.fontSize}px`,
     fontWeight: textStyle.bold ? 'bold' : 'normal',
     color: textStyle.color || '#000000',
     textAlign: (textStyle.align as any) || 'justify',
     lineHeight: textStyle.lineHeight || 1.8,
-    textIndent: `${indent * 2}em`,
+    textIndent: `${(paraComp.indent || 2) * 2}em`,
     margin: '0 0 12px 0',
     padding: '4px 0',
+    minHeight: '1em',
+    width: '100%',
+    wordBreak: 'break-word',
+    overflowWrap: 'break-word',
   };
-
-  // 处理换行
-  const lines = displayContent.split('\n');
+  
   return (
     <p style={style}>
-      {lines.map((line: string, index: number) => (
+      {lines.length > 0 ? lines.map((line: string, index: number) => (
         <React.Fragment key={index}>
           <VariableTextRenderer
             text={line}
-            records={previewRecord ? [previewRecord] : []}
-            fields={fields || []}
+            records={record ? [record] : []}
+            fields={fields}
+            fieldTypeMap={fieldTypeMap}
             tagName="span"
             textStyle={textStyle}
+            attachmentConfigs={attachmentConfigs}
+            isEditing={mode === 'edit'}
           />
           {index < lines.length - 1 && <br />}
         </React.Fragment>
-      ))}
+      )) : '段落组件'}
     </p>
   );
 }
 
-// 渲染列表组件
-function renderListComponent(
-  component: any,
-  context: StyleContext,
-  previewRecord?: any,
-  fields?: any[]
-) {
-  const { items = [], listType = 'unordered', textStyle = {} } = component;
-  const { styleConfig, isPreview } = context;
+// ==================== 列表组件渲染 ====================
 
+function renderListComponent({
+  component,
+  styleConfig,
+  fields,
+  fieldTypeMap,
+  record,
+  attachmentConfigs,
+  isEmptyPreview,
+  mode,
+}: TextRenderProps) {
+  const listComp = component as any;
+  const textStyle = listComp.textStyle || {};
+  const items = listComp.items || [];
+  const ListTag = listComp.listType === 'ordered' ? 'ol' : 'ul';
+  
   const style: React.CSSProperties = {
     fontFamily: styleConfig.fontFamily,
-    fontSize: textStyle.fontSize || styleConfig.fontSize,
+    fontSize: textStyle.fontSize ? `${textStyle.fontSize}px` : `${styleConfig.fontSize}px`,
     fontWeight: textStyle.bold ? 'bold' : 'normal',
     color: textStyle.color || '#000000',
     lineHeight: textStyle.lineHeight || 1.8,
     margin: '0 0 12px 0',
     paddingLeft: '2em',
+    minHeight: '1em',
+    width: '100%',
+    wordBreak: 'break-word',
+    overflowWrap: 'break-word',
   };
-
-  const itemStyle: React.CSSProperties = {
-    marginBottom: '4px',
-  };
-
-  const ListTag = listType === 'ordered' ? 'ol' : 'ul';
   
   return (
     <ListTag style={style}>
-      {items.map((item: string, index: number) => {
-        const displayItem = isPreview && previewRecord
-          ? parseVariables(item, previewRecord, fields || [])
-          : item;
-        return (
-          <li key={index} style={itemStyle}>
-            <VariableTextRenderer
-              text={displayItem}
-              records={previewRecord ? [previewRecord] : []}
-              fields={fields || []}
-              tagName="span"
-              textStyle={textStyle}
-            />
-          </li>
-        );
-      })}
+      {items.length > 0 ? items.map((item: string, index: number) => (
+        <li key={index} style={{ marginBottom: '4px' }}>
+          <VariableTextRenderer
+            text={item}
+            records={record ? [record] : []}
+            fields={fields}
+            fieldTypeMap={fieldTypeMap}
+            tagName="span"
+            textStyle={textStyle}
+            attachmentConfigs={attachmentConfigs}
+            isEditing={mode === 'edit'}
+          />
+        </li>
+      )) : <li>列表组件</li>}
     </ListTag>
   );
 }
 
-// 统一渲染器接口
-interface UnifiedComponentRendererProps {
-  component: CanvasComponentNode;
-  context: StyleContext;
-  previewRecord?: any;
-  fields?: any[];
+// ==================== 表格组件渲染 ====================
+
+function renderTableComponent({
+  component,
+  styleConfig,
+  fields,
+  fieldTypeMap,
+  record,
+  attachmentConfigs,
+  isEmptyPreview,
+  mode,
+}: TextRenderProps) {
+  const tableComp = component as any;
+  const tableConfig = tableComp.tableConfig;
+  
+  if (!tableConfig?.cells || tableConfig.cells.length === 0) {
+    return (
+      <div className="w-full border border-gray-300 bg-gray-50 p-4 text-center text-gray-500">
+        空表格
+      </div>
+    );
+  }
+  
+  const colWidths = tableConfig.colWidths || [];
+  const borderWidth = tableConfig.borderWidth || 2;
+  const borderColor = tableConfig.borderColor || '#000000';
+  
+  return (
+    <table style={{
+      width: '100%',
+      borderCollapse: 'collapse',
+      tableLayout: 'fixed',
+      fontFamily: styleConfig.fontFamily,
+      fontSize: `${styleConfig.fontSize}px`,
+    }}>
+      <tbody>
+        {tableConfig.cells.map((row: any[], rowIndex: number) => (
+          <tr key={rowIndex}>
+            {row.map((cell: any, colIndex: number) => {
+              // 处理合并单元格
+              if (cell.rowSpan === 0 || cell.colSpan === 0) {
+                return null;
+              }
+              
+              const colWidth = colWidths[colIndex];
+              const cellStyle = cell.style || {};
+              const cellBorder = cell.border;
+              
+              // 构建边框样式
+              const borderStyles: React.CSSProperties = {};
+              if (cellBorder?.top) {
+                borderStyles.borderTop = `${cellBorder.width || borderWidth}px solid ${cellBorder.color || borderColor}`;
+              }
+              if (cellBorder?.right) {
+                borderStyles.borderRight = `${cellBorder.width || borderWidth}px solid ${cellBorder.color || borderColor}`;
+              }
+              if (cellBorder?.bottom) {
+                borderStyles.borderBottom = `${cellBorder.width || borderWidth}px solid ${cellBorder.color || borderColor}`;
+              }
+              if (cellBorder?.left) {
+                borderStyles.borderLeft = `${cellBorder.width || borderWidth}px solid ${cellBorder.color || borderColor}`;
+              }
+              
+              // 如果没有设置单元格边框，使用默认边框
+              const hasCellBorder = cellBorder?.top || cellBorder?.right || cellBorder?.bottom || cellBorder?.left;
+              
+              return (
+                <td
+                  key={colIndex}
+                  rowSpan={cell.rowSpan || 1}
+                  colSpan={cell.colSpan || 1}
+                  style={{
+                    border: !hasCellBorder ? `${borderWidth}px solid ${borderColor}` : undefined,
+                    padding: '8px',
+                    textAlign: cellStyle.align || 'left',
+                    verticalAlign: cell.verticalAlign || 'middle',
+                    fontWeight: cellStyle.bold ? 'bold' : 'normal',
+                    fontStyle: cellStyle.italic ? 'italic' : 'normal',
+                    textDecoration: cellStyle.underline ? 'underline' : 'none',
+                    backgroundColor: cell.backgroundColor || cellStyle.backgroundColor || 'transparent',
+                    color: cellStyle.color || '#000000',
+                    fontSize: cellStyle.fontSize ? `${cellStyle.fontSize}px` : undefined,
+                    width: colWidth ? `${colWidth}px` : undefined,
+                    minWidth: colWidth ? `${colWidth}px` : undefined,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    ...borderStyles,
+                  }}
+                >
+                  <VariableTextRenderer
+                    text={cell.content || ''}
+                    records={record ? [record] : []}
+                    fields={fields}
+                    fieldTypeMap={fieldTypeMap}
+                    tagName="span"
+                    textStyle={cellStyle}
+                    attachmentConfigs={attachmentConfigs}
+                    isEditing={mode === 'edit'}
+                  />
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
 }
 
-// 统一组件渲染器
-export function UnifiedComponentRenderer({
-  component,
-  context,
-  previewRecord,
-  fields,
-}: UnifiedComponentRendererProps) {
-  switch (component.type) {
-    case 'text':
-      return renderTextComponent(component, context, previewRecord, fields);
-    case 'heading':
-      return renderHeadingComponent(component, context, previewRecord, fields);
-    case 'paragraph':
-      return renderParagraphComponent(component, context, previewRecord, fields);
-    case 'list':
-      return renderListComponent(component, context, previewRecord, fields);
-    default:
-      return null;
-  }
+// ==================== 其他组件渲染 ====================
+
+function renderLineComponent(component: CanvasComponentNode) {
+  const lineComp = component as any;
+  return (
+    <hr
+      style={{
+        border: 'none',
+        height: `${lineComp.thickness || 1}px`,
+        backgroundColor: lineComp.color || '#000000',
+        margin: '16px 0',
+      }}
+    />
+  );
+}
+
+function renderQrcodeComponent(component: CanvasComponentNode) {
+  return (
+    <div className="flex items-center justify-center">
+      <div className="w-24 h-24 bg-gray-100 border border-gray-300" />
+    </div>
+  );
+}
+
+function renderBarcodeComponent(component: CanvasComponentNode) {
+  return (
+    <div className="flex items-center justify-center">
+      <div className="w-32 h-12 bg-gray-100 border border-gray-300" />
+    </div>
+  );
+}
+
+function renderImageComponent(component: CanvasComponentNode) {
+  const imageComp = component as any;
+  return (
+    <div className="flex items-center justify-center">
+      {imageComp.src ? (
+        <img
+          src={imageComp.src}
+          alt={imageComp.alt || ''}
+          className="max-w-full max-h-48 object-contain"
+        />
+      ) : (
+        <div className="w-full h-32 bg-gray-100 border border-gray-300 flex items-center justify-center">
+          <span className="text-gray-400">图片</span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default UnifiedComponentRenderer;
