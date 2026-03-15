@@ -18,6 +18,7 @@ interface InsertAttachmentDialogProps {
   onConfirm: (config: AttachmentVariableConfig) => void;
   availableFields: string[];  // 可用的附件字段列表
   initialField?: string;      // 初始选中的字段
+  initialConfig?: AttachmentVariableConfig;  // 【新增】已有配置（用于编辑场景）
   previewData?: {             // 【新增】预览数据（实际附件数据）
     fieldName: string;
     attachments: {
@@ -36,6 +37,7 @@ export function InsertAttachmentDialog({
   onConfirm,
   availableFields,
   initialField,
+  initialConfig,
   previewData
 }: InsertAttachmentDialogProps) {
   // 表单状态
@@ -67,12 +69,40 @@ export function InsertAttachmentDialog({
     return null;
   }, [previewData, selectedField]);
 
-  // 重置表单
+  // 重置/初始化表单
   useEffect(() => {
-    if (isOpen && initialField) {
-      setSelectedField(initialField);
+    if (isOpen) {
+      // 设置初始字段
+      if (initialField) {
+        setSelectedField(initialField);
+      }
+      
+      // 如果有初始配置，使用初始配置初始化状态
+      if (initialConfig) {
+        setSizeMode(initialConfig.sizeMode || 'auto');
+        setWidth(initialConfig.width || 120);
+        setHeight(initialConfig.height || 120);
+        setOnePerLine(initialConfig.onePerLine || false);
+        setAlign(initialConfig.align || 'left');
+        setEmptyDisplay(initialConfig.emptyDisplay || 'default');
+        setEmptyCustomText(initialConfig.emptyCustomText || '');
+        
+        // 【重要】如果 displayMode 是 'advanced'，回退到 'image_only'（高级显示已禁用）
+        const mode = initialConfig.displayMode || 'image_only';
+        setDisplayMode(mode === 'advanced' ? 'image_only' : mode);
+      } else {
+        // 没有初始配置时，使用默认值
+        setDisplayMode('image_only');
+        setSizeMode('auto');
+        setWidth(120);
+        setHeight(120);
+        setOnePerLine(false);
+        setAlign('left');
+        setEmptyDisplay('default');
+        setEmptyCustomText('');
+      }
     }
-  }, [isOpen, initialField]);
+  }, [isOpen, initialField, initialConfig]);
 
   // 构建配置对象
   const buildConfig = (): AttachmentVariableConfig => ({
@@ -161,18 +191,18 @@ export function InsertAttachmentDialog({
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between opacity-50">
                 <div className="flex items-center gap-2">
-                  <RadioGroupItem value="advanced" id="advanced" />
-                  <Label htmlFor="advanced" className="text-sm cursor-pointer">高级显示</Label>
+                  <RadioGroupItem value="advanced" id="advanced" disabled className="cursor-not-allowed" />
+                  <Label htmlFor="advanced" className="text-sm text-gray-400 cursor-not-allowed">高级显示（即将推出）</Label>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger>
-                      <Info className="w-4 h-4 text-gray-400" />
+                      <Info className="w-4 h-4 text-gray-300" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>显示图片和详细信息（File、URL）</p>
+                      <p>显示图片和详细信息（File、URL）- 功能开发中</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>

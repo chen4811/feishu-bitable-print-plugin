@@ -202,6 +202,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   // 附件变量弹窗状态
   const [attachmentDialogOpen, setAttachmentDialogOpen] = useState(false);
   const [attachmentDialogField, setAttachmentDialogField] = useState<string>('');
+  const [attachmentDialogConfig, setAttachmentDialogConfig] = useState<AttachmentVariableConfig | undefined>(undefined);
   const [editingVariable, setEditingVariable] = useState<string | null>(null);
   
   // 【新增】计算附件预览数据（用于弹窗预览）
@@ -829,8 +830,10 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   const handleEditAttachmentVariable = useCallback((fieldName: string) => {
     setEditingVariable(fieldName);
     setAttachmentDialogField(fieldName);
+    // 获取已有配置并传递给弹窗
+    setAttachmentDialogConfig(attachmentConfigs[fieldName]);
     setAttachmentDialogOpen(true);
-  }, []);
+  }, [attachmentConfigs]);
 
   // 处理删除附件变量
   const handleDeleteAttachmentVariable = useCallback((fieldName: string) => {
@@ -2516,9 +2519,11 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         onClose={() => {
           setAttachmentDialogOpen(false);
           setAttachmentDialogField('');
+          setAttachmentDialogConfig(undefined);
         }}
         availableFields={availableAttachmentFields}
         initialField={attachmentDialogField}
+        initialConfig={attachmentDialogConfig}
         previewData={attachmentPreviewData}
         onConfirm={handleAttachmentConfirm}
       />
