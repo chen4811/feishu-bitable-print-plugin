@@ -674,48 +674,65 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
 
   // 选择记录 - 使用 selectRecordIdList API
   const handleSelectRecords = useCallback(async () => {
+    console.log('[PrintPreview] ========== 开始选择记录 ==========');
     setIsLoadingData(true);
     setPrintError(null);
     
     try {
+      console.log('[PrintPreview] 步骤1: 动态导入 feishu-sdk-real');
       // 动态导入 feishu-sdk-real
       const { feishuSDK } = await import('@/lib/feishu-sdk-real');
+      console.log('[PrintPreview] 步骤1完成: feishuSDK 导入成功');
       
+      console.log('[PrintPreview] 步骤2: 检查飞书环境');
+      const isFeishuEnv = feishuSDK.isFeishuEnvironment();
+      console.log('[PrintPreview] 是否飞书环境:', isFeishuEnv);
+      
+      console.log('[PrintPreview] 步骤3: 获取当前选择 (getSelection)');
       // 获取当前选中的表和视图
       const selection = await feishuSDK.getSelection();
+      console.log('[PrintPreview] getSelection 返回:', selection);
+      
       if (!selection || !selection.tableId) {
+        console.error('[PrintPreview] 无法获取当前表格信息');
         setPrintError('无法获取当前表格信息，请确保在飞书环境中');
         return;
       }
       
       const { tableId, viewId } = selection;
-      console.log('[PrintPreview] 当前选择:', { tableId, viewId });
+      console.log('[PrintPreview] 当前表格:', { tableId, viewId });
       
+      console.log('[PrintPreview] 步骤4: 调用 selectRecordIdList 弹出选择对话框');
       // 弹出记录选择对话框
       const selectedIds = await feishuSDK.selectRecordIdList(tableId, viewId || '');
+      console.log('[PrintPreview] selectRecordIdList 返回:', selectedIds);
       
       if (!selectedIds || selectedIds.length === 0) {
-        console.log('[PrintPreview] 用户未选择任何记录');
+        console.log('[PrintPreview] 用户未选择任何记录或取消选择');
         return;
       }
       
-      console.log('[PrintPreview] 用户选择的记录ID:', selectedIds);
+      console.log('[PrintPreview] 步骤5: 用户选择了', selectedIds.length, '条记录:', selectedIds);
       
+      console.log('[PrintPreview] 步骤6: 获取选中记录的完整数据');
       // 获取选中记录的完整数据
       const selectedRecords = await feishuSDK.getRecordsByIds(tableId, selectedIds);
+      console.log('[PrintPreview] getRecordsByIds 返回:', selectedRecords);
       
       if (selectedRecords.length === 0) {
+        console.error('[PrintPreview] 无法获取选中记录的详细数据');
         setPrintError('无法获取选中记录的详细数据');
         return;
       }
       
-      console.log('[PrintPreview] 获取到的记录数据:', selectedRecords);
-      
+      console.log('[PrintPreview] 步骤7: 转换记录格式并更新状态');
       // 转换为应用格式
       const appRecords = selectedRecords.map((record: any) => ({
         id: record.id,
         ...record.fields,
       }));
+      
+      console.log('[PrintPreview] 转换后的记录:', appRecords);
       
       // 更新记录列表和选中状态
       setRecords(appRecords as Record<string, unknown>[]);
@@ -727,9 +744,11 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
       // 重置页码
       setCurrentPage(0);
       
+      console.log('[PrintPreview] ========== 选择记录完成 ==========');
+      
     } catch (error) {
-      console.error('选择记录失败:', error);
-      setPrintError('选择记录失败，请确保在飞书环境中');
+      console.error('[PrintPreview] 选择记录失败:', error);
+      setPrintError('选择记录失败: ' + (error instanceof Error ? error.message : String(error)));
     } finally {
       setIsLoadingData(false);
     }
@@ -810,9 +829,31 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
               )}
               
               {dataSourceMode === 'template' && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  预览模板结构，变量将显示为占位符
-                </p>
+                <>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    预览模板结构，变量将显示为占位符
+                  </p>
+                  {/* 如果已选中模板，提供快捷选择数据按钮 */}
+                  {components.length > 0 && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="w-full mt-3"
+                      onClick={async () => {
+                        console.log('[PrintPreview] 模板模式下点击选择数据');
+                        setDataSourceMode('data');
+                        // 自动弹出选择对话框
+                        setTimeout(() => {
+                          handleSelectRecords();
+                        }, 100);
+                      }}
+                      disabled={isLoadingData}
+                    >
+                      <ListChecks className="w-3 h-3 mr-1" />
+                      {isLoadingData ? '加载中...' : '选择数据载入'}
+                    </Button>
+                  )}
+                </>
               )}
             </div>
 
