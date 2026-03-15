@@ -1517,6 +1517,12 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     if (availableRecords.length > 0) {
       validateRendering(availableRecords[0]);
     }
+    
+    // 【关键修复】同步 availableRecords 到 editorStore，确保 CanvasComponent 能获取处理后的数据
+    if (availableRecords.length > 0) {
+      console.log('[TP] useEffect: 同步 availableRecords 到 editorStore:', availableRecords.length, '条记录');
+      setEditorStoreRecords(availableRecords);
+    }
   }, [availableRecords]);
   
   // 渲染验证函数
@@ -2165,10 +2171,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           
           console.log(`[TP] 新增: ${addedCount}, 跳过: ${skippedCount}, 忽略: ${ignoredCount}, 总记录: ${newRecords.length}`);
           console.log('[TP] ========== fetchSelectedRecordsFromEnv 结束 ==========');
-          
-          // 【关键修复】同时更新 editorStore，确保 CanvasComponent 能获取到处理后的记录
-          setEditorStoreRecords(newRecords);
-          console.log('[TP] 已同步更新 editorStore.records:', newRecords.length, '条记录');
           
           return newRecords;
         });
