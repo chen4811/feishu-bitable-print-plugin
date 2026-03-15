@@ -382,6 +382,19 @@ export interface PrintTemplate {
   components: (EditorComponent | CanvasComponentNode)[];
   pageConfig: PageConfig;
   styleConfig: StyleConfig;
+  // 【新增】附件变量配置（按字段名存储）
+  // 使用与 AttachmentVariableConfig 兼容的类型定义
+  attachmentConfigs?: Record<string, {
+    fieldName: string;
+    displayMode: 'image_only' | 'basic_info' | 'advanced';
+    sizeMode: 'auto' | 'fixed_width' | 'fixed_height' | 'fixed_size';
+    width?: number;
+    height?: number;
+    onePerLine: boolean;
+    align: 'left' | 'center' | 'right';
+    emptyDisplay: 'default' | 'custom';
+    emptyCustomText?: string;
+  }>;
   createdAt: number;
   updatedAt: number;
 }

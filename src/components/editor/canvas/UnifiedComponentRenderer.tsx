@@ -764,6 +764,7 @@ function renderImageComponent(component: CanvasComponentNode) {
 
 /**
  * 检查字段是否有值
+ * 支持普通字段和附件字段的检测
  */
 function checkFieldHasValue(
   fieldName: string,
@@ -799,6 +800,19 @@ function checkFieldHasValue(
   if (value === null || value === undefined) return false;
   if (value === '') return false;
   if (Array.isArray(value) && value.length === 0) return false;
+  
+  // 【新增】检查附件字段的预处理数据
+  // 附件字段经过 processRecordAttachments 处理后会生成 _fieldName_html 和 _fieldName_names
+  const htmlContent = record[`_${fieldName}_html`];
+  const fileNames = record[`_${fieldName}_names`];
+  
+  // 如果有预处理的 HTML 内容或文件名列表，也算有值
+  if (htmlContent && typeof htmlContent === 'string' && htmlContent.length > 0) {
+    return true;
+  }
+  if (Array.isArray(fileNames) && fileNames.length > 0) {
+    return true;
+  }
   
   return true;
 }

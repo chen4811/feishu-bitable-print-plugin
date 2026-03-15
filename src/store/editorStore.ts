@@ -547,6 +547,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       components: convertedComponents,
       pageConfig: { ...template.pageConfig },
       styleConfig: { ...template.styleConfig },
+      // 【新增】恢复附件变量配置
+      attachmentConfigs: template.attachmentConfigs || {},
       history: [convertedComponents],
       historyIndex: 0,
     });
@@ -565,6 +567,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       components: components,
       pageConfig: { ...pageConfig },
       styleConfig: { ...styleConfig },
+      // 【新增】恢复附件变量配置
+      attachmentConfigs: data.attachmentConfigs || {},
       history: components.length > 0 ? [components] : [],
       historyIndex: 0,
     });
@@ -620,6 +624,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       components: state.components,
       pageConfig: state.pageConfig,
       styleConfig: state.styleConfig,
+      // 【新增】保存附件变量配置
+      attachmentConfigs: state.attachmentConfigs,
       category: 'custom',
       tags: [],
       createdAt: Date.now(),
