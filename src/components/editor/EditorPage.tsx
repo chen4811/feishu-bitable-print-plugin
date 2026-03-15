@@ -135,6 +135,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
     setFields,
     setFieldTypeMap,
     loadTemplateFromData,
+    selectComponent,
   } = useEditorStore();
 
   // 从 feishu-env 获取数据并监听点击行
@@ -1051,7 +1052,9 @@ export function EditorPage({ onExit }: EditorPageProps) {
       selectedCells: [],
       headerFooterDialogOpen: false,
     });
-  }, [setTableEditing]);
+    // 完成编辑时取消组件选中
+    selectComponent(null);
+  }, [setTableEditing, selectComponent]);
 
   // 处理颜色变化
   const handleColorChange = useCallback((colorType: 'text' | 'fill', color: string) => {

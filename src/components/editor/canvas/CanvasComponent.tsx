@@ -868,21 +868,19 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   }, [editContent, isEditing, component.id, component.type, updateComponent]);
 
   // 【表格编辑】切换编辑状态
-  // 禁止修改，除非得到许可 - 此逻辑处理表格编辑和组件选中的联动
+  // 注意：退出编辑时不取消选中，只有在完成编辑时才会取消选中
   const handleEditTable = useCallback((e?: React.MouseEvent) => {
     if (e && e.stopPropagation) {
       e.stopPropagation();
     }
     
     if (isCurrentTableEditing) {
-      // 退出编辑 - 同时清除选中状态
+      // 退出编辑 - 只清除编辑状态，不取消选中
       setTableEditing({
         isEditing: false,
         tableId: null,
         selectedCells: [],
       });
-      // 清除组件选中状态
-      selectComponent(null);
     } else {
       // 进入编辑 - 只设置基本状态，不改变选中状态
       setTableEditing({
@@ -891,7 +889,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         selectedCells: [],
       });
     }
-  }, [component.id, isCurrentTableEditing, setTableEditing, selectComponent]);
+  }, [component.id, isCurrentTableEditing, setTableEditing]);
 
   // 双击表格进入编辑
   const handleDoubleClickTable = (e: React.MouseEvent) => {
@@ -1343,12 +1341,16 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     };
   }, [resizingRow, resizingCol, component, updateComponent]);
 
-  // 【全局点击监听】点击画布空白区域时退出编辑并取消选中
-  // 禁止修改，除非得到许可 - 此逻辑处理表格编辑和组件选中的联动
+  // 【全局点击监听】点击画布空白区域时取消选中
+  // 注意：表格编辑状态下点击外部不退出表格编辑，而是在完成编辑时取消选中
   useEffect(() => {
     const handleGlobalClick = (e: MouseEvent) => {
-      // 如果当前不是选中状态且不是表格编辑状态，不需要处理
-      if (!isSelected && !isCurrentTableEditing) return;
+      // 表格编辑状态下，点击外部不做任何处理
+      // 在完成编辑时才会取消选中
+      if (isCurrentTableEditing) return;
+      
+      // 如果当前不是选中状态，不需要处理
+      if (!isSelected) return;
       
       const target = e.target as HTMLElement;
       
@@ -1363,15 +1365,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       
       // 如果点击在画布内但不在组件内部，则取消选中和退出编辑
       if (!isInComponent) {
-        // 【关键修复】如果是当前表格在编辑状态，退出表格编辑
-        if (isCurrentTableEditing) {
-          setTableEditing({
-            isEditing: false,
-            tableId: null,
-            selectedCells: [],
-          });
-        }
-        
         // 如果正在编辑文本，先退出编辑并保存
         if (isEditing && component.type === 'text') {
           setIsEditing(false);
@@ -1389,8 +1382,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       }
     };
 
-    // 在选中状态或表格编辑状态下添加监听器
-    if (isSelected || isCurrentTableEditing) {
+    // 在选中状态下添加监听器（表格编辑状态下不添加）
+    if (isSelected && !isCurrentTableEditing) {
       // 使用 capture 阶段来确保在其他事件处理之前执行
       document.addEventListener('mousedown', handleGlobalClick, true);
     }
@@ -1398,7 +1391,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     return () => {
       document.removeEventListener('mousedown', handleGlobalClick, true);
     };
-  }, [isSelected, isCurrentTableEditing, isEditing, component.id, component.type, editContent, updateComponent, selectComponent, setTableEditing]);
+  }, [isSelected, isCurrentTableEditing, isEditing, component.id, component.type, editContent, updateComponent, selectComponent]);
 
   // 自动聚焦到编辑框
   useEffect(() => {
