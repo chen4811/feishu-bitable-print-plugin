@@ -2114,18 +2114,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                       const isCurrentCellEditing = tableCellEditing.isEditing && 
                         tableCellEditing.tableId === component.id &&
                         tableCellEditing.cellId === cellId;
-                      
-                      // 调试日志
-                      if (tableCellEditing.isEditing) {
-                        console.log('[CanvasComponent] isCurrentCellEditing check:', {
-                          cellId,
-                          'tableCellEditing.isEditing': tableCellEditing.isEditing,
-                          'tableCellEditing.tableId': tableCellEditing.tableId,
-                          'tableCellEditing.cellId': tableCellEditing.cellId,
-                          'component.id': component.id,
-                          isCurrentCellEditing,
-                        });
-                      }
 
                       // 当前单元格处于编辑状态 - 显示 textarea
                       if (isCurrentCellEditing) {
