@@ -428,21 +428,54 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
             <>
               {imageUrls.length > 0 ? (
                 // 【重构】渲染所有图片
-                imageUrls.map((url, index) => (
-                  <img
-                    key={index}
-                    src={url}
-                    alt=""
-                    style={getImageStyle()}
-                    className="rounded"
-                    crossOrigin="anonymous"
-                    onError={(e) => {
-                      // 图片加载失败时，隐藏图片
-                      const img = e.target as HTMLImageElement;
-                      img.style.display = 'none';
-                    }}
-                  />
-                ))
+                imageUrls.map((url, index) => {
+                  // 获取对应索引的文件名作为降级显示
+                  const fallbackName = (fileNames && fileNames[index]) 
+                    || (rawData && rawData[index]?.name) 
+                    || (rawData && rawData[index]?.fileName)
+                    || `图片${index + 1}`;
+                  
+                  return (
+                    <span key={index} className="inline-block">
+                      <img
+                        src={url}
+                        alt=""
+                        style={getImageStyle()}
+                        className="rounded"
+                        crossOrigin="anonymous"
+                        onError={(e) => {
+                          // 图片加载失败时，隐藏失败的图片
+                          const img = e.target as HTMLImageElement;
+                          img.style.display = 'none';
+                          // 显示降级内容（文件名）
+                          const fallback = img.nextElementSibling as HTMLElement;
+                          if (fallback) fallback.style.display = 'inline-flex';
+                        }}
+                      />
+                      {/* 图片加载失败时的降级显示 */}
+                      <span
+                        style={{
+                          display: 'none',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '4px 8px',
+                          background: '#f3f4f6',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          color: '#6b7280',
+                          maxWidth: config?.width ? `${config.width}px` : '80px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                        title={`图片加载失败：${fallbackName}`}
+                      >
+                        <FileImage className="w-3 h-3 flex-shrink-0" />
+                        <span className="truncate">{fallbackName}</span>
+                      </span>
+                    </span>
+                  );
+                })
               ) : (
                 // 没有图片 URL 时显示空白占位符
                 <div 
@@ -471,17 +504,28 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
           {displayMode === 'advanced' && (
             <>
               {imageUrl ? (
-                <img
-                  src={imageUrl}
-                  alt={fileName}
-                  style={{ maxWidth: '60px', maxHeight: '60px', borderRadius: '4px' }}
-                  className="rounded mr-2"
-                  crossOrigin="anonymous"
-                  onError={(e) => {
-                    const img = e.target as HTMLImageElement;
-                    img.style.display = 'none';
-                  }}
-                />
+                <span className="inline-block">
+                  <img
+                    src={imageUrl}
+                    alt={fileName}
+                    style={{ maxWidth: '60px', maxHeight: '60px', borderRadius: '4px' }}
+                    className="rounded mr-2"
+                    crossOrigin="anonymous"
+                    onError={(e) => {
+                      // 图片加载失败时，隐藏失败的图片
+                      const img = e.target as HTMLImageElement;
+                      img.style.display = 'none';
+                      // 显示降级图标
+                      const fallback = img.nextElementSibling as HTMLElement;
+                      if (fallback) fallback.style.display = 'inline-flex';
+                    }}
+                  />
+                  {/* 图片加载失败时的降级图标 */}
+                  <FileImage 
+                    className="w-6 h-6 text-blue-500 mr-2" 
+                    style={{ display: 'none' }}
+                  />
+                </span>
               ) : (
                 <FileImage className="w-6 h-6 text-blue-500 mr-2" />
               )}
