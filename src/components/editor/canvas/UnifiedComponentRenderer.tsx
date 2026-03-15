@@ -100,6 +100,18 @@ export function UnifiedComponentRenderer({
         mode,
       });
     
+    case 'fieldContainer':
+      return renderFieldContainerComponent({
+        component,
+        styleConfig,
+        fields,
+        fieldTypeMap,
+        record,
+        attachmentConfigs,
+        isEmptyPreview,
+        mode,
+      });
+    
     case 'line':
       return renderLineComponent(component);
     
@@ -744,6 +756,169 @@ function renderImageComponent(component: CanvasComponentNode) {
           <span className="text-gray-400">图片</span>
         </div>
       )}
+    </div>
+  );
+}
+
+// ==================== 字段容器组件渲染 ====================
+
+/**
+ * 检查字段是否有值
+ */
+function checkFieldHasValue(
+  fieldName: string,
+  record: Record<string, unknown> | undefined,
+  fields: Field[]
+): boolean {
+  if (!record) return false;
+  
+  // 构建字段名到字段ID的映射
+  const fieldId = fields.find(f => f.name === fieldName)?.id;
+  
+  let value: unknown;
+  
+  // 尝试通过字段ID获取值
+  if (fieldId) {
+    if (record[fieldId] !== undefined) {
+      value = record[fieldId];
+    } else if (record.fields && (record.fields as Record<string, unknown>)[fieldId] !== undefined) {
+      value = (record.fields as Record<string, unknown>)[fieldId];
+    }
+  }
+  
+  // 如果通过字段ID没找到，尝试直接用字段名
+  if (value === undefined) {
+    if (record[fieldName] !== undefined) {
+      value = record[fieldName];
+    } else if (record.fields && (record.fields as Record<string, unknown>)[fieldName] !== undefined) {
+      value = (record.fields as Record<string, unknown>)[fieldName];
+    }
+  }
+  
+  // 检查值是否有效
+  if (value === null || value === undefined) return false;
+  if (value === '') return false;
+  if (Array.isArray(value) && value.length === 0) return false;
+  
+  return true;
+}
+
+/**
+ * 渲染字段容器组件
+ * 根据字段是否有值决定是否显示容器内容
+ */
+function renderFieldContainerComponent({
+  component,
+  styleConfig,
+  fields,
+  fieldTypeMap,
+  record,
+  attachmentConfigs,
+  isEmptyPreview,
+  mode,
+}: TextRenderProps): React.ReactNode {
+  const containerComp = component as any;
+  const fieldNames = containerComp.fieldNames || [];
+  const children = containerComp.children || [];
+  const showCondition = containerComp.showCondition || 'any'; // 默认：任意字段有值即显示
+  
+  // 编辑模式：始终显示容器（方便编辑）
+  if (mode === 'edit') {
+    return (
+      <div 
+        className="field-container"
+        style={{ 
+          width: '100%',
+          border: '2px dashed #e5e7eb',
+          borderRadius: '4px',
+          padding: '8px',
+          backgroundColor: '#f9fafb',
+        }}
+      >
+        <div className="text-xs text-gray-400 mb-2 flex items-center gap-1">
+          <span>📦 字段容器</span>
+          <span className="text-blue-500">[{fieldNames.join(', ')}]</span>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          {children.map((child: any) => (
+            <div key={child.id} style={{ width: '100%' }}>
+              <UnifiedComponentRenderer
+                component={child}
+                mode={mode}
+                styleConfig={styleConfig}
+                fields={fields}
+                fieldTypeMap={fieldTypeMap}
+                record={record}
+                attachmentConfigs={attachmentConfigs}
+                isEmptyPreview={isEmptyPreview}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  
+  // 预览/打印模式：根据字段值决定是否显示
+  // 空数据预览时：显示容器内容（让用户看到模板结构）
+  if (isEmptyPreview) {
+    return (
+      <div className="field-container" style={{ width: '100%' }}>
+        <div className="flex flex-wrap gap-3">
+          {children.map((child: any) => (
+            <div key={child.id} style={{ width: '100%' }}>
+              <UnifiedComponentRenderer
+                component={child}
+                mode={mode}
+                styleConfig={styleConfig}
+                fields={fields}
+                fieldTypeMap={fieldTypeMap}
+                record={record}
+                attachmentConfigs={attachmentConfigs}
+                isEmptyPreview={isEmptyPreview}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  
+  // 有数据时：检查字段是否有值
+  const fieldValues = fieldNames.map((fieldName: string) => ({
+    name: fieldName,
+    hasValue: checkFieldHasValue(fieldName, record, fields),
+  }));
+  
+  // 根据显示条件判断
+  const shouldShow = showCondition === 'all'
+    ? fieldValues.every((f: { name: string; hasValue: boolean }) => f.hasValue) // 所有字段都有值
+    : fieldValues.some((f: { name: string; hasValue: boolean }) => f.hasValue); // 任意字段有值
+  
+  // 如果不应该显示，返回 null（不渲染任何内容）
+  if (!shouldShow) {
+    return null;
+  }
+  
+  // 显示容器内容
+  return (
+    <div className="field-container" style={{ width: '100%' }}>
+      <div className="flex flex-wrap gap-3">
+        {children.map((child: any) => (
+          <div key={child.id} style={{ width: '100%' }}>
+            <UnifiedComponentRenderer
+              component={child}
+              mode={mode}
+              styleConfig={styleConfig}
+              fields={fields}
+              fieldTypeMap={fieldTypeMap}
+              record={record}
+              attachmentConfigs={attachmentConfigs}
+              isEmptyPreview={isEmptyPreview}
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

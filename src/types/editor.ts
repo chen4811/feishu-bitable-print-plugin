@@ -87,7 +87,7 @@ export interface ComponentLayout {
 // 画布组件节点（网格布局 - v17.0）
 export interface BaseCanvasNode {
   id: string;
-  type: 'text' | 'heading' | 'paragraph' | 'list' | 'table' | 'image' | 'barcode' | 'qrcode' | 'line';
+  type: 'text' | 'heading' | 'paragraph' | 'list' | 'table' | 'image' | 'barcode' | 'qrcode' | 'line' | 'fieldContainer';
   width: number; // 保留兼容性
   height?: number;
   minHeight?: number;
@@ -163,6 +163,17 @@ export interface LineCanvasNode extends BaseCanvasNode {
   style: 'solid' | 'dashed' | 'dotted';
 }
 
+// 字段容器组件节点 - 根据字段是否有值决定是否显示
+export interface FieldContainerCanvasNode extends BaseCanvasNode {
+  type: 'fieldContainer';
+  // 绑定的字段名列表
+  fieldNames: string[];
+  // 容器内的子组件
+  children: CanvasComponentNode[];
+  // 显示条件：'any' 任意字段有值显示 | 'all' 所有字段有值才显示
+  showCondition?: 'any' | 'all';
+}
+
 // 画布组件节点联合类型
 export type CanvasComponentNode = 
   | TextCanvasNode 
@@ -173,7 +184,8 @@ export type CanvasComponentNode =
   | ImageCanvasNode 
   | BarcodeCanvasNode 
   | QRCodeCanvasNode 
-  | LineCanvasNode;
+  | LineCanvasNode
+  | FieldContainerCanvasNode;
 
 // 画布状态（流式布局）
 export interface CanvasState {
@@ -196,7 +208,8 @@ export type ComponentType =
   | 'line'       // 水平线
   | 'freeElement' // 自由拖动元素（保留兼容）
   | 'article'    // 文章区块
-  | 'autoTable'; // 自动表格
+  | 'autoTable'  // 自动表格
+  | 'fieldContainer'; // 字段容器组件
 
 // 字段类型
 export interface Field {
@@ -415,6 +428,7 @@ export const DEFAULT_COMPONENT_SIZES: Record<ComponentType, { width: number; hei
   freeElement: { width: 100, height: 100 },
   article: { width: 100, height: 150 },
   autoTable: { width: 100, height: 200 },
+  fieldContainer: { width: 100, height: 60 }, // 字段容器
 };
 
 // 默认页面配置
