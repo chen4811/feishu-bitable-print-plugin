@@ -282,19 +282,19 @@ export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
         // 预览状态：显示字段值
         const value = getFieldValue(fieldName, records, fields);
         
-        // 【修复】打印预览模式下，空字段显示空白（不显示占位符或变量名）
-        const displayValue = (value === '[空]' || value === '[暂无数据]')
-          ? '' // 显示空白
-          : value;
-        
-        parts.push(
-          <VariableChip
-            key={`var-${index}`}
-            fieldName={fieldName}
-            value={displayValue}
-            textStyle={textStyle}
-          />
-        );
+        // 【修复】打印预览模式下，空字段不显示任何内容
+        if (value === '[空]' || value === '[暂无数据]' || value === '') {
+          // 不添加任何内容到 parts，保持空白
+        } else {
+          parts.push(
+            <VariableChip
+              key={`var-${index}`}
+              fieldName={fieldName}
+              value={value}
+              textStyle={textStyle}
+            />
+          );
+        }
       }
     }
     
