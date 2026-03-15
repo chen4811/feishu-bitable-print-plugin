@@ -672,23 +672,94 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
     }
   };
 
-  // 选择记录 - 使用 selectRecordIdList API
+  // 生成多条记录确认消息
+  const generateConfirmMessage = (count: number): string => {
+    const messages: Record<number, string> = {
+      2: '您选择了 2 条记录，当前排版打印支持单条记录预览。是否载入第一条记录进行打印？',
+      3: '您选择了 3 条记录，建议单条打印以确保最佳效果。需要载入第一条记录吗？',
+      4: '已选择 4 条记录，批量打印可能会影响排版效果。推荐载入单条记录进行打印。',
+      5: '您选择了 5 条记录，是否载入第一条记录开始打印？',
+    };
+    return messages[count] || `您选择了 ${count} 条记录，当前载入第一条记录进行排版打印。`;
+  };
+
+  // 载入单条记录到画布
+  const loadSingleRecord = useCallback(async (tableId: string, recordId: string, feishuSDK: any) => {
+    console.log('[PrintPreview] 载入单条记录:', recordId);
+    
+    try {
+      await feishuSDK.showMessage('正在载入记录...', 'info');
+      
+      const selectedRecords = await feishuSDK.getRecordsByIds(tableId, [recordId]);
+      
+      if (selectedRecords.length === 0) {
+        setPrintError('无法获取记录数据');
+        return;
+      }
+      
+      const appRecords = selectedRecords.map((record: any) => ({
+        id: record.id,
+        ...record.fields,
+      }));
+      
+      setRecords(appRecords as Record<string, unknown>[]);
+      setSelectedRecordIds([recordId]);
+      setDataSourceMode('data');
+      setCurrentPage(0);
+      
+      await feishuSDK.showMessage('记录载入成功', 'success');
+      console.log('[PrintPreview] ========== 记录载入完成 ==========');
+      
+    } catch (error) {
+      console.error('[PrintPreview] 载入记录失败:', error);
+      setPrintError('载入记录失败');
+    }
+  }, [setRecords, setSelectedRecordIds]);
+
+  // 载入多条记录（用于批量打印预览）
+  const loadMultipleRecords = useCallback(async (tableId: string, recordIds: string[], feishuSDK: any) => {
+    console.log('[PrintPreview] 载入多条记录:', recordIds.length);
+    
+    try {
+      await feishuSDK.showMessage(`正在载入 ${recordIds.length} 条记录...`, 'info');
+      
+      const selectedRecords = await feishuSDK.getRecordsByIds(tableId, recordIds);
+      
+      if (selectedRecords.length === 0) {
+        setPrintError('无法获取记录数据');
+        return;
+      }
+      
+      const appRecords = selectedRecords.map((record: any) => ({
+        id: record.id,
+        ...record.fields,
+      }));
+      
+      setRecords(appRecords as Record<string, unknown>[]);
+      setSelectedRecordIds(recordIds);
+      setDataSourceMode('data');
+      setCurrentPage(0);
+      
+      await feishuSDK.showMessage(`已载入 ${selectedRecords.length} 条记录`, 'success');
+      console.log('[PrintPreview] ========== 批量记录载入完成 ==========');
+      
+    } catch (error) {
+      console.error('[PrintPreview] 载入记录失败:', error);
+      setPrintError('载入记录失败');
+    }
+  }, [setRecords, setSelectedRecordIds]);
+
+  // 选择记录 - 使用 selectRecordIdList API（阻塞式模态对话框）
   const handleSelectRecords = useCallback(async () => {
-    console.log('[PrintPreview] ========== 开始选择记录 ==========');
+    console.log('[PrintPreview] ========== 开始选择记录（阻塞式模态对话框）==========');
     setIsLoadingData(true);
     setPrintError(null);
     
     try {
-      console.log('[PrintPreview] 步骤1: 动态导入 feishu-sdk-real');
       // 动态导入 feishu-sdk-real
       const { feishuSDK } = await import('@/lib/feishu-sdk-real');
-      console.log('[PrintPreview] 步骤1完成: feishuSDK 导入成功');
+      console.log('[PrintPreview] feishuSDK 导入成功');
       
-      console.log('[PrintPreview] 步骤2: 检查飞书环境');
-      const isFeishuEnv = feishuSDK.isFeishuEnvironment();
-      console.log('[PrintPreview] 是否飞书环境:', isFeishuEnv);
-      
-      console.log('[PrintPreview] 步骤3: 获取当前选择 (getSelection)');
       // 获取当前选中的表和视图
       const selection = await feishuSDK.getSelection();
       console.log('[PrintPreview] getSelection 返回:', selection);
@@ -702,49 +773,54 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
       const { tableId, viewId } = selection;
       console.log('[PrintPreview] 当前表格:', { tableId, viewId });
       
-      console.log('[PrintPreview] 步骤4: 调用 selectRecordIdList 弹出选择对话框');
-      // 弹出记录选择对话框
-      const selectedIds = await feishuSDK.selectRecordIdList(tableId, viewId || '');
-      console.log('[PrintPreview] selectRecordIdList 返回:', selectedIds);
+      // 弹出记录选择对话框（阻塞式，等待用户操作完成）
+      console.log('[PrintPreview] 调用 selectRecordIdList（阻塞式，等待用户操作）...');
+      const selectedIds = await feishuSDK.selectRecordIdList(tableId, viewId || '', {
+        title: '选择要打印的记录',
+        multiple: true,
+        maxCount: 50,
+      });
       
+      console.log('[PrintPreview] 用户选择的记录ID:', selectedIds);
+      
+      // 处理选择结果
       if (!selectedIds || selectedIds.length === 0) {
-        console.log('[PrintPreview] 用户未选择任何记录或取消选择');
+        console.log('[PrintPreview] 用户取消了选择');
         return;
       }
       
-      console.log('[PrintPreview] 步骤5: 用户选择了', selectedIds.length, '条记录:', selectedIds);
+      const selectedCount = selectedIds.length;
       
-      console.log('[PrintPreview] 步骤6: 获取选中记录的完整数据');
-      // 获取选中记录的完整数据
-      const selectedRecords = await feishuSDK.getRecordsByIds(tableId, selectedIds);
-      console.log('[PrintPreview] getRecordsByIds 返回:', selectedRecords);
-      
-      if (selectedRecords.length === 0) {
-        console.error('[PrintPreview] 无法获取选中记录的详细数据');
-        setPrintError('无法获取选中记录的详细数据');
-        return;
+      if (selectedCount === 1) {
+        // 单条记录：直接载入画布，无提示
+        console.log('[PrintPreview] 单选：直接载入画布');
+        await loadSingleRecord(tableId, selectedIds[0], feishuSDK);
+      } else {
+        // 多条记录：弹出确认对话框
+        console.log('[PrintPreview] 多选：弹出确认对话框');
+        const message = generateConfirmMessage(selectedCount);
+        
+        // 使用自定义确认对话框
+        const confirmResult = await new Promise<'first' | 'all' | 'cancel'>((resolve) => {
+          // 暂时用 window.confirm，后续可改用 shadcn/ui 的 AlertDialog
+          const userChoice = window.confirm(
+            `${message}\n\n点击"确定"载入第一条记录\n点击"取消"放弃选择`
+          );
+          if (userChoice) {
+            resolve('first');
+          } else {
+            resolve('cancel');
+          }
+        });
+        
+        if (confirmResult === 'first') {
+          await loadSingleRecord(tableId, selectedIds[0], feishuSDK);
+        } else if (confirmResult === 'all') {
+          await loadMultipleRecords(tableId, selectedIds, feishuSDK);
+        } else {
+          console.log('[PrintPreview] 用户取消载入');
+        }
       }
-      
-      console.log('[PrintPreview] 步骤7: 转换记录格式并更新状态');
-      // 转换为应用格式
-      const appRecords = selectedRecords.map((record: any) => ({
-        id: record.id,
-        ...record.fields,
-      }));
-      
-      console.log('[PrintPreview] 转换后的记录:', appRecords);
-      
-      // 更新记录列表和选中状态
-      setRecords(appRecords as Record<string, unknown>[]);
-      setSelectedRecordIds(selectedIds);
-      
-      // 切换到数据模式
-      setDataSourceMode('data');
-      
-      // 重置页码
-      setCurrentPage(0);
-      
-      console.log('[PrintPreview] ========== 选择记录完成 ==========');
       
     } catch (error) {
       console.error('[PrintPreview] 选择记录失败:', error);
@@ -752,7 +828,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
     } finally {
       setIsLoadingData(false);
     }
-  }, [setRecords, setSelectedRecordIds]);
+  }, [loadSingleRecord, loadMultipleRecords]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -812,18 +888,21 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
                     onClick={handleSelectRecords}
                     disabled={isLoadingData}
                   >
-                    <ListChecks className={`w-3 h-3 mr-1`} />
-                    {isLoadingData ? '加载中...' : '选择记录'}
+                    <ListChecks className="w-3 h-3 mr-1" />
+                    {isLoadingData ? '选择中...' : '选择记录'}
                   </Button>
+                  <p className="text-xs text-muted-foreground mt-1 text-center">
+                    单选直接载入，多选需确认
+                  </p>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    className="w-full mt-2"
+                    className="w-full mt-2 text-xs"
                     onClick={loadFeishuData}
                     disabled={isLoadingData}
                   >
                     <RefreshCw className={`w-3 h-3 mr-1 ${isLoadingData ? 'animate-spin' : ''}`} />
-                    {isLoadingData ? '加载中...' : '加载全部数据'}
+                    或加载全部数据
                   </Button>
                 </>
               )}
@@ -839,18 +918,11 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
                       variant="default"
                       size="sm"
                       className="w-full mt-3"
-                      onClick={async () => {
-                        console.log('[PrintPreview] 模板模式下点击选择数据');
-                        setDataSourceMode('data');
-                        // 自动弹出选择对话框
-                        setTimeout(() => {
-                          handleSelectRecords();
-                        }, 100);
-                      }}
+                      onClick={handleSelectRecords}
                       disabled={isLoadingData}
                     >
                       <ListChecks className="w-3 h-3 mr-1" />
-                      {isLoadingData ? '加载中...' : '选择数据载入'}
+                      {isLoadingData ? '选择中...' : '选择数据载入'}
                     </Button>
                   )}
                 </>

@@ -632,13 +632,19 @@ export const feishuSDK = {
 
   /**
    * 弹出选择记录对话框，让用户从指定表格和视图中选择记录
+   * 这是一个阻塞式模态对话框 API，调用后会直接弹出选择界面，用户操作完成后才返回结果
    * @param tableId 表格ID
    * @param viewId 视图ID
+   * @param options 可选配置
    * @returns 选中的记录ID数组
    */
-  async selectRecordIdList(tableId: string, viewId: string): Promise<string[]> {
+  async selectRecordIdList(
+    tableId: string, 
+    viewId: string, 
+    options?: { title?: string; multiple?: boolean; maxCount?: number }
+  ): Promise<string[]> {
     console.log('[FeishuSDK] ========== selectRecordIdList() 开始 ==========');
-    console.log('[FeishuSDK] 参数:', { tableId, viewId });
+    console.log('[FeishuSDK] 参数:', { tableId, viewId, options });
     
     try {
       const bitable = await getBitable();
@@ -677,8 +683,15 @@ export const feishuSDK = {
         return [];
       }
 
-      console.log('[FeishuSDK] 调用 bitable.ui.selectRecordIdList...');
-      const selectedIds = await bitable.ui.selectRecordIdList(tableId, viewId);
+      console.log('[FeishuSDK] 调用 bitable.ui.selectRecordIdList（阻塞式模态对话框）...');
+      
+      // 调用参数 - 支持不同 SDK 版本
+      const callParams: any = options?.title 
+        ? { title: options.title, multiple: options.multiple ?? true, maxCount: options.maxCount ?? 50 }
+        : { multiple: true, maxCount: 50 };
+      
+      // 部分版本需要传入 tableId 和 viewId
+      const selectedIds = await bitable.ui.selectRecordIdList(tableId, viewId, callParams);
       console.log('[FeishuSDK] ✅ 用户选择的记录ID:', selectedIds);
       console.log('[FeishuSDK] ========== selectRecordIdList() 结束 ==========');
       
@@ -687,6 +700,70 @@ export const feishuSDK = {
       console.error('[FeishuSDK] ❌ selectRecordIdList() 失败:', error);
       console.log('[FeishuSDK] ========== selectRecordIdList() 结束（异常）==========');
       return [];
+    }
+  },
+
+  /**
+   * 显示确认对话框
+   * @param title 标题
+   * @param content 内容
+   * @param confirmText 确认按钮文字
+   * @param cancelText 取消按钮文字
+   * @returns 用户是否确认
+   */
+  async showConfirm(
+    title: string, 
+    content: string, 
+    confirmText: string = '确认', 
+    cancelText: string = '取消'
+  ): Promise<boolean> {
+    console.log('[FeishuSDK] showConfirm 被调用:', { title, content });
+    
+    try {
+      const bitable = await getBitable();
+      
+      if (!bitable || !bitable.ui || typeof bitable.ui.confirm !== 'function') {
+        // 非 SDK 环境，使用浏览器 confirm
+        console.log('[FeishuSDK] 使用浏览器 confirm');
+        return window.confirm(content);
+      }
+      
+      return new Promise((resolve) => {
+        bitable.ui.confirm({
+          title,
+          content,
+          confirmText,
+          cancelText,
+          onConfirm: () => resolve(true),
+          onCancel: () => resolve(false),
+        });
+      });
+    } catch (error) {
+      console.error('[FeishuSDK] showConfirm 失败:', error);
+      return window.confirm(content);
+    }
+  },
+
+  /**
+   * 显示消息提示
+   * @param message 消息内容
+   * @param type 消息类型
+   */
+  async showMessage(message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info'): Promise<void> {
+    console.log('[FeishuSDK] showMessage:', { message, type });
+    
+    try {
+      const bitable = await getBitable();
+      
+      if (!bitable || !bitable.ui || typeof bitable.ui.showMessage !== 'function') {
+        // 非 SDK 环境，使用 console
+        console.log(`[FeishuSDK Message][${type}] ${message}`);
+        return;
+      }
+      
+      await bitable.ui.showMessage({ message, type });
+    } catch (error) {
+      console.error('[FeishuSDK] showMessage 失败:', error);
     }
   },
 
