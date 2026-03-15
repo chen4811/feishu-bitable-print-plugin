@@ -71,6 +71,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
     clearRecordSelection,
     setRecords,
     setFields,
+    attachmentConfigs,
   } = useEditorStore();
   
   const [previewMode, setPreviewMode] = useState<'default' | 'continuous' | 'label'>('default');
@@ -265,6 +266,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
                 fields={fields}
                 fieldTypeMap={fieldTypeMap}
                 record={record}
+                attachmentConfigs={attachmentConfigs}
                 isEmptyPreview={isEmptyPreview}
               />
             </div>
@@ -272,7 +274,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
         })}
       </div>
     );
-  }, [components, fields, fieldTypeMap, styleConfig, contentWidth, getComponentWidthStyle, isEmptyPreview]);
+  }, [components, fields, fieldTypeMap, styleConfig, contentWidth, getComponentWidthStyle, isEmptyPreview, attachmentConfigs]);
 
   // 加载飞书数据
   const loadFeishuData = useCallback(async () => {
