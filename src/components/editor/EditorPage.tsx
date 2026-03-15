@@ -145,6 +145,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
   useEffect(() => {
     // 🔥 【关键修复】声明 unsubscribe 变量，用于清理监听器
     let unsubscribe: (() => void) | null = null;
+    let isCleaned = false; // 🔥 添加清理标志，防止在清理后设置监听器
     
     const init = async () => {
       // 先初始化 SDK
@@ -152,6 +153,12 @@ export function EditorPage({ onExit }: EditorPageProps) {
       
       if (!isReady) {
         console.log('[EditorPage] 不在飞书环境，跳过');
+        return;
+      }
+
+      // 🔥 检查是否已经清理，避免在清理后设置监听器
+      if (isCleaned) {
+        console.log('[EditorPage] 组件已清理，取消初始化');
         return;
       }
 
@@ -433,6 +440,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
     // 🔥 【关键修复】返回正确的清理函数
     return () => {
       console.log('[EditorPage] 清理选中变化监听器');
+      isCleaned = true; // 🔥 标记为已清理，防止异步初始化继续执行
       if (unsubscribe) {
         unsubscribe();
       }
