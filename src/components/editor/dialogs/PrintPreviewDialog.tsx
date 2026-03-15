@@ -72,6 +72,8 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
     setRecords,
     setFields,
     attachmentConfigs,
+    // 获取清除选择的函数
+    setSelectedRecordIds,
   } = useEditorStore();
   
   const [previewMode, setPreviewMode] = useState<'default' | 'continuous' | 'label'>('default');
@@ -281,6 +283,9 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
     setIsLoadingData(true);
     setPrintError(null);
     
+    // 【修复】加载数据前清除旧的选择状态，防止新数据与旧选择ID不匹配
+    setSelectedRecordIds([]);
+    
     try {
       // 动态导入 feishu-env
       const { fetchFields, fetchRecords } = await import('@/lib/feishu-env');
@@ -334,7 +339,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
     } finally {
       setIsLoadingData(false);
     }
-  }, [setFields, setRecords]);
+  }, [setFields, setRecords, setSelectedRecordIds]);
 
   // 导出为 PDF
   const handleExportPDF = useCallback(async () => {
@@ -478,6 +483,15 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
                       >
                         <Checkbox
                           checked={selectedRecordIds.includes(record.id as string)}
+                          onCheckedChange={(checked) => {
+                            // 阻止事件冒泡，避免触发外层 div 的 onClick
+                            // 直接调用 toggleRecordSelection，因为这是切换行为
+                            toggleRecordSelection(record.id as string);
+                          }}
+                          onClick={(e) => {
+                            // 阻止事件冒泡到外层 div
+                            e.stopPropagation();
+                          }}
                         />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">
