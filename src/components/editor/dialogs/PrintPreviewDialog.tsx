@@ -7,6 +7,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -442,6 +452,12 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
   const [scale, setScale] = useState(1);
   const [dataSourceMode, setDataSourceMode] = useState<'template' | 'data'>('template');
   const [isLoadingData, setIsLoadingData] = useState(false);
+  
+  // 确认对话框状态
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [pendingSelectedIds, setPendingSelectedIds] = useState<string[]>([]);
+  const [pendingTableId, setPendingTableId] = useState<string>('');
+  const [confirmMessage, setConfirmMessage] = useState('');
   const previewRef = useRef<HTMLDivElement>(null);
 
   // 计算画布尺寸
@@ -749,6 +765,110 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
     }
   }, [setRecords, setSelectedRecordIds]);
 
+  // 处理确认对话框的"载入第一条"操作
+  const handleConfirmFirst = useCallback(async () => {
+    console.log('[PrintPreview] 用户选择：载入第一条');
+    setConfirmDialogOpen(false);
+    
+    if (pendingSelectedIds.length > 0 && pendingTableId) {
+      const { feishuSDK } = await import('@/lib/feishu-sdk-real');
+      await loadSingleRecord(pendingTableId, pendingSelectedIds[0], feishuSDK);
+    }
+    
+    // 清理状态
+    setPendingSelectedIds([]);
+    setPendingTableId('');
+  }, [pendingSelectedIds, pendingTableId, loadSingleRecord]);
+
+  // 处理确认对话框的"载入全部"操作
+  const handleConfirmAll = useCallback(async () => {
+    console.log('[PrintPreview] 用户选择：载入全部');
+    setConfirmDialogOpen(false);
+    
+    if (pendingSelectedIds.length > 0 && pendingTableId) {
+      const { feishuSDK } = await import('@/lib/feishu-sdk-real');
+      await loadMultipleRecords(pendingTableId, pendingSelectedIds, feishuSDK);
+    }
+    
+    // 清理状态
+    setPendingSelectedIds([]);
+    setPendingTableId('');
+  }, [pendingSelectedIds, pendingTableId, loadMultipleRecords]);
+
+  // 处理确认对话框的"取消"操作
+  const handleConfirmCancel = useCallback(() => {
+    console.log('[PrintPreview] 用户取消载入');
+    setConfirmDialogOpen(false);
+    setPendingSelectedIds([]);
+    setPendingTableId('');
+  }, []);
+
+  // 监听飞书表格复选框选择变化
+  useEffect(() => {
+    // 仅在对话框打开时监听
+    if (!open) return;
+    
+    let unsubscribe: (() => void) | null = null;
+    let mounted = true;
+    
+    const setupListener = async () => {
+      try {
+        const { feishuSDK } = await import('@/lib/feishu-sdk-real');
+        
+        console.log('[PrintPreview] 设置选择监听器...');
+        
+        // 监听选择变化
+        unsubscribe = feishuSDK.onSelectRecordChange(async (selectedIds) => {
+          if (!mounted) return;
+          
+          console.log('[PrintPreview] 检测到选择变化:', selectedIds);
+          
+          if (!selectedIds || selectedIds.length === 0) {
+            console.log('[PrintPreview] 无选中记录，忽略');
+            return;
+          }
+          
+          // 获取当前表格信息
+          const selection = await feishuSDK.getSelection();
+          if (!selection?.tableId) {
+            console.log('[PrintPreview] 无法获取表格信息');
+            return;
+          }
+          
+          const { tableId } = selection;
+          const selectedCount = selectedIds.length;
+          
+          if (selectedCount === 1) {
+            // 单选：直接载入画布
+            console.log('[PrintPreview] 单选：直接载入画布');
+            await loadSingleRecord(tableId, selectedIds[0], feishuSDK);
+          } else {
+            // 多选：显示确认对话框
+            console.log('[PrintPreview] 多选：显示确认对话框');
+            const message = generateConfirmMessage(selectedCount);
+            setPendingSelectedIds(selectedIds);
+            setPendingTableId(tableId);
+            setConfirmMessage(message);
+            setConfirmDialogOpen(true);
+          }
+        });
+        
+      } catch (error) {
+        console.error('[PrintPreview] 设置选择监听失败:', error);
+      }
+    };
+    
+    setupListener();
+    
+    return () => {
+      mounted = false;
+      if (unsubscribe) {
+        console.log('[PrintPreview] 清理选择监听器');
+        unsubscribe();
+      }
+    };
+  }, [open, loadSingleRecord]);
+
   // 选择记录 - 使用 selectRecordIdList API（阻塞式模态对话框）
   const handleSelectRecords = useCallback(async () => {
     console.log('[PrintPreview] ========== 开始选择记录（阻塞式模态对话框）==========');
@@ -799,27 +919,10 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
         // 多条记录：弹出确认对话框
         console.log('[PrintPreview] 多选：弹出确认对话框');
         const message = generateConfirmMessage(selectedCount);
-        
-        // 使用自定义确认对话框
-        const confirmResult = await new Promise<'first' | 'all' | 'cancel'>((resolve) => {
-          // 暂时用 window.confirm，后续可改用 shadcn/ui 的 AlertDialog
-          const userChoice = window.confirm(
-            `${message}\n\n点击"确定"载入第一条记录\n点击"取消"放弃选择`
-          );
-          if (userChoice) {
-            resolve('first');
-          } else {
-            resolve('cancel');
-          }
-        });
-        
-        if (confirmResult === 'first') {
-          await loadSingleRecord(tableId, selectedIds[0], feishuSDK);
-        } else if (confirmResult === 'all') {
-          await loadMultipleRecords(tableId, selectedIds, feishuSDK);
-        } else {
-          console.log('[PrintPreview] 用户取消载入');
-        }
+        setPendingSelectedIds(selectedIds);
+        setPendingTableId(tableId);
+        setConfirmMessage(message);
+        setConfirmDialogOpen(true);
       }
       
     } catch (error) {
@@ -831,6 +934,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
   }, [loadSingleRecord, loadMultipleRecords]);
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0">
         {/* 头部工具栏 */}
@@ -1131,5 +1235,27 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* 多选确认对话框 */}
+    <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>选择记录载入方式</AlertDialogTitle>
+          <AlertDialogDescription className="whitespace-pre-line">
+            {confirmMessage}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={handleConfirmCancel}>取消</AlertDialogCancel>
+          <AlertDialogAction onClick={handleConfirmFirst}>
+            载入第一条
+          </AlertDialogAction>
+          <AlertDialogAction onClick={handleConfirmAll} className="bg-primary">
+            载入全部
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  </>
   );
 }
