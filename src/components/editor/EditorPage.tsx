@@ -279,6 +279,12 @@ export function EditorPage({ onExit }: EditorPageProps) {
 
       // 🔥 【关键修复】将 unsubscribe 保存到变量，而不是通过 async 函数返回
       unsubscribe = feishuEnv.onSelectionChange(async (event) => {
+        // 🔥 检查组件是否已清理
+        if (isCleaned) {
+          console.log('[EditorPage] 组件已清理，忽略选中变化事件');
+          return;
+        }
+        
         console.log('[EditorPage] ======== 收到选中变化事件 ========');
         console.log('[EditorPage] 事件数据:', event);
         
@@ -290,6 +296,11 @@ export function EditorPage({ onExit }: EditorPageProps) {
           console.log('[EditorPage] 检测到表格变化:', { from: currentTableId, to: newTableId });
           
           try {
+            if (isCleaned) {
+              console.log('[EditorPage] 组件已清理，取消表格变化处理');
+              return;
+            }
+            
             setFeishuLoading(true);
             
             // 获取新表格信息
@@ -382,6 +393,11 @@ export function EditorPage({ onExit }: EditorPageProps) {
         
         // 表格未变化，累积记录而不是覆盖
         try {
+          if (isCleaned) {
+            console.log('[EditorPage] 组件已清理，取消记录累积处理');
+            return;
+          }
+          
           const records = await feishuEnv.getSelectedRecords();
           console.log('[EditorPage] 获取到新的选中记录:', records);
           
