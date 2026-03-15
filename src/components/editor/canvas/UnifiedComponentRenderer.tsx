@@ -433,6 +433,202 @@ function renderTableComponent({
   const borderWidth = tableConfig.borderWidth || 2;
   const borderColor = tableConfig.borderColor || '#000000';
   
+  /**
+   * 渲染单元格内容（支持复杂样式）
+   */
+  const renderCellContent = (
+    cellContent: string,
+    cellStyle: Record<string, any>
+  ): React.ReactNode => {
+    // 基础文本样式
+    const baseTextStyle: React.CSSProperties = {
+      fontSize: `${cellStyle.fontSize || styleConfig.fontSize}px`,
+      fontWeight: cellStyle.bold ? 'bold' : 'normal',
+      fontStyle: cellStyle.italic ? 'italic' : 'normal',
+      color: cellStyle.color || '#000000',
+      textAlign: cellStyle.align || 'left',
+      lineHeight: cellStyle.lineHeight || styleConfig.lineHeight,
+      textDecoration: cellStyle.underline ? 'underline' : cellStyle.textDecoration || 'none',
+      textTransform: cellStyle.textTransform || 'none',
+      margin: 0,
+      padding: 0,
+      display: 'block',
+      width: '100%',
+    };
+    
+    // 标题样式
+    if (cellStyle.headingLevel === 1) {
+      return (
+        <h1 style={{ 
+          ...baseTextStyle,
+          fontSize: cellStyle.fontSize ? `${cellStyle.fontSize}px` : '24px',
+          fontWeight: 'bold',
+        }}>
+          <VariableTextRenderer
+            text={cellContent || ''}
+            records={record ? [record] : []}
+            fields={fields}
+            fieldTypeMap={fieldTypeMap}
+            tagName="span"
+            textStyle={cellStyle}
+            attachmentConfigs={attachmentConfigs}
+            isEditing={mode === 'edit'}
+          />
+        </h1>
+      );
+    }
+    if (cellStyle.headingLevel === 2) {
+      return (
+        <h2 style={{ 
+          ...baseTextStyle,
+          fontSize: cellStyle.fontSize ? `${cellStyle.fontSize}px` : '18px',
+          fontWeight: 'bold',
+        }}>
+          <VariableTextRenderer
+            text={cellContent || ''}
+            records={record ? [record] : []}
+            fields={fields}
+            fieldTypeMap={fieldTypeMap}
+            tagName="span"
+            textStyle={cellStyle}
+            attachmentConfigs={attachmentConfigs}
+            isEditing={mode === 'edit'}
+          />
+        </h2>
+      );
+    }
+    if (cellStyle.headingLevel === 3) {
+      return (
+        <h3 style={{ 
+          ...baseTextStyle,
+          fontSize: cellStyle.fontSize ? `${cellStyle.fontSize}px` : '16px',
+          fontWeight: 'bold',
+        }}>
+          <VariableTextRenderer
+            text={cellContent || ''}
+            records={record ? [record] : []}
+            fields={fields}
+            fieldTypeMap={fieldTypeMap}
+            tagName="span"
+            textStyle={cellStyle}
+            attachmentConfigs={attachmentConfigs}
+            isEditing={mode === 'edit'}
+          />
+        </h3>
+      );
+    }
+    
+    // 列表样式 - 无序列表
+    if (cellStyle.listType === 'unordered' && !cellStyle.headingLevel) {
+      return (
+        <ul style={{ 
+          marginLeft: '1.5rem', 
+          paddingLeft: 0,
+          textAlign: baseTextStyle.textAlign,
+          lineHeight: baseTextStyle.lineHeight,
+          marginTop: 0,
+          marginBottom: 0,
+        }}>
+          <li style={{
+            fontSize: baseTextStyle.fontSize,
+            fontWeight: baseTextStyle.fontWeight,
+            fontStyle: baseTextStyle.fontStyle,
+            color: baseTextStyle.color,
+            textDecoration: baseTextStyle.textDecoration,
+          }}>
+            <VariableTextRenderer
+              text={cellContent || ''}
+              records={record ? [record] : []}
+              fields={fields}
+              fieldTypeMap={fieldTypeMap}
+              tagName="span"
+              textStyle={cellStyle}
+              attachmentConfigs={attachmentConfigs}
+              isEditing={mode === 'edit'}
+            />
+          </li>
+        </ul>
+      );
+    }
+    
+    // 列表样式 - 有序列表
+    if (cellStyle.listType === 'ordered' && !cellStyle.headingLevel) {
+      return (
+        <ol style={{ 
+          marginLeft: '1.5rem', 
+          paddingLeft: 0,
+          textAlign: baseTextStyle.textAlign,
+          lineHeight: baseTextStyle.lineHeight,
+          marginTop: 0,
+          marginBottom: 0,
+        }}>
+          <li style={{
+            fontSize: baseTextStyle.fontSize,
+            fontWeight: baseTextStyle.fontWeight,
+            fontStyle: baseTextStyle.fontStyle,
+            color: baseTextStyle.color,
+            textDecoration: baseTextStyle.textDecoration,
+          }}>
+            <VariableTextRenderer
+              text={cellContent || ''}
+              records={record ? [record] : []}
+              fields={fields}
+              fieldTypeMap={fieldTypeMap}
+              tagName="span"
+              textStyle={cellStyle}
+              attachmentConfigs={attachmentConfigs}
+              isEditing={mode === 'edit'}
+            />
+          </li>
+        </ol>
+      );
+    }
+    
+    // 链接样式
+    if (cellStyle.link) {
+      return (
+        <a 
+          href={cellStyle.link}
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{
+            ...baseTextStyle,
+            color: '#3b82f6',
+            textDecoration: 'underline',
+            display: 'inline',
+          }}
+        >
+          <VariableTextRenderer
+            text={cellContent || ''}
+            records={record ? [record] : []}
+            fields={fields}
+            fieldTypeMap={fieldTypeMap}
+            tagName="span"
+            textStyle={cellStyle}
+            attachmentConfigs={attachmentConfigs}
+            isEditing={mode === 'edit'}
+          />
+        </a>
+      );
+    }
+    
+    // 默认文本样式
+    return (
+      <span style={baseTextStyle}>
+        <VariableTextRenderer
+          text={cellContent || ''}
+          records={record ? [record] : []}
+          fields={fields}
+          fieldTypeMap={fieldTypeMap}
+          tagName="span"
+          textStyle={cellStyle}
+          attachmentConfigs={attachmentConfigs}
+          isEditing={mode === 'edit'}
+        />
+      </span>
+    );
+  };
+  
   return (
     <table style={{
       width: '100%',
@@ -482,12 +678,7 @@ function renderTableComponent({
                     padding: '8px',
                     textAlign: cellStyle.align || 'left',
                     verticalAlign: cell.verticalAlign || 'middle',
-                    fontWeight: cellStyle.bold ? 'bold' : 'normal',
-                    fontStyle: cellStyle.italic ? 'italic' : 'normal',
-                    textDecoration: cellStyle.underline ? 'underline' : 'none',
                     backgroundColor: cell.backgroundColor || cellStyle.backgroundColor || 'transparent',
-                    color: cellStyle.color || '#000000',
-                    fontSize: cellStyle.fontSize ? `${cellStyle.fontSize}px` : undefined,
                     width: colWidth ? `${colWidth}px` : undefined,
                     minWidth: colWidth ? `${colWidth}px` : undefined,
                     whiteSpace: 'pre-wrap',
@@ -495,16 +686,7 @@ function renderTableComponent({
                     ...borderStyles,
                   }}
                 >
-                  <VariableTextRenderer
-                    text={cell.content || ''}
-                    records={record ? [record] : []}
-                    fields={fields}
-                    fieldTypeMap={fieldTypeMap}
-                    tagName="span"
-                    textStyle={cellStyle}
-                    attachmentConfigs={attachmentConfigs}
-                    isEditing={mode === 'edit'}
-                  />
+                  {renderCellContent(cell.content || '', cellStyle)}
                 </td>
               );
             })}
