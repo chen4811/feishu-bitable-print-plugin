@@ -16,52 +16,31 @@ import { AttachmentVariableConfig } from '@/components/editor/variables';
 
 // 判断是否为附件字段（使用 fieldTypeMap 优先）
 function isAttachmentField(fieldName: string, records: any[], fields: Field[], fieldTypeMap?: FieldTypeMap): boolean {
-  console.log('[isAttachmentField] ====== 开始判断 ======', { 
-    fieldName, 
-    hasTypeMap: !!fieldTypeMap, 
-    typeMapKeys: fieldTypeMap ? Object.keys(fieldTypeMap).length : 0,
-    typeMapValue: fieldTypeMap?.[fieldName],
-    fieldsCount: fields.length 
-  });
+  console.log('[isAttachmentField] ====== 开始判断 ======', { fieldName, hasTypeMap: !!fieldTypeMap, fieldsCount: fields.length });
   
   // 🔥 【核心修复】优先使用 fieldTypeMap（字段名 -> 字段种类）
-  if (fieldTypeMap && fieldTypeMap[fieldName] !== undefined) {
+  if (fieldTypeMap && fieldTypeMap[fieldName]) {
     const fieldKind = fieldTypeMap[fieldName];
     console.log('[isAttachmentField] 使用 fieldTypeMap[字段名]:', fieldKind);
     if (fieldKind === 'attachment') {
       console.log('[isAttachmentField] => true (fieldTypeMap=attachment)');
       return true;
     }
-    // 【修复】处理所有非附件类型，包括 'person', 'text', 'number', 'date', 'other', 'boolean', 'unknown'
-    console.log('[isAttachmentField] => false (fieldTypeMap=' + fieldKind + ')');
-    return false;
+    if (fieldKind === 'person' || fieldKind === 'text' || fieldKind === 'number' || fieldKind === 'date') {
+      console.log('[isAttachmentField] => false (fieldTypeMap=' + fieldKind + ')');
+      return false;
+    }
   }
   
   // 【关键修复】如果通过字段名找不到，尝试找到字段ID再用ID查找
   // 这可以处理字段名乱码导致无法匹配的问题
   const fieldByName = fields.find(f => f.name === fieldName);
-  if (fieldByName?.id && fieldTypeMap && fieldTypeMap[fieldByName.id] !== undefined) {
+  if (fieldByName?.id && fieldTypeMap && fieldTypeMap[fieldByName.id]) {
     const fieldKind = fieldTypeMap[fieldByName.id];
     console.log('[isAttachmentField] 使用 fieldTypeMap[字段ID]:', fieldKind, '字段ID:', fieldByName.id);
     if (fieldKind === 'attachment') {
       console.log('[isAttachmentField] => true (fieldTypeMap[id]=attachment)');
       return true;
-    }
-    // 【修复】其他类型明确返回 false
-    console.log('[isAttachmentField] => false (fieldTypeMap[id]=' + fieldKind + ')');
-    return false;
-  }
-  
-  // 【新增】如果 fieldTypeMap 存在但字段不在其中，检查 fields 数组中的 fieldKind
-  if (fieldByName?.fieldKind) {
-    console.log('[isAttachmentField] 使用 fields 中的 fieldKind:', fieldByName.fieldKind);
-    if (fieldByName.fieldKind === 'attachment') {
-      console.log('[isAttachmentField] => true (fieldKind=attachment)');
-      return true;
-    }
-    if (['person', 'text', 'number', 'date', 'other'].includes(fieldByName.fieldKind)) {
-      console.log('[isAttachmentField] => false (fieldKind=' + fieldByName.fieldKind + ')');
-      return false;
     }
   }
   
@@ -219,8 +198,7 @@ export const VariableTextRenderer: React.FC<VariableTextRendererProps> = ({
     textPreview: text?.substring(0, 30),
     recordsCount: records?.length,
     fieldsCount: fields?.length,
-    hasTypeMap: !!fieldTypeMap,
-    typeMapKeys: fieldTypeMap ? Object.keys(fieldTypeMap) : [],
+    hasTypeMap: !!fieldTypeMap, // 【新增】
     isEditing,
     hasVariables: containsVariables(text),
     variables: containsVariables(text) ? parseVariables(text).map(v => v.fieldName) : [],
