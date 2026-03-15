@@ -37,6 +37,11 @@ import jsPDF from 'jspdf';
 import { VariableTextRenderer } from '@/components/VariableTextRenderer';
 import { UnifiedComponentRenderer, RenderMode } from '@/components/editor/canvas/UnifiedComponentRenderer';
 import { FieldTypeMap } from '@/types/editor';
+import { 
+  processRecordAttachments, 
+  getFeishuTable,
+  isFeishuEnvironment 
+} from '@/lib/attachment-processor';
 
 interface PrintPreviewDialogProps {
   open: boolean;
@@ -75,6 +80,8 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
   const [scale, setScale] = useState(1);
   const [dataSourceMode, setDataSourceMode] = useState<'template' | 'data'>('template');
   const [isLoadingData, setIsLoadingData] = useState(false);
+  const [processedRecords, setProcessedRecords] = useState<Record<string, unknown>[]>([]);
+  const [isProcessingAttachments, setIsProcessingAttachments] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
 
   // 计算画布尺寸
@@ -104,18 +111,18 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
       return [{ id: 'template-preview', __mode__: 'template' }];
     }
     
-    // 数据预览模式：使用实际记录
+    // 数据预览模式：使用预处理后的记录
     if (selectedRecordIds.length > 0) {
-      return records.filter(r => selectedRecordIds.includes(r.id as string));
+      return processedRecords.filter(r => selectedRecordIds.includes(r.id as string));
     }
     
-    if (records.length > 0) {
-      return records;
+    if (processedRecords.length > 0) {
+      return processedRecords;
     }
     
     // 没有数据时返回空记录
     return [{ id: 'empty', __mode__: 'empty' }];
-  }, [dataSourceMode, records, selectedRecordIds]);
+  }, [dataSourceMode, processedRecords, selectedRecordIds]);
 
   const previewRecords = getPreviewRecords();
   const isEmptyPreview = dataSourceMode === 'template' || (dataSourceMode === 'data' && records.length === 0);
@@ -169,6 +176,55 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
     }, {} as FieldTypeMap);
   }, [fields]);
 
+  // 预处理记录中的附件字段
+  useEffect(() => {
+    const processAttachments = async () => {
+      // 只在数据模式且有记录时处理
+      if (dataSourceMode !== 'data' || records.length === 0) {
+        setProcessedRecords(records);
+        return;
+      }
+      
+      // 检查是否有附件字段
+      const hasAttachmentFields = Object.values(fieldTypeMap).some(type => type === 'attachment');
+      if (!hasAttachmentFields) {
+        console.log('[PrintPreview] 没有附件字段，跳过预处理');
+        setProcessedRecords(records);
+        return;
+      }
+      
+      setIsProcessingAttachments(true);
+      console.log('[PrintPreview] 开始预处理附件字段...');
+      
+      try {
+        // 获取飞书 table 对象
+        const table = await getFeishuTable();
+        
+        // 批量处理记录
+        const processed = await Promise.all(
+          records.map(record => 
+            processRecordAttachments(record, fields, fieldTypeMap, table, {
+              maxImageWidth: 120,
+              maxImageHeight: 120,
+              includeFileName: false
+            })
+          )
+        );
+        
+        console.log('[PrintPreview] 附件字段预处理完成');
+        setProcessedRecords(processed);
+      } catch (error) {
+        console.error('[PrintPreview] 附件字段预处理失败:', error);
+        // 降级：使用原始记录
+        setProcessedRecords(records);
+      } finally {
+        setIsProcessingAttachments(false);
+      }
+    };
+    
+    processAttachments();
+  }, [records, fields, fieldTypeMap, dataSourceMode]);
+
   // 渲染单页内容（流式布局）
   const renderPageContent = useCallback((record: Record<string, unknown>) => {
     // 空状态：没有组件时显示提示
@@ -216,7 +272,7 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
         })}
       </div>
     );
-  }, [components, fields, styleConfig, contentWidth, getComponentWidthStyle, isEmptyPreview]);
+  }, [components, fields, fieldTypeMap, styleConfig, contentWidth, getComponentWidthStyle, isEmptyPreview]);
 
   // 加载飞书数据
   const loadFeishuData = useCallback(async () => {
