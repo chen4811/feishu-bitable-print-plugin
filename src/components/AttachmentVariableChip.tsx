@@ -110,13 +110,24 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
 
   // 获取第一张图片预览 - 支持多种飞书云文档字段格式
   const firstImage = hasData ? rawData![0] : null;
-  const imageUrl = firstImage?.url 
+  
+  // 尝试从原始数据获取 URL
+  let imageUrl = firstImage?.url 
     || firstImage?.fileUrl 
     || firstImage?.tmpUrl
     || firstImage?.link
     || firstImage?.downloadUrl
     || firstImage?.previewUrl
     || firstImage?.src;
+  
+  // 【关键修复】如果原始数据没有 URL，尝试从 HTML 内容中提取
+  if (!imageUrl && htmlContent) {
+    const imgMatch = htmlContent.match(/<img[^>]+src="([^"]+)"/);
+    if (imgMatch && imgMatch[1]) {
+      imageUrl = imgMatch[1];
+      console.log('[AttachmentVariableChip] 从 HTML 提取图片 URL:', imageUrl?.substring(0, 50));
+    }
+  }
 
   // 获取文件名
   const fileName = firstImage?.name 
@@ -270,32 +281,42 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
       data-attachment-count={rawData?.length}
     >
           {/* 显示模式：只显示图片 - 仅显示图片，无任何文字 */}
-          {displayMode === 'image_only' && imageUrl && (
-            <div className="relative inline-block" style={{ margin: 0, padding: 0 }}>
-              <img
-                src={imageUrl}
-                alt={fileName}
-                style={getImageStyle()}
-                className="rounded"
-                crossOrigin="anonymous"
-                onError={(e) => {
-                  const img = e.target as HTMLImageElement;
-                  img.style.display = 'none';
-                  // 显示文件名作为降级
-                  const fallback = img.nextElementSibling as HTMLElement;
-                  if (fallback) {
-                    fallback.style.display = 'block';
-                  }
-                }}
-              />
-              {/* 图片加载失败时的降级显示 */}
-              <div 
-                className="hidden px-2 py-1 bg-gray-100 rounded text-xs text-gray-600 max-w-[120px] break-words"
-              >
-                <FileImage className="w-4 h-4 mx-auto mb-1 text-gray-400" />
-                {fileName}
-              </div>
-            </div>
+          {displayMode === 'image_only' && (
+            <>
+              {imageUrl ? (
+                <div className="relative inline-block" style={{ margin: 0, padding: 0 }}>
+                  <img
+                    src={imageUrl}
+                    alt={fileName}
+                    style={getImageStyle()}
+                    className="rounded"
+                    crossOrigin="anonymous"
+                    onError={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      img.style.display = 'none';
+                      // 显示文件名作为降级
+                      const fallback = img.nextElementSibling as HTMLElement;
+                      if (fallback) {
+                        fallback.style.display = 'block';
+                      }
+                    }}
+                  />
+                  {/* 图片加载失败时的降级显示 */}
+                  <div 
+                    className="hidden px-2 py-1 bg-gray-100 rounded text-xs text-gray-600 max-w-[120px] break-words"
+                  >
+                    <FileImage className="w-4 h-4 mx-auto mb-1 text-gray-400" />
+                    {fileName}
+                  </div>
+                </div>
+              ) : (
+                // 【关键修复】没有图片 URL 时显示占位符
+                <div className="inline-flex items-center justify-center px-2 py-1 bg-gray-100 rounded text-xs text-gray-500">
+                  <FileImage className="w-4 h-4 mr-1" />
+                  {fileName}
+                </div>
+              )}
+            </>
           )}
 
           {/* 显示模式：基础信息 - 只显示文件名，无图片 */}

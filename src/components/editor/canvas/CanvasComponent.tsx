@@ -2282,7 +2282,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   tagName="span"
                   textStyle={textComp.textStyle}
                   attachmentConfigs={attachmentConfigs}
-                  isEditing={isEditing}
+                  isEditing={isEditing || isSelected}
                   onEditAttachment={handleEditAttachmentVariable}
                   onDeleteAttachment={handleDeleteAttachmentVariable}
                 />
@@ -2302,7 +2302,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                   tagName="span"
                   textStyle={textComp.textStyle}
                   attachmentConfigs={attachmentConfigs}
-                  isEditing={isEditing}
+                  isEditing={isEditing || isSelected}
                   onEditAttachment={handleEditAttachmentVariable}
                   onDeleteAttachment={handleDeleteAttachmentVariable}
                 />
@@ -2319,7 +2319,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     tagName="span"
                     textStyle={textComp.textStyle}
                     attachmentConfigs={attachmentConfigs}
-                    isEditing={isEditing}
+                    isEditing={isEditing || isSelected}
                     onEditAttachment={handleEditAttachmentVariable}
                     onDeleteAttachment={handleDeleteAttachmentVariable}
                   />
@@ -2337,7 +2337,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     tagName="span"
                     textStyle={textComp.textStyle}
                     attachmentConfigs={attachmentConfigs}
-                    isEditing={isEditing}
+                    isEditing={isEditing || isSelected}
                     onEditAttachment={handleEditAttachmentVariable}
                     onDeleteAttachment={handleDeleteAttachmentVariable}
                   />
@@ -2373,7 +2373,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                     tagName="span"
                     textStyle={textComp.textStyle}
                     attachmentConfigs={attachmentConfigs}
-                    isEditing={isEditing}
+                    isEditing={isEditing || isSelected}
                     onEditAttachment={handleEditAttachmentVariable}
                     onDeleteAttachment={handleDeleteAttachmentVariable}
                   />
