@@ -36,10 +36,30 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const containerRef = useRef<HTMLSpanElement>(null);
 
+  // 【调试日志】
+  console.log('[AttachmentVariableChip] 接收数据:', {
+    fieldName,
+    dataType: typeof data,
+    isArray: Array.isArray(data),
+    isHtmlContent: data && typeof data === 'object' && 'htmlContent' in data,
+    dataPreview: data && typeof data === 'object' && 'htmlContent' in data 
+      ? (data as {htmlContent: string}).htmlContent.substring(0, 100) 
+      : Array.isArray(data) && data.length > 0 
+        ? `Array[${data.length}] first: ${JSON.stringify(data[0]).substring(0, 80)}`
+        : data
+  });
+
   // 【关键修复】检查是否是预处理后的HTML内容
   const isHtmlContent = data && typeof data === 'object' && 'htmlContent' in data && typeof data.htmlContent === 'string';
   
   if (isHtmlContent) {
+    const html = (data as { htmlContent: string }).htmlContent;
+    console.log('[AttachmentVariableChip] ✅ 渲染预处理HTML内容:', {
+      fieldName,
+      htmlLength: html.length,
+      htmlPreview: html.substring(0, 150)
+    });
+    
     // 直接渲染预处理的HTML内容
     return (
       <span

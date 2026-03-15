@@ -107,15 +107,27 @@ function getAttachmentData(fieldName: string, records: any[]): { htmlContent: st
   
   const record = records[0];
   
+  // 【调试日志】打印所有可用字段
+  console.log('[getAttachmentData] 调试:', {
+    fieldName,
+    allKeys: Object.keys(record),
+    htmlFieldName: `_${fieldName}_html`,
+    hasHtmlField: !!record[`_${fieldName}_html`],
+    hasRawField: !!record[fieldName],
+    hasFieldsProp: !!record.fields?.[fieldName]
+  });
+  
   // 【关键修复】优先使用处理后的HTML内容（如果存在）
   const htmlContent = record[`_${fieldName}_html`];
   if (htmlContent && typeof htmlContent === 'string') {
-    console.log(`[getAttachmentData] 使用预处理HTML内容: _${fieldName}_html`);
+    console.log(`[getAttachmentData] ✅ 使用预处理HTML内容: _${fieldName}_html`);
+    console.log('[getAttachmentData] HTML内容预览:', htmlContent.substring(0, 100));
     return { htmlContent };
   }
   
   // 回退到原始附件数组
   const value = record[fieldName] || record.fields?.[fieldName];
+  console.log('[getAttachmentData] ⚠️ 回退到原始附件数组:', { fieldName, valueType: typeof value, isArray: Array.isArray(value) });
   
   if (!Array.isArray(value)) return null;
   return value;
