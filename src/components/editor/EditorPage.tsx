@@ -61,6 +61,7 @@ import { PageSettingsDialog } from './dialogs/PageSettingsDialog';
 import { PrintPreviewDialog } from './dialogs/PrintPreviewDialog';
 import { usePrintSDK } from '@/hooks/usePrintSDK';
 import { feishuEnv } from '@/lib/feishu-env';
+import { processRecordAttachments } from '@/lib/attachment-processor';
 
 interface EditorPageProps {
   onExit: () => void;
@@ -230,8 +231,29 @@ export function EditorPage({ onExit }: EditorPageProps) {
             ...record.fields,
             _rowIndex: index,
           }));
+          
+          // 【新增】处理附件字段
+          console.log('[EditorPage] 开始处理附件字段...');
+          const processedRecords = await Promise.all(
+            appRecords.map(async (record) => {
+              try {
+                const processed = await processRecordAttachments(
+                  record,
+                  appFields,
+                  fieldTypeMap
+                );
+                console.log(`[EditorPage] 记录 ${record.id} 附件处理完成:`, 
+                  Object.keys(processed).filter(k => k.includes('_html')));
+                return processed;
+              } catch (err) {
+                console.error(`[EditorPage] 记录 ${record.id} 附件处理失败:`, err);
+                return record;
+              }
+            })
+          );
+          
           setFeishuRecords(records);
-          setRecords(appRecords as unknown as Record<string, unknown>[]);
+          setRecords(processedRecords as unknown as Record<string, unknown>[]);
         }
         
         setFeishuLoading(false);
@@ -312,8 +334,21 @@ export function EditorPage({ onExit }: EditorPageProps) {
                 ...record.fields,
                 _rowIndex: index,
               }));
+              
+              // 【新增】处理附件字段
+              const processedRecords = await Promise.all(
+                appRecords.map(async (record) => {
+                  try {
+                    return await processRecordAttachments(record, appFields, fieldTypeMap);
+                  } catch (err) {
+                    console.error(`[EditorPage] 记录 ${record.id} 附件处理失败:`, err);
+                    return record;
+                  }
+                })
+              );
+              
               setFeishuRecords(records);
-              setRecords(appRecords as unknown as Record<string, unknown>[]);
+              setRecords(processedRecords as unknown as Record<string, unknown>[]);
             }
             
             setFeishuLoading(false);
@@ -332,18 +367,42 @@ export function EditorPage({ onExit }: EditorPageProps) {
           console.log('[EditorPage] 获取到新的选中记录:', records);
           
           if (records.length > 0) {
+            // 获取当前的字段列表和类型映射
+            const currentFields = useEditorStore.getState().fields;
+            const currentFieldTypeMap = useEditorStore.getState().fieldTypeMap;
+            
             const appRecords = records.map((record, index) => ({
               id: record.id,
               ...record.fields,
               _rowIndex: index,
             }));
+            
+            // 【新增】处理附件字段
+            console.log('[EditorPage] 累积添加记录前处理附件...');
+            const processedRecords = await Promise.all(
+              appRecords.map(async (record) => {
+                try {
+                  const processed = await processRecordAttachments(
+                    record, 
+                    currentFields, 
+                    currentFieldTypeMap
+                  );
+                  console.log(`[EditorPage] 记录 ${record.id} 附件处理完成`);
+                  return processed;
+                } catch (err) {
+                  console.error(`[EditorPage] 记录 ${record.id} 附件处理失败:`, err);
+                  return record;
+                }
+              })
+            );
+            
             console.log('[EditorPage] 累积添加记录到 store:', {
-              count: appRecords.length,
-              firstRecordKeys: Object.keys(appRecords[0]).slice(0, 10),
+              count: processedRecords.length,
+              firstRecordKeys: Object.keys(processedRecords[0]).slice(0, 10),
             });
             setFeishuRecords(records);
             // 🔥 【关键修复】使用 addRecords 累积记录，而不是 setRecords 覆盖
-            addRecords(appRecords as unknown as Record<string, unknown>[]);
+            addRecords(processedRecords as unknown as Record<string, unknown>[]);
           }
         } catch (error) {
           console.error('[EditorPage] 获取选中记录失败:', error);
