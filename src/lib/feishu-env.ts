@@ -13,6 +13,8 @@
 
 import { bitable, base } from '@lark-base-open/js-sdk';
 
+// 确保轮询函数可在外部控制
+export { startPolling, stopPolling };
 // 调试日志系统
 // ============================================
 const DEBUG = true;
@@ -149,6 +151,19 @@ export function offNotFeishu(callback: () => void): void {
 }
 
 // ============================================
+// 新增：复选框勾选变化监听
+// ============================================
+
+type RecordSelectChangeEvent = {
+  data: {
+    tableId: string;
+    recordIds: string[];
+    isSelectAll: boolean;
+  };
+};
+
+
+// ============================================
 // 新增：调试和环境检查
 // ============================================
 
@@ -174,6 +189,88 @@ function checkEnvironment() {
   const isFeishuEnv = typeof navigator !== 'undefined' && /lark|feishu/i.test(navigator.userAgent);
   
   debugLog('环境检查:', { inIframe, isFeishuEnv });
+}
+
+// ============================================
+// 新增：轮询检查作为备用方案
+// ============================================
+
+let pollingInterval: NodeJS.Timeout | null = null;
+let lastPolledSelection: string[] = [];
+
+function startPolling(interval = 2000) {
+  if (pollingInterval) {
+    debugLog('轮询已在运行，跳过');
+    return;
+  }
+  
+  debugLog(`🔁 启动轮询检查，间隔: ${interval}ms`);
+  
+  pollingInterval = setInterval(async () => {
+    try {
+      let currentSelection: string[] = [];
+      let tableId = '';
+      
+      // 优先尝试使用 bitable.ui.getSelectRecordIds()
+      if ((bitable as any).ui && typeof (bitable as any).ui.getSelectRecordIds === 'function') {
+        try {
+          currentSelection = await (bitable as any).ui.getSelectRecordIds();
+        } catch (e) {
+          // 静默处理，避免频繁日志
+        }
+      }
+      
+      // 如果上面的方法不可用或返回空，尝试使用 base.getSelection()
+      if (currentSelection.length === 0) {
+        const selection = await base.getSelection();
+        if (selection?.recordId) {
+          currentSelection = [selection.recordId];
+        }
+        tableId = selection?.tableId || '';
+      } else {
+        // 如果从 ui.getSelectRecordIds 获取到数据，也要获取 tableId
+        const selection = await base.getSelection();
+        tableId = selection?.tableId || '';
+      }
+      
+      // 检查是否有变化
+      const hasChanged = JSON.stringify(currentSelection) !== JSON.stringify(lastPolledSelection);
+      
+      if (hasChanged) {
+        debugLog('🔄 轮询检测到选择状态变化:', {
+          recordIds: currentSelection,
+          count: currentSelection.length,
+          tableId,
+        });
+        
+        // 构造事件对象
+        const event: RecordSelectChangeEvent = {
+          data: {
+            tableId,
+            recordIds: currentSelection,
+            isSelectAll: false,
+          },
+        };
+        
+        lastPolledSelection = currentSelection;
+      }
+      
+    } catch (error) {
+      // 静默处理轮询错误，避免频繁日志输出
+      // debugLog('轮询检查失败:', error instanceof Error ? error.message : error);
+    }
+  }, interval);
+  
+  debugLog('✅ 轮询已启动');
+}
+
+function stopPolling() {
+  if (pollingInterval) {
+    clearInterval(pollingInterval);
+    pollingInterval = null;
+    lastPolledSelection = [];
+    debugLog('🛑 轮询检查已停止');
+  }
 }
 
 // ============================================

@@ -275,38 +275,32 @@ export const feishuSDK = {
    * 获取当前选中信息
    */
   async getSelection(): Promise<SelectionInfo | null> {
-    console.log('[FeishuSDK] ========== getSelection() 开始 ==========');
+    debugLog('getSelection() 被调用');
     
     try {
       const bitable = await getBitable();
       
       if (!bitable) {
-        console.log('[FeishuSDK] ❌ bitable 为空');
+        debugLog('❌ bitable 为空');
         return null;
       }
-      
-      console.log('[FeishuSDK] bitable 实例获取成功');
-      console.log('[FeishuSDK] bitable.base 存在:', !!bitable.base);
-      console.log('[FeishuSDK] bitable.base.getSelection 类型:', typeof bitable.base?.getSelection);
-      console.log('[FeishuSDK] bitable.getSelection 类型:', typeof bitable.getSelection);
       
       let selection: SelectionInfo | null = null;
       
       if (bitable.base && typeof bitable.base.getSelection === 'function') {
-        console.log('[FeishuSDK] 调用 bitable.base.getSelection()');
+        debugLog('使用 bitable.base.getSelection()');
         selection = await bitable.base.getSelection();
       } else if (typeof bitable.getSelection === 'function') {
-        console.log('[FeishuSDK] 调用 bitable.getSelection()');
+        debugLog('使用 bitable.getSelection()');
         selection = await bitable.getSelection();
       } else {
-        console.log('[FeishuSDK] ⚠️ 没有找到 getSelection() 方法');
+        debugLog('⚠️  没有找到 getSelection() 方法');
       }
       
-      console.log('[FeishuSDK] getSelection() 返回:', selection);
-      console.log('[FeishuSDK] ========== getSelection() 结束 ==========');
+      debugLog('getSelection() 返回:', selection);
       return selection;
     } catch (error) {
-      console.error('[FeishuSDK] ❌ getSelection() 失败:', error);
+      debugLog('❌ getSelection() 失败:', error);
       return null;
     }
   },
@@ -628,220 +622,6 @@ export const feishuSDK = {
         }
       }
     };
-  },
-
-  /**
-   * 弹出选择记录对话框，让用户从指定表格和视图中选择记录
-   * 这是一个阻塞式模态对话框 API，调用后会直接弹出选择界面，用户操作完成后才返回结果
-   * @param tableId 表格ID
-   * @param viewId 视图ID
-   * @param options 可选配置
-   * @returns 选中的记录ID数组
-   */
-  async selectRecordIdList(
-    tableId: string, 
-    viewId: string, 
-    options?: { title?: string; multiple?: boolean; maxCount?: number }
-  ): Promise<string[]> {
-    console.log('[FeishuSDK] ========== selectRecordIdList() 开始 ==========');
-    console.log('[FeishuSDK] 参数:', { tableId, viewId, options });
-    
-    try {
-      const bitable = await getBitable();
-      
-      if (!bitable) {
-        console.log('[FeishuSDK] ❌ bitable 未初始化');
-        return [];
-      }
-
-      console.log('[FeishuSDK] bitable 实例获取成功');
-      console.log('[FeishuSDK] bitable.ui 存在:', !!bitable.ui);
-      
-      // 检查 ui 接口是否存在
-      if (!bitable.ui) {
-        console.log('[FeishuSDK] ❌ bitable.ui 不存在');
-        console.log('[FeishuSDK] bitable 可用属性:', Object.keys(bitable));
-        // 如果 UI 接口不存在，返回模拟数据（开发环境）
-        if (!this.isFeishuEnvironment()) {
-          console.log('[FeishuSDK] 非飞书环境，返回模拟数据');
-          return ['rec_mock_1', 'rec_mock_2'];
-        }
-        return [];
-      }
-
-      console.log('[FeishuSDK] bitable.ui 可用方法:', Object.keys(bitable.ui).filter(k => typeof (bitable.ui as any)[k] === 'function'));
-      console.log('[FeishuSDK] bitable.ui.selectRecordIdList 类型:', typeof bitable.ui.selectRecordIdList);
-      
-      // 检查 selectRecordIdList 方法是否存在
-      if (typeof bitable.ui.selectRecordIdList !== 'function') {
-        console.log('[FeishuSDK] ❌ bitable.ui.selectRecordIdList 不是函数');
-        // 开发环境返回模拟数据
-        if (!this.isFeishuEnvironment()) {
-          console.log('[FeishuSDK] 非飞书环境，返回模拟数据');
-          return ['rec_mock_1', 'rec_mock_2'];
-        }
-        return [];
-      }
-
-      console.log('[FeishuSDK] 调用 bitable.ui.selectRecordIdList（阻塞式模态对话框）...');
-      
-      // 调用参数 - 支持不同 SDK 版本
-      const callParams: any = options?.title 
-        ? { title: options.title, multiple: options.multiple ?? true, maxCount: options.maxCount ?? 50 }
-        : { multiple: true, maxCount: 50 };
-      
-      // 部分版本需要传入 tableId 和 viewId
-      const selectedIds = await bitable.ui.selectRecordIdList(tableId, viewId, callParams);
-      console.log('[FeishuSDK] ✅ 用户选择的记录ID:', selectedIds);
-      console.log('[FeishuSDK] ========== selectRecordIdList() 结束 ==========');
-      
-      return selectedIds || [];
-    } catch (error) {
-      console.error('[FeishuSDK] ❌ selectRecordIdList() 失败:', error);
-      console.log('[FeishuSDK] ========== selectRecordIdList() 结束（异常）==========');
-      return [];
-    }
-  },
-
-  /**
-   * 显示确认对话框
-   * @param title 标题
-   * @param content 内容
-   * @param confirmText 确认按钮文字
-   * @param cancelText 取消按钮文字
-   * @returns 用户是否确认
-   */
-  async showConfirm(
-    title: string, 
-    content: string, 
-    confirmText: string = '确认', 
-    cancelText: string = '取消'
-  ): Promise<boolean> {
-    console.log('[FeishuSDK] showConfirm 被调用:', { title, content });
-    
-    try {
-      const bitable = await getBitable();
-      
-      if (!bitable || !bitable.ui || typeof bitable.ui.confirm !== 'function') {
-        // 非 SDK 环境，使用浏览器 confirm
-        console.log('[FeishuSDK] 使用浏览器 confirm');
-        return window.confirm(content);
-      }
-      
-      return new Promise((resolve) => {
-        bitable.ui.confirm({
-          title,
-          content,
-          confirmText,
-          cancelText,
-          onConfirm: () => resolve(true),
-          onCancel: () => resolve(false),
-        });
-      });
-    } catch (error) {
-      console.error('[FeishuSDK] showConfirm 失败:', error);
-      return window.confirm(content);
-    }
-  },
-
-  /**
-   * 显示消息提示
-   * @param message 消息内容
-   * @param type 消息类型
-   */
-  async showMessage(message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info'): Promise<void> {
-    console.log('[FeishuSDK] showMessage:', { message, type });
-    
-    try {
-      const bitable = await getBitable();
-      
-      if (!bitable || !bitable.ui || typeof bitable.ui.showMessage !== 'function') {
-        // 非 SDK 环境，使用 console
-        console.log(`[FeishuSDK Message][${type}] ${message}`);
-        return;
-      }
-      
-      await bitable.ui.showMessage({ message, type });
-    } catch (error) {
-      console.error('[FeishuSDK] showMessage 失败:', error);
-    }
-  },
-
-  /**
-   * 根据记录ID列表获取完整记录数据
-   * @param tableId 表格ID
-   * @param recordIds 记录ID数组
-   * @returns 完整记录数据数组
-   */
-  async getRecordsByIds(tableId: string, recordIds: string[]): Promise<BitableRecord[]> {
-    debugLog('======== getRecordsByIds() 开始 ========');
-    debugLog('参数:', { tableId, recordCount: recordIds.length });
-    
-    if (!recordIds || recordIds.length === 0) {
-      debugLog('记录ID列表为空，直接返回');
-      return [];
-    }
-
-    try {
-      const bitable = await getBitable();
-      
-      if (!bitable) {
-        debugLog('❌ bitable 未初始化');
-        return [];
-      }
-
-      // 获取表格实例
-      let table: any = null;
-      if (bitable.base && typeof bitable.base.getTable === 'function') {
-        table = await bitable.base.getTable(tableId);
-      } else if (typeof bitable.getTable === 'function') {
-        table = await bitable.getTable(tableId);
-      }
-
-      if (!table) {
-        debugLog('❌ 无法获取表格实例');
-        return [];
-      }
-
-      // 获取字段元信息
-      let fieldMetaList: any[] = [];
-      if (typeof table.getFieldMetaList === 'function') {
-        fieldMetaList = await table.getFieldMetaList();
-      } else if (typeof table.getFieldList === 'function') {
-        fieldMetaList = await table.getFieldList();
-      }
-
-      // 批量获取记录详情
-      const records: BitableRecord[] = [];
-      for (const recordId of recordIds) {
-        try {
-          let recordData: any = null;
-          
-          if (typeof table.getRecordById === 'function') {
-            recordData = await table.getRecordById(recordId);
-          } else if (typeof table.getRecord === 'function') {
-            recordData = await table.getRecord(recordId);
-          }
-
-          if (recordData) {
-            const processedRecord = processRecordData(recordData, fieldMetaList);
-            records.push(processedRecord);
-          }
-        } catch (err) {
-          debugLog(`获取记录 ${recordId} 失败:`, err);
-        }
-      }
-
-      debugLog('✅ 成功获取记录数量:', records.length);
-      debugLog('======== getRecordsByIds() 结束 ========');
-      
-      return records;
-    } catch (error) {
-      debugLog('❌ getRecordsByIds() 失败:', error);
-      console.error('[FeishuSDK] getRecordsByIds() 失败:', error);
-      debugLog('======== getRecordsByIds() 结束 ========');
-      return [];
-    }
   },
 };
 

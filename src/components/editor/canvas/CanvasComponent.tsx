@@ -414,7 +414,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       selectedCells: [cellId],
     });
     
-    // 设置选择开始，立即标记为正在选择以启用全局监听
+    // 设置选择开始（但不立即标记为正在选择，等待 mouseMove 触发）
     const tableComp = component as any;
     tableDataRef.current = { tableComp };
     
@@ -423,7 +423,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       startCol: colIndex,
       endRow: rowIndex,
       endCol: colIndex,
-      isSelecting: true, // 立即标记为正在选择，启用全局鼠标监听
+      isSelecting: false, // 先不标记为正在选择
     });
   };
 
@@ -434,7 +434,14 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       return;
     }
     
-    // 只有在正在选择状态下才更新结束位置
+    // 如果还没有开始选择，但鼠标已经移动，则标记为开始选择
+    if (!cellSelection.isSelecting && cellSelection.startRow !== null) {
+      setCellSelection(prev => ({
+        ...prev,
+        isSelecting: true,
+      }));
+    }
+    
     if (!cellSelection.isSelecting) {
       return;
     }
@@ -499,24 +506,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       document.removeEventListener('mouseup', handleGlobalMouseUp);
     };
   }, [isCurrentTableEditing, cellSelection.isSelecting, getSelectedCellIds, setTableEditing]);
-
-  // 退出表格编辑时清理选择状态
-  useEffect(() => {
-    if (!isCurrentTableEditing) {
-      // 退出编辑时清理本地状态
-      setCellSelection({
-        isSelecting: false,
-        startRow: null,
-        startCol: null,
-        endRow: null,
-        endCol: null,
-      });
-      // 清理 store 中的选中状态
-      setTableEditing({
-        selectedCells: [],
-      });
-    }
-  }, [isCurrentTableEditing, setTableEditing]);
 
   // 处理单元格鼠标释放
   const handleCellMouseUp = (e: React.MouseEvent) => {
@@ -1369,26 +1358,6 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       
       // 如果点击在画布内但不在组件内部，则取消选中和退出编辑
       if (!isInComponent) {
-        // 如果正在编辑表格，先退出表格编辑
-        if (isCurrentTableEditing) {
-          // 如果当前单元格在编辑中，先退出单元格编辑
-          if (tableCellEditing.isEditing) {
-            setTableCellEditing({
-              isEditing: false,
-              tableId: null,
-              cellId: null,
-              rowIndex: null,
-              colIndex: null,
-            });
-          }
-          // 退出表格编辑
-          setTableEditing({
-            isEditing: false,
-            tableId: null,
-            selectedCells: [],
-          });
-        }
-        
         // 如果正在编辑文本，先退出编辑并保存
         if (isEditing && component.type === 'text') {
           setIsEditing(false);
@@ -1415,7 +1384,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     return () => {
       document.removeEventListener('mousedown', handleGlobalClick, true);
     };
-  }, [isSelected, isEditing, isCurrentTableEditing, tableCellEditing.isEditing, component.id, component.type, editContent, updateComponent, selectComponent, setTableEditing, setTableCellEditing]);
+  }, [isSelected, isEditing, component.id, component.type, editContent, updateComponent, selectComponent]);
 
   // 自动聚焦到编辑框
   useEffect(() => {
