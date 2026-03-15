@@ -15,6 +15,7 @@ import { bitable, base } from '@lark-base-open/js-sdk';
 
 // 确保轮询函数可在外部控制
 export { startPolling, stopPolling };
+
 // 调试日志系统
 // ============================================
 const DEBUG = true;
@@ -154,14 +155,287 @@ export function offNotFeishu(callback: () => void): void {
 // 新增：复选框勾选变化监听
 // ============================================
 
-type RecordSelectChangeEvent = {
+/**
+ * 复选框变化事件数据
+ */
+type CheckboxChangeEvent = {
   data: {
     tableId: string;
-    recordIds: string[];
-    isSelectAll: boolean;
+    recordId: string;
+    fieldId: string;
+    value: boolean;  // 复选框当前值 true/false
+    timestamp: number;
   };
 };
 
+/**
+ * 批量复选框选择事件
+ * 用于批量勾选多行时的数据聚合
+ */
+type BatchCheckboxSelectEvent = {
+  data: {
+    tableId: string;
+    recordIds: string[];  // 所有勾选的记录ID
+    count: number;        // 勾选数量
+    triggerType: 'single' | 'batch';  // 触发类型：单选或批量
+  };
+};
+
+// 复选框监听相关状态
+let checkboxUnsubscribe: (() => void) | null = null;
+let onCheckboxChangeCallbacks: Set<(event: CheckboxChangeEvent) => void> = new Set();
+let onBatchCheckboxSelectCallbacks: Set<(event: BatchCheckboxSelectEvent) => void> = new Set();
+let checkboxSelectionCache = new Map<string, boolean>();  // 缓存复选框选择状态
+
+/**
+ * 注册复选框变化监听器
+ * 监听单个复选框的勾选/取消勾选事件
+ */
+export function onCheckboxChange(callback: (event: CheckboxChangeEvent) => void): () => void {
+  debugLog('注册复选框变化监听器');
+  onCheckboxChangeCallbacks.add(callback);
+  
+  // 如果还没设置监听器，现在设置
+  if (!checkboxUnsubscribe && envStatus === 'ready') {
+    setupCheckboxListener();
+  }
+  
+  return () => {
+    debugLog('移除复选框变化监听器');
+    onCheckboxChangeCallbacks.delete(callback);
+  };
+}
+
+/**
+ * 注册批量复选框选择监听器
+ * 用于批量勾选时的聚合通知
+ */
+export function onBatchCheckboxSelect(callback: (event: BatchCheckboxSelectEvent) => void): () => void {
+  debugLog('注册批量复选框选择监听器');
+  onBatchCheckboxSelectCallbacks.add(callback);
+  return () => {
+    onBatchCheckboxSelectCallbacks.delete(callback);
+  };
+}
+
+/**
+ * 设置复选框监听器
+ * 通过轮询方式检测复选框字段变化
+ */
+function setupCheckboxListener() {
+  if (checkboxUnsubscribe) {
+    debugLog('复选框监听器已存在，跳过');
+    return;
+  }
+  
+  debugLog('======== 设置复选框字段监听器 ========');
+  
+  // 启动轮询检测复选框字段变化
+  const pollInterval = 1000; // 1秒轮询一次
+  const intervalId = setInterval(async () => {
+    try {
+      await pollCheckboxChanges();
+    } catch (error) {
+      // 静默处理错误
+    }
+  }, pollInterval);
+  
+  checkboxUnsubscribe = () => {
+    clearInterval(intervalId);
+    checkboxSelectionCache.clear();
+    debugLog('复选框监听器已停止');
+  };
+  
+  debugLog('✅ 复选框监听器设置成功（轮询模式）');
+}
+
+/**
+ * 轮询检测复选框字段变化
+ * 获取所有复选框字段中被勾选的记录
+ */
+async function pollCheckboxChanges() {
+  try {
+    // 获取当前表格
+    const table = await base.getActiveTable();
+    const tableId = table.id;
+    
+    // 获取表格的所有字段元数据
+    const fieldMetaList = await table.getFieldMetaList();
+    
+    // 筛选复选框字段 (type = 6)
+    const checkboxFields = fieldMetaList.filter((field: any) => field.type === 6);
+    
+    if (checkboxFields.length === 0) {
+      return; // 没有复选框字段，跳过
+    }
+    
+    // 获取当前选中的记录ID列表
+    let selectedRecordIds: string[] = [];
+    if ((bitable as any).ui && typeof (bitable as any).ui.getSelectRecordIds === 'function') {
+      selectedRecordIds = await (bitable as any).ui.getSelectRecordIds();
+    }
+    
+    if (selectedRecordIds.length === 0) {
+      // 如果没有选中的记录，检查是否有缓存的记录需要清理
+      if (checkboxSelectionCache.size > 0) {
+        checkboxSelectionCache.clear();
+        notifyBatchCheckboxChange(tableId, []);
+      }
+      return;
+    }
+    
+    // 获取所有勾选了复选框的记录
+    const checkedRecordIds: string[] = [];
+    
+    for (const recordId of selectedRecordIds) {
+      // 检查该记录是否有任一复选框字段被勾选
+      let isChecked = false;
+      
+      for (const field of checkboxFields) {
+        try {
+          const checkboxField = await table.getField(field.id);
+          const value = await checkboxField.getValue(recordId);
+          
+          if (value === true) {
+            isChecked = true;
+            
+            // 触发单个复选框变化事件
+            const event: CheckboxChangeEvent = {
+              data: {
+                tableId,
+                recordId,
+                fieldId: field.id,
+                value: true,
+                timestamp: Date.now(),
+              },
+            };
+            
+            onCheckboxChangeCallbacks.forEach(cb => {
+              try {
+                cb(event);
+              } catch (e) {
+                console.error('[FeishuEnv] 复选框变化回调执行失败:', e);
+              }
+            });
+            
+            break; // 找到一个勾选的复选框即可
+          }
+        } catch (e) {
+          // 静默处理单个字段的错误
+        }
+      }
+      
+      if (isChecked) {
+        checkedRecordIds.push(recordId);
+      }
+      
+      // 更新缓存
+      const wasChecked = checkboxSelectionCache.get(recordId) || false;
+      if (wasChecked !== isChecked) {
+        checkboxSelectionCache.set(recordId, isChecked);
+      }
+    }
+    
+    // 清理已不在选中列表中的记录缓存
+    const currentSelectedSet = new Set(selectedRecordIds);
+    for (const [recordId] of checkboxSelectionCache) {
+      if (!currentSelectedSet.has(recordId)) {
+        checkboxSelectionCache.delete(recordId);
+      }
+    }
+    
+    // 通知批量选择变化
+    notifyBatchCheckboxChange(tableId, checkedRecordIds);
+    
+  } catch (error) {
+    // 静默处理轮询错误
+  }
+}
+
+/**
+ * 通知批量复选框选择变化
+ */
+function notifyBatchCheckboxChange(tableId: string, checkedRecordIds: string[]) {
+  const event: BatchCheckboxSelectEvent = {
+    data: {
+      tableId,
+      recordIds: checkedRecordIds,
+      count: checkedRecordIds.length,
+      triggerType: checkedRecordIds.length === 1 ? 'single' : 'batch',
+    },
+  };
+  
+  onBatchCheckboxSelectCallbacks.forEach(cb => {
+    try {
+      cb(event);
+    } catch (e) {
+      console.error('[FeishuEnv] 批量复选框回调执行失败:', e);
+    }
+  });
+}
+
+/**
+ * 获取所有勾选了复选框的记录
+ * 主动查询方式，用于初始加载或手动刷新
+ */
+export async function getCheckedRecords(): Promise<{
+  tableId: string;
+  recordIds: string[];
+  count: number;
+}> {
+  try {
+    const table = await base.getActiveTable();
+    const tableId = table.id;
+    
+    // 获取复选框字段
+    const fieldMetaList = await table.getFieldMetaList();
+    const checkboxFields = fieldMetaList.filter((field: any) => field.type === 6);
+    
+    if (checkboxFields.length === 0) {
+      return { tableId, recordIds: [], count: 0 };
+    }
+    
+    // 获取所有记录
+    const recordsResponse = await table.getRecords({});
+    const records: any[] = recordsResponse.records || [];
+    const checkedRecordIds: string[] = [];
+    
+    for (const record of records) {
+      for (const field of checkboxFields) {
+        try {
+          const checkboxField = await table.getField((field as any).id);
+          const value = await (checkboxField as any).getValue(record.recordId);
+          
+          if (value === true) {
+            checkedRecordIds.push(record.recordId);
+            break;
+          }
+        } catch (e) {
+          // 静默处理
+        }
+      }
+    }
+    
+    return {
+      tableId,
+      recordIds: checkedRecordIds,
+      count: checkedRecordIds.length,
+    };
+  } catch (error) {
+    debugLog('获取勾选记录失败:', error);
+    return { tableId: '', recordIds: [], count: 0 };
+  }
+}
+
+/**
+ * 停止复选框监听
+ */
+export function stopCheckboxListener() {
+  if (checkboxUnsubscribe) {
+    checkboxUnsubscribe();
+    checkboxUnsubscribe = null;
+  }
+}
 
 // ============================================
 // 新增：调试和环境检查
@@ -244,11 +518,13 @@ function startPolling(interval = 2000) {
         });
         
         // 构造事件对象
-        const event: RecordSelectChangeEvent = {
+        const event: SelectionChangeEvent = {
           data: {
             tableId,
-            recordIds: currentSelection,
-            isSelectAll: false,
+            recordId: currentSelection[0] || null,
+            fieldId: null,
+            baseId: null,
+            viewId: null,
           },
         };
         
@@ -424,6 +700,9 @@ export async function initFeishuEnv(): Promise<boolean> {
       
       // 设置选中变化监听器
       setupSelectionListener();
+      
+      // 设置复选框监听器
+      setupCheckboxListener();
       
       // 初始化完成后进行一次完整的环境调试
       debugLog('初始化完成，执行环境调试...');
