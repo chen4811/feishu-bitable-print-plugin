@@ -102,10 +102,19 @@ function isAttachmentField(fieldName: string, records: any[], fields: Field[], f
 }
 
 // 获取附件数据
-function getAttachmentData(fieldName: string, records: any[]): any[] | null {
+function getAttachmentData(fieldName: string, records: any[]): { htmlContent: string } | any[] | null {
   if (!records || records.length === 0) return null;
   
   const record = records[0];
+  
+  // 【关键修复】优先使用处理后的HTML内容（如果存在）
+  const htmlContent = record[`_${fieldName}_html`];
+  if (htmlContent && typeof htmlContent === 'string') {
+    console.log(`[getAttachmentData] 使用预处理HTML内容: _${fieldName}_html`);
+    return { htmlContent };
+  }
+  
+  // 回退到原始附件数组
   const value = record[fieldName] || record.fields?.[fieldName];
   
   if (!Array.isArray(value)) return null;

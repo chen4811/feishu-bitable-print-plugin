@@ -8,7 +8,7 @@ import { AttachmentVariableConfig } from '@/components/editor/variables';
 
 interface AttachmentVariableChipProps {
   fieldName: string;
-  data: any[] | null | undefined;
+  data: any[] | { htmlContent: string } | null | undefined;
   config?: AttachmentVariableConfig;
   className?: string;
   textStyle?: Partial<ComponentTextStyle>;
@@ -35,6 +35,36 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const containerRef = useRef<HTMLSpanElement>(null);
+
+  // 【关键修复】检查是否是预处理后的HTML内容
+  const isHtmlContent = data && typeof data === 'object' && 'htmlContent' in data && typeof data.htmlContent === 'string';
+  
+  if (isHtmlContent) {
+    // 直接渲染预处理的HTML内容
+    return (
+      <span
+        ref={containerRef}
+        className={`
+          inline-flex items-center gap-1 relative
+          ${isSelected ? 'ring-2 ring-blue-400 rounded' : ''}
+          ${className}
+        `}
+        style={{
+          fontSize: textStyle?.fontSize ? `${textStyle.fontSize}px` : undefined,
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+        }}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          onEdit?.();
+        }}
+        data-field-name={fieldName}
+        data-variable-type="attachment"
+        dangerouslySetInnerHTML={{ __html: (data as { htmlContent: string }).htmlContent }}
+      />
+    );
+  }
 
   // 默认配置
   const displayMode = config?.displayMode || 'image_only';
