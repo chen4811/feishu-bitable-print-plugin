@@ -388,13 +388,15 @@ class AttachmentProcessor {
    * @param fieldId - 字段ID
    * @param recordId - 记录ID
    * @param table - 表格对象
+   * @param options - 输出选项 { includeFileName: 是否包含文件名, includeDetails: 是否包含详细信息 }
    * @returns HTML字符串
    */
   async convertAttachmentFieldToHTML(
     attachmentData: any[], 
     fieldId: string,
     recordId: string,
-    table: any
+    table: any,
+    options: { includeFileName?: boolean; includeDetails?: boolean } = {}
   ): Promise<string> {
     if (!attachmentData || attachmentData.length === 0) {
       return '';
@@ -426,6 +428,32 @@ class AttachmentProcessor {
             }
             
             const name = attachment.name || attachment.fileName || `图片${index + 1}`;
+            
+            // 根据选项决定是否包含文件名
+            const fileNameHtml = options.includeFileName ? `
+                <div style="
+                  font-size: 11px;
+                  color: #6b7280;
+                  margin-top: 4px;
+                  max-width: 120px;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  white-space: nowrap;
+                ">${name}</div>
+            ` : '';
+            
+            // 根据选项决定是否包含详细信息（用于 advanced 模式）
+            const detailsHtml = options.includeDetails ? `
+                <div style="
+                  font-size: 10px;
+                  color: #9ca3af;
+                  margin-top: 2px;
+                  max-width: 120px;
+                ">
+                  <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">File: [${name}]</div>
+                  <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">URL: [${url.substring(0, 30)}...]</div>
+                </div>
+            ` : '';
             
             return `
               <div style="
@@ -460,15 +488,7 @@ class AttachmentProcessor {
                   max-width: 120px;
                   word-break: break-word;
                 ">${name}</div>
-                <div style="
-                  font-size: 11px;
-                  color: #6b7280;
-                  margin-top: 4px;
-                  max-width: 120px;
-                  overflow: hidden;
-                  text-overflow: ellipsis;
-                  white-space: nowrap;
-                ">${name}</div>
+                ${fileNameHtml}${detailsHtml}
               </div>
             `;
           } catch (error) {
@@ -577,19 +597,27 @@ class AttachmentProcessor {
             return;
           }
           
+          // 【修改】默认生成纯图片HTML（不包含文件名），渲染时根据配置决定是否显示
+          // 文件名单独存储在 _${fieldName}_names 字段
           const htmlContent = await this.convertAttachmentFieldToHTML(
             fieldValue, 
             fieldId || fieldName, 
             recordId,
-            table
+            table,
+            { includeFileName: false, includeDetails: false }  // 默认纯图片模式
           );
+          
+          // 提取文件名列表单独存储，供渲染时使用
+          const fileNames = fieldValue.map((a: any) => a.name || a.fileName || '未命名附件');
           
           // 存储处理后的HTML内容
           if (htmlContent) {
             // 保留原始附件数组数据
             processedRecord[fieldName] = fieldValue;
-            // HTML 内容存储在 _字段名_html 中
+            // HTML 内容存储在 _字段名_html 中（默认纯图片）
             processedRecord[`_${fieldName}_html`] = htmlContent;
+            // 文件名列表存储在 _字段名_names 中
+            processedRecord[`_${fieldName}_names`] = fileNames;
             processingResults.push({ fieldName, success: true });
             console.log(`[AttachmentProcessor] ✅ 附件字段 "${fieldName}" 处理完成，HTML存储在 _${fieldName}_html`);
             

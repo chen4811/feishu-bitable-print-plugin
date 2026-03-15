@@ -102,7 +102,7 @@ function isAttachmentField(fieldName: string, records: any[], fields: Field[], f
 }
 
 // 获取附件数据
-function getAttachmentData(fieldName: string, records: any[]): { htmlContent?: string; rawData?: any[] } | null {
+function getAttachmentData(fieldName: string, records: any[]): { htmlContent?: string; rawData?: any[]; fileNames?: string[] } | null {
   if (!records || records.length === 0) return null;
   
   const record = records[0];
@@ -114,6 +114,7 @@ function getAttachmentData(fieldName: string, records: any[]): { htmlContent?: s
     htmlFieldName: `_${fieldName}_html`,
     hasHtmlField: !!record[`_${fieldName}_html`],
     hasRawField: !!record[fieldName],
+    hasNamesField: !!record[`_${fieldName}_names`],
     hasFieldsProp: !!record.fields?.[fieldName]
   });
   
@@ -123,8 +124,11 @@ function getAttachmentData(fieldName: string, records: any[]): { htmlContent?: s
   // 获取预处理HTML内容
   const htmlContent = record[`_${fieldName}_html`];
   
-  // 【修复】同时返回 HTML 和原始数据，让 AttachmentVariableChip 根据配置选择
-  const result: { htmlContent?: string; rawData?: any[] } = {};
+  // 【新增】获取文件名列表
+  const fileNames = record[`_${fieldName}_names`];
+  
+  // 【修复】同时返回 HTML、原始数据和文件名列表，让 AttachmentVariableChip 根据配置选择
+  const result: { htmlContent?: string; rawData?: any[]; fileNames?: string[] } = {};
   
   if (htmlContent && typeof htmlContent === 'string') {
     result.htmlContent = htmlContent;
@@ -134,6 +138,12 @@ function getAttachmentData(fieldName: string, records: any[]): { htmlContent?: s
   if (Array.isArray(rawData) && rawData.length > 0) {
     result.rawData = rawData;
     console.log('[getAttachmentData] ✅ 包含原始数组数据:', rawData.length, '个附件');
+  }
+  
+  // 【新增】返回文件名列表
+  if (Array.isArray(fileNames) && fileNames.length > 0) {
+    result.fileNames = fileNames;
+    console.log('[getAttachmentData] ✅ 包含文件名列表:', fileNames.length, '个');
   }
   
   if (Object.keys(result).length === 0) {

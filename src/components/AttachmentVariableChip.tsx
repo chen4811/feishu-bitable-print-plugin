@@ -8,7 +8,7 @@ import { AttachmentVariableConfig } from '@/components/editor/variables';
 
 interface AttachmentVariableChipProps {
   fieldName: string;
-  data: { htmlContent?: string; rawData?: any[] } | any[] | null | undefined;
+  data: { htmlContent?: string; rawData?: any[]; fileNames?: string[] } | any[] | null | undefined;
   config?: AttachmentVariableConfig;
   className?: string;
   textStyle?: Partial<ComponentTextStyle>;
@@ -37,18 +37,20 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
   const containerRef = useRef<HTMLSpanElement>(null);
 
   // 【修复】解析数据格式
-  // data 可能是：{ htmlContent?: string; rawData?: any[] } 或 any[] 或 null
+  // data 可能是：{ htmlContent?: string; rawData?: any[]; fileNames?: string[] } 或 any[] 或 null
   let htmlContent: string | undefined;
   let rawData: any[] | undefined;
+  let fileNames: string[] | undefined;
   
   if (data && typeof data === 'object') {
     if (Array.isArray(data)) {
       // 旧格式：直接是数组
       rawData = data;
-    } else if ('htmlContent' in data || 'rawData' in data) {
-      // 新格式：{ htmlContent, rawData }
+    } else if ('htmlContent' in data || 'rawData' in data || 'fileNames' in data) {
+      // 新格式：{ htmlContent, rawData, fileNames }
       htmlContent = data.htmlContent;
       rawData = data.rawData;
+      fileNames = data.fileNames;
     }
   }
 
@@ -59,7 +61,9 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
     displayMode: config?.displayMode,
     hasHtmlContent: !!htmlContent,
     hasRawData: !!rawData,
+    hasFileNames: !!fileNames,
     rawDataLength: rawData?.length,
+    fileNamesLength: fileNames?.length,
   });
 
   // 【关键逻辑】当有配置且有 displayMode 时，使用原始数据渲染
@@ -202,11 +206,14 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
   const emptyDisplay = config?.emptyDisplay || 'default';
   const emptyCustomText = config?.emptyCustomText;
 
-  // 判断是否有数据
-  const hasData = rawData && rawData.length > 0;
+  // 【修改】判断是否有数据 - 检查 rawData 或 fileNames
+  const hasData = (rawData && rawData.length > 0) || (fileNames && fileNames.length > 0);
+  
+  // 获取附件数量
+  const attachmentCount = rawData?.length || fileNames?.length || 0;
 
   // 获取第一张图片预览 - 支持多种飞书云文档字段格式
-  const firstImage = hasData ? rawData![0] : null;
+  const firstImage = rawData && rawData.length > 0 ? rawData[0] : null;
   
   // 尝试从原始数据获取 URL
   let imageUrl = firstImage?.url 
@@ -226,11 +233,13 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
     }
   }
 
-  // 获取文件名
-  const fileName = firstImage?.name 
-    || firstImage?.fileName 
-    || firstImage?.title 
-    || fieldName;
+  // 【修改】获取文件名 - 优先使用 fileNames 数组，其次从 firstImage 获取
+  const fileName = (fileNames && fileNames.length > 0)
+    ? fileNames[0]
+    : (firstImage?.name 
+      || firstImage?.fileName 
+      || firstImage?.title 
+      || fieldName);
 
   // 空数据渲染
   if (!hasData) {
@@ -362,7 +371,7 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
         ${isSelected ? 'ring-2 ring-blue-400' : ''}
         ${className}
       `}
-      title={`附件字段：${fieldName}，共 ${rawData?.length || 0} 个附件。双击编辑配置`}
+      title={`附件字段：${fieldName}，共 ${attachmentCount} 个附件。双击编辑配置`}
       style={getContainerStyle()}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -412,8 +421,8 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
           {displayMode === 'basic_info' && (
             <span className="text-sm text-blue-700 truncate max-w-[150px]">
               {fileName}
-              {rawData!.length > 1 && (
-                <span className="text-xs text-blue-500 ml-1">+{rawData!.length - 1}</span>
+              {attachmentCount > 1 && (
+                <span className="text-xs text-blue-500 ml-1">+{attachmentCount - 1}</span>
               )}
             </span>
           )}
@@ -439,8 +448,8 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
               <div className="flex flex-col">
                 <span className="text-xs text-gray-600">File: [{fileName}]</span>
                 <span className="text-xs text-gray-600 truncate max-w-[120px]">URL: [{imageUrl || '无'}]</span>
-                {rawData!.length > 1 && (
-                  <span className="text-xs text-blue-500">共 {rawData!.length} 张</span>
+                {attachmentCount > 1 && (
+                  <span className="text-xs text-blue-500">共 {attachmentCount} 张</span>
                 )}
               </div>
             </>
