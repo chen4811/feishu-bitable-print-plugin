@@ -223,7 +223,7 @@ export interface Field {
 }
 
 // 【新增】字段类型映射（字段名 -> 字段种类）
-export type FieldTypeMap = Record<string, 'attachment' | 'person' | 'text' | 'number' | 'date' | 'other'>;
+export type FieldTypeMap = Record<string, 'attachment' | 'person' | 'text' | 'number' | 'date' | 'other' | 'boolean' | 'unknown'>;
 
 // 组件基础属性（简化版 - 无x,y,zIndex）
 export interface BaseComponentProps {

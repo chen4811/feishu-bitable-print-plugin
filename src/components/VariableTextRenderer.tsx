@@ -26,7 +26,8 @@ function isAttachmentField(fieldName: string, records: any[], fields: Field[], f
       console.log('[isAttachmentField] => true (fieldTypeMap=attachment)');
       return true;
     }
-    if (fieldKind === 'person' || fieldKind === 'text' || fieldKind === 'number' || fieldKind === 'date') {
+    // 【修复】处理所有非附件类型，包括 'person', 'text', 'number', 'date', 'other', 'boolean', 'unknown'
+    if (['person', 'text', 'number', 'date', 'other', 'boolean', 'unknown'].includes(fieldKind)) {
       console.log('[isAttachmentField] => false (fieldTypeMap=' + fieldKind + ')');
       return false;
     }

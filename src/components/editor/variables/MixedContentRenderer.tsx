@@ -8,8 +8,8 @@ export type ContentSegment =
   | { type: 'text'; content: string }
   | { type: 'variable'; fieldName: string; config?: VariableConfig };
 
-// 字段类型映射
-export type FieldTypeMap = Record<string, VariableType>;
+// 字段类型映射 - 与 types/editor.ts 保持一致
+export type FieldTypeMap = Record<string, 'attachment' | 'person' | 'text' | 'number' | 'date' | 'other' | 'boolean' | 'unknown'>;
 
 // 字段ID映射（新增）
 export type FieldIdMap = Record<string, string>;
@@ -59,11 +59,11 @@ export function MixedContentRenderer({
           
           if (!config) {
             // 【关键修复】优先使用 fieldTypeMap 判断字段类型，避免数据为空时误判
-            let fieldType: VariableType;
+            let fieldType: VariableType | 'person' | 'other';
             
             if (fieldTypeMap[fieldName]) {
               // 使用预定义的字段类型（从字段元数据获取）
-              fieldType = fieldTypeMap[fieldName];
+              fieldType = fieldTypeMap[fieldName] as VariableType | 'person' | 'other';
               console.log(`[MixedContentRenderer] 使用 fieldTypeMap 判断 "${fieldName}" 类型:`, fieldType);
             } else {
               // 回退：通过数据值特征判断
@@ -81,13 +81,21 @@ export function MixedContentRenderer({
               }
             }
             
+            // 【修复】将 'person' 和 'other' 映射到 VariableType 兼容的类型
+            let mappedFieldType: VariableType;
+            if (fieldType === 'person' || fieldType === 'other') {
+              mappedFieldType = 'text'; // 人员和未知类型按文本处理
+            } else {
+              mappedFieldType = fieldType as VariableType;
+            }
+            
             config = {
               fieldName,
-              type: fieldType
+              type: mappedFieldType
             };
             
             // 【关键修复】为附件类型添加默认配置，确保 AttachmentVariable 能正确渲染
-            if (fieldType === 'attachment') {
+            if (mappedFieldType === 'attachment') {
               config = {
                 fieldName,
                 type: 'attachment',
