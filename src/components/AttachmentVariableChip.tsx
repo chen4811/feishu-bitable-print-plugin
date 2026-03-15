@@ -8,7 +8,7 @@ import { AttachmentVariableConfig } from '@/components/editor/variables';
 
 interface AttachmentVariableChipProps {
   fieldName: string;
-  data: any[] | { htmlContent: string } | null | undefined;
+  data: { htmlContent?: string; rawData?: any[] } | any[] | null | undefined;
   config?: AttachmentVariableConfig;
   className?: string;
   textStyle?: Partial<ComponentTextStyle>;
@@ -36,31 +36,44 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const containerRef = useRef<HTMLSpanElement>(null);
 
+  // 【修复】解析数据格式
+  // data 可能是：{ htmlContent?: string; rawData?: any[] } 或 any[] 或 null
+  let htmlContent: string | undefined;
+  let rawData: any[] | undefined;
+  
+  if (data && typeof data === 'object') {
+    if (Array.isArray(data)) {
+      // 旧格式：直接是数组
+      rawData = data;
+    } else if ('htmlContent' in data || 'rawData' in data) {
+      // 新格式：{ htmlContent, rawData }
+      htmlContent = data.htmlContent;
+      rawData = data.rawData;
+    }
+  }
+
   // 【调试日志】
   console.log('[AttachmentVariableChip] 接收数据:', {
     fieldName,
-    dataType: typeof data,
-    isArray: Array.isArray(data),
-    isHtmlContent: data && typeof data === 'object' && 'htmlContent' in data,
-    dataPreview: data && typeof data === 'object' && 'htmlContent' in data 
-      ? (data as {htmlContent: string}).htmlContent.substring(0, 100) 
-      : Array.isArray(data) && data.length > 0 
-        ? `Array[${data.length}] first: ${JSON.stringify(data[0]).substring(0, 80)}`
-        : data
+    hasConfig: !!config,
+    displayMode: config?.displayMode,
+    hasHtmlContent: !!htmlContent,
+    hasRawData: !!rawData,
+    rawDataLength: rawData?.length,
   });
 
-  // 【关键修复】检查是否是预处理后的HTML内容
-  const isHtmlContent = data && typeof data === 'object' && 'htmlContent' in data && typeof data.htmlContent === 'string';
+  // 【关键逻辑】当有配置时，优先使用原始数据渲染（支持 displayMode）
+  const hasConfig = config && Object.keys(config).length > 0;
+  const shouldUseRawData = hasConfig && rawData && rawData.length > 0;
   
-  if (isHtmlContent) {
-    const html = (data as { htmlContent: string }).htmlContent;
-    console.log('[AttachmentVariableChip] ✅ 渲染预处理HTML内容:', {
-      fieldName,
-      htmlLength: html.length,
-      htmlPreview: html.substring(0, 150)
-    });
-    
-    // 直接渲染预处理的HTML内容
+  // 【场景1】有配置且有原始数据 → 使用配置渲染（支持 displayMode）
+  if (shouldUseRawData) {
+    console.log('[AttachmentVariableChip] ✅ 使用配置渲染原始数据');
+    // 继续往下渲染...
+  }
+  // 【场景2】没有配置但有 HTML → 使用 HTML 渲染
+  else if (htmlContent && !shouldUseRawData) {
+    console.log('[AttachmentVariableChip] ✅ 使用预处理HTML渲染');
     return (
       <span
         ref={containerRef}
@@ -72,21 +85,19 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
         style={{
           fontSize: textStyle?.fontSize ? `${textStyle.fontSize}px` : undefined,
         }}
-        onClick={(e) => {
-          e.stopPropagation();
-        }}
+        onClick={(e) => e.stopPropagation()}
         onDoubleClick={(e) => {
           e.stopPropagation();
           onEdit?.();
         }}
         data-field-name={fieldName}
         data-variable-type="attachment"
-        dangerouslySetInnerHTML={{ __html: (data as { htmlContent: string }).htmlContent }}
+        dangerouslySetInnerHTML={{ __html: htmlContent }}
       />
     );
   }
-
-  // 默认配置
+  
+  // 配置变量声明
   const displayMode = config?.displayMode || 'image_only';
   const sizeMode = config?.sizeMode || 'auto';
   const onePerLine = config?.onePerLine || false;
@@ -95,10 +106,10 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
   const emptyCustomText = config?.emptyCustomText;
 
   // 判断是否有数据
-  const hasData = data && Array.isArray(data) && data.length > 0;
+  const hasData = rawData && rawData.length > 0;
 
   // 获取第一张图片预览 - 支持多种飞书云文档字段格式
-  const firstImage = hasData ? data![0] : null;
+  const firstImage = hasData ? rawData![0] : null;
   const imageUrl = firstImage?.url 
     || firstImage?.fileUrl 
     || firstImage?.tmpUrl
@@ -236,16 +247,14 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
     <span
       ref={containerRef}
       className={`
-        inline-flex items-center gap-1 relative
-        px-1 py-0.5 rounded
-        bg-blue-50 border border-blue-200
+        inline-flex items-center relative
         cursor-pointer
         transition-all duration-200
-        hover:bg-blue-100 hover:border-blue-300
+        ${displayMode === 'image_only' ? 'p-0' : 'px-1 py-0.5 rounded bg-blue-50 border border-blue-200 hover:bg-blue-100 hover:border-blue-300'}
         ${isSelected ? 'ring-2 ring-blue-400' : ''}
         ${className}
       `}
-      title={`附件字段：${fieldName}，共 ${data?.length || 0} 个附件。双击编辑配置`}
+      title={`附件字段：${fieldName}，共 ${rawData?.length || 0} 个附件。双击编辑配置`}
       style={getContainerStyle()}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -258,11 +267,11 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
       }}
       data-field-name={fieldName}
       data-variable-type="attachment"
-      data-attachment-count={data?.length}
+      data-attachment-count={rawData?.length}
     >
-          {/* 显示模式：只显示图片 */}
+          {/* 显示模式：只显示图片 - 仅显示图片，无任何文字 */}
           {displayMode === 'image_only' && imageUrl && (
-            <div className="relative inline-block">
+            <div className="relative inline-block" style={{ margin: 0, padding: 0 }}>
               <img
                 src={imageUrl}
                 alt={fileName}
@@ -289,52 +298,39 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
             </div>
           )}
 
-          {/* 显示模式：基础信息 */}
+          {/* 显示模式：基础信息 - 只显示文件名，无图片 */}
           {displayMode === 'basic_info' && (
-            <>
-              <FileImage className="w-4 h-4 text-blue-500" />
-              <span className="text-sm text-blue-700 truncate max-w-[100px]">
-                {fileName}
-              </span>
-              {data!.length > 1 && (
-                <span className="text-xs text-blue-500">+{data!.length - 1}</span>
+            <span className="text-sm text-blue-700 truncate max-w-[150px]">
+              {fileName}
+              {rawData!.length > 1 && (
+                <span className="text-xs text-blue-500 ml-1">+{rawData!.length - 1}</span>
               )}
-            </>
+            </span>
           )}
 
-          {/* 显示模式：高级显示 */}
+          {/* 显示模式：高级显示 - 显示图片 + 详细信息 */}
           {displayMode === 'advanced' && (
             <>
               {imageUrl ? (
-                <div className="relative inline-block">
-                  <img
-                    src={imageUrl}
-                    alt={fileName}
-                    style={{ ...getImageStyle(), maxWidth: '60px', maxHeight: '60px' }}
-                    className="rounded"
-                    crossOrigin="anonymous"
-                    onError={(e) => {
-                      const img = e.target as HTMLImageElement;
-                      img.style.display = 'none';
-                      const fallback = img.nextElementSibling as HTMLElement;
-                      if (fallback) {
-                        fallback.style.display = 'block';
-                      }
-                    }}
-                  />
-                  <div className="hidden">
-                    <FileImage className="w-6 h-6 text-blue-500" />
-                  </div>
-                </div>
+                <img
+                  src={imageUrl}
+                  alt={fileName}
+                  style={{ maxWidth: '60px', maxHeight: '60px', borderRadius: '4px' }}
+                  className="rounded mr-2"
+                  crossOrigin="anonymous"
+                  onError={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    img.style.display = 'none';
+                  }}
+                />
               ) : (
-                <FileImage className="w-6 h-6 text-blue-500" />
+                <FileImage className="w-6 h-6 text-blue-500 mr-2" />
               )}
               <div className="flex flex-col">
-                <span className="text-sm text-blue-700 truncate max-w-[100px]">
-                  {fileName}
-                </span>
-                {data!.length > 1 && (
-                  <span className="text-xs text-blue-500">共 {data!.length} 张</span>
+                <span className="text-xs text-gray-600">File: [{fileName}]</span>
+                <span className="text-xs text-gray-600 truncate max-w-[120px]">URL: [{imageUrl || '无'}]</span>
+                {rawData!.length > 1 && (
+                  <span className="text-xs text-blue-500">共 {rawData!.length} 张</span>
                 )}
               </div>
             </>

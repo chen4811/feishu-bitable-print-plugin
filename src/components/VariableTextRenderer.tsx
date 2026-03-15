@@ -102,7 +102,7 @@ function isAttachmentField(fieldName: string, records: any[], fields: Field[], f
 }
 
 // 获取附件数据
-function getAttachmentData(fieldName: string, records: any[]): { htmlContent: string } | any[] | null {
+function getAttachmentData(fieldName: string, records: any[]): { htmlContent?: string; rawData?: any[] } | null {
   if (!records || records.length === 0) return null;
   
   const record = records[0];
@@ -117,20 +117,31 @@ function getAttachmentData(fieldName: string, records: any[]): { htmlContent: st
     hasFieldsProp: !!record.fields?.[fieldName]
   });
   
-  // 【关键修复】优先使用处理后的HTML内容（如果存在）
+  // 获取原始附件数组
+  const rawData = record[fieldName] || record.fields?.[fieldName];
+  
+  // 获取预处理HTML内容
   const htmlContent = record[`_${fieldName}_html`];
+  
+  // 【修复】同时返回 HTML 和原始数据，让 AttachmentVariableChip 根据配置选择
+  const result: { htmlContent?: string; rawData?: any[] } = {};
+  
   if (htmlContent && typeof htmlContent === 'string') {
-    console.log(`[getAttachmentData] ✅ 使用预处理HTML内容: _${fieldName}_html`);
-    console.log('[getAttachmentData] HTML内容预览:', htmlContent.substring(0, 100));
-    return { htmlContent };
+    result.htmlContent = htmlContent;
+    console.log(`[getAttachmentData] ✅ 包含预处理HTML: _${fieldName}_html`);
   }
   
-  // 回退到原始附件数组
-  const value = record[fieldName] || record.fields?.[fieldName];
-  console.log('[getAttachmentData] ⚠️ 回退到原始附件数组:', { fieldName, valueType: typeof value, isArray: Array.isArray(value) });
+  if (Array.isArray(rawData) && rawData.length > 0) {
+    result.rawData = rawData;
+    console.log('[getAttachmentData] ✅ 包含原始数组数据:', rawData.length, '个附件');
+  }
   
-  if (!Array.isArray(value)) return null;
-  return value;
+  if (Object.keys(result).length === 0) {
+    console.log('[getAttachmentData] ⚠️ 无任何数据');
+    return null;
+  }
+  
+  return result;
 }
 
 interface VariableTextRendererProps {
