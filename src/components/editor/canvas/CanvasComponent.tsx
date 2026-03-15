@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 
 // 自适应高度的文本域组件
 const AutoResizingTextarea = ({ 
@@ -203,6 +203,29 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
   const [attachmentDialogOpen, setAttachmentDialogOpen] = useState(false);
   const [attachmentDialogField, setAttachmentDialogField] = useState<string>('');
   const [editingVariable, setEditingVariable] = useState<string | null>(null);
+  
+  // 【关键修复】计算所有可用的附件字段列表
+  const availableAttachmentFields = useMemo(() => {
+    if (!fields || fields.length === 0) return [];
+    
+    // 从 fieldTypeMap 中筛选附件字段（value = 'attachment' 表示附件）
+    const attachmentFieldIds = Object.entries(fieldTypeMap || {})
+      .filter(([_, type]) => type === 'attachment')
+      .map(([id]) => id);
+    
+    // 根据字段 ID 获取字段名
+    const attachmentFieldNames = fields
+      .filter(field => attachmentFieldIds.includes(field.id))
+      .map(field => field.name);
+    
+    console.log('[CanvasComponent] 可用附件字段:', {
+      totalFields: fields.length,
+      attachmentFieldIds,
+      attachmentFieldNames
+    });
+    
+    return attachmentFieldNames;
+  }, [fields, fieldTypeMap]);
   
   const textComponentRef = useRef<HTMLDivElement>(null);
   
@@ -669,6 +692,56 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
 
   // 处理附件变量配置确认
   const handleAttachmentConfirm = useCallback((config: AttachmentVariableConfig) => {
+    // 【关键修复】如果字段名发生变化，需要更新组件中的变量
+    if (attachmentDialogField && attachmentDialogField !== config.fieldName) {
+      // 字段切换：从旧字段名更新为新字段名
+      console.log('[CanvasComponent] 字段切换:', attachmentDialogField, '->', config.fieldName);
+      
+      if (component.type === 'text') {
+        // 文本组件：更新 content 中的变量名
+        const textComp = component as any;
+        const oldPattern = new RegExp(`\\[${attachmentDialogField}\\]|\\{\\{${attachmentDialogField}\\}\\}`, 'g');
+        const newContent = textComp.content.replace(oldPattern, `[${config.fieldName}]`);
+        
+        if (newContent !== textComp.content) {
+          updateComponent(component.id, { content: newContent });
+          console.log('[CanvasComponent] 文本组件内容已更新');
+        }
+      } else if (component.type === 'table') {
+        // 表格组件：更新 tableConfig.cells 中的变量名
+        const tableComp = component as any;
+        const cells = tableComp.tableConfig?.cells;
+        
+        if (cells) {
+          const newCells = cells.map((row: any[]) => 
+            row.map((cell: any) => {
+              if (cell && typeof cell.content === 'string') {
+                const oldPattern = new RegExp(`\\[${attachmentDialogField}\\]|\\{\\{${attachmentDialogField}\\}\\}`, 'g');
+                return {
+                  ...cell,
+                  content: cell.content.replace(oldPattern, `[${config.fieldName}]`)
+                };
+              }
+              return cell;
+            })
+          );
+          
+          if (JSON.stringify(newCells) !== JSON.stringify(cells)) {
+            updateComponent(component.id, { 
+              tableConfig: { 
+                ...tableComp.tableConfig, 
+                cells: newCells 
+              } 
+            });
+            console.log('[CanvasComponent] 表格组件 cells 已更新');
+          }
+        }
+      }
+      
+      // 删除旧字段的配置
+      deleteAttachmentConfig(attachmentDialogField);
+    }
+    
     // 保存配置到 store
     setAttachmentConfig(config.fieldName, config);
     
@@ -677,7 +750,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     setAttachmentDialogField('');
     
     toast.success(`附件字段 "${config.fieldName}" 配置已保存`);
-  }, [setAttachmentConfig]);
+  }, [setAttachmentConfig, deleteAttachmentConfig, updateComponent, component, attachmentDialogField]);
 
   // 在渲染后恢复光标位置（用于粘贴后）
   useEffect(() => {
@@ -2365,7 +2438,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
           setAttachmentDialogOpen(false);
           setAttachmentDialogField('');
         }}
-        availableFields={attachmentDialogField ? [attachmentDialogField] : []}
+        availableFields={availableAttachmentFields}
         initialField={attachmentDialogField}
         onConfirm={handleAttachmentConfirm}
       />

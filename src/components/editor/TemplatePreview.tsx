@@ -1532,6 +1532,12 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     
     // 【关键修复】同步 availableRecords 到 editorStore，确保 CanvasComponent 能获取处理后的数据
     if (availableRecords.length > 0) {
+      // 调试：检查要同步的数据
+      availableRecords.forEach((record, idx) => {
+        const htmlFields = Object.keys(record).filter(k => k.includes('_html'));
+        console.log(`[TP] useEffect: 记录[${idx}] 的 _html 字段:`, htmlFields);
+      });
+      
       console.log('[TP] useEffect: 同步 availableRecords 到 editorStore:', availableRecords.length, '条记录');
       setEditorStoreRecords(availableRecords);
     }
@@ -2134,67 +2140,82 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           console.log(`[TP] processedRecords[${idx}] 的 _html 字段:`, htmlFields);
         });
         
-        setAvailableRecords(prev => {
-          console.log('[TP] setAvailableRecords 回调，当前记录数:', prev.length);
-          const newRecords = [...prev];
-          let addedCount = 0;
-          let skippedCount = 0;
-          let ignoredCount = 0;
+        // 直接计算新的记录列表，避免闭包问题
+        const currentRecords = availableRecords;
+        const newRecords = [...currentRecords];
+        let addedCount = 0;
+        let skippedCount = 0;
+        let ignoredCount = 0;
+        
+        processedRecords.forEach(record => {
+          // 【关键修复】确保使用处理后的记录
+          const finalRecord = record;
           
-          processedRecords.forEach(record => {
-            // 【关键修复】确保使用处理后的记录
-            const finalRecord = record;
-            
-            // 获取所有可能的ID用于去重检查
-            const recordId = finalRecord.id;
-            const sourceRecordId = finalRecord._sourceRecordId;
-            
-            // 检查是否在忽略列表中（用户手动删除过）
-            // 同时检查 id 和 _sourceRecordId
-            if (ignoredRecordIds.has(recordId) || (sourceRecordId && ignoredRecordIds.has(sourceRecordId))) {
-              ignoredCount++;
-              console.log('[TP] 跳过已忽略记录:', { recordId, sourceRecordId });
-              return;
-            }
-            
-            // 严格去重：检查是否已存在相同 ID 或相同源记录 ID 的记录
-            const isDuplicate = newRecords.some(r => {
-              // 检查主ID是否相同
-              if (r.id === recordId) return true;
-              // 检查源记录ID是否相同（如果都有的话）
-              if (sourceRecordId && r._sourceRecordId === sourceRecordId) return true;
-              // 检查源记录ID是否匹配主ID（兼容旧数据）
-              if (sourceRecordId && r.id === sourceRecordId) return true;
-              if (r._sourceRecordId === recordId) return true;
-              return false;
-            });
-            
-            if (!isDuplicate) {
-              // 【关键验证】验证附件字段是否正确传递
-              const photoField = (finalRecord as Record<string, any>)['照片'];
-              const isPhotoHTML = typeof photoField === 'string' && photoField.includes('<img');
-              
-              newRecords.push(finalRecord);
-              addedCount++;
-              console.log('[TP] 添加记录:', { 
-                id: recordId, 
-                sourceRecordId,
-                fields: Object.keys(finalRecord).filter(k => !k.startsWith('_') && k !== 'id').slice(0, 5),
-                photoFieldType: typeof photoField,
-                isPhotoHTML: isPhotoHTML,
-                photoFieldLength: typeof photoField === 'string' ? photoField.length : 0
-              });
-            } else {
-              skippedCount++;
-              console.log('[TP] 跳过重复记录:', { recordId, sourceRecordId });
-            }
+          // 获取所有可能的ID用于去重检查
+          const recordId = finalRecord.id;
+          const sourceRecordId = finalRecord._sourceRecordId;
+          
+          // 检查是否在忽略列表中（用户手动删除过）
+          // 同时检查 id 和 _sourceRecordId
+          if (ignoredRecordIds.has(recordId) || (sourceRecordId && ignoredRecordIds.has(sourceRecordId))) {
+            ignoredCount++;
+            console.log('[TP] 跳过已忽略记录:', { recordId, sourceRecordId });
+            return;
+          }
+          
+          // 严格去重：检查是否已存在相同 ID 或相同源记录 ID 的记录
+          const isDuplicate = newRecords.some(r => {
+            // 检查主ID是否相同
+            if (r.id === recordId) return true;
+            // 检查源记录ID是否相同（如果都有的话）
+            if (sourceRecordId && r._sourceRecordId === sourceRecordId) return true;
+            // 检查源记录ID是否匹配主ID（兼容旧数据）
+            if (sourceRecordId && r.id === sourceRecordId) return true;
+            if (r._sourceRecordId === recordId) return true;
+            return false;
           });
           
-          console.log(`[TP] 新增: ${addedCount}, 跳过: ${skippedCount}, 忽略: ${ignoredCount}, 总记录: ${newRecords.length}`);
-          console.log('[TP] ========== fetchSelectedRecordsFromEnv 结束 ==========');
-          
-          return newRecords;
+          if (!isDuplicate) {
+            // 【关键验证】验证附件字段是否正确传递
+            const photoField = (finalRecord as Record<string, any>)['照片'];
+            const isPhotoHTML = typeof photoField === 'string' && photoField.includes('<img');
+            const htmlFieldsInFinal = Object.keys(finalRecord).filter(k => k.includes('_html'));
+            
+            newRecords.push(finalRecord);
+            addedCount++;
+            console.log('[TP] 添加记录:', { 
+              id: recordId, 
+              sourceRecordId,
+              fields: Object.keys(finalRecord).filter(k => !k.startsWith('_') && k !== 'id').slice(0, 5),
+              htmlFields: htmlFieldsInFinal,
+              photoFieldType: typeof photoField,
+              isPhotoHTML: isPhotoHTML,
+              photoFieldLength: typeof photoField === 'string' ? photoField.length : 0
+            });
+          } else {
+            skippedCount++;
+            console.log('[TP] 跳过重复记录:', { recordId, sourceRecordId });
+          }
         });
+        
+        console.log(`[TP] 新增: ${addedCount}, 跳过: ${skippedCount}, 忽略: ${ignoredCount}, 总记录: ${newRecords.length}`);
+        
+        // 【关键修复】直接设置新数组，避免函数式更新的闭包问题
+        // 【调试】在设置前检查数组是否真的有变化
+        console.log('[TP] setAvailableRecords 调用前检查:', {
+          oldLength: availableRecords.length,
+          newLength: newRecords.length,
+          isSameRef: availableRecords === newRecords,
+          firstRecordHtmlFields: newRecords.length > 0 ? Object.keys(newRecords[0]).filter(k => k.includes('_html')) : []
+        });
+        
+        setAvailableRecords(newRecords);
+        
+        // 【关键修复】立即同步到 editorStore，不依赖 useEffect
+        console.log('[TP] 【立即同步】直接调用 setEditorStoreRecords');
+        setEditorStoreRecords(newRecords);
+        
+        console.log('[TP] ========== fetchSelectedRecordsFromEnv 结束 ==========');
       } else {
         console.log('[TP] getSelectedRecords 返回空数组');
       }
@@ -2204,7 +2225,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       // 释放锁
       requestLockRef.current.isLocked = false;
     }
-  }, [isTableMatched, selectedTemplate, ignoredRecordIds]);
+  }, [isTableMatched, selectedTemplate, ignoredRecordIds, setEditorStoreRecords, availableRecords]);
   
   // 获取当前表格信息
   const fetchCurrentTableInfo = useCallback(async () => {
