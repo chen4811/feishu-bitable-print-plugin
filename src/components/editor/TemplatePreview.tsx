@@ -17,16 +17,8 @@ import { useEditorStore } from '@/store/editorStore';
 import { PageSettingsDialog } from '@/components/editor/dialogs/PageSettingsDialog';
 import { PAGE_SIZES, PageConfig } from '@/types/editor';
 import { feishuEnv } from '@/lib/feishu-env';
-import { onSelectionChange, onBatchCheckboxSelect } from '@/lib/feishu-env';
+import { onSelectionChange } from '@/lib/feishu-env';
 import { MixedContentRenderer, extractVariables, FieldTypeMap, type VariableType } from '@/components/editor/variables';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 
 
 interface TemplatePreviewProps {
@@ -1455,12 +1447,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
   // 左侧区域展开状态（默认收起）
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
 
-  // 【新增】复选框批量选择相关状态
-  const [batchCheckboxDialogOpen, setBatchCheckboxDialogOpen] = useState(false);
-  const [batchCheckboxCount, setBatchCheckboxCount] = useState(0);
-  const [batchCheckboxRecordIds, setBatchCheckboxRecordIds] = useState<string[]>([]);
-  const [batchCheckboxTableId, setBatchCheckboxTableId] = useState<string>('');
-
   // 页面设置状态
   const [isPageSettingsOpen, setIsPageSettingsOpen] = useState(false);
   const [localPageConfig, setLocalPageConfig] = useState<PageConfig>({
@@ -2241,180 +2227,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     }
   }, [isTableMatched, selectedTemplate, ignoredRecordIds, setEditorStoreRecords, availableRecords]);
   
-  // 【新增】批量获取单条记录（用于复选框批量选择时）
-  const fetchRecordsByIds = useCallback(async (recordIds: string[], tableId: string) => {
-    if (!recordIds || recordIds.length === 0) {
-      console.log('[TP] 没有记录ID需要获取');
-      return [];
-    }
-
-    // 检查表格匹配状态
-    const isMatched = checkTableMatch(selectedTemplate, tableId);
-    if (!isMatched && selectedTemplate) {
-      console.log('[TP] 表格不匹配，跳过批量获取');
-      toast.error('当前多维表格与模板不匹配，无法载入数据');
-      return [];
-    }
-
-    try {
-      console.log('[TP] ========== 批量获取记录开始 ==========');
-      console.log('[TP] 需要获取的记录数:', recordIds.length, 'tableId:', tableId);
-
-      const { base } = await import('@lark-base-open/js-sdk');
-      const table = await base.getTable(tableId);
-      const fieldMetaList = await table.getFieldMetaList();
-
-      // 构建字段映射
-      const fieldMap: Record<string, string> = {};
-      fieldMetaList.forEach((field: any) => {
-        if (field?.id) {
-          fieldMap[field.id] = field.name;
-        }
-      });
-
-      // 更新字段类型映射
-      const newFieldTypeMap: FieldTypeMap = {};
-      const newFieldIdMap: Record<string, string> = {};
-      fieldMetaList.forEach((field: any) => {
-        if (field?.name) {
-          const fieldType = field.type;
-          if (fieldType === 17 || fieldType === 'Attachment') {
-            newFieldTypeMap[field.name] = 'attachment';
-          } else if (fieldType === 11 || fieldType === 'User') {
-            newFieldTypeMap[field.name] = 'text';
-          } else if (fieldType === 4 || fieldType === 'DateTime') {
-            newFieldTypeMap[field.name] = 'date';
-          } else if (fieldType === 2 || fieldType === 'Number') {
-            newFieldTypeMap[field.name] = 'number';
-          } else if (fieldType === 7 || fieldType === 'Checkbox') {
-            newFieldTypeMap[field.name] = 'boolean';
-          } else {
-            newFieldTypeMap[field.name] = 'text';
-          }
-          if (field?.id) {
-            newFieldIdMap[field.name] = field.id;
-          }
-        }
-      });
-      setFieldTypeMap(newFieldTypeMap);
-      setFieldIdMap(newFieldIdMap);
-
-      // 批量获取记录
-      const fetchedRecords: Record<string, any>[] = [];
-      
-      for (const recordId of recordIds) {
-        // 检查是否已存在
-        const isAlreadyAdded = availableRecords.some(r => r.id === recordId || r._sourceRecordId === recordId);
-        if (isAlreadyAdded) {
-          console.log('[TP] 记录已存在，跳过:', recordId);
-          continue;
-        }
-
-        // 检查是否在忽略列表中
-        if (ignoredRecordIds.has(recordId)) {
-          console.log('[TP] 记录在忽略列表中，跳过:', recordId);
-          continue;
-        }
-
-        try {
-          const record = await table.getRecordById(recordId);
-          if (!record) continue;
-
-          const actualFields = record.fields || record;
-          const formattedFields: Record<string, any> = {};
-
-          for (const [fieldId, value] of Object.entries(actualFields)) {
-            const fieldName = fieldMap[fieldId] || fieldId;
-            formattedFields[fieldName] = value;
-          }
-
-          const formattedRecord = {
-            ...formattedFields,
-            id: recordId,
-            _sourceRecordId: recordId,
-            _rowIndex: availableRecords.length + fetchedRecords.length,
-          };
-
-          // 处理附件字段
-          const recordWithAttachments = await attachmentProcessor.processRecordAttachments(
-            formattedRecord,
-            fieldMetaList,
-            table
-          );
-
-          fetchedRecords.push(recordWithAttachments);
-        } catch (e) {
-          console.error('[TP] 获取单条记录失败:', recordId, e);
-        }
-      }
-
-      console.log('[TP] 成功获取记录数:', fetchedRecords.length);
-      console.log('[TP] ========== 批量获取记录结束 ==========');
-
-      return fetchedRecords;
-    } catch (err) {
-      console.error('[TP] 批量获取记录失败:', err);
-      return [];
-    }
-  }, [selectedTemplate, availableRecords, ignoredRecordIds, setFieldTypeMap, setFieldIdMap]);
-
-  // 【新增】处理批量复选框选择确认
-  const handleBatchCheckboxConfirm = useCallback(async () => {
-    setBatchCheckboxDialogOpen(false);
-    
-    const recordIds = batchCheckboxRecordIds;
-    const tableId = batchCheckboxTableId;
-    
-    if (!recordIds || recordIds.length === 0 || !tableId) {
-      console.log('[TP] 批量选择参数无效');
-      return;
-    }
-
-    console.log('[TP] 用户确认批量载入，记录数:', recordIds.length);
-
-    // 显示加载状态
-    const loadingToast = toast.loading(`正在载入 ${recordIds.length} 条记录...`);
-
-    try {
-      const fetchedRecords = await fetchRecordsByIds(recordIds, tableId);
-      
-      if (fetchedRecords.length > 0) {
-        // 添加到可用记录列表
-        setAvailableRecords(prev => {
-          const newRecords = [...prev, ...fetchedRecords];
-          return newRecords;
-        });
-
-        // 同步到 editorStore
-        const currentEditorRecords = useEditorStore.getState().records;
-        const newEditorRecords = [...currentEditorRecords, ...fetchedRecords];
-        setEditorStoreRecords(newEditorRecords);
-
-        toast.success(`成功载入 ${fetchedRecords.length} 条记录`, {
-          id: loadingToast,
-        });
-      } else {
-        toast.info('没有新记录需要载入', {
-          id: loadingToast,
-        });
-      }
-    } catch (error) {
-      console.error('[TP] 批量载入失败:', error);
-      toast.error('批量载入失败', {
-        id: loadingToast,
-      });
-    }
-  }, [batchCheckboxRecordIds, batchCheckboxTableId, fetchRecordsByIds, setEditorStoreRecords]);
-
-  // 【新增】处理批量复选框选择取消
-  const handleBatchCheckboxCancel = useCallback(() => {
-    setBatchCheckboxDialogOpen(false);
-    setBatchCheckboxRecordIds([]);
-    setBatchCheckboxTableId('');
-    setBatchCheckboxCount(0);
-    console.log('[TP] 用户取消批量载入');
-  }, []);
-
   // 获取当前表格信息
   const fetchCurrentTableInfo = useCallback(async () => {
     try {
@@ -2509,42 +2321,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           }
         });
 
-        // 【新增】注册批量复选框选择监听器
-        const unsubscribeCheckbox = onBatchCheckboxSelect((event) => {
-          const { recordIds, count, tableId, triggerType } = event?.data || {};
-          
-          if (!recordIds || recordIds.length === 0 || !tableId) {
-            return;
-          }
-          
-          console.log('[TP] 复选框批量选择事件:', {
-            count,
-            tableId,
-            triggerType,
-            recordIds: recordIds.slice(0, 5), // 只显示前5个ID
-          });
-
-          // 单选时直接载入（复用现有的点选逻辑）
-          if (count === 1 && triggerType === 'single') {
-            console.log('[TP] 复选框单选，直接载入');
-            fetchSingleRecord(recordIds[0], tableId);
-            return;
-          }
-
-          // 批量选择时显示确认弹窗
-          if (count > 1) {
-            console.log('[TP] 复选框批量选择，显示确认弹窗');
-            setBatchCheckboxRecordIds(recordIds);
-            setBatchCheckboxTableId(tableId);
-            setBatchCheckboxCount(count);
-            setBatchCheckboxDialogOpen(true);
-          }
-        });
-
-        return () => {
-          unsubscribe();
-          unsubscribeCheckbox();
-        };
+        return () => unsubscribe();
       }
     };
 
@@ -3934,32 +3711,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           console.log('[TemplatePreview] 页面配置已更新:', config);
         }}
       />
-
-      {/* 【新增】批量复选框选择确认弹窗 */}
-      <Dialog open={batchCheckboxDialogOpen} onOpenChange={setBatchCheckboxDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>批量载入确认</DialogTitle>
-            <DialogDescription>
-              你已勾选 <span className="font-semibold text-primary">{batchCheckboxCount}</span> 条记录，是否全部载入到画布排版？
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex flex-row justify-end gap-2 sm:justify-end">
-            <Button
-              variant="outline"
-              onClick={handleBatchCheckboxCancel}
-            >
-              取消
-            </Button>
-            <Button
-              onClick={handleBatchCheckboxConfirm}
-              className="bg-primary hover:bg-primary/90"
-            >
-              全部载入
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
