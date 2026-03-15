@@ -219,7 +219,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
         setFields(appFields);
         setFieldTypeMap(fieldTypeMap);
         
-        // 【获取表格对象用于附件处理】
+        // 【获取表格对象用于附件处理】 //lock
         const activeTable = await base.getActiveTable();
         console.log('[EditorPage] 获取到活跃表格:', !!activeTable);
 
@@ -236,16 +236,16 @@ export function EditorPage({ onExit }: EditorPageProps) {
             _rowIndex: index,
           }));
           
-          // 【新增】处理附件字段 - 传入 table 参数
+          // 【新增】处理附件字段 - 传入 table 参数 //lock
           console.log('[EditorPage] 开始处理附件字段...');
           const processedRecords = await Promise.all(
             appRecords.map(async (record) => {
               try {
-                const processed = await processRecordAttachments(
+                const processed = await processRecordAttachments( //lock
                   record,
                   appFields,
                   fieldTypeMap,
-                  activeTable  // 【关键修复】传入 table 参数
+                  activeTable  // 【关键修复】传入 table 参数 //lock
                 );
                 console.log(`[EditorPage] 记录 ${record.id} 附件处理完成:`, 
                   Object.keys(processed).filter(k => k.includes('_html')));
@@ -331,7 +331,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
             setFields(appFields);
             console.log('[EditorPage] 字段已刷新:', appFields);
             
-            // 【获取表格对象用于附件处理】
+            // 【获取表格对象用于附件处理】 //lock
             const { base } = await import('@lark-base-open/js-sdk');
             const newTable = await base.getActiveTable();
             console.log('[EditorPage] 获取到新表格:', !!newTable);
@@ -345,11 +345,11 @@ export function EditorPage({ onExit }: EditorPageProps) {
                 _rowIndex: index,
               }));
               
-              // 【新增】处理附件字段 - 传入 table 参数
+              // 【新增】处理附件字段 - 传入 table 参数 //lock
               const processedRecords = await Promise.all(
                 appRecords.map(async (record) => {
                   try {
-                    return await processRecordAttachments(record, appFields, fieldTypeMap, newTable);
+                    return await processRecordAttachments(record, appFields, fieldTypeMap, newTable); //lock
                   } catch (err) {
                     console.error(`[EditorPage] 记录 ${record.id} 附件处理失败:`, err);
                     return record;
@@ -381,7 +381,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
             const currentFields = useEditorStore.getState().fields;
             const currentFieldTypeMap = useEditorStore.getState().fieldTypeMap;
             
-            // 【获取表格对象用于附件处理】
+            // 【获取表格对象用于附件处理】 //lock
             const { base } = await import('@lark-base-open/js-sdk');
             const currentTable = await base.getActiveTable();
             console.log('[EditorPage] 获取到当前表格:', !!currentTable);
@@ -392,16 +392,16 @@ export function EditorPage({ onExit }: EditorPageProps) {
               _rowIndex: index,
             }));
             
-            // 【新增】处理附件字段 - 传入 table 参数
+            // 【新增】处理附件字段 - 传入 table 参数 //lock
             console.log('[EditorPage] 累积添加记录前处理附件...');
             const processedRecords = await Promise.all(
               appRecords.map(async (record) => {
                 try {
-                  const processed = await processRecordAttachments(
+                  const processed = await processRecordAttachments( //lock
                     record, 
                     currentFields, 
                     currentFieldTypeMap,
-                    currentTable  // 【关键修复】传入 table 参数
+                    currentTable  // 【关键修复】传入 table 参数 //lock
                   );
                   console.log(`[EditorPage] 记录 ${record.id} 附件处理完成`);
                   return processed;
