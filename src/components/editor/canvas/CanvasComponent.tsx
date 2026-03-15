@@ -1926,7 +1926,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                 tagName="span"
                                 textStyle={cellStyle}
                                 attachmentConfigs={attachmentConfigs}
-                                isEditing={isCurrentTableEditing}
+                                isEditing={false}
                                 onEditAttachment={handleEditAttachmentVariable}
                                 onDeleteAttachment={(fieldName) => {
                                   // 从单元格内容中删除该字段
@@ -1956,7 +1956,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                 tagName="span"
                                 textStyle={cellStyle}
                                 attachmentConfigs={attachmentConfigs}
-                                isEditing={isCurrentTableEditing}
+                                isEditing={false}
                                 onEditAttachment={handleEditAttachmentVariable}
                                 onDeleteAttachment={(fieldName) => {
                                   const newContent = cellContent.replace(
@@ -1993,7 +1993,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                   fieldTypeMap={fieldTypeMap}
                                   tagName="span"
                                   textStyle={cellStyle}
-                                  isEditing={isCurrentTableEditing}
+                                  isEditing={false}
                                   attachmentConfigs={attachmentConfigs}
                                   onEditAttachment={handleEditAttachmentVariable}
                                   onDeleteAttachment={(fieldName) => {
@@ -2031,7 +2031,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                   fieldTypeMap={fieldTypeMap}
                                   tagName="span"
                                   textStyle={cellStyle}
-                                  isEditing={isCurrentTableEditing}
+                                  isEditing={false}
                                   attachmentConfigs={attachmentConfigs}
                                   onEditAttachment={handleEditAttachmentVariable}
                                   onDeleteAttachment={(fieldName) => {
@@ -2070,7 +2070,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                                 tagName="span"
                                 textStyle={cellStyle}
                                 attachmentConfigs={attachmentConfigs}
-                                isEditing={isCurrentTableEditing}
+                                isEditing={false}
                                 onEditAttachment={handleEditAttachmentVariable}
                                 onDeleteAttachment={(fieldName) => {
                                   const newContent = cellContent.replace(
@@ -2095,7 +2095,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
                               tagName="span"
                               textStyle={cellStyle}
                               attachmentConfigs={attachmentConfigs}
-                              isEditing={isCurrentTableEditing}
+                              isEditing={false}
                               onEditAttachment={handleEditAttachmentVariable}
                               onDeleteAttachment={(fieldName) => {
                                 const newContent = cellContent.replace(
