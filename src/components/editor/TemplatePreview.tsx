@@ -1394,8 +1394,13 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     getCurrentRecord,
   } = useSelectedDataStore();
   
-  // 【关键修复】获取 editorStore 的 setRecords 方法，确保 CanvasComponent 能获取到处理后的数据
-  const { setRecords: setEditorStoreRecords, records: editorStoreRecords } = useEditorStore();
+  // 【关键修复】获取 editorStore 的 setRecords、addRecords 和 clearRecords 方法
+  const { 
+    setRecords: setEditorStoreRecords, 
+    addRecords: addEditorStoreRecords,
+    clearRecords: clearEditorStoreRecords,
+    records: editorStoreRecords 
+  } = useEditorStore();
 
   // 使用飞书SDK（使用 feishu-env）
   const isFeishuEnvironment = feishuEnv.isFeishuEnvironment();
@@ -1527,7 +1532,10 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       validateRendering(availableRecords[0]);
     }
     
-    // 【关键修复】同步 availableRecords 到 editorStore，确保 CanvasComponent 能获取处理后的数据
+    // 【关键修复】同步 availableRecords 到 editorStore，使用累积模式避免覆盖
+    // 注意：这里不再使用 setEditorStoreRecords 覆盖，而是让数据保持一致
+    // availableRecords 是 TemplatePreview 本地管理的记录列表，editorStore.records 是全局状态
+    // 两者的数据应该同步，但不要覆盖用户在其他地方（如 EditorPage）累积的记录
     if (availableRecords.length > 0) {
       // 调试：检查要同步的数据
       availableRecords.forEach((record, idx) => {
@@ -1535,10 +1543,18 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         console.log(`[TP] useEffect: 记录[${idx}] 的 _html 字段:`, htmlFields);
       });
       
-      console.log('[TP] useEffect: 同步 availableRecords 到 editorStore:', availableRecords.length, '条记录');
-      setEditorStoreRecords(availableRecords);
+      // 【关键修复】检查 editorStore 中是否已有记录，避免重复添加
+      const existingIds = new Set(editorStoreRecords.map(r => r.id as string));
+      const newRecords = availableRecords.filter(r => !existingIds.has(r.id as string));
+      
+      if (newRecords.length > 0) {
+        console.log('[TP] useEffect: 累积添加新记录到 editorStore:', newRecords.length, '条');
+        addEditorStoreRecords(newRecords);
+      } else {
+        console.log('[TP] useEffect: 所有记录已存在于 editorStore，跳过同步');
+      }
     }
-  }, [availableRecords]);
+  }, [availableRecords, editorStoreRecords, addEditorStoreRecords]);
   
   // 渲染验证函数
   const validateRendering = (record: Record<string, any>) => {
@@ -1931,11 +1947,9 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         return [...prev, finalRecord];
       });
       
-      // 【关键修复】同时更新 editorStore 的 records，确保 CanvasComponent 能获取到包含 _html 字段的数据
-      const currentEditorRecords = useEditorStore.getState().records;
-      const newEditorRecords = [...currentEditorRecords, recordWithAttachments];
-      setEditorStoreRecords(newEditorRecords);
-      console.log('[TP] 已更新 editorStore.records:', newEditorRecords.length, '条记录');
+      // 【关键修复】使用 addEditorStoreRecords 累积记录，而不是覆盖
+      addEditorStoreRecords([recordWithAttachments]);
+      console.log('[TP] 已累积添加记录到 editorStore');
       console.log('[TP] 最新记录包含 _html 字段:', Object.keys(recordWithAttachments).filter(k => k.includes('_html')));
       
       console.log('[TP] 记录已添加到列表（含附件处理）');
@@ -1949,7 +1963,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       requestLockRef.current.isLocked = false;
     }
     console.log('[TP] ========== 获取单条记录结束 ==========');
-  }, [selectedTemplate, availableRecords, ignoredRecordIds, setEditorStoreRecords]);
+  }, [selectedTemplate, availableRecords, ignoredRecordIds, addEditorStoreRecords]);
 
   // 从 feishu-env 获取选中记录（多选时使用）
   const fetchSelectedRecordsFromEnv = useCallback(async () => {
@@ -2208,9 +2222,16 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         
         setAvailableRecords(newRecords);
         
-        // 【关键修复】立即同步到 editorStore，不依赖 useEffect
-        console.log('[TP] 【立即同步】直接调用 setEditorStoreRecords');
-        setEditorStoreRecords(newRecords);
+        // 【关键修复】只添加新记录到 editorStore，不覆盖已有记录
+        const existingEditorIds = new Set(editorStoreRecords.map(r => r.id as string));
+        const recordsToAdd = newRecords.filter(r => !existingEditorIds.has(r.id as string));
+        
+        if (recordsToAdd.length > 0) {
+          console.log('[TP] 【立即同步】累积添加', recordsToAdd.length, '条新记录到 editorStore');
+          addEditorStoreRecords(recordsToAdd);
+        } else {
+          console.log('[TP] 【立即同步】所有记录已存在于 editorStore，跳过');
+        }
         
         console.log('[TP] ========== fetchSelectedRecordsFromEnv 结束 ==========');
       } else {
@@ -2222,7 +2243,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
       // 释放锁
       requestLockRef.current.isLocked = false;
     }
-  }, [isTableMatched, selectedTemplate, ignoredRecordIds, setEditorStoreRecords, availableRecords]);
+  }, [isTableMatched, selectedTemplate, ignoredRecordIds, addEditorStoreRecords, availableRecords, editorStoreRecords]);
   
   // 获取当前表格信息
   const fetchCurrentTableInfo = useCallback(async () => {
@@ -2576,7 +2597,8 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
         console.log('[TP] 设置 records:', formattedRecords.length, '条');
         setSelectedDataRecords(formattedRecords as SelectedRecord[]);
-        setEditorStoreRecords(formattedRecords); // 【关键修复】同时更新 editorStore，使 CanvasComponent 能获取数据
+        // 【关键修复】使用累积模式添加记录，而不是覆盖
+        addEditorStoreRecords(formattedRecords);
         setCurrentIndex(0);
         // 更新可用记录列表
         setAvailableRecords(formattedRecords);
@@ -2590,7 +2612,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         console.log('[TP] 未获取到任何记录');
         toast.info('未获取到任何记录');
         setSelectedDataRecords([]);
-        setEditorStoreRecords([]); // 【关键修复】同时清空 editorStore
+        clearEditorStoreRecords(); // 【关键修复】使用 clearRecords 清空
         setCurrentIndex(0);
         setAvailableRecords([]);
       }
@@ -2600,7 +2622,7 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     } finally {
       setIsLoading(false);
     }
-  }, [isFeishuEnvironment, setSelectedDataRecords, setEditorStoreRecords, setCurrentIndex, showDebugInfo]);
+  }, [isFeishuEnvironment, setSelectedDataRecords, clearEditorStoreRecords, addEditorStoreRecords, setCurrentIndex, showDebugInfo]);
 
   // 扫描 Checkbox（功能已移除，显示提示）
   // 获取当前选中的模板
