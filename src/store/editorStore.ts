@@ -426,10 +426,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   
   addRecords: (newRecords) => {
     const state = get();
+    console.log('[EditorStore] addRecords 被调用:', {
+      newRecordsCount: newRecords.length,
+      existingRecordsCount: state.records.length,
+      newRecordsFirstId: newRecords[0]?.id,
+    });
+    
     const existingIds = new Set(state.records.map(r => r.id as string));
     
     // 过滤出不存在的记录
     const recordsToAdd = newRecords.filter(r => !existingIds.has(r.id as string));
+    
+    console.log('[EditorStore] 需要添加的记录数:', recordsToAdd.length);
     
     if (recordsToAdd.length > 0) {
       // 重新计算 _rowIndex
@@ -441,7 +449,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           _rowIndex: startIndex + idx,
         });
       });
+      
+      console.log('[EditorStore] 更新后的记录总数:', updatedRecords.length);
       set({ records: updatedRecords });
+      
+      // 确认更新成功
+      setTimeout(() => {
+        const newState = get();
+        console.log('[EditorStore] 更新后的 store.records 长度:', newState.records.length);
+      }, 0);
     }
   },
   

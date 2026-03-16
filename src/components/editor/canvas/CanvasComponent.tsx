@@ -93,23 +93,31 @@ interface CanvasComponentProps {
 }
 
 export function CanvasComponent({ component, isSelected, onSelect }: CanvasComponentProps) {
-  const { 
-    updateComponent, 
-    styleConfig, 
-    duplicateComponent, 
-    deleteComponent,
-    tableEditing,
-    setTableEditing,
-    tableCellEditing,
-    setTableCellEditing,
-    records,
-    fields,
-    fieldTypeMap, // 【新增】
-    selectComponent,
-    attachmentConfigs,
-    setAttachmentConfig,
-    deleteAttachmentConfig,
-  } = useEditorStore();
+  // 使用选择器订阅状态，确保组件在 records 变化时重新渲染
+  const records = useEditorStore(state => state.records);
+  const fields = useEditorStore(state => state.fields);
+  const fieldTypeMap = useEditorStore(state => state.fieldTypeMap);
+  const styleConfig = useEditorStore(state => state.styleConfig);
+  const tableEditing = useEditorStore(state => state.tableEditing);
+  const setTableEditing = useEditorStore(state => state.setTableEditing);
+  const tableCellEditing = useEditorStore(state => state.tableCellEditing);
+  const setTableCellEditing = useEditorStore(state => state.setTableCellEditing);
+  const updateComponent = useEditorStore(state => state.updateComponent);
+  const duplicateComponent = useEditorStore(state => state.duplicateComponent);
+  const deleteComponent = useEditorStore(state => state.deleteComponent);
+  const selectComponent = useEditorStore(state => state.selectComponent);
+  const attachmentConfigs = useEditorStore(state => state.attachmentConfigs);
+  const setAttachmentConfig = useEditorStore(state => state.setAttachmentConfig);
+  const deleteAttachmentConfig = useEditorStore(state => state.deleteAttachmentConfig);
+
+  // 【调试】监听 records 变化
+  useEffect(() => {
+    console.log('[CanvasComponent] records 变化:', {
+      recordsCount: records?.length || 0,
+      firstRecordId: records?.[0]?.id,
+      recordsPreview: records?.slice(0, 2).map(r => ({ id: r.id, _rowIndex: r._rowIndex })),
+    });
+  }, [records]);
 
   // 获取预览用的记录（优先使用第一条记录）- 用于非编辑状态下的变量渲染
   const previewRecord = (() => {
