@@ -172,7 +172,21 @@ export function EditorPage({ onExit }: EditorPageProps) {
         // 获取当前表格信息
         const { base } = await import('@lark-base-open/js-sdk');
         const selection = await base.getSelection();
+        
+        // 🔥 检查是否已清理
+        if (isCleaned) {
+          console.log('[EditorPage] 组件已清理，取消初始化（获取selection后）');
+          return;
+        }
+        
         const tableName = await feishuEnv.fetchTableName();
+        
+        // 🔥 检查是否已清理
+        if (isCleaned) {
+          console.log('[EditorPage] 组件已清理，取消初始化（获取tableName后）');
+          return;
+        }
+        
         setCurrentTableInfo({
           tableId: selection?.tableId || null,
           tableName: tableName,
@@ -183,6 +197,13 @@ export function EditorPage({ onExit }: EditorPageProps) {
         // 1. 获取字段
         console.log('[EditorPage] 获取字段...');
         const fields = await feishuEnv.fetchFields();
+        
+        // 🔥 检查是否已清理
+        if (isCleaned) {
+          console.log('[EditorPage] 组件已清理，取消初始化（获取fields后）');
+          return;
+        }
+        
         console.log('[EditorPage] 获取到字段:', fields);
         
         // 转换字段格式（添加 fieldKind 标记）
@@ -231,11 +252,25 @@ export function EditorPage({ onExit }: EditorPageProps) {
         
         // 【获取表格对象用于附件处理】 //lock
         const activeTable = await base.getActiveTable();
+        
+        // 🔥 检查是否已清理
+        if (isCleaned) {
+          console.log('[EditorPage] 组件已清理，取消初始化（获取activeTable后）');
+          return;
+        }
+        
         console.log('[EditorPage] 获取到活跃表格:', !!activeTable);
 
         // 2. 默认获取第一条记录
         console.log('[EditorPage] 获取第一条记录...');
         const records = await feishuEnv.getSelectedRecords();
+        
+        // 🔥 检查是否已清理
+        if (isCleaned) {
+          console.log('[EditorPage] 组件已清理，取消初始化（获取records后）');
+          return;
+        }
+        
         console.log('[EditorPage] 获取到记录:', records);
         
         if (records.length > 0) {
@@ -266,6 +301,12 @@ export function EditorPage({ onExit }: EditorPageProps) {
               }
             })
           );
+          
+          // 🔥 检查是否已清理
+          if (isCleaned) {
+            console.log('[EditorPage] 组件已清理，取消初始化（处理附件后）');
+            return;
+          }
           
           setFeishuRecords(records);
           setRecords(processedRecords as unknown as Record<string, unknown>[]);
@@ -305,6 +346,13 @@ export function EditorPage({ onExit }: EditorPageProps) {
             
             // 获取新表格信息
             const tableName = await feishuEnv.fetchTableName();
+            
+            // 🔥 检查是否已清理
+            if (isCleaned) {
+              console.log('[EditorPage] 组件已清理，取消表格变化处理（获取tableName后）');
+              return;
+            }
+            
             setCurrentTableInfo({
               tableId: newTableId,
               tableName: tableName,
@@ -314,6 +362,13 @@ export function EditorPage({ onExit }: EditorPageProps) {
             // 重新获取字段（带 fieldKind）
             console.log('[EditorPage] 重新获取字段...');
             const fields = await feishuEnv.fetchFields();
+            
+            // 🔥 检查是否已清理
+            if (isCleaned) {
+              console.log('[EditorPage] 组件已清理，取消表格变化处理（获取fields后）');
+              return;
+            }
+            
             const appFields = fields.map((field: any) => {
               let fieldKind: Field['fieldKind'] = 'other';
               const fieldType = String(field.type);
@@ -354,10 +409,24 @@ export function EditorPage({ onExit }: EditorPageProps) {
             // 【获取表格对象用于附件处理】 //lock
             const { base } = await import('@lark-base-open/js-sdk');
             const newTable = await base.getActiveTable();
+            
+            // 🔥 检查是否已清理
+            if (isCleaned) {
+              console.log('[EditorPage] 组件已清理，取消表格变化处理（获取newTable后）');
+              return;
+            }
+            
             console.log('[EditorPage] 获取到新表格:', !!newTable);
             
             // 重新获取记录
             const records = await feishuEnv.getSelectedRecords();
+            
+            // 🔥 检查是否已清理
+            if (isCleaned) {
+              console.log('[EditorPage] 组件已清理，取消表格变化处理（获取records后）');
+              return;
+            }
+            
             if (records.length > 0) {
               const appRecords = records.map((record, index) => ({
                 id: record.id,
@@ -376,6 +445,12 @@ export function EditorPage({ onExit }: EditorPageProps) {
                   }
                 })
               );
+              
+              // 🔥 检查是否已清理
+              if (isCleaned) {
+                console.log('[EditorPage] 组件已清理，取消表格变化处理（处理附件后）');
+                return;
+              }
               
               setFeishuRecords(records);
               setRecords(processedRecords as unknown as Record<string, unknown>[]);
@@ -399,6 +474,13 @@ export function EditorPage({ onExit }: EditorPageProps) {
           }
           
           const records = await feishuEnv.getSelectedRecords();
+          
+          // 🔥 检查是否已清理
+          if (isCleaned) {
+            console.log('[EditorPage] 组件已清理，取消记录累积处理（获取records后）');
+            return;
+          }
+          
           console.log('[EditorPage] 获取到新的选中记录:', records);
           
           if (records.length > 0) {
@@ -409,6 +491,13 @@ export function EditorPage({ onExit }: EditorPageProps) {
             // 【获取表格对象用于附件处理】 //lock
             const { base } = await import('@lark-base-open/js-sdk');
             const currentTable = await base.getActiveTable();
+            
+            // 🔥 检查是否已清理
+            if (isCleaned) {
+              console.log('[EditorPage] 组件已清理，取消记录累积处理（获取currentTable后）');
+              return;
+            }
+            
             console.log('[EditorPage] 获取到当前表格:', !!currentTable);
             
             const appRecords = records.map((record, index) => ({
@@ -436,6 +525,12 @@ export function EditorPage({ onExit }: EditorPageProps) {
                 }
               })
             );
+            
+            // 🔥 检查是否已清理
+            if (isCleaned) {
+              console.log('[EditorPage] 组件已清理，取消记录累积处理（处理附件后）');
+              return;
+            }
             
             console.log('[EditorPage] 累积添加记录到 store:', {
               count: processedRecords.length,
