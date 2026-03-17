@@ -16,7 +16,7 @@ import {
   offFeishuReady,
   offNotFeishu
 } from '@/lib/feishu-env';
-import { fetchFields as fetchFieldsFromService, fetchRecords as fetchRecordsFromService, initEnvironment } from '@/lib/feishu-service';
+import { fetchFields as fetchFieldsFromService } from '@/lib/feishu-service';
 import { Field, FeishuContext } from '@/types/editor';
 import { useEditorStore } from '@/store/editorStore';
 import { mockBitableData } from '@/data/mockData';
@@ -117,7 +117,6 @@ export function usePrintSDK(): UsePrintSDKResult {
   };
 
   // 加载真实数据（内部函数，不使用 useCallback）
-  // 🔥 新架构：统一使用后端 API 模式
   const loadRealDataInternal = async () => {
     if (isLoadingData.current) {
       console.log('[PrintSDK] 已有数据加载中，跳过真实数据加载');
@@ -125,34 +124,30 @@ export function usePrintSDK(): UsePrintSDKResult {
     }
     isLoadingData.current = true;
     
-    console.log('[PrintSDK] 加载真实数据（API 模式）...');
+    console.log('[PrintSDK] 加载真实数据...');
     setIsLoading(true);
     setFeishuContextLoading(true);
 
     try {
-      // 🔥 步骤1：初始化环境，获取 appToken 和 tableId
-      console.log('[PrintSDK] 初始化环境...');
-      const envResult = await initEnvironment();
-      console.log('[PrintSDK] 环境初始化结果:', envResult);
-
-      if (!envResult.success) {
-        console.error('[PrintSDK] 环境初始化失败');
-        setError('环境初始化失败，请检查权限配置');
-        setIsLoading(false);
-        setFeishuContextLoading(false);
-        isLoadingData.current = false;
-        return;
-      }
-
-      // 设置表格名称
-      const name = envResult.tableName || '未命名表格';
+      // 获取表格名称
+      const name = await feishuEnv.fetchTableName();
       setTableName(name);
       setIsFeishuEnvironment(true);
       setFeishuEnvironment(true);
 
-      // 🔥 步骤2：获取字段（通过后端 API）
+      // 初始化飞书上下文（获取元数据、字段映射、首条记录）
+      console.log('[PrintSDK] 开始初始化飞书上下文...');
+      const context = await feishuEnv.initFeishuContext();
+      console.log('[PrintSDK] 飞书上下文初始化结果:', context);
+      
+      if (context) {
+        setFeishuContext(context);
+      }
+
+      // 获取字段（场景：创建模板时读取，可使用缓存）
       console.log('[PrintSDK] 开始获取字段...');
       const feishuFields = await fetchFieldsFromService({ scene: 'create_template' });
+      console.log('[PrintSDK] fetchFieldsFromService() 返回:', feishuFields);
       console.log('[PrintSDK] 获取到字段数量:', feishuFields.length);
 
       if (feishuFields.length === 0) {
@@ -160,43 +155,33 @@ export function usePrintSDK(): UsePrintSDKResult {
         setError('未获取到字段数据，请检查权限配置');
       }
 
-      // 设置字段到 store
-      setFields(feishuFields);
-      setStoreFields(feishuFields);
+      // 统一服务层已经返回标准 Field 格式，直接使用
+      const convertedFields: Field[] = feishuFields;
+      console.log('[PrintSDK] 转换后的字段:', convertedFields);
+      console.log('[PrintSDK] 准备设置到 store 和 store...');
+      setFields(convertedFields);
+      setStoreFields(convertedFields);
       console.log('[PrintSDK] 字段已设置到 store');
 
-      // 🔥 步骤3：获取记录（通过后端 API）
-      console.log('[PrintSDK] 开始获取记录...');
-      const feishuRecords = await fetchRecordsFromService();
-      console.log('[PrintSDK] 获取到记录数量:', feishuRecords.length);
+      // 获取记录
+      const feishuRecords = await feishuEnv.fetchRecords();
+      console.log('[PrintSDK] 获取到记录:', feishuRecords.length);
 
       const convertedRecords = feishuRecords.map(r => ({
         id: r.id,
         __tableName__: name,
-        ...r,
+        ...r.fields,
       }));
       setRecords(convertedRecords);
       setStoreRecords(convertedRecords);
 
-      // 设置调试信息
       setDebugInfo({
-        dataSource: 'api',
-        appToken: envResult.appToken,
-        tableId: envResult.tableId,
-        tableName: name,
+        ...feishuEnv.getDebugInfo(),
+        dataSource: 'feishu',
         fieldsCount: feishuFields.length,
         recordsCount: feishuRecords.length,
+        hasContext: !!context,
       });
-
-      // 设置飞书上下文（兼容旧代码）
-      const context: FeishuContext = {
-        appToken: envResult.appToken || '',
-        targetTableId: envResult.tableId || '',
-        fieldNameToIdMap: {},
-        firstRecordData: feishuRecords[0] || null,
-        appMetadata: null,
-      };
-      setFeishuContext(context);
 
       setError(null);
     } catch (err) {

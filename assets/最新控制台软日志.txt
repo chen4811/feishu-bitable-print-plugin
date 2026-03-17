@@ -1,491 +1,1800 @@
-index.ts:388 [Console Bridge] Cannot send message: parent origin not allowed or not detected
-postMessageToParent @ index.ts:388
-send @ index.ts:403
-console.<computed> @ index.ts:413
-eval @ forward-logs-shared.js:31
-TemplatePreview.useCallback[handleSelectTemplate] @ TemplatePreview.tsx:2468
-onClick @ TemplatePreview.tsx:3050
-executeDispatch @ react-dom-client.development.js:20543
-runWithFiberInDEV @ react-dom-client.development.js:986
-processDispatchQueue @ react-dom-client.development.js:20593
-eval @ react-dom-client.development.js:21164
-batchedUpdates$1 @ react-dom-client.development.js:3377
-dispatchEventForPluginEventSystem @ react-dom-client.development.js:20747
-dispatchEvent @ react-dom-client.development.js:25693
-dispatchDiscreteEvent @ react-dom-client.development.js:25661
-<button>
-exports.jsxDEV @ react-jsx-dev-runtime.development.js:342
-eval @ TemplatePreview.tsx:3048
-TemplatePreview @ TemplatePreview.tsx:3042
-react_stack_bottom_frame @ react-dom-client.development.js:28038
-renderWithHooksAgain @ react-dom-client.development.js:8084
-renderWithHooks @ react-dom-client.development.js:7996
-updateFunctionComponent @ react-dom-client.development.js:10501
-beginWork @ react-dom-client.development.js:12136
-runWithFiberInDEV @ react-dom-client.development.js:986
-performUnitOfWork @ react-dom-client.development.js:18997
-workLoopSync @ react-dom-client.development.js:18825
-renderRootSync @ react-dom-client.development.js:18806
-performWorkOnRoot @ react-dom-client.development.js:17835
-performSyncWorkOnRoot @ react-dom-client.development.js:20399
-flushSyncWorkAcrossRoots_impl @ react-dom-client.development.js:20241
-processRootScheduleInMicrotask @ react-dom-client.development.js:20280
-eval @ react-dom-client.development.js:20418
-index.ts:414 [TemplatePreview] 选择模板: {name: '安全检查记录', id: 23, tableId: 'tblRCwmdw4yGjxZV', tableName: '多维表格', hasData: true}
-index.ts:388 [Console Bridge] Cannot send message: parent origin not allowed or not detected
-postMessageToParent @ index.ts:388
-send @ index.ts:403
-console.<computed> @ index.ts:413
-eval @ forward-logs-shared.js:31
-TemplatePreview.useCallback[handleSelectTemplate] @ TemplatePreview.tsx:2479
-onClick @ TemplatePreview.tsx:3050
-executeDispatch @ react-dom-client.development.js:20543
-runWithFiberInDEV @ react-dom-client.development.js:986
-processDispatchQueue @ react-dom-client.development.js:20593
-eval @ react-dom-client.development.js:21164
-batchedUpdates$1 @ react-dom-client.development.js:3377
-dispatchEventForPluginEventSystem @ react-dom-client.development.js:20747
-dispatchEvent @ react-dom-client.development.js:25693
-dispatchDiscreteEvent @ react-dom-client.development.js:25661
-<button>
-exports.jsxDEV @ react-jsx-dev-runtime.development.js:342
-eval @ TemplatePreview.tsx:3048
-TemplatePreview @ TemplatePreview.tsx:3042
-react_stack_bottom_frame @ react-dom-client.development.js:28038
-renderWithHooksAgain @ react-dom-client.development.js:8084
-renderWithHooks @ react-dom-client.development.js:7996
-updateFunctionComponent @ react-dom-client.development.js:10501
-beginWork @ react-dom-client.development.js:12136
-runWithFiberInDEV @ react-dom-client.development.js:986
-performUnitOfWork @ react-dom-client.development.js:18997
-workLoopSync @ react-dom-client.development.js:18825
-renderRootSync @ react-dom-client.development.js:18806
-performWorkOnRoot @ react-dom-client.development.js:17835
-performSyncWorkOnRoot @ react-dom-client.development.js:20399
-flushSyncWorkAcrossRoots_impl @ react-dom-client.development.js:20241
-processRootScheduleInMicrotask @ react-dom-client.development.js:20280
-eval @ react-dom-client.development.js:20418
-index.ts:414 [TemplatePreview] 从模板加载页面配置: {size: 'A4', margins: {…}, continuous: false, orientation: 'portrait'}
-index.ts:388 [Console Bridge] Cannot send message: parent origin not allowed or not detected
-postMessageToParent @ index.ts:388
-send @ index.ts:403
-console.<computed> @ index.ts:413
-eval @ forward-logs-shared.js:31
-TemplatePreview.useCallback[handleSelectTemplate] @ TemplatePreview.tsx:2519
-onClick @ TemplatePreview.tsx:3050
-executeDispatch @ react-dom-client.development.js:20543
-runWithFiberInDEV @ react-dom-client.development.js:986
-processDispatchQueue @ react-dom-client.development.js:20593
-eval @ react-dom-client.development.js:21164
-batchedUpdates$1 @ react-dom-client.development.js:3377
-dispatchEventForPluginEventSystem @ react-dom-client.development.js:20747
-dispatchEvent @ react-dom-client.development.js:25693
-dispatchDiscreteEvent @ react-dom-client.development.js:25661
-<button>
-exports.jsxDEV @ react-jsx-dev-runtime.development.js:342
-eval @ TemplatePreview.tsx:3048
-TemplatePreview @ TemplatePreview.tsx:3042
-react_stack_bottom_frame @ react-dom-client.development.js:28038
-renderWithHooksAgain @ react-dom-client.development.js:8084
-renderWithHooks @ react-dom-client.development.js:7996
-updateFunctionComponent @ react-dom-client.development.js:10501
-beginWork @ react-dom-client.development.js:12136
-runWithFiberInDEV @ react-dom-client.development.js:986
-performUnitOfWork @ react-dom-client.development.js:18997
-workLoopSync @ react-dom-client.development.js:18825
-renderRootSync @ react-dom-client.development.js:18806
-performWorkOnRoot @ react-dom-client.development.js:17835
-performSyncWorkOnRoot @ react-dom-client.development.js:20399
-flushSyncWorkAcrossRoots_impl @ react-dom-client.development.js:20241
-processRootScheduleInMicrotask @ react-dom-client.development.js:20280
-eval @ react-dom-client.development.js:20418
-index.ts:414 [TemplatePreview] 选中模板详情: {templateName: '安全检查记录', templateId: 23, hasData: true, componentCount: 1, pageConfig: {…}, …}canvasSize: "210mm × 297mm"componentCount: 1components: [{…}]hasData: truepageConfig: {size: 'A4', margins: {…}, continuous: false, orientation: 'portrait'}templateId: 23templateName: "安全检查记录"[[Prototype]]: Object
-index.ts:388 [Console Bridge] Cannot send message: parent origin not allowed or not detected
-postMessageToParent @ index.ts:388
-send @ index.ts:403
-console.<computed> @ index.ts:413
-eval @ forward-logs-shared.js:31
-TemplatePreview.useEffect @ TemplatePreview.tsx:1473
-react_stack_bottom_frame @ react-dom-client.development.js:28123
-runWithFiberInDEV @ react-dom-client.development.js:986
-commitHookEffectListMount @ react-dom-client.development.js:13692
-commitHookPassiveMountEffects @ react-dom-client.development.js:13779
-commitPassiveMountOnFiber @ react-dom-client.development.js:16733
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16753
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16753
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16753
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16753
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16753
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16753
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16753
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16768
-flushPassiveEffects @ react-dom-client.development.js:19859
-flushPendingEffects @ react-dom-client.development.js:19785
-flushSpawnedWork @ react-dom-client.development.js:19741
-commitRoot @ react-dom-client.development.js:19335
-commitRootWhenReady @ react-dom-client.development.js:18178
-performWorkOnRoot @ react-dom-client.development.js:18054
-performSyncWorkOnRoot @ react-dom-client.development.js:20399
-flushSyncWorkAcrossRoots_impl @ react-dom-client.development.js:20241
-processRootScheduleInMicrotask @ react-dom-client.development.js:20280
-eval @ react-dom-client.development.js:20418
-index.ts:414 [TP] 选中记录变化: 0 条
-index.ts:388 [Console Bridge] Cannot send message: parent origin not allowed or not detected
-postMessageToParent @ index.ts:388
-send @ index.ts:403
-console.<computed> @ index.ts:413
-eval @ forward-logs-shared.js:31
-TemplatePreview.useEffect @ TemplatePreview.tsx:1478
-react_stack_bottom_frame @ react-dom-client.development.js:28123
-runWithFiberInDEV @ react-dom-client.development.js:986
-commitHookEffectListMount @ react-dom-client.development.js:13692
-commitHookPassiveMountEffects @ react-dom-client.development.js:13779
-commitPassiveMountOnFiber @ react-dom-client.development.js:16733
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16753
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16753
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16753
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16753
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16753
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16753
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16753
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16768
-flushPassiveEffects @ react-dom-client.development.js:19859
-flushPendingEffects @ react-dom-client.development.js:19785
-flushSpawnedWork @ react-dom-client.development.js:19741
-commitRoot @ react-dom-client.development.js:19335
-commitRootWhenReady @ react-dom-client.development.js:18178
-performWorkOnRoot @ react-dom-client.development.js:18054
-performSyncWorkOnRoot @ react-dom-client.development.js:20399
-flushSyncWorkAcrossRoots_impl @ react-dom-client.development.js:20241
-processRootScheduleInMicrotask @ react-dom-client.development.js:20280
-eval @ react-dom-client.development.js:20418
-index.ts:414 [TP] 可用记录变化: 0 条
-index.ts:388 [Console Bridge] Cannot send message: parent origin not allowed or not detected
-postMessageToParent @ index.ts:388
-send @ index.ts:403
-console.<computed> @ index.ts:413
-eval @ forward-logs-shared.js:31
-debugLog @ feishu-env.ts:24
-onSelectionChange @ feishu-env.ts:423
-TemplatePreview.useEffect.init @ TemplatePreview.tsx:2320
-await in TemplatePreview.useEffect.init
-TemplatePreview.useEffect @ TemplatePreview.tsx:2354
-react_stack_bottom_frame @ react-dom-client.development.js:28123
-runWithFiberInDEV @ react-dom-client.development.js:986
-commitHookEffectListMount @ react-dom-client.development.js:13692
-commitHookPassiveMountEffects @ react-dom-client.development.js:13779
-commitPassiveMountOnFiber @ react-dom-client.development.js:16733
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16753
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16753
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16753
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16753
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16753
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16753
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16753
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16725
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:17010
-recursivelyTraversePassiveMountEffects @ react-dom-client.development.js:16678
-commitPassiveMountOnFiber @ react-dom-client.development.js:16768
-flushPassiveEffects @ react-dom-client.development.js:19859
-flushPendingEffects @ react-dom-client.development.js:19785
-flushSpawnedWork @ react-dom-client.development.js:19741
-commitRoot @ react-dom-client.development.js:19335
-commitRootWhenReady @ react-dom-client.development.js:18178
-performWorkOnRoot @ react-dom-client.development.js:18054
-performSyncWorkOnRoot @ react-dom-client.development.js:20399
-flushSyncWorkAcrossRoots_impl @ react-dom-client.development.js:20241
-processRootScheduleInMicrotask @ react-dom-client.development.js:20280
-eval @ react-dom-client.development.js:20418
-index.ts:414 [FeishuEnv][2026-03-17T15:44:45.895Z] 注册选中变化监听器 
-The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
-The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
-The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
-The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
-The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
-The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
-The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+ CozeHtmlEditorRenderer loaded
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [EventSafetyLayer] 🛡️ ======== 初始化事件安全层 ========
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [EventSafetyLayer] ✅ console.error 已拦截
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [EventSafetyLayer] ✅ Element 原型方法已安全包装
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [EventSafetyLayer] 🛡️ ======== 事件安全层初始化完成 ========
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [Auth Callback] 开始处理回调
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [Auth Callback] 完整URL参数: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [Auth Callback] 从 cookie 获取 token: 存在
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [Auth Callback] userId: on_a06c2d08df82e864e99d92816c2d86d1
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [Auth Callback] name: 徐佳
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [Auth Callback] hasAuthorizations: true
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [Auth Callback] 参数验证成功
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [userStore] setToken 被调用
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [userStore] setUser 被调用 Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [userStore] setHasAuthorizations 被调用 true
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [Auth Callback] 用户信息已保存
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [HMR] connected
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [Auth Callback] 模板已加载
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [PrintSDK] 初始化...
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.523Z] ======== 开始环境检测 ======== 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.523Z] inIframe: true
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.523Z] 尝试初始化 SDK... 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.524Z] 📍 初始化中调用 base.getSelection()... 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [PrintSDK] 清理...
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [PrintSDK] 初始化...
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.574Z] 📍 base.getSelection() 完整返回: 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.574Z]   - baseId: RdXEbl3CiaczppsSiJTcK6P0nsg
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.574Z]   - tableId: tblRCwmdw4yGjxZV
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.574Z]   - viewId: vewgoGEkXf
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.574Z]   - recordId: 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.574Z]   - fieldId: 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.574Z] 📍 原始对象: {
+  "tableId": "tblRCwmdw4yGjxZV",
+  "viewId": "vewgoGEkXf",
+  "recordId": null,
+  "fieldId": null,
+  "baseId": "RdXEbl3CiaczppsSiJTcK6P0nsg"
+}
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.574Z] ✅ SDK 初始化成功，飞书环境已就绪 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.575Z] ======== 设置选中变化监听器 ======== 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.575Z] ======== 探索飞书 SDK 所有可用事件 ======== 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.575Z] bitable.base 可用方法: Array(0)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.575Z] bitable.base 事件方法: Array(0)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.575Z] bitable 可用方法: Array(4)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.575Z] bitable 事件方法: Array(0)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.575Z] ✅ 选中监听器设置成功 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.576Z] 初始化完成，执行环境调试... 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.576Z] SDK 检查: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [PrintSDK] 飞书环境就绪回调
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [PrintSDK] 加载真实数据...
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [PrintSDK] 开始初始化飞书上下文...
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.658Z] 开始初始化飞书上下文... 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.698Z] selection: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.701Z] selection: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.732Z] table: true
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.732Z] 开始获取字段数据... 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:46.789Z] 原始字段数量: 25
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:47.507Z] 最终返回的字段列表: Array(25)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:47.507Z] 字段映射: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:47.531Z] 首条记录 - 获取到记录 ID 数量: 67
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:47.538Z] 成功获取首条记录: true
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:47.538Z] 首条记录数据: true
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:47.538Z] 飞书上下文初始化完成: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [PrintSDK] 飞书上下文初始化结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [PrintSDK] 开始获取字段...
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:47.574Z] selection: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:47.589Z] table: true
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:47.589Z] 开始获取字段数据... 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:47.604Z] 原始字段数量: 25
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:48.149Z] 最终返回的字段列表: Array(25)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [PrintSDK] feishuEnv.fetchFields() 返回: Array(25)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [PrintSDK] 获取到字段数量: 25
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [PrintSDK] 转换后的字段: Array(25)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [PrintSDK] 准备设置到 store 和 store...
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [PrintSDK] 字段已设置到 store
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:48.215Z] 获取到记录 ID 数量: 67
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:48.725Z] 成功获取记录数: 67
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [PrintSDK] 获取到记录: 67
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TemplateSidebar] 选择模板: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [PrintSDK] 清理...
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 选中记录变化: 0 条
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 可用记录变化: 0 条
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TemplatePreview] 开始加载模板列表...
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 表格匹配检查: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 选中记录变化: 0 条
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 可用记录变化: 0 条
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TemplatePreview] 开始加载模板列表...
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 表格匹配检查: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] base.getSelection() 返回: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] base.getSelection() 返回: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 获取到表格: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 当前表格信息已更新: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 获取到表格: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 当前表格信息已更新: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:59.818Z] 注册选中变化监听器 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:59.818Z] 注册选中变化监听器 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 表格匹配检查: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:06:59.834Z] 注册选中变化监听器 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TemplatePreview] 模板列表加载完成: Array(2)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TemplatePreview] 模板列表加载完成: Array(2)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TemplatePreview] 选择模板: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TemplatePreview] 从模板加载页面配置: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TemplatePreview] 选中模板详情: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 选中记录变化: 0 条
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 可用记录变化: 0 条
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 表格匹配检查: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:01.408Z] 注册选中变化监听器 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.610Z] 🎯 选中变化事件触发! (回调方式) 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.610Z] 事件数据: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 飞书选择变化事件（已去重）: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 检测到表格变化，重新获取表格信息: tblRCwmdw4yGjxZV
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 记录选中变化，调用 fetchSelectedRecordsFromEnv
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] ========== fetchSelectedRecordsFromEnv 开始 ==========
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.611Z] ======== getSelectedRecords() 开始 ======== 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.611Z] 第一步：调用 base.getSelection() 获取选中信息... 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.652Z] 📍 base.getSelection() 完整返回: 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.652Z]   - baseId: RdXEbl3CiaczppsSiJTcK6P0nsg
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.652Z]   - tableId: tblRCwmdw4yGjxZV
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.652Z]   - viewId: vewgoGEkXf
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.652Z]   - recordId: recvdr88UTh2lc
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.652Z]   - fieldId: fldkW7dKko
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.652Z] 📍 原始对象: {
+  "tableId": "tblRCwmdw4yGjxZV",
+  "viewId": "vewgoGEkXf",
+  "recordId": "recvdr88UTh2lc",
+  "fieldId": "fldkW7dKko",
+  "baseId": "RdXEbl3CiaczppsSiJTcK6P0nsg"
+}
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.652Z] ✅ 获取到 tableId: tblRCwmdw4yGjxZV
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.652Z] 第二步：通过 tableId 获取表格... 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] base.getSelection() 返回: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.697Z] 第三步：获取记录... 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.697Z] 获取记录数据，recordId: recvdr88UTh2lc
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 获取到表格: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 当前表格信息已更新: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 表格匹配检查: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.714Z] 📋 完整记录对象键: Array(1)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.715Z] 📋 记录 fields 键: Array(25)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.715Z] 📋 完整 recordData: {
+  "fields": {
+    "fldMY1eEf5": null,
+    "fldaJugTw1": null,
+    "fldChWr3Xf": null,
+    "fld1lyWAHr": null,
+    "fldSiCjA1X": null,
+    "fldid8k5nN": null,
+    "fldnOn9NGr": null,
+    "fldokVpxY9": null,
+    "fldPZ0aeEn": null,
+    "fldlbowCRu": 1773072000000,
+    "fldk5r16jk": null,
+    "fldFGxzD2D": null,
+    "fldhfqEag0": null,
+    "fldPo8TPnD": null,
+    "fldFH7DObq": null,
+    "fldGEu7IGu": {
+      "id": "optNcAZpxZ",
+      "text": "安全"
+    },
+    "fldlBC6O12": null,
+    "fldPBW2JlT": null,
+    "fldPsmNnxn": [
+      {
+        "id": "opt41Sckk6",
+        "text": "中国建筑第二工程局有限公司"
+      }
+    ],
+    "fldT0YzdsZ": [
+      {
+        "name": "3c56b0789727f9c1683372f4974e2b5.jpg",
+        "size": 3664480,
+        "type": "image/jpeg",
+        "token": "GSTAbCFzsoVWgixFkBQcnT86nkf",
+        "timeStamp": 1773117912246,
+        "permission": {
+          "tableId": "tblRCwmdw4yGjxZV",
+          "fieldId": "fldT0YzdsZ",
+          "recordId": "recvdr88UTh2lc"
+        }
+      }
+    ],
+    "fldkW7dKko": [
+      {
+        "id": "optOMxuTaj",
+        "text": "12#楼"
+      }
+    ],
+    "fld69TpWPO": [
+      {
+        "id": "opttPwFEas",
+        "text": "存在安全问题"
+      }
+    ],
+    "fldm1BGx7n": [
+      {
+        "id": "optf1UzzoB",
+        "text": "监理周检查"
+      }
+    ],
+    "fld9wICLh3": [
+      {
+        "type": "text",
+        "text": "钢管搭设通道无踏步"
+      }
+    ],
+    "fld0IZoctU": [
+      {
+        "type": "text",
+        "text": "首层"
+      }
+    ]
+  }
+}
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.715Z] 尝试获取流程字段的值... 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.715Z] 尝试读取流程字段: fldwMmazk5
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.715Z] 流程字段原始值: 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.715Z] 流程字段类型: undefined
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.715Z] ⚠️ 流程字段值为空或不存在 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.715Z] 第四步：获取字段元信息... 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.725Z] 通过 getFieldMetaList 获取到字段数: 25
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.725Z] 字段元信息详情: 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.725Z]   [0] ID: fldGEu7IGu, Name: 工作类型, Type: 3, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.725Z]   [1] ID: fldPsmNnxn, Name: 总包单位, Type: 4, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.725Z]   [2] ID: fldMY1eEf5, Name: 整改建议, Type: 1, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.725Z]   [3] ID: fldaJugTw1, Name: 规范出处, Type: 1, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.725Z]   [4] ID: fldChWr3Xf, Name: 识别汇总, Type: 1, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.725Z]   [5] ID: fldlBC6O12, Name: 整改责任人, Type: 11, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.725Z]   [6] ID: fld1lyWAHr, Name: 关联单位, Type: 4, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.725Z]   [7] ID: fldSiCjA1X, Name: 是否打印, Type: 3, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.725Z]   [8] ID: fldT0YzdsZ, Name: 照片, Type: 17, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.725Z]   [9] ID: fldid8k5nN, Name: 通知单编号, Type: 1, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.726Z]   [10] ID: fldnOn9NGr, Name: 通知单发送事由, Type: 1, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.726Z]   [11] ID: fld9wICLh3, Name: 问题描述, Type: 1, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.726Z]   [12] ID: fldokVpxY9, Name: 收文单位, Type: 3, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.726Z]   [13] ID: fldkW7dKko, Name: 部位, Type: 4, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.726Z]   [14] ID: fld69TpWPO, Name: 是否存在问题, Type: 4, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.726Z]   [15] ID: fldPZ0aeEn, Name: 限期回复时间, Type: 5, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.726Z]   [16] ID: fldm1BGx7n, Name: 具体工作, Type: 4, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.726Z]   [17] ID: fldlbowCRu, Name: 日期, Type: 5, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.726Z]   [18] ID: fldk5r16jk, Name: 整改照片, Type: 17, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.726Z]   [19] ID: fldFGxzD2D, Name: 是否整改, Type: 3, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.726Z]   [20] ID: fldhfqEag0, Name: 是否发送通知单, Type: 3, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.726Z]   [21] ID: fld0IZoctU, Name: 楼层/区域, Type: 1, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.726Z]   [22] ID: fldPo8TPnD, Name: 同步状态, Type: 3, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.726Z]   [23] ID: fldPBW2JlT, Name: 记录人员, Type: 11, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.726Z]   [24] ID: fldFH7DObq, Name: 隐患类别, Type: 1, Typeof: number 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.726Z] 第五步：处理数据... 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.726Z] 📋 完整原始记录数据: {
+  "fields": {
+    "fldMY1eEf5": null,
+    "fldaJugTw1": null,
+    "fldChWr3Xf": null,
+    "fld1lyWAHr": null,
+    "fldSiCjA1X": null,
+    "fldid8k5nN": null,
+    "fldnOn9NGr": null,
+    "fldokVpxY9": null,
+    "fldPZ0aeEn": null,
+    "fldlbowCRu": 1773072000000,
+    "fldk5r16jk": null,
+    "fldFGxzD2D": null,
+    "fldhfqEag0": null,
+    "fldPo8TPnD": null,
+    "fldFH7DObq": null,
+    "fldGEu7IGu": {
+      "id": "optNcAZpxZ",
+      "text": "安全"
+    },
+    "fldlBC6O12": null,
+    "fldPBW2JlT": null,
+    "fldPsmNnxn": [
+      {
+        "id": "opt41Sckk6",
+        "text": "中国建筑第二工程局有限公司"
+      }
+    ],
+    "fldT0YzdsZ": [
+      {
+        "name": "3c56b0789727f9c1683372f4974e2b5.jpg",
+        "size": 3664480,
+        "type": "image/jpeg",
+        "token": "GSTAbCFzsoVWgixFkBQcnT86nkf",
+        "timeStamp": 1773117912246,
+        "permission": {
+          "tableId": "tblRCwmdw4yGjxZV",
+          "fieldId": "fldT0YzdsZ",
+          "recordId": "recvdr88UTh2lc"
+        }
+      }
+    ],
+    "fldkW7dKko": [
+      {
+        "id": "optOMxuTaj",
+        "text": "12#楼"
+      }
+    ],
+    "fld69TpWPO": [
+      {
+        "id": "opttPwFEas",
+        "text": "存在安全问题"
+      }
+    ],
+    "fldm1BGx7n": [
+      {
+        "id": "optf1UzzoB",
+        "text": "监理周检查"
+      }
+    ],
+    "fld9wICLh3": [
+      {
+        "type": "text",
+        "text": "钢管搭设通道无踏步"
+      }
+    ],
+    "fld0IZoctU": [
+      {
+        "type": "text",
+        "text": "首层"
+      }
+    ]
+  }
+}
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.726Z] processRecordData 被调用 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.727Z] processRecordData 处理完成: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.727Z] ✅ 数据处理完成 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:05.727Z] ======== getSelectedRecords() 结束 ======== 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] getSelectedRecords 返回: 1 条记录
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 第一条记录结构: {
+  "id": "recvdr88UTh2lc",
+  "fields": {
+    "整改建议": null,
+    "规范出处": null,
+    "识别汇总": null,
+    "关联单位": null,
+    "是否打印": null,
+    "通知单编号": null,
+    "通知单发送事由": null,
+    "收文单位": null,
+    "限期回复时间": null,
+    "日期": 1773072000000,
+    "整改照片": null,
+    "是否整改": null,
+    "是否发送通知单": null,
+    "同步状态": null,
+    "隐患类别": null,
+    "工作类型": {
+      "id": "optNcAZpxZ",
+      "text": "安全"
+    },
+    "整改责任人": null,
+    "记录人员": null,
+    "总包单位": [
+      {
+        "id": "opt41Sckk6",
+        "text": "中国建筑第二工程局有限公司"
+      }
+    ],
+    "照片": [
+      {
+        "name": "3c56b0789727f9c1683372f4974e2b5.jpg",
+        "size": 3664480,
+        "type": "image/jpeg",
+        "token": "GSTAbCFzsoVWgixFkBQcnT86nkf",
+        "timeStamp": 1773117912246,
+        "permission": {
+          "tableId": "tblRCwmdw4yGjxZV",
+          "fieldId": "fldT0YzdsZ",
+          "recordId": "recvdr88UTh2lc"
+        }
+      }
+    ],
+    "部位": [
+      {
+        "id": "optOMxuTaj",
+        "text": "12#楼"
+      }
+    ],
+    "是否存在问题": [
+      {
+        "id": "opttPwFEas",
+        "text": "存在安全问题"
+      }
+    ],
+    "具体工作": [
+      {
+        "id": "optf1UzzoB",
+        "text": "监理周检查"
+      }
+    ],
+    "问题描述": [
+      {
+        "type": "text",
+        "text": "钢管搭设通道无踏步"
+      }
+    ],
+    "楼层/区域": [
+      {
+        "type": "text",
+        "text": "首层"
+      }
+    ]
+  },
+  "createdTime": "2026-03-17T14:07:05.727Z",
+  "lastModifiedTime": "2026-03-17T14:07:05.727Z"
+}
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 第一条记录 fields: {
+  "整改建议": null,
+  "规范出处": null,
+  "识别汇总": null,
+  "关联单位": null,
+  "是否打印": null,
+  "通知单编号": null,
+  "通知单发送事由": null,
+  "收文单位": null,
+  "限期回复时间": null,
+  "日期": 1773072000000,
+  "整改照片": null,
+  "是否整改": null,
+  "是否发送通知单": null,
+  "同步状态": null,
+  "隐患类别": null,
+  "工作类型": {
+    "id": "optNcAZpxZ",
+    "text": "安全"
+  },
+  "整改责任人": null,
+  "记录人员": null,
+  "总包单位": [
+    {
+      "id": "opt41Sckk6",
+      "text": "中国建筑第二工程局有限公司"
+    }
+  ],
+  "照片": [
+    {
+      "name": "3c56b0789727f9c1683372f4974e2b5.jpg",
+      "size": 3664480,
+      "type": "image/jpeg",
+      "token": "GSTAbCFzsoVWgixFkBQcnT86nkf",
+      "timeStamp": 1773117912246,
+      "permission": {
+        "tableId": "tblRCwmdw4yGjxZV",
+        "fieldId": "fldT0YzdsZ",
+        "recordId": "recvdr88UTh2lc"
+      }
+    }
+  ],
+  "部位": [
+    {
+      "id": "optOMxuTaj",
+      "text": "12#楼"
+    }
+  ],
+  "是否存在问题": [
+    {
+      "id": "opttPwFEas",
+      "text": "存在安全问题"
+    }
+  ],
+  "具体工作": [
+    {
+      "id": "optf1UzzoB",
+      "text": "监理周检查"
+    }
+  ],
+  "问题描述": [
+    {
+      "type": "text",
+      "text": "钢管搭设通道无踏步"
+    }
+  ],
+  "楼层/区域": [
+    {
+      "type": "text",
+      "text": "首层"
+    }
+  ]
+}
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 格式化记录 0: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 格式化后记录数: 1
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] ========== 开始处理附件字段 ==========
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 已导入 SDK
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 获取 selection: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 开始获取 table 对象, tableId: tblRCwmdw4yGjxZV
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 已获取 table 对象
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 开始获取字段元数据...
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 已获取字段元数据, 字段数: 25
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 字段类型映射已更新: 25 个字段
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 字段ID映射已更新: 25 个字段
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 发现附件字段数: 2
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 附件字段列表: Array(2)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 开始并行处理 1 条记录的附件...
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 处理记录 0: recvdr88UTh2lc
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [AttachmentProcessor] 字段元数据总数: 25
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [AttachmentProcessor] 附件字段元数据 (type=17): Array(2)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [AttachmentProcessor] 检查字段 "照片" (ID: fldT0YzdsZ): 数组(1项)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [AttachmentProcessor] ✅ 确认是附件字段: 照片 (1 个附件)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [AttachmentProcessor] 附件数据样例: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [AttachmentProcessor] 检查字段 "整改照片" (ID: fldk5r16jk): object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [AttachmentProcessor] ⚠️ 字段 "整改照片" 不是数组，跳过: object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [AttachmentProcessor] 通过 getAttachmentUrls 获取到URL，索引 0: https://internal-api-drive-stream.feishu.cn/space/
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [AttachmentProcessor] ✅ 附件字段 "照片" 处理完成，HTML存储在 _照片_html
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [AttachmentProcessor] 所有附件字段处理完成，成功: 1/1
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [AttachmentProcessor] 返回前验证，所有 _html 字段: Array(2)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [AttachmentProcessor]   _照片_html: 类型=string, 长度=1537
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [AttachmentProcessor]   _fldT0YzdsZ_html: 类型=string, 长度=1537
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 记录 0 字段 "照片": Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 记录 0 字段 "整改照片": Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] ========== 附件字段处理完成 ==========
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 验证所有记录的处理结果:
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 最终验证 记录0 "照片": 原始类型=object, 有HTML字段=true, HTML长度=1537
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 最终验证 记录0 "整改照片": 原始类型=object, 有HTML字段=false, HTML长度=0
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 准备调用 setAvailableRecords，processedRecords 数量: 1
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] processedRecords[0] 的 _html 字段: Array(2)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] ========== fetchSelectedRecordsFromEnv 结束 ==========
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 【延迟同步】editorStore 记录数: 67
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 【延迟同步】所有记录已存在于 editorStore，跳过
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 添加记录: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 新增: 1, 跳过: 0, 忽略: 0, 总记录: 1
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] setAvailableRecords 函数式更新: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 添加记录: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 新增: 1, 跳过: 0, 忽略: 0, 总记录: 1
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] setAvailableRecords 函数式更新: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 可用记录变化: 1 条
+ [TP] 记录 0 (recvdr88UTh2lc) 字段分析:
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   发现附件相关字段: Array(4)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   📎 整改照片:
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+      类型: object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+      是图片HTML: false
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+      是DIV HTML: false
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   📎 照片:
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+      类型: array
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+      是图片HTML: false
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+      是DIV HTML: false
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+      ❌ 仍是数组格式，数据传递失败！
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+      数组长度: 1
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+      第一项: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   📎 _照片_html:
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+      类型: string
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+      是图片HTML: true
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+      是DIV HTML: true
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+      图片数量: 1
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+      HTML长度: 1537
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+      ✅ 正确转换为HTML
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   📎 _照片_names:
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+      类型: array
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+      是图片HTML: false
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+      是DIV HTML: false
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+      ❌ 仍是数组格式，数据传递失败！
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+      数组长度: 1
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+      第一项: 3c56b0789727f9c1683372f4974e2b5.jpg
+ 🔍 渲染验证报告 - 数据传递层
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ 📋 记录基本信息:
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   - 记录ID: recvdr88UTh2lc
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   - 源记录ID: recvdr88UTh2lc
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   - 所有字段: Array(32)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ 
+📎 检查附件字段: "整改照片"
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   ❌ 字段为空
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ 
+📎 检查附件字段: "照片"
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   📋 原始字段是数组（正常），长度: 1
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   ✅ 已预处理，HTML字段存在
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   HTML长度: 1537
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [testAllImageUrls] 发现 1 个图片标签
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [testAllImageUrls] 测试图片 1: https://internal-api-drive-stream.feishu.cn/space/api/box/st...
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ 
+📊 验证统计:
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   ✅ 成功: 1
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   ❌ 错误: 1
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   ⚠️ 警告: 0
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ 🔴 发现严重问题，需要修复数据传递！
+console.<computed> @ index.js:362
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuEnv][2026-03-17T14:07:06.085Z] 注册选中变化监听器 
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ ✅ 图片加载测试成功: https://internal-api-drive-stream.feishu.cn/space/api/box/st...
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ 📊 URL批量测试结果: Array(1)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   📊 1/1 个URL有效
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 点击卡片: recvdr88UTh2lc 选中
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 已添加到选中列表: recvdr88UTh2lc 总数: 1
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 已添加到选中列表: recvdr88UTh2lc 总数: 1
+ 🎨 [RenderMonitor] 渲染页面 1
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ 记录ID: recvdr88UTh2lc
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   📎 照片: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   ✅ 照片 原始数据保留为数组，HTML已生成
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   📎 fldT0YzdsZ: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   ✅ fldT0YzdsZ 原始数据保留为数组，HTML已生成
+forward-logs-shared.js:31 🎨 [RenderMonitor] 渲染页面 1
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ 记录ID: recvdr88UTh2lc
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   📎 照片: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   ✅ 照片 原始数据保留为数组，HTML已生成
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   📎 fldT0YzdsZ: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   ✅ fldT0YzdsZ 原始数据保留为数组，HTML已生成
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [TP] 选中记录变化: 1 条
+forward-logs-shared.js:31 🎨 [RenderMonitor] 渲染页面 1
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ 记录ID: recvdr88UTh2lc
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   📎 照片: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   ✅ 照片 原始数据保留为数组，HTML已生成
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   📎 fldT0YzdsZ: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   ✅ fldT0YzdsZ 原始数据保留为数组，HTML已生成
+forward-logs-shared.js:31 🎨 [RenderMonitor] 渲染页面 1
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ 记录ID: recvdr88UTh2lc
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   📎 照片: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   ✅ 照片 原始数据保留为数组，HTML已生成
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   📎 fldT0YzdsZ: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+   ✅ fldT0YzdsZ 原始数据保留为数组，HTML已生成
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [EditorPage] 设置当前编辑模板: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [EditorPage] 从模板数据恢复编辑器状态: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [EditorPage] 清理选中变化监听器
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [EditorPage] 设置当前编辑模板: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [EditorPage] 从模板数据恢复编辑器状态: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [CanvasComponent] 可用附件字段: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [CanvasComponent] 可用附件字段: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [CanvasComponent] records 变化: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [CanvasComponent] tableEditData sync effect triggered: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [CanvasComponent] records 变化: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [CanvasComponent] tableEditData sync effect triggered: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [CanvasComponent] setTableEditData sync: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [CanvasComponent] Reinitializing tableEditData (dimension changed)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [CanvasComponent] setTableEditData sync: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [CanvasComponent] Reinitializing tableEditData (dimension changed)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [CanvasComponent] setTableEditData sync: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [CanvasComponent] Syncing from cells (no cell editing)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [CanvasComponent] setTableEditData sync: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [CanvasComponent] Syncing from cells (no cell editing)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] => true (fieldKind=attachment)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getAttachmentData] 调试: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getAttachmentData] ✅ 包含原始数组数据: 1 个附件
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] => true (fieldKind=attachment)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getAttachmentData] 调试: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getAttachmentData] ✅ 包含原始数组数据: 1 个附件
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] => false (fieldKind=text)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getFieldValue] Called: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] => false (fieldKind=text)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getFieldValue] Called: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [EditorPage] 组件已清理，取消初始化
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [EditorPage] ======== 初始化飞书环境 ========
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] => true (fieldKind=attachment)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getAttachmentData] 调试: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getAttachmentData] ✅ 包含原始数组数据: 1 个附件
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] => true (fieldKind=attachment)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getAttachmentData] 调试: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getAttachmentData] ✅ 包含原始数组数据: 1 个附件
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] => false (fieldKind=text)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getFieldValue] Called: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] => false (fieldKind=text)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getFieldValue] Called: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [EditorPage] 当前表格信息: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [EditorPage] 获取字段...
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuService] 获取字段列表, 环境: unknown
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuService] 未知环境，无法获取字段
+console.<computed> @ index.js:362
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] => true (fieldKind=attachment)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getAttachmentData] 调试: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getAttachmentData] ✅ 包含原始数组数据: 1 个附件
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] => true (fieldKind=attachment)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getAttachmentData] 调试: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getAttachmentData] ✅ 包含原始数组数据: 1 个附件
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] => false (fieldKind=text)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getFieldValue] Called: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] => false (fieldKind=text)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getFieldValue] Called: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [EditorPage] 获取到字段: Array(0)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [EditorPage] 字段类型映射: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [EditorPage] 附件字段映射: Array(0)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [EditorPage] 获取记录...
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuService] 获取记录, 环境: unknown
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [FeishuService] 未知环境，无法获取记录
+console.<computed> @ index.js:362
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 回退到值判断
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getFieldValue] Called: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 回退到值判断
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getFieldValue] Called: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 回退到值判断
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getFieldValue] Called: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 回退到值判断
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getFieldValue] Called: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [EditorPage] 获取到记录: Array(0)
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 回退到值判断
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getFieldValue] Called: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 回退到值判断
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getFieldValue] Called: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 回退到值判断
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getFieldValue] Called: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 回退到值判断
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getFieldValue] Called: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [EditorPage] 记录初始编辑状态
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 回退到值判断
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getFieldValue] Called: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 回退到值判断
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getFieldValue] Called: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 回退到值判断
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getFieldValue] Called: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [VariableTextRenderer] Render: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] ====== 开始判断 ====== Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 查找字段结果: Object
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [isAttachmentField] 回退到值判断
+ [Console Bridge] Cannot send message: parent origin not allowed or not detected
+postMessageToParent @ index.js:340
+ [getFieldValue] Called: Object

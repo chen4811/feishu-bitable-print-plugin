@@ -59,7 +59,6 @@ import { SettingsPanel } from './panels/SettingsPanel';
 import { CanvasArea } from './canvas/CanvasArea';
 import { PageSettingsDialog } from './dialogs/PageSettingsDialog';
 import { PrintPreviewDialog } from './dialogs/PrintPreviewDialog';
-import { CheckboxDebug } from './CheckboxDebug';
 import { usePrintSDK } from '@/hooks/usePrintSDK';
 import {
   initEnvironment,
@@ -404,45 +403,33 @@ export function EditorPage({ onExit }: EditorPageProps) {
           return; // 表格变化已处理，不再执行下面的记录更新
         }
         
-        // 表格未变化，处理选中记录
+        // 表格未变化，累积记录而不是覆盖
         try {
           if (isCleaned) {
-            console.log('[EditorPage] 组件已清理，取消选中记录处理');
+            console.log('[EditorPage] 组件已清理，取消记录累积处理');
             return;
           }
           
-          // 🔥 【场景1：模板编辑状态】
-          // 选中多维表格表行头复选框时，始终只读取一行数据到画布（预览读取）
-          // 从 event.recordIds 中获取选中的记录 IDs
-          const selectedRecordIds = event.recordIds || [];
-          
-          if (selectedRecordIds.length === 0) {
-            console.log('[EditorPage] 没有选中记录，跳过');
-            return;
-          }
-          
-          console.log('[EditorPage] 选中的记录 IDs:', selectedRecordIds);
-          
-          // 🔥 只读取第一条记录用于预览
-          const firstRecordId = selectedRecordIds[0];
-          console.log('[EditorPage] 模板编辑状态：只读取第一条记录用于预览, recordId:', firstRecordId);
-          
-          // 🔥 使用统一服务层获取单条记录
-          const records = await fetchRecords({ recordIds: [firstRecordId] });
+          // 🔥 使用统一服务层获取选中记录
+          const records = await fetchRecords();
           
           // 🔥 检查是否已清理
           if (isCleaned) {
-            console.log('[EditorPage] 组件已清理，取消记录处理（获取records后）');
+            console.log('[EditorPage] 组件已清理，取消记录累积处理（获取records后）');
             return;
           }
           
-          console.log('[EditorPage] 获取到预览记录:', records);
+          console.log('[EditorPage] 获取到新的选中记录:', records);
           
           if (records.length > 0) {
-            // 🔥 【关键】模板编辑状态下，始终只显示一条记录（覆盖而非累积）
+            // 🔥 在统一服务层中，记录已经处理好（附件已处理）
+            console.log('[EditorPage] 累积添加记录到 store:', {
+              count: records.length,
+              firstRecordKeys: Object.keys(records[0]).slice(0, 10),
+            });
             setFeishuRecords(records);
-            setRecords(records as unknown as Record<string, unknown>[]);
-            console.log('[EditorPage] 已将预览记录设置到画布');
+            // 🔥 【关键修复】使用 addRecords 累积记录，而不是 setRecords 覆盖
+            addRecords(records as unknown as Record<string, unknown>[]);
           }
         } catch (error) {
           console.error('[EditorPage] 获取选中记录失败:', error);
@@ -1560,10 +1547,6 @@ export function EditorPage({ onExit }: EditorPageProps) {
                     // 添加文本组件并设置内容为字段变量
                     addComponent('text');
                   }} />
-                  {/* 🔍 复选框选中调试工具 */}
-                  <div className="p-2">
-                    <CheckboxDebug />
-                  </div>
                 </TabsContent>
                 <TabsContent value="components" className="m-0">
                   <ComponentPanel onAddComponent={handleAddComponent} />

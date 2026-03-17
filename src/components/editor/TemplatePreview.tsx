@@ -17,7 +17,7 @@ import { useEditorStore } from '@/store/editorStore';
 import { PageSettingsDialog } from '@/components/editor/dialogs/PageSettingsDialog';
 import { PAGE_SIZES, PageConfig } from '@/types/editor';
 import { feishuEnv } from '@/lib/feishu-env';
-import { onSelectionChange, onCheckboxPollingChange } from '@/lib/feishu-env';
+import { onSelectionChange } from '@/lib/feishu-env';
 import { MixedContentRenderer, extractVariables, FieldTypeMap, type VariableType } from '@/components/editor/variables';
 
 
@@ -2349,21 +2349,6 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
 
         return () => unsubscribe();
       }
-      
-      // 🔥 注册复选框轮询监听（替代方案）
-      const unsubscribePolling = onCheckboxPollingChange((event) => {
-        console.log('[TP] 🔥 复选框选择状态变化（轮询检测）:', event.count, '条记录');
-        
-        // 更新选中记录
-        if (event.count > 0) {
-          console.log('[TP] 获取选中记录数据...');
-          fetchSelectedRecordsFromEnv();
-        }
-      });
-      
-      return () => {
-        unsubscribePolling();
-      };
     };
 
     init();
