@@ -203,9 +203,9 @@ export function EditorPage({ onExit }: EditorPageProps) {
         });
         console.log('[EditorPage] 当前表格信息:', { tableId: currentTableId, tableName, appToken: currentAppToken });
         
-        // 1. 获取字段（使用统一服务层）
+        // 1. 获取字段（场景：进入模板编辑时读取）
         console.log('[EditorPage] 获取字段...');
-        const fields = await fetchFields();
+        const fields = await fetchFields({ scene: 'edit_template' });
         
         // 🔥 检查是否已清理
         if (isCleaned) {
@@ -332,9 +332,9 @@ export function EditorPage({ onExit }: EditorPageProps) {
               appToken: getCurrentAppToken(),
             });
             
-            // 🔥 重新获取字段（使用统一服务层）
+            // 🔥 重新获取字段（场景：切换多维表格时读取）
             console.log('[EditorPage] 重新获取字段...');
-            const fields = await fetchFields();
+            const fields = await fetchFields({ scene: 'table_switch' });
             
             // 🔥 检查是否已清理
             if (isCleaned) {

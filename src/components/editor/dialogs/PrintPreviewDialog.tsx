@@ -283,8 +283,8 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
     setPrintError(null);
     
     try {
-      // 使用统一的 feishu-service 获取字段和记录
-      const appFields = await fetchFields();
+      // 使用统一的 feishu-service 获取字段和记录（场景：进入排版打印预览时读取）
+      const appFields = await fetchFields({ scene: 'print_preview' });
       setFields(appFields);
       
       const appRecords = await fetchRecords({ processFields: true });

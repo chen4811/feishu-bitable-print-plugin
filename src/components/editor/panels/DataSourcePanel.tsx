@@ -67,8 +67,8 @@ export function DataSourcePanel({ onAddField }: DataSourcePanelProps) {
     
     setIsRefreshing(true);
     try {
-      // 使用统一的 feishu-service 获取字段
-      const appFields = await fetchFields();
+      // 使用统一的 feishu-service 获取字段（场景：手动刷新）
+      const appFields = await fetchFields({ scene: 'manual_refresh' });
       
       setFields(appFields);
       

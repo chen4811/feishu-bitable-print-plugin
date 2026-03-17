@@ -9,6 +9,12 @@
  * - 复选框选中记录读取
  * - 字段列表获取
  * - 记录数据获取
+ * 
+ * 字段预读取场景限制：
+ * 1. 创建模板时读取
+ * 2. 进入模板编辑时读取
+ * 3. 进入排版打印预览时读取
+ * 4. 切换多维表格时读取
  */
 
 import type { Field } from '@/types/editor';
@@ -26,7 +32,91 @@ const FIELD_TYPE_MAP: Record<number, string> = {
 // 环境类型
 type Environment = 'sdk' | 'api' | 'unknown';
 
+// ============================================
+// 字段缓存机制
+// ============================================
+
+/** 字段获取场景 */
+export type FieldFetchScene = 
+  | 'create_template'    // 创建模板时
+  | 'edit_template'      // 进入模板编辑时
+  | 'print_preview'      // 进入排版打印预览时
+  | 'table_switch'       // 切换多维表格时
+  | 'manual_refresh';    // 手动刷新
+
+/** 字段缓存项 */
+interface FieldCache {
+  fields: Field[];
+  tableId: string;
+  timestamp: number;
+}
+
+// 字段缓存（按 tableId 缓存）
+const fieldCacheMap = new Map<string, FieldCache>();
+
+// 缓存有效期（5分钟）
+const FIELD_CACHE_DURATION = 5 * 60 * 1000;
+
+/**
+ * 获取缓存的字段
+ */
+function getCachedFields(targetTableId: string): Field[] | null {
+  const cache = fieldCacheMap.get(targetTableId);
+  if (!cache) return null;
+  
+  const now = Date.now();
+  if (now - cache.timestamp > FIELD_CACHE_DURATION) {
+    fieldCacheMap.delete(targetTableId);
+    return null;
+  }
+  
+  console.log('[FeishuService] 使用缓存字段, tableId:', targetTableId, '数量:', cache.fields.length);
+  return cache.fields;
+}
+
+/**
+ * 设置字段缓存
+ */
+function setFieldCache(targetTableId: string, fields: Field[]): void {
+  fieldCacheMap.set(targetTableId, {
+    fields,
+    tableId: targetTableId,
+    timestamp: Date.now(),
+  });
+  console.log('[FeishuService] 缓存字段, tableId:', targetTableId, '数量:', fields.length);
+}
+
+/**
+ * 清除字段缓存
+ */
+export function clearFieldCache(targetTableId?: string): void {
+  if (targetTableId) {
+    fieldCacheMap.delete(targetTableId);
+    console.log('[FeishuService] 清除字段缓存, tableId:', targetTableId);
+  } else {
+    fieldCacheMap.clear();
+    console.log('[FeishuService] 清除所有字段缓存');
+  }
+}
+
+/**
+ * 判断是否应该使用缓存
+ * 
+ * 规则：
+ * - create_template: 使用缓存（如果存在）
+ * - edit_template: 强制刷新（确保数据最新）
+ * - print_preview: 强制刷新（确保预览准确）
+ * - table_switch: 强制刷新（新表格数据）
+ * - manual_refresh: 强制刷新（用户主动操作）
+ */
+function shouldUseCache(scene: FieldFetchScene): boolean {
+  return scene === 'create_template';
+}
+
+// ============================================
 // 全局状态
+// ============================================
+
 let currentEnv: Environment = 'unknown';
 let appToken: string | null = null;
 let tableId: string | null = null;
@@ -97,13 +187,32 @@ export function getCurrentEnvironment(): Environment {
 /**
  * 获取字段列表
  * 
- * 场景1：模板编辑状态下，切换多维表格数据源字段将会刷新
- * 场景2：打印预览模式下，切换多维表格，进行字段预处理
+ * 场景限制：
+ * 1. create_template - 创建模板时（可使用缓存）
+ * 2. edit_template - 进入模板编辑时（强制刷新）
+ * 3. print_preview - 进入排版打印预览时（强制刷新）
+ * 4. table_switch - 切换多维表格时（强制刷新）
+ * 5. manual_refresh - 手动刷新（强制刷新）
  */
-export async function fetchFields(): Promise<Field[]> {
+export async function fetchFields(options?: {
+  scene?: FieldFetchScene;
+  forceRefresh?: boolean;
+}): Promise<Field[]> {
+  const { scene = 'edit_template', forceRefresh = false } = options || {};
   const env = detectEnvironment();
+  const targetTableId = tableId;
   
-  console.log('[FeishuService] 获取字段列表, 环境:', env);
+  console.log('[FeishuService] 获取字段列表, 环境:', env, '场景:', scene, '强制刷新:', forceRefresh);
+  
+  // 检查是否使用缓存
+  if (!forceRefresh && shouldUseCache(scene) && targetTableId) {
+    const cachedFields = getCachedFields(targetTableId);
+    if (cachedFields) {
+      return cachedFields;
+    }
+  }
+  
+  let fields: Field[];
   
   if (env === 'sdk') {
     // 使用 JS-SDK
@@ -111,7 +220,7 @@ export async function fetchFields(): Promise<Field[]> {
       const { fetchFields: sdkFetchFields } = await import('./feishu-env');
       const rawFields = await sdkFetchFields();
       
-      return rawFields.map((field: any, index: number) => ({
+      fields = rawFields.map((field: any, index: number) => ({
         id: field.id || `field_${index}`,
         name: field.name,
         type: field.type,
@@ -123,9 +232,7 @@ export async function fetchFields(): Promise<Field[]> {
       console.error('[FeishuService] SDK 获取字段失败:', error);
       return [];
     }
-  }
-  
-  if (env === 'api') {
+  } else if (env === 'api') {
     // 使用后端 API
     try {
       const params = new URLSearchParams({
@@ -140,7 +247,7 @@ export async function fetchFields(): Promise<Field[]> {
         throw new Error(result.error);
       }
       
-      return result.fields.map((field: any) => ({
+      fields = result.fields.map((field: any) => ({
         id: field.id,
         name: field.name,
         type: String(field.type),
@@ -152,10 +259,17 @@ export async function fetchFields(): Promise<Field[]> {
       console.error('[FeishuService] API 获取字段失败:', error);
       return [];
     }
+  } else {
+    console.warn('[FeishuService] 未知环境，无法获取字段');
+    return [];
   }
   
-  console.warn('[FeishuService] 未知环境，无法获取字段');
-  return [];
+  // 缓存字段
+  if (targetTableId && fields.length > 0) {
+    setFieldCache(targetTableId, fields);
+  }
+  
+  return fields;
 }
 
 /**

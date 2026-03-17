@@ -16,6 +16,7 @@ import {
   offFeishuReady,
   offNotFeishu
 } from '@/lib/feishu-env';
+import { fetchFields as fetchFieldsFromService } from '@/lib/feishu-service';
 import { Field, FeishuContext } from '@/types/editor';
 import { useEditorStore } from '@/store/editorStore';
 import { mockBitableData } from '@/data/mockData';
@@ -143,10 +144,10 @@ export function usePrintSDK(): UsePrintSDKResult {
         setFeishuContext(context);
       }
 
-      // 获取字段
+      // 获取字段（场景：创建模板时读取，可使用缓存）
       console.log('[PrintSDK] 开始获取字段...');
-      const feishuFields = await feishuEnv.fetchFields();
-      console.log('[PrintSDK] feishuEnv.fetchFields() 返回:', feishuFields);
+      const feishuFields = await fetchFieldsFromService({ scene: 'create_template' });
+      console.log('[PrintSDK] fetchFieldsFromService() 返回:', feishuFields);
       console.log('[PrintSDK] 获取到字段数量:', feishuFields.length);
 
       if (feishuFields.length === 0) {
@@ -154,32 +155,8 @@ export function usePrintSDK(): UsePrintSDKResult {
         setError('未获取到字段数据，请检查权限配置');
       }
 
-      const convertedFields: Field[] = feishuFields.map(f => {
-        // 判断字段种类
-        let fieldKind: Field['fieldKind'] = 'other';
-        const fieldType = String(f.type);
-        
-        if (fieldType === '17' || fieldType === 'attachment') {
-          fieldKind = 'attachment';
-        } else if (fieldType === '11' || fieldType === 'user' || fieldType === 'person') {
-          fieldKind = 'person';
-        } else if (fieldType === '1' || fieldType === 'text') {
-          fieldKind = 'text';
-        } else if (fieldType === '2' || fieldType === 'number') {
-          fieldKind = 'number';
-        } else if (fieldType === '5' || fieldType === 'date') {
-          fieldKind = 'date';
-        }
-        
-        return {
-          id: f.id,
-          name: f.name,
-          type: f.type,
-          placeholder: `{{${f.name}}}`,
-          isSystem: false,
-          fieldKind, // 【关键】在获取时就确定字段种类
-        };
-      });
+      // 统一服务层已经返回标准 Field 格式，直接使用
+      const convertedFields: Field[] = feishuFields;
       console.log('[PrintSDK] 转换后的字段:', convertedFields);
       console.log('[PrintSDK] 准备设置到 store 和 store...');
       setFields(convertedFields);
