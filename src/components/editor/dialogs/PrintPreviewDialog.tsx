@@ -445,7 +445,33 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
                       <div
                         key={record.id as string}
                         className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
-                        onClick={() => toggleRecordSelection(record.id as string)}
+                        onClick={() => {
+                          // 🔍 输出数据结构，检查附件字段值
+                          console.log('🔍 ====== 点击数据卡片，输出数据结构 ======');
+                          console.log('📋 record.id:', record.id);
+                          console.log('📋 record 所有字段:', Object.keys(record));
+                          
+                          // 🔍 查找附件字段
+                          const attachmentFields = fields.filter(f => f.fieldKind === 'attachment' || f.type === '17' || f.type === 'attachment');
+                          console.log('📋 附件字段列表:', attachmentFields.map(f => f.name));
+                          
+                          // 🔍 输出每个附件字段的值
+                          attachmentFields.forEach(field => {
+                            const value = record[field.name];
+                            console.log(`📎 [${field.name}] 字段值:`, value);
+                            if (Array.isArray(value)) {
+                              console.log(`   - 数组长度: ${value.length}`);
+                              value.forEach((item, idx) => {
+                                console.log(`   - [${idx}]:`, item);
+                              });
+                            }
+                          });
+                          
+                          console.log('📋 完整 record 对象:', JSON.stringify(record, null, 2));
+                          console.log('🔍 ===========================================');
+                          
+                          toggleRecordSelection(record.id as string);
+                        }}
                       >
                         <Checkbox
                           checked={selectedRecordIds.includes(record.id as string)}
