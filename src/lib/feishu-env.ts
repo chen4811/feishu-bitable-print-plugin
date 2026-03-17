@@ -266,14 +266,53 @@ let lastPolledTableId: string = '';
 let checkboxPollingCallbacks: Set<(event: { tableId: string; recordIds: string[]; count: number }) => void> = new Set();
 
 /**
- * 启动复选框选择状态轮询
- * 只在状态变化时触发回调，避免频繁日志
+ * 启动复选框选择状态监听
+ * 
+ * 🔥 优先使用事件监听器（bitable.ui.onSelectRecordIdsChange），轮询作为备用方案
  */
-function startCheckboxPolling(interval = 1000) {
+async function startCheckboxPolling(interval = 1000) {
   if (pollingInterval) {
     return; // 已经在运行
   }
   
+  // 🔥 优先尝试使用事件监听器（更高效）
+  if ((bitable as any).ui && typeof (bitable as any).ui.onSelectRecordIdsChange === 'function') {
+    try {
+      console.log('🔍 使用 bitable.ui.onSelectRecordIdsChange 监听选择变化（事件方式）');
+      
+      const unsubscribe = await (bitable as any).ui.onSelectRecordIdsChange(async (event: any) => {
+        console.log('✅ 复选框选择变化事件:', event);
+        
+        const currentRecordIds = event?.recordIds || [];
+        const currentTableId = event?.tableId || '';
+        
+        // 触发所有注册的回调
+        const callbackEvent = {
+          tableId: currentTableId,
+          recordIds: currentRecordIds,
+          count: currentRecordIds.length,
+        };
+        
+        checkboxPollingCallbacks.forEach(cb => {
+          try {
+            cb(callbackEvent);
+          } catch (e) {
+            console.error('[FeishuEnv] 复选框选择变化回调执行失败:', e);
+          }
+        });
+      });
+      
+      // 存储取消订阅函数
+      (globalThis as any).__feishuUnsubscribe = unsubscribe;
+      
+      console.log('✅ 事件监听器注册成功');
+      return; // 事件监听器注册成功，不需要启动轮询
+    } catch (e) {
+      console.warn('[FeishuEnv] 注册事件监听器失败，回退到轮询方式:', e);
+    }
+  }
+  
+  // 🔥 备用方案：启动轮询
   console.log('🔍 开始监听选择状态变化（轮询方式）');
   
   pollingInterval = setInterval(async () => {
@@ -283,15 +322,39 @@ function startCheckboxPolling(interval = 1000) {
 
 /**
  * 检查复选框选择状态是否变化
- * 按照飞书开放平台示例代码实现
- * 只在变化时输出日志并触发回调
+ * 
+ * 🔥 关键修复：使用 bitable.ui.getSelectRecordIds() 获取复选框选中的记录 ID
+ * - base.getSelection() 返回的是单元格选择信息（recordId 单数）
+ * - bitable.ui.getSelectRecordIds() 返回的是复选框选中的行（recordIds 复数）
  */
 async function checkCheckboxSelectionChange() {
   try {
-    // 🔥 按照用户提供的示例代码，直接使用 base.getSelection()
-    const selection = await base.getSelection();
-    const currentRecordIds: string[] = (selection as any).recordIds || [];
-    const currentTableId = selection?.tableId || '';
+    // 🔥 使用正确的 API 获取复选框选中的记录 ID 列表
+    let currentRecordIds: string[] = [];
+    let currentTableId = '';
+    
+    // 方法1: 使用 bitable.ui.getSelectRecordIds()（推荐）
+    if ((bitable as any).ui && typeof (bitable as any).ui.getSelectRecordIds === 'function') {
+      try {
+        const result = await (bitable as any).ui.getSelectRecordIds();
+        currentRecordIds = result?.recordIds || [];
+        currentTableId = result?.tableId || '';
+        console.log('[FeishuEnv] bitable.ui.getSelectRecordIds() 结果:', result);
+      } catch (e) {
+        console.warn('[FeishuEnv] bitable.ui.getSelectRecordIds() 失败:', e);
+      }
+    }
+    
+    // 方法2: 备用方案 - 从 base.getSelection() 获取 tableId
+    if (!currentTableId) {
+      try {
+        const selection = await base.getSelection();
+        currentTableId = selection?.tableId || '';
+        console.log('[FeishuEnv] base.getSelection() 结果:', selection);
+      } catch (e) {
+        console.warn('[FeishuEnv] base.getSelection() 失败:', e);
+      }
+    }
     
     // 检查状态是否变化
     const hasChanged = hasSelectionChanged(currentRecordIds, currentTableId);
@@ -300,7 +363,7 @@ async function checkCheckboxSelectionChange() {
       // 🔥 只在状态变化时输出日志
       console.log('✅ 选择状态变化 detected');
       console.log('📋 当前选中记录:', currentRecordIds);
-      console.log('📋 选择信息详情:', JSON.stringify(selection));
+      console.log('📋 当前表格 ID:', currentTableId);
       
       // 更新缓存
       lastPolledRecordIds = [...currentRecordIds];
