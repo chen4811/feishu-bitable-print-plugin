@@ -42,6 +42,7 @@ import {
   getFeishuTable,
   isFeishuEnvironment 
 } from '@/lib/attachment-processor';
+import { fetchFields, fetchRecords, initEnvironment, getCurrentEnvironment } from '@/lib/feishu-service';
 
 interface PrintPreviewDialogProps {
   open: boolean;
@@ -282,52 +283,22 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
     setPrintError(null);
     
     try {
-      // 动态导入 feishu-env
-      const { fetchFields, fetchRecords } = await import('@/lib/feishu-env');
-      
-      // 获取字段
-      const feishuFields = await fetchFields();
-      const appFields = feishuFields.map((field: any) => {
-        // 判断字段种类
-        let fieldKind: Field['fieldKind'] = 'other';
-        const fieldType = String(field.type);
-        
-        if (fieldType === '17' || fieldType === 'attachment') {
-          fieldKind = 'attachment';
-        } else if (fieldType === '11' || fieldType === 'user' || fieldType === 'person') {
-          fieldKind = 'person';
-        } else if (fieldType === '1' || fieldType === 'text') {
-          fieldKind = 'text';
-        } else if (fieldType === '2' || fieldType === 'number') {
-          fieldKind = 'number';
-        } else if (fieldType === '5' || fieldType === 'date') {
-          fieldKind = 'date';
-        }
-        
-        return {
-          id: field.id,
-          name: field.name,
-          type: field.type,
-          placeholder: `[${field.name}]`,
-          isSystem: false,
-          fieldKind, // 【关键】在获取时就确定字段种类
-        };
-      });
+      // 使用统一的 feishu-service 获取字段和记录
+      const appFields = await fetchFields();
       setFields(appFields);
       
-      // 获取记录
-      const feishuRecords = await fetchRecords();
-      const appRecords = feishuRecords.map((record: any) => ({
-        id: record.id,
-        ...record.fields,
-      }));
-      setRecords(appRecords as Record<string, unknown>[]);
+      const appRecords = await fetchRecords({ processFields: true });
+      setRecords(appRecords);
       
       // 切换到数据模式
       setDataSourceMode('data');
       
       // 重置页码
       setCurrentPage(0);
+      
+      if (appFields.length === 0) {
+        setPrintError('未获取到字段数据，请检查数据源配置');
+      }
     } catch (error) {
       console.error('加载飞书数据失败:', error);
       setPrintError('加载数据失败，请确保在飞书环境中并选择了表格');

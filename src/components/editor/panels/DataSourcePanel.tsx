@@ -9,7 +9,7 @@ import { useEditorStore } from '@/store/editorStore';
 import { Search, Copy, AlertCircle, Check, FileText, Hash, Calendar, List, Image, User, RefreshCw } from 'lucide-react';
 import { Field } from '@/types/editor';
 import { toast } from 'sonner';
-import { feishuEnv } from '@/lib/feishu-env';
+import { fetchFields, fetchRecords, getCurrentEnvironment } from '@/lib/feishu-service';
 
 interface DataSourcePanelProps {
   onAddField?: (field: Field) => void;
@@ -58,53 +58,28 @@ export function DataSourcePanel({ onAddField }: DataSourcePanelProps) {
   
   // 🔥 【新增】手动刷新字段列表
   const handleRefreshFields = async () => {
-    if (!isFeishuEnvironment) {
-      toast.error('不在飞书环境中，无法刷新');
+    const env = getCurrentEnvironment();
+    
+    if (env === 'unknown') {
+      toast.error('环境未初始化，无法刷新');
       return;
     }
     
     setIsRefreshing(true);
     try {
-      const fields = await feishuEnv.fetchFields();
-      
-      // 转换字段格式（添加 fieldKind）
-      const appFields = fields.map((field: any) => {
-        let fieldKind: Field['fieldKind'] = 'other';
-        const fieldType = String(field.type);
-        
-        if (fieldType === '17' || fieldType === 'attachment') {
-          fieldKind = 'attachment';
-        } else if (fieldType === '11' || fieldType === 'user' || fieldType === 'person') {
-          fieldKind = 'person';
-        } else if (fieldType === '1' || fieldType === 'text') {
-          fieldKind = 'text';
-        } else if (fieldType === '2' || fieldType === 'number') {
-          fieldKind = 'number';
-        } else if (fieldType === '5' || fieldType === 'date') {
-          fieldKind = 'date';
-        }
-        
-        return {
-          id: field.id,
-          name: field.name,
-          type: field.type,
-          placeholder: `[${field.name}]`,
-          isSystem: false,
-          fieldKind,
-        };
-      });
+      // 使用统一的 feishu-service 获取字段
+      const appFields = await fetchFields();
       
       setFields(appFields);
       
       // 同时刷新记录
-      const records = await feishuEnv.getSelectedRecords();
+      const records = await fetchRecords({ processFields: true });
       if (records.length > 0) {
         const appRecords = records.map((record, index) => ({
-          id: record.id,
-          ...record.fields,
+          ...record,
           _rowIndex: index,
         }));
-        setRecords(appRecords as Record<string, unknown>[]);
+        setRecords(appRecords);
       }
       
       toast.success('字段列表已刷新', {
