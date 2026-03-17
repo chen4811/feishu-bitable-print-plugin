@@ -102,10 +102,18 @@ export class FeishuAPIClient {
       }),
     });
 
-    const data = await response.json();
+    // 先获取响应文本，避免 JSON 解析失败
+    const responseText = await response.text();
+    
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      throw new Error(`获取 tenant_access_token 失败: 飞书返回非 JSON 响应 - ${responseText.slice(0, 200)}`);
+    }
 
     if (data.code !== 0 || !data.tenant_access_token) {
-      throw new Error(`获取 tenant_access_token 失败: ${data.msg || '未知错误'}`);
+      throw new Error(`获取 tenant_access_token 失败: ${data.msg || '未知错误'} (code: ${data.code})`);
     }
 
     this.tenantAccessToken = data.tenant_access_token as string;
@@ -141,10 +149,19 @@ export class FeishuAPIClient {
       body: body ? JSON.stringify(body) : undefined,
     });
 
-    const data = await response.json();
+    // 先获取响应文本，避免 JSON 解析失败
+    const responseText = await response.text();
+    
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      // JSON 解析失败，可能是飞书返回了 HTML 错误页面
+      throw new Error(`飞书 API 返回非 JSON 响应 [${path}]: ${responseText.slice(0, 200)}`);
+    }
 
     if (data.code !== 0) {
-      throw new Error(`飞书 API 调用失败 [${path}]: ${data.msg}`);
+      throw new Error(`飞书 API 调用失败 [${path}]: ${data.msg} (code: ${data.code})`);
     }
 
     return data.data;
