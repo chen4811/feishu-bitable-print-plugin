@@ -42,6 +42,12 @@ export function MixedContentRenderer({
   const segments = useMemo(() => {
     return parseMixedContent(content);
   }, [content]);
+  
+  // 【调试】入口日志
+  const hasVariables = segments.some(s => s.type === 'variable');
+  if (hasVariables) {
+    console.log('[MixedContentRenderer] 解析到变量:', segments.filter(s => s.type === 'variable').map(s => s.fieldName));
+  }
 
   return (
     <span className={className} style={style}>
@@ -58,6 +64,18 @@ export function MixedContentRenderer({
           // 这对于附件字段特别重要，因为 URL 已经预处理好了
           const htmlFieldName = `_${fieldName}_html`;
           const htmlContent = data[htmlFieldName];
+          
+          // 【调试】输出关键变量
+          const relatedKeys = Object.keys(data).filter(k => k.includes(fieldName) || k.includes('_html'));
+          console.log(`[MixedContentRenderer] 处理变量 "${fieldName}":`, {
+            hasHtmlField: htmlFieldName in data,
+            htmlFieldName,
+            htmlContentType: typeof htmlContent,
+            htmlContentLength: typeof htmlContent === 'string' ? htmlContent.length : 0,
+            hasImgTag: typeof htmlContent === 'string' ? htmlContent.includes('<img') : false,
+            relatedKeys: relatedKeys.slice(0, 10),
+            htmlContentPreview: typeof htmlContent === 'string' ? htmlContent.substring(0, 100) + '...' : null
+          });
           
           if (htmlContent && typeof htmlContent === 'string' && htmlContent.includes('<img')) {
             // 使用预处理的 HTML 内容
