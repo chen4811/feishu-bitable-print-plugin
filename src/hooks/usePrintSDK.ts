@@ -16,7 +16,7 @@ import {
   offFeishuReady,
   offNotFeishu
 } from '@/lib/feishu-env';
-import { fetchFields as fetchFieldsFromService } from '@/lib/feishu-service';
+import { fetchFields as fetchFieldsFromService, initEnvironment } from '@/lib/feishu-service';
 import { Field, FeishuContext } from '@/types/editor';
 import { useEditorStore } from '@/store/editorStore';
 import { mockBitableData } from '@/data/mockData';
@@ -143,6 +143,11 @@ export function usePrintSDK(): UsePrintSDKResult {
       if (context) {
         setFeishuContext(context);
       }
+
+      // 🔥 初始化 feishu-service 的环境状态（设置 currentEnv = 'sdk'）
+      console.log('[PrintSDK] 初始化 feishu-service 环境...');
+      const envResult = await initEnvironment();
+      console.log('[PrintSDK] feishu-service 环境初始化结果:', envResult);
 
       // 获取字段（场景：创建模板时读取，可使用缓存）
       console.log('[PrintSDK] 开始获取字段...');
