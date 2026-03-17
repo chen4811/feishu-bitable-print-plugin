@@ -54,6 +54,23 @@ export function MixedContentRenderer({
           const fieldName = segment.fieldName;
           const fieldValue = data[fieldName];
           
+          // 🔥 【关键修复】优先使用预处理的 HTML 内容（_字段名_html）
+          // 这对于附件字段特别重要，因为 URL 已经预处理好了
+          const htmlFieldName = `_${fieldName}_html`;
+          const htmlContent = data[htmlFieldName];
+          
+          if (htmlContent && typeof htmlContent === 'string' && htmlContent.includes('<img')) {
+            // 使用预处理的 HTML 内容
+            console.log(`[MixedContentRenderer] 使用预处理的 HTML 内容: ${fieldName}`);
+            return (
+              <span 
+                key={index} 
+                className="inline-variable"
+                dangerouslySetInnerHTML={{ __html: htmlContent }}
+              />
+            );
+          }
+          
           // 检查是否有预定义的配置
           let config = variableConfigs[fieldName];
           
