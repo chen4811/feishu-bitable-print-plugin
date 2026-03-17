@@ -136,6 +136,10 @@ export type RecordsCallback = (records: Record<string, unknown>[]) => void;
 
 /**
  * 检测当前环境
+ * 
+ * 🔥 架构决策：统一使用后端 API 模式
+ * - 飞书侧边栏：用 JS-SDK 仅获取 appToken/tableId，然后切换到 API 模式
+ * - 独立访问：直接使用 API 模式（需提供凭证）
  */
 export function detectEnvironment(): Environment {
   // 🔥 如果已经确定环境，直接返回
@@ -143,26 +147,17 @@ export function detectEnvironment(): Environment {
     return currentEnv;
   }
   
+  // 检查是否有配置的 appToken 和 tableId（优先）
+  if (appToken && tableId) {
+    currentEnv = 'api';
+    return 'api';
+  }
+  
   // 检查是否在 iframe 中（飞书侧边栏环境）
   const inIframe = typeof window !== 'undefined' && window.self !== window.top;
   
   if (inIframe) {
-    // 尝试检测飞书环境
-    const isFeishuEnv = typeof navigator !== 'undefined' && /lark|feishu/i.test(navigator.userAgent);
-    if (isFeishuEnv) {
-      currentEnv = 'sdk';
-      return 'sdk';
-    }
-    
-    // 🔥 即使 userAgent 不匹配，如果在 iframe 中，也尝试使用 SDK
-    // 因为可能已经通过 initEnvironment() 初始化过了
-    console.log('[FeishuService] 在 iframe 中但 userAgent 未匹配，返回当前环境:', currentEnv);
-  }
-  
-  // 检查是否有配置的 appToken 和 tableId
-  if (appToken && tableId) {
-    currentEnv = 'api';
-    return 'api';
+    console.log('[FeishuService] 在 iframe 中，需要调用 initEnvironment() 获取凭证');
   }
   
   return currentEnv;
@@ -204,6 +199,12 @@ export async function fetchFields(options?: {
   
   console.log('[FeishuService] 获取字段列表, 环境:', env, '场景:', scene, '强制刷新:', forceRefresh);
   
+  // 🔥 只支持 API 模式
+  if (env !== 'api' || !appToken || !targetTableId) {
+    console.error('[FeishuService] 未初始化 API 凭证，无法获取字段');
+    return [];
+  }
+  
   // 检查是否使用缓存
   if (!forceRefresh && shouldUseCache(scene) && targetTableId) {
     const cachedFields = getCachedFields(targetTableId);
@@ -212,68 +213,44 @@ export async function fetchFields(options?: {
     }
   }
   
-  let fields: Field[];
-  
-  if (env === 'sdk') {
-    // 使用 JS-SDK
-    try {
-      const { fetchFields: sdkFetchFields } = await import('./feishu-env');
-      const rawFields = await sdkFetchFields();
-      
-      fields = rawFields.map((field: any, index: number) => ({
-        id: field.id || `field_${index}`,
-        name: field.name,
-        type: field.type,
-        placeholder: `[${field.name}]`,
-        isSystem: false,
-        fieldKind: getFieldKind(field.type),
-      }));
-    } catch (error) {
-      console.error('[FeishuService] SDK 获取字段失败:', error);
-      return [];
+  // 使用后端 API
+  try {
+    const params = new URLSearchParams({
+      appToken: appToken!,
+      tableId: tableId!,
+    });
+    
+    const response = await fetch(`/api/feishu/fields/?${params}`);
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.error);
     }
-  } else if (env === 'api') {
-    // 使用后端 API
-    try {
-      const params = new URLSearchParams({
-        appToken: appToken!,
-        tableId: tableId!,
-      });
-      
-      const response = await fetch(`/api/feishu/fields/?${params}`);
-      const result = await response.json();
-      
-      if (!result.success) {
-        throw new Error(result.error);
-      }
-      
-      fields = result.fields.map((field: any) => ({
-        id: field.id,
-        name: field.name,
-        type: String(field.type),
-        placeholder: `[${field.name}]`,
-        isSystem: false,
-        fieldKind: field.fieldKind || getFieldKind(field.type),
-      }));
-    } catch (error) {
-      console.error('[FeishuService] API 获取字段失败:', error);
-      return [];
+    
+    const fields: Field[] = result.fields.map((field: any) => ({
+      id: field.id,
+      name: field.name,
+      type: String(field.type),
+      placeholder: `[${field.name}]`,
+      isSystem: false,
+      fieldKind: field.fieldKind || getFieldKind(field.type),
+    }));
+    
+    // 缓存字段
+    if (targetTableId && fields.length > 0) {
+      setFieldCache(targetTableId, fields);
     }
-  } else {
-    console.warn('[FeishuService] 未知环境，无法获取字段');
+    
+    return fields;
+  } catch (error) {
+    console.error('[FeishuService] API 获取字段失败:', error);
     return [];
   }
-  
-  // 缓存字段
-  if (targetTableId && fields.length > 0) {
-    setFieldCache(targetTableId, fields);
-  }
-  
-  return fields;
 }
 
 /**
  * 获取记录列表
+ * 🔥 统一使用后端 API 模式
  */
 export async function fetchRecords(options?: {
   recordIds?: string[];
@@ -283,85 +260,39 @@ export async function fetchRecords(options?: {
   
   console.log('[FeishuService] 获取记录, 环境:', env);
   
-  if (env === 'sdk') {
-    // 使用 JS-SDK
-    try {
-      const { fetchRecords: sdkFetchRecords, getSelectedRecords } = await import('./feishu-env');
-      
-      // 如果指定了 recordIds，需要使用批量获取
-      if (options?.recordIds && options.recordIds.length > 0) {
-        const { getRecordsByCheckboxIds } = await import('./feishu-env');
-        // 在 SDK 模式下，需要从 selection 获取 tableId
-        // 简化处理：如果没有 tableId，跳过批量获取
-        if (tableId) {
-          const records = await getRecordsByCheckboxIds(tableId, options.recordIds);
-          return records.map(r => ({ id: r.id, ...r.fields }));
-        }
-      }
-      
-      // 默认获取所有记录或选中记录
-      const rawRecords = await sdkFetchRecords();
-      return rawRecords.map(r => ({ id: r.id, ...r.fields }));
-    } catch (error) {
-      console.error('[FeishuService] SDK 获取记录失败:', error);
-      return [];
-    }
+  // 🔥 只支持 API 模式
+  if (env !== 'api' || !appToken || !tableId) {
+    console.error('[FeishuService] 未初始化 API 凭证，无法获取记录');
+    return [];
   }
   
-  if (env === 'api') {
-    // 使用后端 API
-    try {
-      const response = await fetch('/api/feishu/records/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          appToken,
-          tableId,
-          recordIds: options?.recordIds,
-          processFields: options?.processFields ?? true,
-        }),
-      });
-      
-      const result = await response.json();
-      
-      if (!result.success) {
-        throw new Error(result.error);
-      }
-      
-      return result.records.map((r: any) => ({
-        id: r.id,
-        ...r.fields,
-      }));
-    } catch (error) {
-      console.error('[FeishuService] API 获取记录失败:', error);
-      return [];
+  // 使用后端 API
+  try {
+    const response = await fetch('/api/feishu/records/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        appToken,
+        tableId,
+        recordIds: options?.recordIds,
+        processFields: options?.processFields ?? true,
+      }),
+    });
+    
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.error);
     }
+    
+    return result.records.map((r: any) => ({
+      id: r.id,
+      ...r.fields,
+    }));
+  } catch (error) {
+    console.error('[FeishuService] API 获取记录失败:', error);
+    return [];
   }
-  
-  console.warn('[FeishuService] 未知环境，无法获取记录');
-  return [];
-}
-
-/**
- * 获取选中记录（SDK 模式专用）
- */
-export async function getSelectedRecords(): Promise<Record<string, unknown>[]> {
-  const env = detectEnvironment();
-  
-  if (env === 'sdk') {
-    try {
-      const { getSelectedRecords: sdkGetSelectedRecords } = await import('./feishu-env');
-      const records = await sdkGetSelectedRecords();
-      return records.map(r => ({ id: r.id, ...r.fields }));
-    } catch (error) {
-      console.error('[FeishuService] SDK 获取选中记录失败:', error);
-      return [];
-    }
-  }
-  
-  // API 模式下需要前端传递选中的 recordIds
-  console.warn('[FeishuService] API 模式下请使用 fetchRecords({ recordIds: [...] })');
-  return [];
 }
 
 /**
@@ -370,7 +301,7 @@ export async function getSelectedRecords(): Promise<Record<string, unknown>[]> {
 export async function initEnvironment(config?: {
   appToken?: string;
   tableId?: string;
-}): Promise<{ success: boolean; tableName?: string; tableId?: string }> {
+}): Promise<{ success: boolean; tableName?: string; tableId?: string; appToken?: string }> {
   console.log('[FeishuService] initEnvironment 被调用, config:', config);
   
   // 如果提供了凭证，设置 API 模式
@@ -393,6 +324,7 @@ export async function initEnvironment(config?: {
         success: result.success,
         tableName: result.tableName,
         tableId: config.tableId,
+        appToken: config.appToken,
       };
     } catch (error) {
       console.error('[FeishuService] 初始化失败:', error);
@@ -400,37 +332,70 @@ export async function initEnvironment(config?: {
     }
   }
   
-  // 否则尝试初始化 SDK 环境
-  try {
-    console.log('[FeishuService] 尝试初始化 SDK 环境...');
-    const { initFeishuEnv } = await import('./feishu-env');
-    const success = await initFeishuEnv();
-    console.log('[FeishuService] initFeishuEnv 返回:', success);
-    if (success) {
-      currentEnv = 'sdk';
-      console.log('[FeishuService] 当前环境设置为: sdk');
+  // 检查是否在飞书侧边栏 iframe 中
+  const inIframe = typeof window !== 'undefined' && window.self !== window.top;
+  
+  if (inIframe) {
+    // 🔥 使用 JS-SDK 仅获取 appToken 和 tableId，然后切换到 API 模式
+    try {
+      console.log('[FeishuService] 在飞书侧边栏中，使用 SDK 获取凭证...');
       
-      // 🔥 在 SDK 模式下，获取并缓存 tableId 和 appToken（baseId）
-      try {
-        const { base } = await import('@lark-base-open/js-sdk');
-        const selection = await base.getSelection();
-        if (selection?.tableId) {
-          tableId = selection.tableId;
-          console.log('[FeishuService] 缓存 tableId:', tableId);
+      // 动态导入 SDK（仅在需要时加载）
+      const { base } = await import('@lark-base-open/js-sdk');
+      
+      // 获取 selection 信息
+      const selection = await base.getSelection();
+      console.log('[FeishuService] SDK selection:', selection);
+      
+      if (selection?.tableId && selection?.baseId) {
+        // 🔥 设置 API 凭证（baseId 作为 appToken）
+        appToken = selection.baseId;
+        tableId = selection.tableId;
+        currentEnv = 'api'; // 强制使用 API 模式
+        
+        console.log('[FeishuService] 从 SDK 获取凭证成功，切换到 API 模式');
+        console.log('[FeishuService] appToken:', appToken);
+        console.log('[FeishuService] tableId:', tableId);
+        
+        // 获取表格名称（通过后端 API）
+        try {
+          const response = await fetch(`/api/feishu/init/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              appToken: appToken,
+              tableId: tableId,
+            }),
+          });
+          
+          const result = await response.json();
+          
+          return {
+            success: true,
+            tableName: result.tableName,
+            tableId: tableId,
+            appToken: appToken,
+          };
+        } catch (error) {
+          console.error('[FeishuService] 获取表格名称失败:', error);
+          return {
+            success: true, // 凭证获取成功，只是名称获取失败
+            tableId: tableId,
+            appToken: appToken,
+          };
         }
-        if (selection?.baseId) {
-          appToken = selection.baseId; // 在 SDK 模式下，baseId 作为 appToken
-          console.log('[FeishuService] 缓存 appToken (baseId):', appToken);
-        }
-      } catch (error) {
-        console.error('[FeishuService] 获取 selection 失败:', error);
+      } else {
+        console.error('[FeishuService] SDK selection 缺少 tableId 或 baseId');
+        return { success: false };
       }
+    } catch (error) {
+      console.error('[FeishuService] SDK 初始化失败:', error);
+      return { success: false };
     }
-    return { success, tableId: tableId || undefined };
-  } catch (error) {
-    console.error('[FeishuService] SDK 初始化失败:', error);
-    return { success: false };
   }
+  
+  console.warn('[FeishuService] 非飞书环境且未提供凭证');
+  return { success: false };
 }
 
 /**
