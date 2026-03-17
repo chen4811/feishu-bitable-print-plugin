@@ -5,6 +5,7 @@
  * 1. 显示 SDK API 可用性
  * 2. 手动触发选中记录检查
  * 3. 显示当前选中状态
+ * 4. 完整的插件环境验证
  */
 
 'use client';
@@ -26,6 +27,10 @@ interface DebugInfo {
   currentSelection: any;
   selectedRecordIds: string[];
   lastEvent: any;
+  // 环境验证
+  permission: any;
+  tableList: any[];
+  firstTableFields: any[];
 }
 
 export function CheckboxDebug() {
@@ -40,6 +45,9 @@ export function CheckboxDebug() {
     currentSelection: null,
     selectedRecordIds: [],
     lastEvent: null,
+    permission: null,
+    tableList: [],
+    firstTableFields: [],
   });
   const [isLoading, setIsLoading] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
@@ -50,44 +58,139 @@ export function CheckboxDebug() {
     console.log(`[CheckboxDebug] ${message}`);
   }, []);
 
-  // 检查 API 可用性
-  const checkApiAvailability = useCallback(async () => {
+  // 🔥 完整的插件环境验证（按照用户提供的脚本）
+  const validatePluginEnvironment = useCallback(async () => {
     setIsLoading(true);
-    addLog('开始检查 API 可用性...');
+    addLog('🧪 ========== 开始完整环境验证 ==========');
     
     try {
-      // 动态导入 SDK
       const { bitable, base } = await import('@lark-base-open/js-sdk');
       
-      const hasBitable = !!bitable;
-      const hasBase = !!base;
+      // 1. 验证 bitable 对象
+      addLog('--- 1. 验证 bitable 对象 ---');
+      const hasBitable = typeof bitable !== 'undefined';
+      const hasBase = typeof bitable?.base !== 'undefined';
+      addLog(`Bitable 对象: ${typeof bitable}`);
+      addLog(`Bitable.base: ${typeof bitable?.base}`);
+      
+      // 打印 bitable 的所有属性和方法
+      if (bitable) {
+        addLog(`bitable 可用属性: ${Object.keys(bitable).join(', ')}`);
+      }
+      
+      setDebugInfo(prev => ({ ...prev, hasBitable, hasBase }));
+      
+      // 2. 验证权限
+      addLog('--- 2. 验证权限 ---');
+      try {
+        // getPermission 可能需要参数或不存在
+        if (typeof (base as any).getPermission === 'function') {
+          const permission = await (base as any).getPermission();
+          addLog(`权限状态: ${JSON.stringify(permission)}`);
+          setDebugInfo(prev => ({ ...prev, permission }));
+        } else {
+          addLog('getPermission 方法不存在');
+        }
+      } catch (error) {
+        addLog(`权限验证失败: ${error}`);
+      }
+      
+      // 3. 验证表格访问
+      addLog('--- 3. 验证表格访问 ---');
+      try {
+        const tableList = await base.getTableList();
+        addLog(`表格列表数量: ${tableList?.length || 0}`);
+        if (tableList && tableList.length > 0) {
+          tableList.forEach((table: any, index: number) => {
+            addLog(`  表格${index + 1}: id=${table.id}, name=${table.name}`);
+          });
+        }
+        setDebugInfo(prev => ({ ...prev, tableList: tableList || [] }));
+        
+        if (tableList && tableList.length > 0) {
+          const table = await base.getTableById(tableList[0].id);
+          const fields = await table.getFieldList();
+          addLog(`第一个表格的字段数量: ${fields?.length || 0}`);
+          if (fields && fields.length > 0) {
+            fields.slice(0, 5).forEach((field: any, index: number) => {
+              addLog(`  字段${index + 1}: id=${field.id}, name=${field.name}`);
+            });
+            if (fields.length > 5) {
+              addLog(`  ... 共 ${fields.length} 个字段`);
+            }
+          }
+          setDebugInfo(prev => ({ ...prev, firstTableFields: fields || [] }));
+        }
+      } catch (error) {
+        addLog(`表格访问验证失败: ${error}`);
+      }
+      
+      // 4. 🔥 验证 bitable.ui（复选框选中关键 API）
+      addLog('--- 4. 验证 bitable.ui（复选框选中关键 API）---');
       const hasUi = !!(bitable as any).ui;
-      const hasGetSelectRecordIds = hasUi && typeof (bitable as any).ui?.getSelectRecordIds === 'function';
-      const hasOnSelectRecordIdsChange = hasUi && typeof (bitable as any).ui?.onSelectRecordIdsChange === 'function';
+      addLog(`bitable.ui 存在: ${hasUi}`);
+      
+      if (hasUi) {
+        const ui = (bitable as any).ui;
+        addLog(`bitable.ui 可用方法: ${Object.keys(ui).join(', ')}`);
+        
+        // 检查 getSelectRecordIds
+        const hasGetSelectRecordIds = typeof ui.getSelectRecordIds === 'function';
+        addLog(`bitable.ui.getSelectRecordIds 可用: ${hasGetSelectRecordIds}`);
+        
+        // 检查 onSelectRecordIdsChange
+        const hasOnSelectRecordIdsChange = typeof ui.onSelectRecordIdsChange === 'function';
+        addLog(`bitable.ui.onSelectRecordIdsChange 可用: ${hasOnSelectRecordIdsChange}`);
+        
+        // 🔥 尝试调用 getSelectRecordIds
+        if (hasGetSelectRecordIds) {
+          try {
+            const selectedIds = await ui.getSelectRecordIds();
+            addLog(`当前复选框选中的记录 ID: ${JSON.stringify(selectedIds)}`);
+            addLog(`选中数量: ${selectedIds?.length || 0}`);
+            setDebugInfo(prev => ({ 
+              ...prev, 
+              selectedRecordIds: selectedIds || [],
+              hasGetSelectRecordIds: true,
+              hasUi: true
+            }));
+          } catch (e) {
+            addLog(`调用 getSelectRecordIds 失败: ${e}`);
+            setDebugInfo(prev => ({ ...prev, hasGetSelectRecordIds: false, hasUi: true }));
+          }
+        } else {
+          setDebugInfo(prev => ({ ...prev, hasGetSelectRecordIds: false, hasUi: true }));
+        }
+        
+        setDebugInfo(prev => ({ ...prev, hasOnSelectRecordIdsChange }));
+      } else {
+        addLog('⚠️ bitable.ui 不存在！这是复选框选中功能不可用的原因');
+        setDebugInfo(prev => ({ ...prev, hasUi: false, hasGetSelectRecordIds: false }));
+      }
+      
+      // 5. 验证 base.getSelection 和 onSelectionChange
+      addLog('--- 5. 验证 base.getSelection ---');
       const hasGetSelection = typeof base.getSelection === 'function';
       const hasOnSelectionChange = typeof base.onSelectionChange === 'function';
+      addLog(`base.getSelection 可用: ${hasGetSelection}`);
+      addLog(`base.onSelectionChange 可用: ${hasOnSelectionChange}`);
       
-      addLog(`bitable 存在: ${hasBitable}`);
-      addLog(`base 存在: ${hasBase}`);
-      addLog(`bitable.ui 存在: ${hasUi}`);
-      addLog(`getSelectRecordIds 可用: ${hasGetSelectRecordIds}`);
-      addLog(`onSelectRecordIdsChange 可用: ${hasOnSelectRecordIdsChange}`);
-      addLog(`getSelection 可用: ${hasGetSelection}`);
-      addLog(`onSelectionChange 可用: ${hasOnSelectionChange}`);
+      if (hasGetSelection) {
+        try {
+          const selection = await base.getSelection();
+          addLog(`当前选择信息: ${JSON.stringify(selection)}`);
+          setDebugInfo(prev => ({ ...prev, currentSelection: selection }));
+        } catch (e) {
+          addLog(`调用 getSelection 失败: ${e}`);
+        }
+      }
       
-      setDebugInfo(prev => ({
-        ...prev,
-        hasBitable,
-        hasBase,
-        hasUi,
-        hasGetSelectRecordIds,
-        hasOnSelectRecordIdsChange,
-        hasGetSelection,
-        hasOnSelectionChange,
-      }));
+      setDebugInfo(prev => ({ ...prev, hasGetSelection, hasOnSelectionChange }));
+      
+      addLog('✅ ========== 环境验证完成 ==========');
       
     } catch (error) {
-      addLog(`检查失败: ${error}`);
+      addLog(`❌ 环境验证失败: ${error}`);
     } finally {
       setIsLoading(false);
     }
@@ -191,8 +294,8 @@ export function CheckboxDebug() {
 
   // 初始化检查
   useEffect(() => {
-    checkApiAvailability();
-  }, [checkApiAvailability]);
+    validatePluginEnvironment();
+  }, [validatePluginEnvironment]);
 
   return (
     <Card className="w-full">
@@ -207,6 +310,18 @@ export function CheckboxDebug() {
         <div className="space-y-2">
           <div className="text-xs font-medium text-muted-foreground">API 可用性</div>
           <div className="grid grid-cols-2 gap-1 text-xs">
+            <div className="flex items-center gap-1">
+              <Badge variant={debugInfo.hasBitable ? "default" : "destructive"} className="text-[10px]">
+                {debugInfo.hasBitable ? '✓' : '✗'}
+              </Badge>
+              <span>bitable</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Badge variant={debugInfo.hasBase ? "default" : "destructive"} className="text-[10px]">
+                {debugInfo.hasBase ? '✓' : '✗'}
+              </Badge>
+              <span>bitable.base</span>
+            </div>
             <div className="flex items-center gap-1">
               <Badge variant={debugInfo.hasUi ? "default" : "destructive"} className="text-[10px]">
                 {debugInfo.hasUi ? '✓' : '✗'}
@@ -233,6 +348,30 @@ export function CheckboxDebug() {
             </div>
           </div>
         </div>
+        
+        {/* 权限状态 */}
+        {debugInfo.permission && (
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-muted-foreground">权限状态</div>
+            <div className="text-xs bg-muted p-2 rounded">
+              <pre className="text-[10px] overflow-auto max-h-20">
+                {JSON.stringify(debugInfo.permission, null, 2)}
+              </pre>
+            </div>
+          </div>
+        )}
+        
+        {/* 表格列表 */}
+        {debugInfo.tableList.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-muted-foreground">表格列表 ({debugInfo.tableList.length} 个)</div>
+            <div className="text-xs bg-muted p-2 rounded max-h-20 overflow-auto">
+              {debugInfo.tableList.map((table, index) => (
+                <div key={table.id} className="truncate">{index + 1}. {table.name} ({table.id})</div>
+              ))}
+            </div>
+          </div>
+        )}
         
         {/* 当前选中状态 */}
         <div className="space-y-2">
@@ -266,8 +405,8 @@ export function CheckboxDebug() {
         
         {/* 操作按钮 */}
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={checkApiAvailability} disabled={isLoading}>
-            检查 API
+          <Button size="sm" variant="outline" onClick={validatePluginEnvironment} disabled={isLoading}>
+            完整环境验证
           </Button>
           <Button size="sm" variant="outline" onClick={checkCurrentSelection} disabled={isLoading}>
             检查选中状态
