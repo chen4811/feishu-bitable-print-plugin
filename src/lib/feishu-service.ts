@@ -336,11 +336,19 @@ export async function initEnvironment(config?: {
   const inIframe = typeof window !== 'undefined' && window.self !== window.top;
   
   if (inIframe) {
-    // 🔥 使用 JS-SDK 仅获取 appToken 和 tableId，然后切换到 API 模式
+    // 🔥 先初始化完整的 SDK 环境（包括启动复选框轮询）
     try {
-      console.log('[FeishuService] 在飞书侧边栏中，使用 SDK 获取凭证...');
+      console.log('[FeishuService] 在飞书侧边栏中，初始化完整 SDK 环境...');
       
-      // 动态导入 SDK（仅在需要时加载）
+      // 动态导入 feishu-env 模块
+      const { feishuEnv } = await import('./feishu-env');
+      
+      // 🔥 调用完整的 SDK 初始化（会启动轮询检测复选框）
+      console.log('[FeishuService] 调用 feishuEnv.init() 初始化 SDK...');
+      const sdkInitSuccess = await feishuEnv.init();
+      console.log('[FeishuService] SDK 初始化结果:', sdkInitSuccess);
+      
+      // 🔥 从 SDK 获取凭证
       const { base } = await import('@lark-base-open/js-sdk');
       
       // 获取 selection 信息
@@ -528,6 +536,9 @@ let checkboxManager: any = null;
 let selectionCallbacks: Set<CheckboxSelectionCallback> = new Set();
 let recordsCallbacks: Set<RecordsCallback> = new Set();
 
+// 🔥 存储回调的取消订阅函数（用于清理）
+const unsubscribeMap = new WeakMap<CheckboxSelectionCallback, () => void>();
+
 /**
  * 初始化复选框选中监听
  * 
@@ -580,13 +591,46 @@ export async function initCheckboxSelection(): Promise<boolean> {
 
 /**
  * 监听复选框选中变化
+ * 
+ * 🔥 关键修复：连接到 feishu-env.ts 的轮询机制
  */
 export function onCheckboxSelectionChange(
   callback: CheckboxSelectionCallback
 ): () => void {
   selectionCallbacks.add(callback);
+  
+  // 🔥 如果在飞书环境中，连接到 feishu-env 的轮询监听
+  if (typeof window !== 'undefined' && window.self !== window.top) {
+    // 动态连接到 feishu-env 的轮询回调
+    import('./feishu-env').then(({ feishuEnv }) => {
+      // 注册内部转发回调
+      const unsubscribe = feishuEnv.onCheckboxPollingChange((event) => {
+        console.log('[FeishuService] 收到轮询事件:', event);
+        // 转发给所有外部回调
+        selectionCallbacks.forEach(cb => {
+          try {
+            cb(event);
+          } catch (e) {
+            console.error('[FeishuService] 选中回调执行失败:', e);
+          }
+        });
+      });
+      
+      // 存储取消订阅函数，用于清理
+      unsubscribeMap.set(callback, unsubscribe);
+    }).catch(err => {
+      console.error('[FeishuService] 连接轮询监听失败:', err);
+    });
+  }
+  
   return () => {
     selectionCallbacks.delete(callback);
+    // 清理内部订阅
+    const unsubscribe = unsubscribeMap.get(callback);
+    if (unsubscribe) {
+      unsubscribe();
+      unsubscribeMap.delete(callback);
+    }
   };
 }
 
