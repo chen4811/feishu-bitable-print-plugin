@@ -268,25 +268,40 @@ export async function fetchRecords(options?: {
 }): Promise<Record<string, unknown>[]> {
   const env = detectEnvironment();
   
-  console.log('[FeishuService] 获取记录, 环境:', env);
+  console.log('[FeishuService] 获取记录, 环境:', env, 'recordIds:', options?.recordIds?.length || 0);
   
   if (env === 'sdk') {
     // 使用 JS-SDK
     try {
-      const { fetchRecords: sdkFetchRecords, getSelectedRecords } = await import('./feishu-env');
-      
-      // 如果指定了 recordIds，需要使用批量获取
+      // 🔥 如果指定了 recordIds，需要使用批量获取
       if (options?.recordIds && options.recordIds.length > 0) {
         const { getRecordsByCheckboxIds } = await import('./feishu-env');
-        // 在 SDK 模式下，需要从 selection 获取 tableId
-        // 简化处理：如果没有 tableId，跳过批量获取
-        if (tableId) {
-          const records = await getRecordsByCheckboxIds(tableId, options.recordIds);
+        const { base } = await import('@lark-base-open/js-sdk');
+        
+        // 🔥 修复：如果 tableId 为空，从 selection 获取
+        let targetTableId = tableId;
+        if (!targetTableId) {
+          try {
+            const selection = await base.getSelection();
+            targetTableId = selection?.tableId || null;
+            console.log('[FeishuService] 从 selection 获取 tableId:', targetTableId);
+          } catch (e) {
+            console.error('[FeishuService] 获取 tableId 失败:', e);
+          }
+        }
+        
+        if (targetTableId) {
+          console.log('[FeishuService] 批量获取记录, tableId:', targetTableId, 'recordIds:', options.recordIds);
+          const records = await getRecordsByCheckboxIds(targetTableId, options.recordIds);
+          console.log('[FeishuService] 批量获取到记录数:', records.length);
           return records.map(r => ({ id: r.id, ...r.fields }));
+        } else {
+          console.warn('[FeishuService] 无法获取 tableId，跳过批量获取');
         }
       }
       
-      // 默认获取所有记录或选中记录
+      // 默认获取所有记录
+      const { fetchRecords: sdkFetchRecords } = await import('./feishu-env');
       const rawRecords = await sdkFetchRecords();
       return rawRecords.map(r => ({ id: r.id, ...r.fields }));
     } catch (error) {
