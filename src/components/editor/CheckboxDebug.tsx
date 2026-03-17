@@ -232,12 +232,37 @@ export function CheckboxDebug() {
     addLog('开始获取选中记录数据...');
     
     try {
-      const records = await feishuEnv.getCheckboxSelectedRecords();
-      addLog(`获取到 ${records.length} 条记录`);
-      
-      if (records.length > 0) {
-        addLog(`第一条记录: ${JSON.stringify(records[0])}`);
+      // 🔥 优先使用轮询获取的当前状态
+      const currentSelection = feishuEnv.getCurrentPolledSelection();
+      if (currentSelection.recordIds.length > 0) {
+        addLog(`当前轮询状态: ${currentSelection.count} 条记录`);
+        
+        // 使用 SDK 获取记录数据
+        const { bitable, base } = await import('@lark-base-open/js-sdk');
+        const tableId = currentSelection.tableId;
+        
+        if (tableId) {
+          const table = await base.getTableById(tableId);
+          
+          // 尝试批量获取
+          if (typeof (table as any).getRecordsByIds === 'function') {
+            const records = await (table as any).getRecordsByIds(currentSelection.recordIds);
+            addLog(`获取到 ${records?.length || 0} 条记录数据`);
+            if (records && records.length > 0) {
+              addLog(`第一条记录字段: ${Object.keys(records[0].fields || {}).slice(0, 5).join(', ')}...`);
+            }
+          } else {
+            addLog('getRecordsByIds 方法不可用');
+          }
+        }
+      } else {
+        addLog('当前没有选中记录');
       }
+      
+      // 也尝试使用原有方法
+      const records = await feishuEnv.getCheckboxSelectedRecords();
+      addLog(`getCheckboxSelectedRecords 返回: ${records.length} 条记录`);
+      
     } catch (error) {
       addLog(`获取失败: ${error}`);
     } finally {
@@ -260,7 +285,7 @@ export function CheckboxDebug() {
           addLog('已注册 base.onSelectionChange 监听器');
         }
         
-        // 2. 监听 bitable.ui.onSelectRecordIdsChange（复选框选中）
+        // 2. 监听 bitable.ui.onSelectRecordIdsChange（复选框选中 - 可能不可用）
         if ((bitable as any).ui && typeof (bitable as any).ui.onSelectRecordIdsChange === 'function') {
           (bitable as any).ui.onSelectRecordIdsChange((event: any) => {
             addLog(`🎯 bitable.ui.onSelectRecordIdsChange 触发: ${JSON.stringify(event)}`);
@@ -273,17 +298,21 @@ export function CheckboxDebug() {
           addLog('已注册 bitable.ui.onSelectRecordIdsChange 监听器');
         }
         
-        // 3. 使用 feishuEnv 的监听器
-        feishuEnv.onCheckboxSelectionChange((event) => {
-          addLog(`🎯 feishuEnv.onCheckboxSelectionChange 触发: tableId=${event.tableId}, count=${event.count}`);
+        // 🔥 3. 使用轮询方式监听复选框选择变化（主要方案）
+        const unsubscribe = feishuEnv.onCheckboxPollingChange((event) => {
+          addLog(`🎯 [轮询检测] 复选框选择状态变化! tableId=${event.tableId}, count=${event.count}`);
           setDebugInfo(prev => ({ 
             ...prev, 
-            lastEvent: { type: 'checkboxSelectionChange', data: event },
+            lastEvent: { type: 'pollingChange', data: event },
             selectedRecordIds: event.recordIds
           }));
         });
-        addLog('已注册 feishuEnv.onCheckboxSelectionChange 监听器');
+        addLog('🔥 已启动复选框选择状态轮询监听');
         
+        // 清理函数
+        return () => {
+          unsubscribe();
+        };
       } catch (error) {
         addLog(`注册监听器失败: ${error}`);
       }
@@ -375,8 +404,12 @@ export function CheckboxDebug() {
         
         {/* 当前选中状态 */}
         <div className="space-y-2">
-          <div className="text-xs font-medium text-muted-foreground">
-            当前选中记录: {debugInfo.selectedRecordIds.length} 条
+          <div className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+            <span>🔥 轮询检测选中记录: {debugInfo.selectedRecordIds.length} 条</span>
+            <Badge variant="outline" className="text-[10px]">每秒轮询</Badge>
+          </div>
+          <div className="text-[10px] text-muted-foreground">
+            飞书多维表格表头复选框选择不会触发标准事件，使用轮询方式检测
           </div>
           {debugInfo.selectedRecordIds.length > 0 && (
             <div className="text-xs bg-muted p-2 rounded max-h-20 overflow-auto">

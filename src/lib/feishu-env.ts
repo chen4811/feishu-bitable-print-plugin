@@ -14,8 +14,6 @@
 
 import { bitable, base } from '@lark-base-open/js-sdk';
 
-// 确保轮询函数可在外部控制
-export { startPolling, stopPolling };
 // 调试日志系统
 // ============================================
 const DEBUG = true;
@@ -258,86 +256,166 @@ function checkEnvironment() {
 }
 
 // ============================================
-// 新增：轮询检查作为备用方案
+// 新增：轮询检测复选框选择状态（替代方案）
+// 飞书多维表格表头复选框选择不会触发 onSelectionChange 事件
 // ============================================
 
 let pollingInterval: NodeJS.Timeout | null = null;
-let lastPolledSelection: string[] = [];
+let lastPolledRecordIds: string[] = [];
+let lastPolledTableId: string = '';
+let checkboxPollingCallbacks: Set<(event: { tableId: string; recordIds: string[]; count: number }) => void> = new Set();
 
-function startPolling(interval = 2000) {
+/**
+ * 启动复选框选择状态轮询
+ * 只在状态变化时触发回调，避免频繁日志
+ */
+function startCheckboxPolling(interval = 1000) {
   if (pollingInterval) {
-    debugLog('轮询已在运行，跳过');
-    return;
+    return; // 已经在运行
   }
   
-  debugLog(`🔁 启动轮询检查，间隔: ${interval}ms`);
+  debugLog(`🔁 启动复选框选择状态轮询，间隔: ${interval}ms`);
   
   pollingInterval = setInterval(async () => {
-    try {
-      let currentSelection: string[] = [];
-      let tableId = '';
-      
-      // 优先尝试使用 bitable.ui.getSelectRecordIds()
-      if ((bitable as any).ui && typeof (bitable as any).ui.getSelectRecordIds === 'function') {
-        try {
-          currentSelection = await (bitable as any).ui.getSelectRecordIds();
-        } catch (e) {
-          // 静默处理，避免频繁日志
-        }
-      }
-      
-      // 如果上面的方法不可用或返回空，尝试使用 base.getSelection()
-      if (currentSelection.length === 0) {
-        const selection = await base.getSelection();
-        if (selection?.recordId) {
-          currentSelection = [selection.recordId];
-        }
-        tableId = selection?.tableId || '';
-      } else {
-        // 如果从 ui.getSelectRecordIds 获取到数据，也要获取 tableId
-        const selection = await base.getSelection();
-        tableId = selection?.tableId || '';
-      }
-      
-      // 检查是否有变化
-      const hasChanged = JSON.stringify(currentSelection) !== JSON.stringify(lastPolledSelection);
-      
-      if (hasChanged) {
-        debugLog('🔄 轮询检测到选择状态变化:', {
-          recordIds: currentSelection,
-          count: currentSelection.length,
-          tableId,
-        });
-        
-        // 构造事件对象
-        const event: RecordSelectChangeEvent = {
-          data: {
-            tableId,
-            recordIds: currentSelection,
-            isSelectAll: false,
-          },
-        };
-        
-        lastPolledSelection = currentSelection;
-      }
-      
-    } catch (error) {
-      // 静默处理轮询错误，避免频繁日志输出
-      // debugLog('轮询检查失败:', error instanceof Error ? error.message : error);
-    }
+    await checkCheckboxSelectionChange();
   }, interval);
-  
-  debugLog('✅ 轮询已启动');
 }
 
+/**
+ * 检查复选框选择状态是否变化
+ * 只在变化时输出日志并触发回调
+ */
+async function checkCheckboxSelectionChange() {
+  try {
+    let currentRecordIds: string[] = [];
+    let currentTableId: string = '';
+    
+    // 方式1：优先尝试 bitable.ui.getSelectRecordIds()
+    if ((bitable as any).ui && typeof (bitable as any).ui.getSelectRecordIds === 'function') {
+      try {
+        const ids = await (bitable as any).ui.getSelectRecordIds();
+        if (Array.isArray(ids) && ids.length > 0) {
+          currentRecordIds = ids;
+        }
+      } catch (e) {
+        // 静默处理
+      }
+    }
+    
+    // 方式2：使用 base.getSelection() 获取 tableId 和 recordIds
+    const selection = await base.getSelection();
+    currentTableId = selection?.tableId || '';
+    
+    // 如果 ui.getSelectRecordIds 不可用，尝试从 selection 获取
+    if (currentRecordIds.length === 0 && selection) {
+      // 某些情况下 selection.recordIds 可能存在
+      if (Array.isArray((selection as any).recordIds)) {
+        currentRecordIds = (selection as any).recordIds;
+      } else if (selection.recordId) {
+        // 单选情况
+        currentRecordIds = [selection.recordId];
+      }
+    }
+    
+    // 检查状态是否变化
+    const hasChanged = hasSelectionChanged(currentRecordIds, currentTableId);
+    
+    if (hasChanged) {
+      // 🔥 只在状态变化时输出日志
+      console.log('✅ 选择状态变化 detected');
+      console.log('📋 当前选中记录数:', currentRecordIds.length);
+      console.log('📋 tableId:', currentTableId);
+      console.log('📋 recordIds:', currentRecordIds.length > 5 
+        ? `${currentRecordIds.slice(0, 5).join(', ')}... (共${currentRecordIds.length}条)` 
+        : currentRecordIds.join(', '));
+      
+      // 更新缓存
+      lastPolledRecordIds = [...currentRecordIds];
+      lastPolledTableId = currentTableId;
+      
+      // 触发所有注册的回调
+      const event = {
+        tableId: currentTableId,
+        recordIds: currentRecordIds,
+        count: currentRecordIds.length,
+      };
+      
+      checkboxPollingCallbacks.forEach(cb => {
+        try {
+          cb(event);
+        } catch (e) {
+          console.error('[FeishuEnv] 复选框选择变化回调执行失败:', e);
+        }
+      });
+    }
+  } catch (error) {
+    // 静默处理轮询错误，避免频繁日志
+  }
+}
+
+/**
+ * 检查选择状态是否变化
+ */
+function hasSelectionChanged(currentRecordIds: string[], currentTableId: string): boolean {
+  // 检查数量变化
+  if (currentRecordIds.length !== lastPolledRecordIds.length) {
+    return true;
+  }
+  
+  // 检查 tableId 变化
+  if (currentTableId !== lastPolledTableId) {
+    return true;
+  }
+  
+  // 检查 recordIds 内容变化
+  const hasNewIds = currentRecordIds.some(id => !lastPolledRecordIds.includes(id));
+  const hasRemovedIds = lastPolledRecordIds.some(id => !currentRecordIds.includes(id));
+  
+  return hasNewIds || hasRemovedIds;
+}
+
+/**
+ * 停止轮询
+ */
 function stopPolling() {
   if (pollingInterval) {
     clearInterval(pollingInterval);
     pollingInterval = null;
-    lastPolledSelection = [];
-    debugLog('🛑 轮询检查已停止');
+    lastPolledRecordIds = [];
+    lastPolledTableId = '';
+    debugLog('🛑 复选框选择状态轮询已停止');
   }
 }
+
+/**
+ * 注册复选框选择变化回调（轮询方式）
+ */
+function onCheckboxPollingChange(callback: (event: { tableId: string; recordIds: string[]; count: number }) => void): () => void {
+  checkboxPollingCallbacks.add(callback);
+  
+  // 如果还没启动轮询，启动它
+  if (!pollingInterval && envStatus === 'ready') {
+    startCheckboxPolling(1000);
+  }
+  
+  return () => {
+    checkboxPollingCallbacks.delete(callback);
+  };
+}
+
+/**
+ * 获取当前轮询到的选择状态
+ */
+function getCurrentPolledSelection(): { tableId: string; recordIds: string[]; count: number } {
+  return {
+    tableId: lastPolledTableId,
+    recordIds: lastPolledRecordIds,
+    count: lastPolledRecordIds.length,
+  };
+}
+
+// 导出轮询函数
+export { startCheckboxPolling, stopPolling, onCheckboxPollingChange, getCurrentPolledSelection };
 
 // ============================================
 
@@ -491,8 +569,11 @@ export async function initFeishuEnv(): Promise<boolean> {
       // 设置选中变化监听器
       setupSelectionListener();
       
-      // 🔥 设置复选框选中监听器
+      // 🔥 设置复选框选中监听器（事件方式，可能不可用）
       setupCheckboxSelectionListener();
+      
+      // 🔥 启动轮询检测复选框选择状态（替代方案，更可靠）
+      startCheckboxPolling(1000);
       
       // 🔥 初始化完成后进行完整的 API 可用性调试
       debugLog('初始化完成，执行完整的 API 可用性调试...');
@@ -1365,6 +1446,12 @@ export const feishuEnv = {
   // 复选框选中（基于 bitable.ui.getSelectRecordIds - 行头复选框）
   getCheckboxSelectedRecords,
   onCheckboxSelectionChange,
+  
+  // 🔥 轮询检测复选框选择状态（替代方案，更可靠）
+  onCheckboxPollingChange,
+  getCurrentPolledSelection,
+  startCheckboxPolling,
+  stopPolling,
   
   // 调试
   debugFullApiAvailability,
