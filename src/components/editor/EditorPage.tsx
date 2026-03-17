@@ -70,10 +70,6 @@ import {
   getCurrentAppToken,
   setApiCredentials,
   detectEnvironment,
-  onCheckboxSelectionChange,
-  initCheckboxSelection,
-  getCheckboxSelectedIds,
-  getCheckboxSelectedRecords,
   getCurrentTableIdAsync,
 } from '@/lib/feishu-service';
 
@@ -158,8 +154,6 @@ export function EditorPage({ onExit }: EditorPageProps) {
 
   // 🔥 使用统一服务层获取数据（自动选择 SDK/API 模式）
   useEffect(() => {
-    // 🔥 【关键修复】声明 unsubscribe 变量，用于清理监听器
-    let unsubscribe: (() => void) | null = null;
     let isCleaned = false; // 🔥 添加清理标志，防止在清理后设置监听器
     
     const init = async () => {
@@ -289,163 +283,14 @@ export function EditorPage({ onExit }: EditorPageProps) {
         console.error('[EditorPage] 初始化数据失败:', error);
         setFeishuLoading(false);
       }
-
-      // 🔥 使用统一服务层监听选中变化
-      unsubscribe = onCheckboxSelectionChange(async (event) => {
-        // 🔥 检查组件是否已清理
-        if (isCleaned) {
-          console.log('[EditorPage] 组件已清理，忽略选中变化事件');
-          return;
-        }
-        
-        console.log('[EditorPage] ======== 收到选中变化事件 ========');
-        console.log('[EditorPage] 事件数据:', event);
-        
-        const newTableId = event.tableId;
-        const currentTableId = currentTableIdRef.current; // 使用 ref 获取最新值
-        
-        // 🔥 【关键修复】检测表格是否变化
-        if (newTableId && newTableId !== currentTableId) {
-          console.log('[EditorPage] 检测到表格变化:', { from: currentTableId, to: newTableId });
-          
-          try {
-            if (isCleaned) {
-              console.log('[EditorPage] 组件已清理，取消表格变化处理');
-              return;
-            }
-            
-            setFeishuLoading(true);
-            
-            // 🔥 使用统一服务层获取新表格信息
-            const tableName = await fetchTableName();
-            
-            // 🔥 检查是否已清理
-            if (isCleaned) {
-              console.log('[EditorPage] 组件已清理，取消表格变化处理（获取tableName后）');
-              return;
-            }
-            
-            setCurrentTableInfo({
-              tableId: newTableId,
-              tableName: tableName,
-              baseId: null,
-              appToken: getCurrentAppToken(),
-            });
-            
-            // 🔥 重新获取字段（场景：切换多维表格时读取）
-            console.log('[EditorPage] 重新获取字段...');
-            const fields = await fetchFields({ scene: 'table_switch' });
-            
-            // 🔥 检查是否已清理
-            if (isCleaned) {
-              console.log('[EditorPage] 组件已清理，取消表格变化处理（获取fields后）');
-              return;
-            }
-            
-            const appFields = fields.map((field: any) => {
-              let fieldKind: Field['fieldKind'] = 'other';
-              const fieldType = String(field.type);
-              
-              if (fieldType === '17' || fieldType === 'attachment') {
-                fieldKind = 'attachment';
-              } else if (fieldType === '11' || fieldType === 'user' || fieldType === 'person') {
-                fieldKind = 'person';
-              } else if (fieldType === '1' || fieldType === 'text') {
-                fieldKind = 'text';
-              } else if (fieldType === '2' || fieldType === 'number') {
-                fieldKind = 'number';
-              } else if (fieldType === '5' || fieldType === 'date') {
-                fieldKind = 'date';
-              }
-              
-              return {
-                id: field.id,
-                name: field.name,
-                type: field.type,
-                placeholder: `[${field.name}]`,
-                isSystem: false,
-                fieldKind,
-              };
-            });
-            
-            // 【关键】更新字段类型映射
-            const fieldTypeMap: Record<string, 'attachment' | 'person' | 'text' | 'number' | 'date' | 'other'> = {};
-            appFields.forEach((field: Field) => {
-              fieldTypeMap[field.name] = field.fieldKind || 'other';
-            });
-            setFieldTypeMap(fieldTypeMap);
-            
-            setFeishuFields(fields);
-            setFields(appFields);
-            console.log('[EditorPage] 字段已刷新:', appFields);
-            
-            // 🔥 重新获取记录（使用统一服务层）
-            const records = await fetchRecords();
-            
-            // 🔥 检查是否已清理
-            if (isCleaned) {
-              console.log('[EditorPage] 组件已清理，取消表格变化处理（获取records后）');
-              return;
-            }
-            
-            if (records.length > 0) {
-              setFeishuRecords(records);
-              setRecords(records as unknown as Record<string, unknown>[]);
-            }
-            
-            setFeishuLoading(false);
-            console.log('[EditorPage] 表格切换完成，数据已刷新');
-          } catch (error) {
-            console.error('[EditorPage] 表格切换刷新数据失败:', error);
-            setFeishuLoading(false);
-          }
-          
-          return; // 表格变化已处理，不再执行下面的记录更新
-        }
-        
-        // 表格未变化，累积记录而不是覆盖
-        try {
-          if (isCleaned) {
-            console.log('[EditorPage] 组件已清理，取消记录累积处理');
-            return;
-          }
-          
-          // 🔥 使用统一服务层获取选中记录
-          const records = await fetchRecords();
-          
-          // 🔥 检查是否已清理
-          if (isCleaned) {
-            console.log('[EditorPage] 组件已清理，取消记录累积处理（获取records后）');
-            return;
-          }
-          
-          console.log('[EditorPage] 获取到新的选中记录:', records);
-          
-          if (records.length > 0) {
-            // 🔥 在统一服务层中，记录已经处理好（附件已处理）
-            console.log('[EditorPage] 累积添加记录到 store:', {
-              count: records.length,
-              firstRecordKeys: Object.keys(records[0]).slice(0, 10),
-            });
-            setFeishuRecords(records);
-            // 🔥 【关键修复】使用 addRecords 累积记录，而不是 setRecords 覆盖
-            addRecords(records as unknown as Record<string, unknown>[]);
-          }
-        } catch (error) {
-          console.error('[EditorPage] 获取选中记录失败:', error);
-        }
-      });
     };
     
     init();
     
     // 🔥 【关键修复】返回正确的清理函数
     return () => {
-      console.log('[EditorPage] 清理选中变化监听器');
+      console.log('[EditorPage] 清理组件');
       isCleaned = true; // 🔥 标记为已清理，防止异步初始化继续执行
-      if (unsubscribe) {
-        unsubscribe();
-      }
     };
   }, [setFeishuEnvironment, setFields, setRecords, addRecords]);
 
