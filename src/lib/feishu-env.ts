@@ -9,6 +9,7 @@
  * 5. 新增：选中变化监听器（onSelectionChange）
  * 6. 新增：详细的调试日志系统
  * 7. 新增：方案A实现（getTableById + getRecordById）
+ * 8. 新增：复选框选中记录获取（bitable.ui.getSelectRecordIds）
  */
 
 import { bitable, base } from '@lark-base-open/js-sdk';
@@ -23,6 +24,71 @@ function debugLog(message: string, data?: any) {
   if (!DEBUG) return;
   const timestamp = new Date().toISOString();
   console.log(`[FeishuEnv][${timestamp}] ${message}`, data || '');
+}
+
+// 🔥 调试专用：打印完整的 API 可用性信息
+async function debugFullApiAvailability() {
+  console.log('🔍 ======== 飞书 SDK API 完整调试 ========');
+  
+  // 1. bitable 对象检查
+  console.log('📋 bitable 对象:', typeof bitable);
+  if (bitable) {
+    console.log('📋 bitable 可用属性:', Object.keys(bitable));
+  }
+  
+  // 2. bitable.ui 检查（复选框选中关键 API）
+  const hasUi = !!(bitable as any).ui;
+  console.log('📋 bitable.ui 存在:', hasUi);
+  
+  if (hasUi) {
+    const ui = (bitable as any).ui;
+    console.log('📋 bitable.ui 可用方法:', Object.keys(ui));
+    
+    // 关键 API：获取复选框选中的记录 ID
+    const hasGetSelectRecordIds = typeof ui.getSelectRecordIds === 'function';
+    console.log('📋 bitable.ui.getSelectRecordIds 可用:', hasGetSelectRecordIds);
+    
+    // 关键 API：监听复选框选中变化
+    const hasOnSelectRecordIdsChange = typeof ui.onSelectRecordIdsChange === 'function';
+    console.log('📋 bitable.ui.onSelectRecordIdsChange 可用:', hasOnSelectRecordIdsChange);
+    
+    // 尝试调用 getSelectRecordIds
+    if (hasGetSelectRecordIds) {
+      try {
+        const selectedIds = await ui.getSelectRecordIds();
+        console.log('📋 当前复选框选中的记录 ID:', selectedIds);
+        console.log('📋 选中数量:', selectedIds?.length || 0);
+      } catch (e) {
+        console.log('📋 调用 getSelectRecordIds 失败:', e);
+      }
+    }
+  }
+  
+  // 3. base 对象检查
+  console.log('📋 base 对象:', typeof base);
+  if (base) {
+    console.log('📋 base 可用方法:', Object.keys(base));
+    
+    // base.getSelection - 获取当前选择信息
+    const hasGetSelection = typeof base.getSelection === 'function';
+    console.log('📋 base.getSelection 可用:', hasGetSelection);
+    
+    // base.onSelectionChange - 监听选择变化（单元格选择）
+    const hasOnSelectionChange = typeof base.onSelectionChange === 'function';
+    console.log('📋 base.onSelectionChange 可用:', hasOnSelectionChange);
+    
+    // 尝试调用 getSelection
+    if (hasGetSelection) {
+      try {
+        const selection = await base.getSelection();
+        console.log('📋 当前选择信息:', JSON.stringify(selection, null, 2));
+      } catch (e) {
+        console.log('📋 调用 getSelection 失败:', e);
+      }
+    }
+  }
+  
+  console.log('🔍 ======== 飞书 SDK API 调试结束 ========');
 }
 
 // ============================================
@@ -425,9 +491,12 @@ export async function initFeishuEnv(): Promise<boolean> {
       // 设置选中变化监听器
       setupSelectionListener();
       
-      // 初始化完成后进行一次完整的环境调试
-      debugLog('初始化完成，执行环境调试...');
-      await debugEnvironment();
+      // 🔥 设置复选框选中监听器
+      setupCheckboxSelectionListener();
+      
+      // 🔥 初始化完成后进行完整的 API 可用性调试
+      debugLog('初始化完成，执行完整的 API 可用性调试...');
+      await debugFullApiAvailability();
       
       onReadyCallbacks.forEach(cb => cb());
       return true;
@@ -1093,14 +1162,33 @@ export function getDebugInfo(): Record<string, unknown> {
 
 // ============================================
 // 便捷函数：获取选中记录（带降级方案）
+// 🔥 使用 bitable.ui.getSelectRecordIds() 获取复选框选中的记录
 // ============================================
 
 export async function getCheckboxSelectedRecords(): Promise<BitableRecord[]> {
   debugLog('======== getCheckboxSelectedRecords() 开始 ========');
-  debugLog('📋 尝试获取选中记录...');
+  debugLog('📋 尝试获取复选框选中的记录...');
 
   try {
-    // 1. 获取当前激活的表格 ID
+    // 🔥 第一步：使用 bitable.ui.getSelectRecordIds() 获取复选框选中的记录 ID
+    let selectedRecordIds: string[] = [];
+    let tableId: string = '';
+    
+    // 检查 bitable.ui.getSelectRecordIds 是否可用
+    if ((bitable as any).ui && typeof (bitable as any).ui.getSelectRecordIds === 'function') {
+      debugLog('📍 使用 bitable.ui.getSelectRecordIds() 获取选中记录...');
+      try {
+        selectedRecordIds = await (bitable as any).ui.getSelectRecordIds();
+        debugLog(`✅ bitable.ui.getSelectRecordIds() 返回 ${selectedRecordIds?.length || 0} 个 ID`);
+        debugLog('🆔 选中的 Record IDs:', selectedRecordIds);
+      } catch (e) {
+        debugLog('❌ bitable.ui.getSelectRecordIds() 调用失败:', e);
+      }
+    } else {
+      debugLog('⚠️ bitable.ui.getSelectRecordIds() 方法不存在');
+    }
+    
+    // 🔥 第二步：获取 tableId
     debugLog('📍 调用 base.getSelection() 获取 tableId...');
     const selection = await base.getSelection();
     
@@ -1109,7 +1197,6 @@ export async function getCheckboxSelectedRecords(): Promise<BitableRecord[]> {
     debugLog('  - tableId:', selection?.tableId);
     debugLog('  - viewId:', selection?.viewId);
     debugLog('  - recordId:', selection?.recordId);
-    debugLog('  - fieldId:', selection?.fieldId);
 
     if (!selection?.tableId) {
       debugLog('❌ 无法获取 tableId');
@@ -1117,50 +1204,45 @@ export async function getCheckboxSelectedRecords(): Promise<BitableRecord[]> {
       return [];
     }
 
-    const tableId = selection.tableId;
+    tableId = selection.tableId;
     debugLog(`✅ 获取到 tableId: ${tableId}`);
 
-    // 2. 获取表格实例
-    debugLog('📍 获取表格实例...');
-    const table = await base.getTable(tableId);
-    debugLog('✅ 表格实例已获取');
-
-    // 3. 尝试使用 table.getSelectedRecordIds() 获取选中的行
-    debugLog('📍 尝试调用 table.getSelectedRecordIds()...');
-    
-    let selectedRecordIds: string[] = [];
-    
-    if (typeof (table as any).getSelectedRecordIds === 'function') {
-      try {
-        selectedRecordIds = await (table as any).getSelectedRecordIds();
-        debugLog(`✅ table.getSelectedRecordIds() 返回 ${selectedRecordIds.length} 个 ID`);
-        debugLog('🆔 选中的 Record IDs:', selectedRecordIds);
-      } catch (e) {
-        debugLog('❌ table.getSelectedRecordIds() 调用失败:', e);
-      }
-    } else {
-      debugLog('⚠️ table.getSelectedRecordIds() 方法不存在');
-    }
-
-    // 4. 如果没有选中行，降级到获取第一条记录
-    if (selectedRecordIds.length === 0) {
-      debugLog('ℹ️ 没有选中行，降级到获取第一条记录...');
-      debugLog('💡 提示：飞书 SDK 限制，插件环境下无法获取勾选行');
+    // 🔥 第三步：如果没有通过 ui.getSelectRecordIds 获取到选中记录，尝试其他方式
+    if (!selectedRecordIds || selectedRecordIds.length === 0) {
+      debugLog('ℹ️ bitable.ui.getSelectRecordIds() 返回空，尝试其他方式...');
       
-      // 获取第一条记录
-      const recordIdList = await table.getRecordIdList();
-      if (Array.isArray(recordIdList) && recordIdList.length > 0) {
-        const firstRecordId = recordIdList[0];
-        debugLog(`📍 获取第一条记录: ${firstRecordId}`);
-        selectedRecordIds = [firstRecordId];
+      // 尝试 table.getSelectedRecordIds()
+      const table = await base.getTable(tableId);
+      
+      if (typeof (table as any).getSelectedRecordIds === 'function') {
+        try {
+          selectedRecordIds = await (table as any).getSelectedRecordIds();
+          debugLog(`✅ table.getSelectedRecordIds() 返回 ${selectedRecordIds.length} 个 ID`);
+        } catch (e) {
+          debugLog('❌ table.getSelectedRecordIds() 调用失败:', e);
+        }
       } else {
-        debugLog('❌ 表格为空，没有记录');
-        debugLog('======== getCheckboxSelectedRecords() 结束 ========');
-        return [];
+        debugLog('⚠️ table.getSelectedRecordIds() 方法不存在');
+      }
+      
+      // 如果还是没有选中行，降级到获取第一条记录
+      if (!selectedRecordIds || selectedRecordIds.length === 0) {
+        debugLog('ℹ️ 没有选中行，降级到获取第一条记录...');
+        
+        const recordIdList = await table.getRecordIdList();
+        if (Array.isArray(recordIdList) && recordIdList.length > 0) {
+          const firstRecordId = recordIdList[0];
+          debugLog(`📍 获取第一条记录: ${firstRecordId}`);
+          selectedRecordIds = [firstRecordId];
+        } else {
+          debugLog('❌ 表格为空，没有记录');
+          debugLog('======== getCheckboxSelectedRecords() 结束 ========');
+          return [];
+        }
       }
     }
 
-    // 5. 批量获取记录数据
+    // 🔥 第四步：批量获取记录数据
     debugLog('📍 批量获取记录数据...');
     const records = await getRecordsByCheckboxIds(tableId, selectedRecordIds);
 
@@ -1172,6 +1254,79 @@ export async function getCheckboxSelectedRecords(): Promise<BitableRecord[]> {
     debugLog('❌ 获取选中记录失败:', error);
     debugLog('======== getCheckboxSelectedRecords() 结束 ========');
     return [];
+  }
+}
+
+// ============================================
+// 🔥 新增：监听复选框选中变化
+// ============================================
+
+let checkboxSelectionUnsubscribe: (() => void) | null = null;
+let onCheckboxSelectionChangeCallbacks: Set<(event: { tableId: string; recordIds: string[]; count: number }) => void> = new Set();
+
+/**
+ * 注册复选框选中变化监听器
+ * 使用 bitable.ui.onSelectRecordIdsChange 监听
+ */
+export function onCheckboxSelectionChange(callback: (event: { tableId: string; recordIds: string[]; count: number }) => void): () => void {
+  debugLog('注册复选框选中变化监听器');
+  onCheckboxSelectionChangeCallbacks.add(callback);
+  
+  // 如果还没设置监听器，现在设置
+  if (!checkboxSelectionUnsubscribe && envStatus === 'ready') {
+    setupCheckboxSelectionListener();
+  }
+  
+  return () => {
+    debugLog('移除复选框选中变化监听器');
+    onCheckboxSelectionChangeCallbacks.delete(callback);
+  };
+}
+
+/**
+ * 设置复选框选中变化监听器
+ */
+async function setupCheckboxSelectionListener() {
+  if (checkboxSelectionUnsubscribe) {
+    debugLog('复选框选中监听器已存在，跳过');
+    return;
+  }
+  
+  debugLog('======== 设置复选框选中变化监听器 ========');
+  
+  try {
+    // 🔥 尝试使用 bitable.ui.onSelectRecordIdsChange
+    if ((bitable as any).ui && typeof (bitable as any).ui.onSelectRecordIdsChange === 'function') {
+      checkboxSelectionUnsubscribe = (bitable as any).ui.onSelectRecordIdsChange(async (event: { data: { recordIds: string[] } }) => {
+        debugLog('🎯 复选框选中变化事件触发!');
+        debugLog('事件数据:', event);
+        
+        // 获取 tableId
+        const selection = await base.getSelection();
+        const tableId = selection?.tableId || '';
+        
+        // 通知所有注册的回调
+        const callbackEvent = {
+          tableId,
+          recordIds: event.data?.recordIds || [],
+          count: event.data?.recordIds?.length || 0,
+        };
+        
+        onCheckboxSelectionChangeCallbacks.forEach(cb => {
+          try {
+            cb(callbackEvent);
+          } catch (e) {
+            console.error('[FeishuEnv] 复选框选中变化回调执行失败:', e);
+          }
+        });
+      });
+      
+      debugLog('✅ 复选框选中监听器设置成功 (bitable.ui.onSelectRecordIdsChange)');
+    } else {
+      debugLog('⚠️ bitable.ui.onSelectRecordIdsChange 不可用，使用轮询作为备用方案');
+    }
+  } catch (error) {
+    debugLog('❌ 设置复选框选中监听器失败:', error);
   }
 }
 
@@ -1203,10 +1358,16 @@ export const feishuEnv = {
   initFeishuContext,
   getDebugInfo,
   
-  // 选中变化（基于 base.getSelection）
+  // 选中变化（基于 base.getSelection - 单元格选择）
   onSelectionChange,
   getSelectedRecords,
+  
+  // 复选框选中（基于 bitable.ui.getSelectRecordIds - 行头复选框）
   getCheckboxSelectedRecords,
+  onCheckboxSelectionChange,
+  
+  // 调试
+  debugFullApiAvailability,
 };
 
 export default feishuEnv;

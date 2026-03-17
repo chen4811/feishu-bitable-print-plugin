@@ -59,6 +59,7 @@ import { SettingsPanel } from './panels/SettingsPanel';
 import { CanvasArea } from './canvas/CanvasArea';
 import { PageSettingsDialog } from './dialogs/PageSettingsDialog';
 import { PrintPreviewDialog } from './dialogs/PrintPreviewDialog';
+import { CheckboxDebug } from './CheckboxDebug';
 import { usePrintSDK } from '@/hooks/usePrintSDK';
 import {
   initEnvironment,
@@ -1559,6 +1560,10 @@ export function EditorPage({ onExit }: EditorPageProps) {
                     // 添加文本组件并设置内容为字段变量
                     addComponent('text');
                   }} />
+                  {/* 🔍 复选框选中调试工具 */}
+                  <div className="p-2">
+                    <CheckboxDebug />
+                  </div>
                 </TabsContent>
                 <TabsContent value="components" className="m-0">
                   <ComponentPanel onAddComponent={handleAddComponent} />
