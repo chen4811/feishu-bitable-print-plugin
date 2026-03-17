@@ -74,6 +74,7 @@ import {
   initCheckboxSelection,
   getCheckboxSelectedIds,
   getCheckboxSelectedRecords,
+  getCurrentTableIdAsync,
 } from '@/lib/feishu-service';
 
 interface EditorPageProps {
@@ -185,8 +186,8 @@ export function EditorPage({ onExit }: EditorPageProps) {
         
         // 🔥 获取当前表格信息（使用统一服务层）
         const tableName = await fetchTableName();
-        const tableId = getCurrentTableId();
-        const appToken = getCurrentAppToken();
+        const currentTableId = await getCurrentTableIdAsync();
+        const currentAppToken = getCurrentAppToken();
         
         // 🔥 检查是否已清理
         if (isCleaned) {
@@ -195,12 +196,12 @@ export function EditorPage({ onExit }: EditorPageProps) {
         }
         
         setCurrentTableInfo({
-          tableId: tableId,
+          tableId: currentTableId,
           tableName: tableName,
           baseId: null,
-          appToken: appToken,
+          appToken: currentAppToken,
         });
-        console.log('[EditorPage] 当前表格信息:', { tableId, tableName, appToken });
+        console.log('[EditorPage] 当前表格信息:', { tableId: currentTableId, tableName, appToken: currentAppToken });
         
         // 1. 获取字段（使用统一服务层）
         console.log('[EditorPage] 获取字段...');

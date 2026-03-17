@@ -48,6 +48,11 @@ export type RecordsCallback = (records: Record<string, unknown>[]) => void;
  * 检测当前环境
  */
 export function detectEnvironment(): Environment {
+  // 🔥 如果已经确定环境，直接返回
+  if (currentEnv !== 'unknown') {
+    return currentEnv;
+  }
+  
   // 检查是否在 iframe 中（飞书侧边栏环境）
   const inIframe = typeof window !== 'undefined' && window.self !== window.top;
   
@@ -58,6 +63,10 @@ export function detectEnvironment(): Environment {
       currentEnv = 'sdk';
       return 'sdk';
     }
+    
+    // 🔥 即使 userAgent 不匹配，如果在 iframe 中，也尝试使用 SDK
+    // 因为可能已经通过 initEnvironment() 初始化过了
+    console.log('[FeishuService] 在 iframe 中但 userAgent 未匹配，返回当前环境:', currentEnv);
   }
   
   // 检查是否有配置的 appToken 和 tableId
@@ -66,7 +75,7 @@ export function detectEnvironment(): Environment {
     return 'api';
   }
   
-  return 'unknown';
+  return currentEnv;
 }
 
 /**
@@ -248,6 +257,8 @@ export async function initEnvironment(config?: {
   appToken?: string;
   tableId?: string;
 }): Promise<{ success: boolean; tableName?: string; tableId?: string }> {
+  console.log('[FeishuService] initEnvironment 被调用, config:', config);
+  
   // 如果提供了凭证，设置 API 模式
   if (config?.appToken && config?.tableId) {
     setApiCredentials(config.appToken, config.tableId);
@@ -277,12 +288,31 @@ export async function initEnvironment(config?: {
   
   // 否则尝试初始化 SDK 环境
   try {
+    console.log('[FeishuService] 尝试初始化 SDK 环境...');
     const { initFeishuEnv } = await import('./feishu-env');
     const success = await initFeishuEnv();
+    console.log('[FeishuService] initFeishuEnv 返回:', success);
     if (success) {
       currentEnv = 'sdk';
+      console.log('[FeishuService] 当前环境设置为: sdk');
+      
+      // 🔥 在 SDK 模式下，获取并缓存 tableId 和 appToken（baseId）
+      try {
+        const { base } = await import('@lark-base-open/js-sdk');
+        const selection = await base.getSelection();
+        if (selection?.tableId) {
+          tableId = selection.tableId;
+          console.log('[FeishuService] 缓存 tableId:', tableId);
+        }
+        if (selection?.baseId) {
+          appToken = selection.baseId; // 在 SDK 模式下，baseId 作为 appToken
+          console.log('[FeishuService] 缓存 appToken (baseId):', appToken);
+        }
+      } catch (error) {
+        console.error('[FeishuService] 获取 selection 失败:', error);
+      }
     }
-    return { success };
+    return { success, tableId: tableId || undefined };
   } catch (error) {
     console.error('[FeishuService] SDK 初始化失败:', error);
     return { success: false };
@@ -330,12 +360,40 @@ export async function fetchTableName(): Promise<string> {
 /**
  * 获取当前选中的表格 ID
  */
+export async function getCurrentTableIdAsync(): Promise<string | null> {
+  const env = detectEnvironment();
+  
+  // 如果已经缓存了 tableId，直接返回
+  if (tableId) {
+    return tableId;
+  }
+  
+  // SDK 模式下，从 SDK 获取
+  if (env === 'sdk') {
+    try {
+      const { base } = await import('@lark-base-open/js-sdk');
+      const selection = await base.getSelection();
+      if (selection?.tableId) {
+        tableId = selection.tableId;
+        return tableId;
+      }
+    } catch (error) {
+      console.error('[FeishuService] 获取 tableId 失败:', error);
+    }
+  }
+  
+  return tableId;
+}
+
+/**
+ * 获取当前选中的表格 ID（同步版本，返回缓存值）
+ */
 export function getCurrentTableId(): string | null {
   return tableId;
 }
 
 /**
- * 获取当前 appToken
+ * 获取当前 appToken（同步版本，返回缓存值）
  */
 export function getCurrentAppToken(): string | null {
   return appToken;
