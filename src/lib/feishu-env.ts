@@ -274,7 +274,7 @@ function startCheckboxPolling(interval = 1000) {
     return; // 已经在运行
   }
   
-  debugLog(`🔁 启动复选框选择状态轮询，间隔: ${interval}ms`);
+  console.log('🔍 开始监听选择状态变化（轮询方式）');
   
   pollingInterval = setInterval(async () => {
     await checkCheckboxSelectionChange();
@@ -283,39 +283,15 @@ function startCheckboxPolling(interval = 1000) {
 
 /**
  * 检查复选框选择状态是否变化
+ * 按照飞书开放平台示例代码实现
  * 只在变化时输出日志并触发回调
  */
 async function checkCheckboxSelectionChange() {
   try {
-    let currentRecordIds: string[] = [];
-    let currentTableId: string = '';
-    
-    // 方式1：优先尝试 bitable.ui.getSelectRecordIds()
-    if ((bitable as any).ui && typeof (bitable as any).ui.getSelectRecordIds === 'function') {
-      try {
-        const ids = await (bitable as any).ui.getSelectRecordIds();
-        if (Array.isArray(ids) && ids.length > 0) {
-          currentRecordIds = ids;
-        }
-      } catch (e) {
-        // 静默处理
-      }
-    }
-    
-    // 方式2：使用 base.getSelection() 获取 tableId 和 recordIds
+    // 🔥 按照用户提供的示例代码，直接使用 base.getSelection()
     const selection = await base.getSelection();
-    currentTableId = selection?.tableId || '';
-    
-    // 如果 ui.getSelectRecordIds 不可用，尝试从 selection 获取
-    if (currentRecordIds.length === 0 && selection) {
-      // 某些情况下 selection.recordIds 可能存在
-      if (Array.isArray((selection as any).recordIds)) {
-        currentRecordIds = (selection as any).recordIds;
-      } else if (selection.recordId) {
-        // 单选情况
-        currentRecordIds = [selection.recordId];
-      }
-    }
+    const currentRecordIds: string[] = (selection as any).recordIds || [];
+    const currentTableId = selection?.tableId || '';
     
     // 检查状态是否变化
     const hasChanged = hasSelectionChanged(currentRecordIds, currentTableId);
@@ -323,15 +299,17 @@ async function checkCheckboxSelectionChange() {
     if (hasChanged) {
       // 🔥 只在状态变化时输出日志
       console.log('✅ 选择状态变化 detected');
-      console.log('📋 当前选中记录数:', currentRecordIds.length);
-      console.log('📋 tableId:', currentTableId);
-      console.log('📋 recordIds:', currentRecordIds.length > 5 
-        ? `${currentRecordIds.slice(0, 5).join(', ')}... (共${currentRecordIds.length}条)` 
-        : currentRecordIds.join(', '));
+      console.log('📋 当前选中记录:', currentRecordIds);
+      console.log('📋 选择信息详情:', JSON.stringify(selection));
       
       // 更新缓存
       lastPolledRecordIds = [...currentRecordIds];
       lastPolledTableId = currentTableId;
+      
+      // 如果有选中记录，尝试加载数据
+      if (currentRecordIds.length > 0) {
+        loadSelectedData(currentTableId, currentRecordIds);
+      }
       
       // 触发所有注册的回调
       const event = {
@@ -350,6 +328,19 @@ async function checkCheckboxSelectionChange() {
     }
   } catch (error) {
     // 静默处理轮询错误，避免频繁日志
+  }
+}
+
+/**
+ * 加载选中记录数据
+ */
+async function loadSelectedData(tableId: string, recordIds: string[]) {
+  try {
+    const table = await base.getTableById(tableId);
+    const records = await (table as any).getRecordsByIds(recordIds);
+    console.log('📊 选中行数据:', records?.length || 0, '条');
+  } catch (error) {
+    console.error('数据加载失败:', error);
   }
 }
 
@@ -564,7 +555,7 @@ export async function initFeishuEnv(): Promise<boolean> {
       await Promise.race([initSdk(), timeoutPromise]);
 
       envStatus = 'ready';
-      debugLog('✅ SDK 初始化成功，飞书环境已就绪');
+      console.log('[FeishuEnv] ✅ SDK 初始化成功，飞书环境已就绪');
       
       // 设置选中变化监听器
       setupSelectionListener();
@@ -573,10 +564,10 @@ export async function initFeishuEnv(): Promise<boolean> {
       setupCheckboxSelectionListener();
       
       // 🔥 启动轮询检测复选框选择状态（替代方案，更可靠）
+      console.log('[FeishuEnv] 🔄 启动复选框选择状态轮询...');
       startCheckboxPolling(1000);
       
       // 🔥 初始化完成后进行完整的 API 可用性调试
-      debugLog('初始化完成，执行完整的 API 可用性调试...');
       await debugFullApiAvailability();
       
       onReadyCallbacks.forEach(cb => cb());
