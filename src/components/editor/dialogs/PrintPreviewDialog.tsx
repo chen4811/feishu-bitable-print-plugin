@@ -42,7 +42,15 @@ import {
   getFeishuTable,
   isFeishuEnvironment 
 } from '@/lib/attachment-processor';
-import { fetchFields, fetchRecords, initEnvironment, getCurrentEnvironment } from '@/lib/feishu-service';
+import { 
+  fetchFields, 
+  fetchRecords, 
+  initEnvironment, 
+  getCurrentEnvironment,
+  onCheckboxSelectionChange,
+  initCheckboxSelection,
+  type CheckboxSelectionEvent,
+} from '@/lib/feishu-service';
 
 interface PrintPreviewDialogProps {
   open: boolean;
@@ -226,6 +234,91 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
     
     processAttachments();
   }, [records, fields, fieldTypeMap, dataSourceMode]);
+
+  // 🔥 【场景2：打印预览模式】监听复选框选中变化，实时读取行数据到画布
+  useEffect(() => {
+    if (!open) return;
+    
+    let unsubscribe: (() => void) | null = null;
+    let isCleaned = false;
+    
+    const setupCheckboxListener = async () => {
+      console.log('[PrintPreview] 初始化复选框选中监听...');
+      
+      // 初始化复选框选中功能
+      const success = await initCheckboxSelection();
+      if (!success) {
+        console.log('[PrintPreview] 复选框选中初始化失败，可能不在飞书环境');
+        return;
+      }
+      
+      if (isCleaned) return;
+      
+      // 监听选中变化
+      unsubscribe = onCheckboxSelectionChange(async (event: CheckboxSelectionEvent) => {
+        if (isCleaned) {
+          console.log('[PrintPreview] 组件已清理，忽略选中变化事件');
+          return;
+        }
+        
+        console.log('[PrintPreview] ======== 收到复选框选中变化事件 ========');
+        console.log('[PrintPreview] 事件数据:', event);
+        
+        const selectedRecordIds = event.recordIds || [];
+        
+        if (selectedRecordIds.length === 0) {
+          console.log('[PrintPreview] 没有选中记录，跳过');
+          return;
+        }
+        
+        // 🔥 打印预览模式：每选中一条就读取一条，直接添加到画布
+        console.log('[PrintPreview] 打印预览模式：读取选中的记录到画布, count:', selectedRecordIds.length);
+        
+        try {
+          // 获取新选中的记录
+          const newRecords = await fetchRecords({ recordIds: selectedRecordIds });
+          
+          if (isCleaned) return;
+          
+          if (newRecords.length > 0) {
+            console.log('[PrintPreview] 获取到新记录:', newRecords.length);
+            
+            // 🔥 合并记录：保留已有记录，添加新记录（去重）
+            const existingIds = new Set(records.map((r: Record<string, unknown>) => r.id));
+            const recordsToAdd = newRecords.filter((r: Record<string, unknown>) => !existingIds.has(r.id));
+            
+            if (recordsToAdd.length === 0) {
+              console.log('[PrintPreview] 所有选中记录已存在，跳过');
+              return;
+            }
+            
+            console.log('[PrintPreview] 添加新记录到画布:', recordsToAdd.length);
+            
+            // 🔥 使用 addRecords 累积添加记录
+            const { addRecords: addRecordsToStore } = useEditorStore.getState();
+            addRecordsToStore(recordsToAdd);
+            
+            // 切换到数据模式
+            setDataSourceMode('data');
+          }
+        } catch (error) {
+          console.error('[PrintPreview] 获取选中记录失败:', error);
+        }
+      });
+      
+      console.log('[PrintPreview] 复选框选中监听已设置');
+    };
+    
+    setupCheckboxListener();
+    
+    return () => {
+      console.log('[PrintPreview] 清理复选框选中监听');
+      isCleaned = true;
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [open, setRecords]);
 
   // 渲染单页内容（流式布局）
   const renderPageContent = useCallback((record: Record<string, unknown>) => {
