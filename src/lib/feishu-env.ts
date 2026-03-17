@@ -246,10 +246,39 @@ function setupSelectionListener() {
     // 先探索所有可用事件
     exploreAllEvents();
     
+    // ⚠️ 重要说明：
+    // base.onSelectionChange 只在点击单元格/行时触发
+    // 不会在复选框勾选时触发（这是飞书 SDK 限制）
+    
     if (typeof (bitable.base as any).onSelectionChange === 'function') {
       selectionUnsubscribe = (bitable.base as any).onSelectionChange((event: SelectionChangeEvent) => {
-        debugLog('🎯 选中变化事件触发! (回调方式)');
-        debugLog('事件数据:', event);
+        console.log('🎯 base.onSelectionChange 事件触发!');
+        console.log('📋 事件数据:', {
+          tableId: event?.data?.tableId,
+          recordId: event?.data?.recordId,
+          fieldId: event?.data?.fieldId,
+        });
+        
+        // 🔥 同时触发轮询回调（统一处理）
+        const recordId = event?.data?.recordId;
+        const tableId = event?.data?.tableId;
+        
+        if (recordId && tableId) {
+          const pollingEvent = {
+            tableId: tableId,
+            recordIds: [recordId],
+            isSelectAll: false,
+          };
+          
+          // 通知轮询回调
+          onSelectionPollingCallbacks.forEach(cb => {
+            try {
+              cb(pollingEvent);
+            } catch (e) {
+              console.error('[FeishuEnv] 轮询回调执行失败:', e);
+            }
+          });
+        }
         
         // 通知所有注册的回调
         onSelectionChangeCallbacks.forEach(cb => {
@@ -261,12 +290,13 @@ function setupSelectionListener() {
         });
       });
       
-      debugLog('✅ 选中监听器设置成功');
+      console.log('✅ base.onSelectionChange 监听器设置成功');
     } else if (typeof (bitable as any).onSelectionChange === 'function') {
       selectionUnsubscribe = (bitable as any).onSelectionChange((event: SelectionChangeEvent) => {
-        debugLog('🎯 选中变化事件触发! (回调方式)');
-        debugLog('事件数据:', event);
+        console.log('🎯 bitable.onSelectionChange 事件触发!');
+        console.log('📋 事件数据:', event);
         
+        // 通知所有注册的回调
         onSelectionChangeCallbacks.forEach(cb => {
           try {
             cb(event);
@@ -276,12 +306,12 @@ function setupSelectionListener() {
         });
       });
       
-      debugLog('✅ 选中监听器设置成功');
+      console.log('✅ bitable.onSelectionChange 监听器设置成功');
     } else {
-      debugLog('⚠️  不支持 onSelectionChange');
+      console.warn('⚠️  不支持 onSelectionChange，将使用轮询方案');
     }
   } catch (error) {
-    debugLog('❌ 设置选中监听器失败:', error);
+    console.error('❌ 设置选中监听器失败:', error);
   }
 }
 
@@ -1100,6 +1130,7 @@ let selectionPollingTimer: ReturnType<typeof setInterval> | null = null;
 let lastRecordIds: string[] = [];
 let lastTableId: string | null = null;
 let onSelectionPollingCallbacks: Set<(event: { tableId: string; recordIds: string[]; isSelectAll: boolean }) => void> = new Set();
+let lastDebugLogTime = 0; // 用于控制调试日志频率
 
 /**
  * 启动选择状态轮询
@@ -1151,6 +1182,22 @@ export function onSelectionPollingChange(
 
 /**
  * 检查选择状态变化
+ * 
+ * ⚠️ 飞书 SDK 限制说明：
+ * 
+ * 根据飞书开放平台文档和实际测试：
+ * - ❌ `bitable.ui.getSelectRecordIds()` 不存在
+ * - ❌ `selection.recordIds` 不存在（getSelection 不返回此字段）
+ * - ❌ 复选框勾选（表头多选）无法通过 SDK 检测
+ * - ✅ `base.getSelection()` 只返回当前激活单元格信息
+ * - ✅ `base.onSelectionChange()` 可监听点击行选择变化
+ * 
+ * 此轮询方案只能检测：
+ * 1. 点击行选择变化（recordId 变化）
+ * 2. 表格切换变化（tableId 变化）
+ * 
+ * 无法检测：
+ * - 复选框多选（表头复选框勾选）
  */
 async function checkSelectionChange(): Promise<void> {
   if (envStatus !== 'ready') {
@@ -1159,23 +1206,24 @@ async function checkSelectionChange(): Promise<void> {
   
   try {
     const selection = await base.getSelection();
+    const currentTableId = selection?.tableId || null;
     
-    // 获取当前选中的记录 IDs
-    let currentRecordIds: string[] = [];
-    let currentTableId = selection?.tableId || null;
+    // ⚠️ 注意：这里只能获取当前点击的行（recordId），不是复选框多选
+    // 复选框勾选的记录 IDs 无法通过 SDK 获取
+    const currentRecordId = selection?.recordId || null;
+    const currentRecordIds: string[] = currentRecordId ? [currentRecordId] : [];
     
-    // 尝试获取选中的记录 IDs
-    if (currentTableId) {
-      try {
-        const table = await base.getTable(currentTableId);
-        
-        // 尝试使用 getSelectedRecordIds() 方法
-        if (typeof (table as any).getSelectedRecordIds === 'function') {
-          currentRecordIds = await (table as any).getSelectedRecordIds() || [];
-        }
-      } catch (e) {
-        // 静默处理错误
-      }
+    // 🔥 调试日志：每5秒输出一次，避免刷屏
+    const now = Date.now();
+    if (!lastDebugLogTime || now - lastDebugLogTime > 5000) {
+      lastDebugLogTime = now;
+      console.log('[SelectionPolling] selection 结构:', {
+        tableId: selection?.tableId,
+        viewId: selection?.viewId,
+        recordId: selection?.recordId,  // ⚠️ 只有点击行时才有值
+        fieldId: selection?.fieldId,
+        baseId: selection?.baseId,
+      });
     }
     
     // 检查选择状态是否变化
@@ -1186,8 +1234,8 @@ async function checkSelectionChange(): Promise<void> {
         isSelectAll: false,
       };
       
-      console.log('✅ 复选框选择状态变化 detected');
-      console.log('📋 当前选中记录 IDs:', currentRecordIds);
+      console.log('✅ 行选择状态变化 detected (注意：这不是复选框多选)');
+      console.log('📋 当前选中记录 ID:', currentRecordId);
       console.log('📋 表格 ID:', currentTableId);
       
       // 更新状态
@@ -1204,10 +1252,11 @@ async function checkSelectionChange(): Promise<void> {
       });
     }
   } catch (error) {
-    // 静默处理错误，避免干扰日志
+    console.error('[SelectionPolling] 检查选择状态失败:', error);
   }
 }
 
+// 用于控制调试日志频率
 /**
  * 判断选择状态是否变化
  */
