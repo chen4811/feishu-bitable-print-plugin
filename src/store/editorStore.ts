@@ -72,14 +72,6 @@ interface EditorState {
   records: Record<string, unknown>[];
   selectedRecordIds: string[];
   
-  // 🔥 复选框选中记录（从多维表格行头复选框选择）
-  checkboxRecords: Array<{
-    id: string;
-    data: Record<string, unknown>;
-    timestamp: number;
-  }>;
-  isCheckboxLoading: boolean;
-  
   // 保存的模板列表
   savedTemplates: PrintTemplate[];
   
@@ -124,12 +116,6 @@ interface EditorState {
   toggleRecordSelection: (id: string) => void;
   selectAllRecords: () => void;
   clearRecordSelection: () => void;
-  
-  // 🔥 复选框选中记录操作
-  addCheckboxRecord: (record: { id: string; data: Record<string, unknown>; timestamp: number }) => void;
-  removeCheckboxRecord: (id: string) => void;
-  clearCheckboxRecords: () => void;
-  setCheckboxLoading: (loading: boolean) => void;
   
   // 历史记录
   undo: () => void;
@@ -241,9 +227,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   isFeishuContextLoading: false,
   records: [],
   selectedRecordIds: [],
-  // 🔥 复选框选中记录
-  checkboxRecords: [],
-  isCheckboxLoading: false,
   savedTemplates: [],
   history: [[]],
   historyIndex: 0,
@@ -509,34 +492,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
   
   clearRecordSelection: () => set({ selectedRecordIds: [] }),
-  
-  // 🔥 复选框选中记录操作
-  addCheckboxRecord: (record) => {
-    const state = get();
-    // 检查是否已存在
-    if (state.checkboxRecords.find(r => r.id === record.id)) {
-      return;
-    }
-    set({
-      checkboxRecords: [...state.checkboxRecords, record]
-    });
-    console.log('[EditorStore] 添加复选框记录:', record.id, '总数:', state.checkboxRecords.length + 1);
-  },
-  
-  removeCheckboxRecord: (id) => {
-    const state = get();
-    set({
-      checkboxRecords: state.checkboxRecords.filter(r => r.id !== id)
-    });
-    console.log('[EditorStore] 移除复选框记录:', id, '剩余:', state.checkboxRecords.length - 1);
-  },
-  
-  clearCheckboxRecords: () => {
-    set({ checkboxRecords: [] });
-    console.log('[EditorStore] 清空所有复选框记录');
-  },
-  
-  setCheckboxLoading: (loading) => set({ isCheckboxLoading: loading }),
   
   // 撤销
   undo: () => {
