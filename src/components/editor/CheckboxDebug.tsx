@@ -6,6 +6,7 @@
  * 2. 手动触发选中记录检查
  * 3. 显示当前选中状态
  * 4. 完整的插件环境验证
+ * 5. 集成 SelectionManager 显示选中记录
  */
 
 'use client';
@@ -15,6 +16,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { feishuEnv } from '@/lib/feishu-env';
+import { getSelectionManager, SelectedRecord } from '@/lib/selection-manager';
+import { SelectionConfirmDialog } from './SelectionConfirmDialog';
+import { useEditorStore } from '@/store/editorStore';
 
 interface DebugInfo {
   hasBitable: boolean;
@@ -51,6 +55,21 @@ export function CheckboxDebug() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
+  
+  // 🔥 多选确认对话框状态
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingRecordIds, setPendingRecordIds] = useState<string[]>([]);
+  const [isLoadingRecords, setIsLoadingRecords] = useState(false);
+  
+  // 🔥 选中的记录（来自 SelectionManager）
+  const [managedRecords, setManagedRecords] = useState<SelectedRecord[]>([]);
+  
+  // 🔥 Store 中的记录
+  const checkboxRecords = useEditorStore(state => state.checkboxRecords);
+  const addCheckboxRecord = useEditorStore(state => state.addCheckboxRecord);
+  const removeCheckboxRecord = useEditorStore(state => state.removeCheckboxRecord);
+  const clearCheckboxRecords = useEditorStore(state => state.clearCheckboxRecords);
+  const setCheckboxLoading = useEditorStore(state => state.setCheckboxLoading);
 
   const addLog = useCallback((message: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -309,9 +328,59 @@ export function CheckboxDebug() {
         });
         addLog('🔥 已启动复选框选择状态轮询监听');
         
+        // 🔥 4. 初始化 SelectionManager
+        const manager = getSelectionManager();
+        
+        // 设置多选确认回调
+        const unsubscribeConfirm = manager.onMultiSelectConfirm(async (recordIds) => {
+          return new Promise<boolean>((resolve) => {
+            setPendingRecordIds(recordIds);
+            setShowConfirmDialog(true);
+            // resolve 会在 handleConfirm/handleCancel 中调用
+            (window as any).__selectionResolve = resolve;
+          });
+        });
+        
+        // 设置记录添加回调
+        const unsubscribeAdd = manager.onRecordAdd((record) => {
+          addLog(`✅ 记录添加到画布: ${record.recordId}`);
+          setManagedRecords(prev => {
+            if (prev.find(r => r.recordId === record.recordId)) return prev;
+            return [...prev, record];
+          });
+          addCheckboxRecord({
+            id: record.recordId,
+            data: record.data,
+            timestamp: record.timestamp
+          });
+        });
+        
+        // 设置记录移除回调
+        const unsubscribeRemove = manager.onRecordRemove((recordId) => {
+          addLog(`➖ 记录从画布移除: ${recordId}`);
+          setManagedRecords(prev => prev.filter(r => r.recordId !== recordId));
+          removeCheckboxRecord(recordId);
+        });
+        
+        // 设置清空回调
+        const unsubscribeClear = manager.onClear(() => {
+          addLog(`🗑️ 清空所有选中记录`);
+          setManagedRecords([]);
+          clearCheckboxRecords();
+        });
+        
+        // 启动监控
+        manager.startMonitoring();
+        addLog('🔥 SelectionManager 已启动');
+        
         // 清理函数
         return () => {
           unsubscribe();
+          unsubscribeConfirm();
+          unsubscribeAdd();
+          unsubscribeRemove();
+          unsubscribeClear();
+          manager.stopMonitoring();
         };
       } catch (error) {
         addLog(`注册监听器失败: ${error}`);
@@ -319,7 +388,37 @@ export function CheckboxDebug() {
     };
     
     setupListeners();
-  }, [addLog]);
+  }, [addLog, addCheckboxRecord, removeCheckboxRecord, clearCheckboxRecords]);
+  
+  // 🔥 处理多选确认
+  const handleConfirm = useCallback(async () => {
+    setIsLoadingRecords(true);
+    setCheckboxLoading(true);
+    
+    // 触发确认
+    if ((window as any).__selectionResolve) {
+      (window as any).__selectionResolve(true);
+      (window as any).__selectionResolve = null;
+    }
+    
+    // 等待数据加载
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    setIsLoadingRecords(false);
+    setCheckboxLoading(false);
+    setShowConfirmDialog(false);
+    setPendingRecordIds([]);
+  }, [setCheckboxLoading]);
+  
+  // 🔥 处理取消
+  const handleCancel = useCallback(() => {
+    if ((window as any).__selectionResolve) {
+      (window as any).__selectionResolve(false);
+      (window as any).__selectionResolve = null;
+    }
+    setShowConfirmDialog(false);
+    setPendingRecordIds([]);
+  }, []);
 
   // 初始化检查
   useEffect(() => {
@@ -449,6 +548,29 @@ export function CheckboxDebug() {
           </Button>
         </div>
         
+        {/* 🔥 选中记录管理（SelectionManager） */}
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+            <span>📋 已加载到画布的记录: {managedRecords.length} 条</span>
+            {isLoadingRecords && <Badge variant="secondary">加载中...</Badge>}
+          </div>
+          <div className="text-[10px] text-muted-foreground">
+            SelectionManager 管理：首次单选自动载入，多选弹出确认，取消选中自动移除
+          </div>
+          {managedRecords.length > 0 && (
+            <div className="text-xs bg-green-50 border border-green-200 p-2 rounded max-h-32 overflow-auto">
+              {managedRecords.map((record, index) => (
+                <div key={record.recordId} className="flex items-center justify-between truncate py-0.5 border-b border-green-100 last:border-0">
+                  <span className="text-green-700">{index + 1}. {record.recordId}</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {new Date(record.timestamp).toLocaleTimeString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        
         {/* 日志 */}
         <div className="space-y-2">
           <div className="text-xs font-medium text-muted-foreground">日志</div>
@@ -463,6 +585,15 @@ export function CheckboxDebug() {
           </div>
         </div>
       </CardContent>
+      
+      {/* 🔥 多选确认对话框 */}
+      <SelectionConfirmDialog
+        open={showConfirmDialog}
+        selectedCount={pendingRecordIds.length}
+        isLoading={isLoadingRecords}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </Card>
   );
 }
