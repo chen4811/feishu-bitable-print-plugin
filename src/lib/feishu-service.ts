@@ -247,12 +247,12 @@ export async function getSelectedRecords(): Promise<Record<string, unknown>[]> {
 export async function initEnvironment(config?: {
   appToken?: string;
   tableId?: string;
-}): Promise<boolean> {
+}): Promise<{ success: boolean; tableName?: string; tableId?: string }> {
   // 如果提供了凭证，设置 API 模式
   if (config?.appToken && config?.tableId) {
     setApiCredentials(config.appToken, config.tableId);
     
-    // 验证凭证
+    // 验证凭证并获取表格信息
     try {
       const response = await fetch('/api/feishu/init/', {
         method: 'POST',
@@ -264,10 +264,14 @@ export async function initEnvironment(config?: {
       });
       
       const result = await response.json();
-      return result.success;
+      return {
+        success: result.success,
+        tableName: result.tableName,
+        tableId: config.tableId,
+      };
     } catch (error) {
       console.error('[FeishuService] 初始化失败:', error);
-      return false;
+      return { success: false };
     }
   }
   
@@ -278,11 +282,70 @@ export async function initEnvironment(config?: {
     if (success) {
       currentEnv = 'sdk';
     }
-    return success;
+    return { success };
   } catch (error) {
     console.error('[FeishuService] SDK 初始化失败:', error);
-    return false;
+    return { success: false };
   }
+}
+
+/**
+ * 获取表格名称
+ */
+export async function fetchTableName(): Promise<string> {
+  const env = detectEnvironment();
+  
+  if (env === 'sdk') {
+    try {
+      const { fetchTableName: sdkFetchTableName } = await import('./feishu-env');
+      return await sdkFetchTableName();
+    } catch (error) {
+      console.error('[FeishuService] SDK 获取表格名称失败:', error);
+      return '未命名表格';
+    }
+  }
+  
+  if (env === 'api') {
+    try {
+      const response = await fetch('/api/feishu/init/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          appToken: appToken!,
+          tableId: tableId!,
+        }),
+      });
+      
+      const result = await response.json();
+      return result.tableName || '未命名表格';
+    } catch (error) {
+      console.error('[FeishuService] API 获取表格名称失败:', error);
+      return '未命名表格';
+    }
+  }
+  
+  return '未命名表格';
+}
+
+/**
+ * 获取当前选中的表格 ID
+ */
+export function getCurrentTableId(): string | null {
+  return tableId;
+}
+
+/**
+ * 获取当前 appToken
+ */
+export function getCurrentAppToken(): string | null {
+  return appToken;
+}
+
+/**
+ * 检查是否在飞书环境中
+ */
+export function isFeishuEnvironment(): boolean {
+  return detectEnvironment() !== 'unknown';
 }
 
 /**

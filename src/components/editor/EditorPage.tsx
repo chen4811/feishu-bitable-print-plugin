@@ -60,8 +60,21 @@ import { CanvasArea } from './canvas/CanvasArea';
 import { PageSettingsDialog } from './dialogs/PageSettingsDialog';
 import { PrintPreviewDialog } from './dialogs/PrintPreviewDialog';
 import { usePrintSDK } from '@/hooks/usePrintSDK';
-import { feishuEnv } from '@/lib/feishu-env';
-import { processRecordAttachments } from '@/lib/attachment-processor';
+import {
+  initEnvironment,
+  fetchFields,
+  fetchRecords,
+  fetchTableName,
+  isFeishuEnvironment as checkIsFeishuEnvironment,
+  getCurrentTableId,
+  getCurrentAppToken,
+  setApiCredentials,
+  detectEnvironment,
+  onCheckboxSelectionChange,
+  initCheckboxSelection,
+  getCheckboxSelectedIds,
+  getCheckboxSelectedRecords,
+} from '@/lib/feishu-service';
 
 interface EditorPageProps {
   onExit: () => void;
@@ -91,8 +104,8 @@ export function EditorPage({ onExit }: EditorPageProps) {
     isLoading: isStoreLoading 
   } = useTemplateStore();
 
-  // 🔥 使用飞书SDK获取数据（feishu-env)
-  const isFeishuEnvironment = feishuEnv.isFeishuEnvironment();
+  // 🔥 使用飞书服务获取数据（支持 SDK 和 API 两种模式）
+  const isFeishuEnvironment = checkIsFeishuEnvironment();
   const [feishuRecords, setFeishuRecords] = useState<any[]>([]);
   const [feishuFields, setFeishuFields] = useState<any[]>([]);
   const [feishuLoading, setFeishuLoading] = useState(false);
@@ -102,7 +115,8 @@ export function EditorPage({ onExit }: EditorPageProps) {
     tableId: string | null;
     tableName: string | null;
     baseId: string | null;
-  }>({ tableId: null, tableName: null, baseId: null });
+    appToken: string | null;
+  }>({ tableId: null, tableName: null, baseId: null, appToken: null });
   
   // 🔥 【关键】使用 ref 存储当前 tableId，确保回调中能访问最新值
   const currentTableIdRef = useRef<string | null>(null);
@@ -141,18 +155,18 @@ export function EditorPage({ onExit }: EditorPageProps) {
     selectComponent,
   } = useEditorStore();
 
-  // 从 feishu-env 获取数据并监听点击行
+  // 🔥 使用统一服务层获取数据（自动选择 SDK/API 模式）
   useEffect(() => {
     // 🔥 【关键修复】声明 unsubscribe 变量，用于清理监听器
     let unsubscribe: (() => void) | null = null;
     let isCleaned = false; // 🔥 添加清理标志，防止在清理后设置监听器
     
     const init = async () => {
-      // 先初始化 SDK
-      const isReady = await feishuEnv.init();
+      // 🔥 使用统一服务层初始化环境
+      const envResult = await initEnvironment();
       
-      if (!isReady) {
-        console.log('[EditorPage] 不在飞书环境，跳过');
+      if (!envResult.success) {
+        console.log('[EditorPage] 不在飞书环境或初始化失败，跳过');
         return;
       }
 
@@ -169,17 +183,10 @@ export function EditorPage({ onExit }: EditorPageProps) {
       try {
         setFeishuLoading(true);
         
-        // 获取当前表格信息
-        const { base } = await import('@lark-base-open/js-sdk');
-        const selection = await base.getSelection();
-        
-        // 🔥 检查是否已清理
-        if (isCleaned) {
-          console.log('[EditorPage] 组件已清理，取消初始化（获取selection后）');
-          return;
-        }
-        
-        const tableName = await feishuEnv.fetchTableName();
+        // 🔥 获取当前表格信息（使用统一服务层）
+        const tableName = await fetchTableName();
+        const tableId = getCurrentTableId();
+        const appToken = getCurrentAppToken();
         
         // 🔥 检查是否已清理
         if (isCleaned) {
@@ -188,15 +195,16 @@ export function EditorPage({ onExit }: EditorPageProps) {
         }
         
         setCurrentTableInfo({
-          tableId: selection?.tableId || null,
+          tableId: tableId,
           tableName: tableName,
-          baseId: selection?.baseId || null,
+          baseId: null,
+          appToken: appToken,
         });
-        console.log('[EditorPage] 当前表格信息:', { tableId: selection?.tableId, tableName });
+        console.log('[EditorPage] 当前表格信息:', { tableId, tableName, appToken });
         
-        // 1. 获取字段
+        // 1. 获取字段（使用统一服务层）
         console.log('[EditorPage] 获取字段...');
-        const fields = await feishuEnv.fetchFields();
+        const fields = await fetchFields();
         
         // 🔥 检查是否已清理
         if (isCleaned) {
@@ -250,20 +258,15 @@ export function EditorPage({ onExit }: EditorPageProps) {
         setFields(appFields);
         setFieldTypeMap(fieldTypeMap);
         
-        // 【获取表格对象用于附件处理】 //lock
-        const activeTable = await base.getActiveTable();
-        
         // 🔥 检查是否已清理
         if (isCleaned) {
-          console.log('[EditorPage] 组件已清理，取消初始化（获取activeTable后）');
+          console.log('[EditorPage] 组件已清理，取消初始化（设置字段后）');
           return;
         }
-        
-        console.log('[EditorPage] 获取到活跃表格:', !!activeTable);
 
-        // 2. 默认获取第一条记录
-        console.log('[EditorPage] 获取第一条记录...');
-        const records = await feishuEnv.getSelectedRecords();
+        // 2. 获取记录（使用统一服务层）
+        console.log('[EditorPage] 获取记录...');
+        const records = await fetchRecords();
         
         // 🔥 检查是否已清理
         if (isCleaned) {
@@ -274,42 +277,10 @@ export function EditorPage({ onExit }: EditorPageProps) {
         console.log('[EditorPage] 获取到记录:', records);
         
         if (records.length > 0) {
-          // 转换记录格式
-          const appRecords = records.map((record, index) => ({
-            id: record.id,
-            ...record.fields,
-            _rowIndex: index,
-          }));
-          
-          // 【新增】处理附件字段 - 传入 table 参数 //lock
-          console.log('[EditorPage] 开始处理附件字段...');
-          const processedRecords = await Promise.all(
-            appRecords.map(async (record) => {
-              try {
-                const processed = await processRecordAttachments( //lock
-                  record,
-                  appFields,
-                  fieldTypeMap,
-                  activeTable  // 【关键修复】传入 table 参数 //lock
-                );
-                console.log(`[EditorPage] 记录 ${record.id} 附件处理完成:`, 
-                  Object.keys(processed).filter(k => k.includes('_html')));
-                return processed;
-              } catch (err) {
-                console.error(`[EditorPage] 记录 ${record.id} 附件处理失败:`, err);
-                return record;
-              }
-            })
-          );
-          
-          // 🔥 检查是否已清理
-          if (isCleaned) {
-            console.log('[EditorPage] 组件已清理，取消初始化（处理附件后）');
-            return;
-          }
-          
+          // 🔥 在 API 模式下，记录已经处理好（附件已处理）
+          // 🔥 在 SDK 模式下，可能需要处理附件（但 fetchRecords 内部已经处理）
           setFeishuRecords(records);
-          setRecords(processedRecords as unknown as Record<string, unknown>[]);
+          setRecords(records as unknown as Record<string, unknown>[]);
         }
         
         setFeishuLoading(false);
@@ -318,8 +289,8 @@ export function EditorPage({ onExit }: EditorPageProps) {
         setFeishuLoading(false);
       }
 
-      // 🔥 【关键修复】将 unsubscribe 保存到变量，而不是通过 async 函数返回
-      unsubscribe = feishuEnv.onSelectionChange(async (event) => {
+      // 🔥 使用统一服务层监听选中变化
+      unsubscribe = onCheckboxSelectionChange(async (event) => {
         // 🔥 检查组件是否已清理
         if (isCleaned) {
           console.log('[EditorPage] 组件已清理，忽略选中变化事件');
@@ -329,7 +300,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
         console.log('[EditorPage] ======== 收到选中变化事件 ========');
         console.log('[EditorPage] 事件数据:', event);
         
-        const newTableId = event.data?.tableId;
+        const newTableId = event.tableId;
         const currentTableId = currentTableIdRef.current; // 使用 ref 获取最新值
         
         // 🔥 【关键修复】检测表格是否变化
@@ -344,8 +315,8 @@ export function EditorPage({ onExit }: EditorPageProps) {
             
             setFeishuLoading(true);
             
-            // 获取新表格信息
-            const tableName = await feishuEnv.fetchTableName();
+            // 🔥 使用统一服务层获取新表格信息
+            const tableName = await fetchTableName();
             
             // 🔥 检查是否已清理
             if (isCleaned) {
@@ -356,12 +327,13 @@ export function EditorPage({ onExit }: EditorPageProps) {
             setCurrentTableInfo({
               tableId: newTableId,
               tableName: tableName,
-              baseId: event.data?.baseId || null,
+              baseId: null,
+              appToken: getCurrentAppToken(),
             });
             
-            // 重新获取字段（带 fieldKind）
+            // 🔥 重新获取字段（使用统一服务层）
             console.log('[EditorPage] 重新获取字段...');
-            const fields = await feishuEnv.fetchFields();
+            const fields = await fetchFields();
             
             // 🔥 检查是否已清理
             if (isCleaned) {
@@ -406,20 +378,8 @@ export function EditorPage({ onExit }: EditorPageProps) {
             setFields(appFields);
             console.log('[EditorPage] 字段已刷新:', appFields);
             
-            // 【获取表格对象用于附件处理】 //lock
-            const { base } = await import('@lark-base-open/js-sdk');
-            const newTable = await base.getActiveTable();
-            
-            // 🔥 检查是否已清理
-            if (isCleaned) {
-              console.log('[EditorPage] 组件已清理，取消表格变化处理（获取newTable后）');
-              return;
-            }
-            
-            console.log('[EditorPage] 获取到新表格:', !!newTable);
-            
-            // 重新获取记录
-            const records = await feishuEnv.getSelectedRecords();
+            // 🔥 重新获取记录（使用统一服务层）
+            const records = await fetchRecords();
             
             // 🔥 检查是否已清理
             if (isCleaned) {
@@ -428,32 +388,8 @@ export function EditorPage({ onExit }: EditorPageProps) {
             }
             
             if (records.length > 0) {
-              const appRecords = records.map((record, index) => ({
-                id: record.id,
-                ...record.fields,
-                _rowIndex: index,
-              }));
-              
-              // 【新增】处理附件字段 - 传入 table 参数 //lock
-              const processedRecords = await Promise.all(
-                appRecords.map(async (record) => {
-                  try {
-                    return await processRecordAttachments(record, appFields, fieldTypeMap, newTable); //lock
-                  } catch (err) {
-                    console.error(`[EditorPage] 记录 ${record.id} 附件处理失败:`, err);
-                    return record;
-                  }
-                })
-              );
-              
-              // 🔥 检查是否已清理
-              if (isCleaned) {
-                console.log('[EditorPage] 组件已清理，取消表格变化处理（处理附件后）');
-                return;
-              }
-              
               setFeishuRecords(records);
-              setRecords(processedRecords as unknown as Record<string, unknown>[]);
+              setRecords(records as unknown as Record<string, unknown>[]);
             }
             
             setFeishuLoading(false);
@@ -473,7 +409,8 @@ export function EditorPage({ onExit }: EditorPageProps) {
             return;
           }
           
-          const records = await feishuEnv.getSelectedRecords();
+          // 🔥 使用统一服务层获取选中记录
+          const records = await fetchRecords();
           
           // 🔥 检查是否已清理
           if (isCleaned) {
@@ -484,61 +421,14 @@ export function EditorPage({ onExit }: EditorPageProps) {
           console.log('[EditorPage] 获取到新的选中记录:', records);
           
           if (records.length > 0) {
-            // 获取当前的字段列表和类型映射
-            const currentFields = useEditorStore.getState().fields;
-            const currentFieldTypeMap = useEditorStore.getState().fieldTypeMap;
-            
-            // 【获取表格对象用于附件处理】 //lock
-            const { base } = await import('@lark-base-open/js-sdk');
-            const currentTable = await base.getActiveTable();
-            
-            // 🔥 检查是否已清理
-            if (isCleaned) {
-              console.log('[EditorPage] 组件已清理，取消记录累积处理（获取currentTable后）');
-              return;
-            }
-            
-            console.log('[EditorPage] 获取到当前表格:', !!currentTable);
-            
-            const appRecords = records.map((record, index) => ({
-              id: record.id,
-              ...record.fields,
-              _rowIndex: index,
-            }));
-            
-            // 【新增】处理附件字段 - 传入 table 参数 //lock
-            console.log('[EditorPage] 累积添加记录前处理附件...');
-            const processedRecords = await Promise.all(
-              appRecords.map(async (record) => {
-                try {
-                  const processed = await processRecordAttachments( //lock
-                    record, 
-                    currentFields, 
-                    currentFieldTypeMap,
-                    currentTable  // 【关键修复】传入 table 参数 //lock
-                  );
-                  console.log(`[EditorPage] 记录 ${record.id} 附件处理完成`);
-                  return processed;
-                } catch (err) {
-                  console.error(`[EditorPage] 记录 ${record.id} 附件处理失败:`, err);
-                  return record;
-                }
-              })
-            );
-            
-            // 🔥 检查是否已清理
-            if (isCleaned) {
-              console.log('[EditorPage] 组件已清理，取消记录累积处理（处理附件后）');
-              return;
-            }
-            
+            // 🔥 在统一服务层中，记录已经处理好（附件已处理）
             console.log('[EditorPage] 累积添加记录到 store:', {
-              count: processedRecords.length,
-              firstRecordKeys: Object.keys(processedRecords[0]).slice(0, 10),
+              count: records.length,
+              firstRecordKeys: Object.keys(records[0]).slice(0, 10),
             });
             setFeishuRecords(records);
             // 🔥 【关键修复】使用 addRecords 累积记录，而不是 setRecords 覆盖
-            addRecords(processedRecords as unknown as Record<string, unknown>[]);
+            addRecords(records as unknown as Record<string, unknown>[]);
           }
         } catch (error) {
           console.error('[EditorPage] 获取选中记录失败:', error);
@@ -1316,7 +1206,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
     }
   };
 
-  // 只保留usePrintSDK用于旧功能兼容，新功能使用feishuEnv
+  // 🔥 使用统一服务层 (feishu-service) 处理飞书数据
 
   // 全局键盘事件拦截器
   useEffect(() => {
