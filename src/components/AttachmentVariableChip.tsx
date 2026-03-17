@@ -69,15 +69,16 @@ export const AttachmentVariableChip: React.FC<AttachmentVariableChipProps> = ({
   const imageUrls = useMemo(() => {
     const urls: string[] = [];
     
-    // 1. 从 rawData 提取所有 URL
+    // 1. 从 rawData 提取所有 URL（支持多种字段名）
     if (rawData && rawData.length > 0) {
       rawData.forEach((item: any) => {
         const url = item?.url 
           || item?.fileUrl 
           || item?.tmpUrl
+          || item?.tmp_url
+          || item?.previewUrl
           || item?.link
           || item?.downloadUrl
-          || item?.previewUrl
           || item?.src;
         if (url) urls.push(url);
       });

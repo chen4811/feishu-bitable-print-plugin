@@ -23,6 +23,7 @@ interface FieldMeta {
  */
 interface AttachmentItem {
   token?: string;
+  file_token?: string;  // 【新增】飞书返回的文件令牌字段名
   name?: string;
   fileName?: string;
   type?: string;
@@ -31,6 +32,8 @@ interface AttachmentItem {
   url?: string;
   fileUrl?: string;
   tmpUrl?: string;
+  tmp_url?: string;     // 【新增】飞书返回的临时 URL 字段名
+  previewUrl?: string;  // 【新增】预览 URL
 }
 
 /**
@@ -140,8 +143,13 @@ async function convertAttachmentToHTML(
   } = options;
   
   try {
-    // 优先使用已有的 URL
-    let url: string | null | undefined = attachment.url || attachment.fileUrl || attachment.tmpUrl || null;
+    // 优先使用已有的 URL（支持多种字段名）
+    let url: string | null | undefined = attachment.url 
+      || attachment.fileUrl 
+      || attachment.tmpUrl 
+      || (attachment as any).tmp_url 
+      || (attachment as any).previewUrl 
+      || null;
     
     // 如果没有 URL，尝试通过飞书 API 获取
     if (!url && attachment.token && table) {
@@ -346,7 +354,7 @@ export async function processRecordAttachments(
     
     // 检查是否已有可用的 URL（从缓存或其他来源）
     const hasValidUrls = fieldValue.some(
-      (item: AttachmentItem) => item.url || item.fileUrl || item.tmpUrl
+      (item: AttachmentItem) => item.url || item.fileUrl || item.tmpUrl || (item as any).tmp_url || (item as any).previewUrl
     );
     
     // 如果有 table 或已有 URL，进行 HTML 转换

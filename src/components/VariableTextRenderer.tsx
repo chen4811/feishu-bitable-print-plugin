@@ -115,7 +115,9 @@ function getAttachmentData(fieldName: string, records: any[]): { htmlContent?: s
     hasHtmlField: !!record[`_${fieldName}_html`],
     hasRawField: !!record[fieldName],
     hasNamesField: !!record[`_${fieldName}_names`],
-    hasFieldsProp: !!record.fields?.[fieldName]
+    hasFieldsProp: !!record.fields?.[fieldName],
+    // 【新增】打印 records[0] 的所有 _html 字段
+    allHtmlFields: Object.keys(record).filter(key => key.endsWith('_html')),
   });
   
   // 获取原始附件数组

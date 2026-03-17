@@ -117,6 +117,21 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
       firstRecordId: records?.[0]?.id,
       recordsPreview: records?.slice(0, 2).map(r => ({ id: r.id, _rowIndex: r._rowIndex })),
     });
+    
+    // 【新增】检查第一条记录是否包含 _html 字段
+    if (records && records.length > 0) {
+      const firstRecord = records[0] as any;
+      const htmlFields = Object.keys(firstRecord).filter(key => key.endsWith('_html'));
+      console.log('[CanvasComponent] 第一条记录的 _html 字段:', {
+        htmlFields,
+        htmlFieldsCount: htmlFields.length,
+        allKeysCount: Object.keys(firstRecord).length,
+        sampleHtmlField: htmlFields.length > 0 ? {
+          fieldName: htmlFields[0],
+          contentPreview: String(firstRecord[htmlFields[0]]).substring(0, 100)
+        } : null
+      });
+    }
   }, [records]);
 
   // 获取预览用的记录（优先使用第一条记录）- 用于非编辑状态下的变量渲染
@@ -156,6 +171,18 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
             recordData[field.name] = value;
           }
         });
+      }
+      
+      // 【调试】检查 previewRecord 是否包含 _html 字段
+      const htmlFieldsInPreview = Object.keys(recordData).filter(key => key.endsWith('_html'));
+      if (htmlFieldsInPreview.length > 0) {
+        console.log('[CanvasComponent] previewRecord 包含 _html 字段:', htmlFieldsInPreview);
+        console.log('[CanvasComponent] previewRecord 样例:', {
+          fieldName: htmlFieldsInPreview[0],
+          contentPreview: String(recordData[htmlFieldsInPreview[0]]).substring(0, 100)
+        });
+      } else {
+        console.warn('[CanvasComponent] ⚠️ previewRecord 不包含任何 _html 字段！');
       }
       
       return recordData;
@@ -251,8 +278,8 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
     if (Array.isArray(rawAttachments) && rawAttachments.length > 0) {
       const attachments = rawAttachments.map((att: any) => ({
         name: att.name || '未命名文件',
-        url: att.url || att.tmpUrl || att.fileUrl,
-        token: att.token,
+        url: att.url || att.tmpUrl || att.tmp_url || att.fileUrl || att.previewUrl,
+        token: att.token || att.file_token,
         type: att.type || 'image/jpeg',
         size: att.size
       }));

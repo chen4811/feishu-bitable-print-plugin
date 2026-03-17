@@ -376,8 +376,8 @@ class AttachmentProcessor {
       const imageHtmls = await Promise.all(
         attachmentData.map(async (attachment, index) => {
           try {
-            // 优先使用已有的URL
-            let url = attachment.url || attachment.fileUrl || attachment.tmpUrl;
+            // 优先使用已有的URL（支持多种字段名）
+            let url = attachment.url || attachment.fileUrl || attachment.tmpUrl || attachment.tmp_url || attachment.previewUrl;
             
             // 如果没有URL或URL已过期，尝试获取新的临时URL
             if (!url && attachment.token) {
