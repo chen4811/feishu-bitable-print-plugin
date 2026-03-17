@@ -467,6 +467,22 @@ export function PrintPreviewDialog({ open, onOpenChange }: PrintPreviewDialogPro
                             }
                           });
                           
+                          // 🔥 同时发送到服务器日志（可通过 /app/work/logs/bypass/console.log 查看）
+                          fetch('/api/debug/log', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              type: 'DATA_CARD_CLICK',
+                              recordId: record.id,
+                              fields: Object.keys(record),
+                              attachmentFields: attachmentFields.map(f => ({
+                                name: f.name,
+                                value: record[f.name]
+                              })),
+                              fullRecord: record
+                            })
+                          }).catch(() => {});
+                          
                           console.log('📋 完整 record 对象:', JSON.stringify(record, null, 2));
                           console.log('🔍 ===========================================');
                           
