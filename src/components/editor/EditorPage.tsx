@@ -71,6 +71,10 @@ import {
   setApiCredentials,
   detectEnvironment,
   getCurrentTableIdAsync,
+  startSelectionPolling,
+  stopSelectionPolling,
+  onSelectionPollingChange,
+  SelectionPollingEvent,
 } from '@/lib/feishu-service';
 
 interface EditorPageProps {
@@ -279,6 +283,120 @@ export function EditorPage({ onExit }: EditorPageProps) {
         }
         
         setFeishuLoading(false);
+        
+        // 🔥 启动选择状态轮询
+        console.log('[EditorPage] 启动选择状态轮询...');
+        await startSelectionPolling(1000);
+        
+        // 注册选择变化回调
+        const unsubscribeSelection = await onSelectionPollingChange(async (event: SelectionPollingEvent) => {
+          console.log('[EditorPage] 收到选择变化事件:', event);
+          
+          // 检查组件是否已清理
+          if (isCleaned) {
+            console.log('[EditorPage] 组件已清理，忽略选择变化事件');
+            return;
+          }
+          
+          // 检查表格是否变化
+          const currentTableId = getCurrentTableId();
+          if (event.tableId && event.tableId !== currentTableId) {
+            console.log('[EditorPage] 检测到表格变化:', { from: currentTableId, to: event.tableId });
+            
+            try {
+              setFeishuLoading(true);
+              
+              // 重新获取表格信息
+              const tableName = await fetchTableName();
+              setCurrentTableInfo({
+                tableId: event.tableId,
+                tableName: tableName,
+                baseId: null,
+                appToken: getCurrentAppToken(),
+              });
+              
+              // 重新获取字段
+              const fields = await fetchFields({ scene: 'table_switch' });
+              if (isCleaned) return;
+              
+              const appFields = fields.map((field: any) => {
+                let fieldKind: Field['fieldKind'] = 'other';
+                const fieldType = String(field.type);
+                
+                if (fieldType === '17' || fieldType === 'attachment') {
+                  fieldKind = 'attachment';
+                } else if (fieldType === '11' || fieldType === 'user' || fieldType === 'person') {
+                  fieldKind = 'person';
+                } else if (fieldType === '1' || fieldType === 'text') {
+                  fieldKind = 'text';
+                } else if (fieldType === '2' || fieldType === 'number') {
+                  fieldKind = 'number';
+                } else if (fieldType === '5' || fieldType === 'date') {
+                  fieldKind = 'date';
+                }
+                
+                return {
+                  id: field.id,
+                  name: field.name,
+                  type: field.type,
+                  placeholder: `[${field.name}]`,
+                  isSystem: false,
+                  fieldKind,
+                };
+              });
+              
+              const fieldTypeMap: Record<string, 'attachment' | 'person' | 'text' | 'number' | 'date' | 'other'> = {};
+              appFields.forEach((field: Field) => {
+                fieldTypeMap[field.name] = field.fieldKind || 'other';
+                if (field.id) {
+                  fieldTypeMap[field.id] = field.fieldKind || 'other';
+                }
+              });
+              
+              setFieldTypeMap(fieldTypeMap);
+              setFeishuFields(fields);
+              setFields(appFields);
+              
+              // 重新获取记录
+              const records = await fetchRecords();
+              if (isCleaned) return;
+              
+              if (records.length > 0) {
+                setFeishuRecords(records);
+                setRecords(records as unknown as Record<string, unknown>[]);
+              }
+              
+              setFeishuLoading(false);
+            } catch (error) {
+              console.error('[EditorPage] 表格切换刷新数据失败:', error);
+              setFeishuLoading(false);
+            }
+            return;
+          }
+          
+          // 表格未变化，处理选中记录
+          if (event.recordIds.length > 0) {
+            try {
+              console.log('[EditorPage] 获取选中记录，IDs:', event.recordIds);
+              const records = await fetchRecords({ recordIds: event.recordIds });
+              
+              if (!isCleaned && records.length > 0) {
+                setFeishuRecords(records);
+                setRecords(records as unknown as Record<string, unknown>[]);
+              }
+            } catch (error) {
+              console.error('[EditorPage] 获取选中记录失败:', error);
+            }
+          }
+        });
+        
+        // 保存取消订阅函数供清理时使用
+        return () => {
+          console.log('[EditorPage] 清理组件');
+          isCleaned = true;
+          unsubscribeSelection();
+          stopSelectionPolling();
+        };
       } catch (error) {
         console.error('[EditorPage] 初始化数据失败:', error);
         setFeishuLoading(false);

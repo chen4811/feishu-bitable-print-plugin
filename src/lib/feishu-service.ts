@@ -542,5 +542,62 @@ function getFieldKind(type: number | string): Field['fieldKind'] {
   return 'other';
 }
 
+// ============================================
+// 轮询选择检测
+// ============================================
+
+/** 选择变化事件 */
+export interface SelectionPollingEvent {
+  tableId: string;
+  recordIds: string[];
+  isSelectAll: boolean;
+}
+
+/**
+ * 启动选择状态轮询
+ * @param interval 轮询间隔（毫秒），默认 1000ms
+ */
+export async function startSelectionPolling(interval: number = 1000): Promise<void> {
+  const env = detectEnvironment();
+  
+  if (env === 'sdk') {
+    const { startSelectionPolling: sdkStartPolling } = await import('./feishu-env');
+    sdkStartPolling(interval);
+  } else {
+    console.warn('[FeishuService] API 模式不支持选择轮询');
+  }
+}
+
+/**
+ * 停止选择状态轮询
+ */
+export async function stopSelectionPolling(): Promise<void> {
+  const env = detectEnvironment();
+  
+  if (env === 'sdk') {
+    const { stopSelectionPolling: sdkStopPolling } = await import('./feishu-env');
+    sdkStopPolling();
+  }
+}
+
+/**
+ * 注册选择变化回调
+ * @param callback 选择变化时的回调函数
+ * @returns 取消注册的函数
+ */
+export async function onSelectionPollingChange(
+  callback: (event: SelectionPollingEvent) => void
+): Promise<() => void> {
+  const env = detectEnvironment();
+  
+  if (env === 'sdk') {
+    const { onSelectionPollingChange: sdkOnChange } = await import('./feishu-env');
+    return sdkOnChange(callback);
+  }
+  
+  // 非SDK环境返回空函数
+  return () => {};
+}
+
 // 导出类型
 export type { Field };
