@@ -2249,6 +2249,13 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
           const existingEditorIds = new Set(latestRecords.map(r => r.id as string));
           const recordsToAdd = processedRecords.filter(r => !existingEditorIds.has(r.id as string));
           
+          // 【调试】检查 recordsToAdd 的 _html 字段
+          if (recordsToAdd.length > 0) {
+            const htmlFieldsInFirst = recordsToAdd[0] ? Object.keys(recordsToAdd[0]).filter(k => k.endsWith('_html')) : [];
+            console.log('[TP] 【延迟同步】recordsToAdd[0] 的 _html 字段:', htmlFieldsInFirst);
+            console.log('[TP] 【延迟同步】recordsToAdd[0] 的所有键:', Object.keys(recordsToAdd[0]).slice(0, 15));
+          }
+          
           if (recordsToAdd.length > 0) {
             console.log('[TP] 【延迟同步】累积添加', recordsToAdd.length, '条新记录到 editorStore');
             addEditorStoreRecords(recordsToAdd);

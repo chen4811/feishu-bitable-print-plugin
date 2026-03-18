@@ -426,10 +426,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   
   addRecords: (newRecords) => {
     const state = get();
+    
+    // 【调试】检查传入的记录是否有 _html 字段
+    const htmlFieldsInNew = newRecords[0] ? Object.keys(newRecords[0]).filter(k => k.endsWith('_html')) : [];
     console.log('[EditorStore] addRecords 被调用:', {
       newRecordsCount: newRecords.length,
       existingRecordsCount: state.records.length,
       newRecordsFirstId: newRecords[0]?.id,
+      htmlFieldsInNewRecord: htmlFieldsInNew,
+      newRecordKeys: newRecords[0] ? Object.keys(newRecords[0]).slice(0, 10) : [],
     });
     
     const existingIds = new Set(state.records.map(r => r.id as string));
@@ -440,14 +445,25 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     console.log('[EditorStore] 需要添加的记录数:', recordsToAdd.length);
     
     if (recordsToAdd.length > 0) {
+      // 【调试】检查要添加的记录是否有 _html 字段
+      const firstRecordToAdd = recordsToAdd[0];
+      const htmlFieldsInToAdd = firstRecordToAdd ? Object.keys(firstRecordToAdd).filter(k => k.endsWith('_html')) : [];
+      console.log('[EditorStore] 要添加的记录 _html 字段:', htmlFieldsInToAdd);
+      
       // 重新计算 _rowIndex
       const updatedRecords = [...state.records];
       const startIndex = updatedRecords.length;
       recordsToAdd.forEach((record, idx) => {
-        updatedRecords.push({
+        const recordWithIndex = {
           ...record,
           _rowIndex: startIndex + idx,
-        });
+        };
+        // 【调试】验证添加后的记录是否保留 _html 字段
+        const htmlFieldsAfter = Object.keys(recordWithIndex).filter(k => k.endsWith('_html'));
+        if (idx === 0) {
+          console.log('[EditorStore] 添加后记录 _html 字段:', htmlFieldsAfter);
+        }
+        updatedRecords.push(recordWithIndex);
       });
       
       console.log('[EditorStore] 更新后的记录总数:', updatedRecords.length);

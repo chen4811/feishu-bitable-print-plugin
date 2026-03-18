@@ -112,6 +112,17 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
 
   // 【调试】监听 records 变化
   useEffect(() => {
+    // 【调试】检查 records 的原始结构
+    if (records && records.length > 0) {
+      console.log('[CanvasComponent] records[0] 原始结构:', {
+        type: typeof records[0],
+        keys: Object.keys(records[0] as object).slice(0, 10),
+        hasId: 'id' in (records[0] as object),
+        hasFields: 'fields' in (records[0] as object),
+        idValue: (records[0] as any).id,
+      });
+    }
+    
     console.log('[CanvasComponent] records 变化:', {
       recordsCount: records?.length || 0,
       firstRecordId: records?.[0]?.id,
@@ -126,6 +137,7 @@ export function CanvasComponent({ component, isSelected, onSelect }: CanvasCompo
         htmlFields,
         htmlFieldsCount: htmlFields.length,
         allKeysCount: Object.keys(firstRecord).length,
+        allKeys: Object.keys(firstRecord).filter(k => k.startsWith('_')),
         sampleHtmlField: htmlFields.length > 0 ? {
           fieldName: htmlFields[0],
           contentPreview: String(firstRecord[htmlFields[0]]).substring(0, 100)
