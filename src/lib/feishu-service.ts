@@ -273,36 +273,87 @@ export async function fetchRecords(options?: {
   if (env === 'sdk') {
     // 使用 JS-SDK
     try {
-      // 🔥 如果指定了 recordIds，需要使用批量获取
-      if (options?.recordIds && options.recordIds.length > 0) {
-        const { getRecordsByCheckboxIds } = await import('./feishu-env');
-        const { base } = await import('@lark-base-open/js-sdk');
-        
-        // 🔥 修复：如果 tableId 为空，从 selection 获取
-        let targetTableId = tableId;
-        if (!targetTableId) {
-          try {
-            const selection = await base.getSelection();
-            targetTableId = selection?.tableId || null;
-            console.log('[FeishuService] 从 selection 获取 tableId:', targetTableId);
-          } catch (e) {
-            console.error('[FeishuService] 获取 tableId 失败:', e);
-          }
-        }
-        
-        if (targetTableId) {
-          console.log('[FeishuService] 批量获取记录, tableId:', targetTableId, 'recordIds:', options.recordIds);
-          const records = await getRecordsByCheckboxIds(targetTableId, options.recordIds);
-          console.log('[FeishuService] 批量获取到记录数:', records.length);
-          return records.map(r => ({ id: r.id, ...r.fields }));
-        } else {
-          console.warn('[FeishuService] 无法获取 tableId，跳过批量获取');
+      const { base } = await import('@lark-base-open/js-sdk');
+      
+      // 🔥 获取 tableId
+      let targetTableId = tableId;
+      if (!targetTableId) {
+        try {
+          const selection = await base.getSelection();
+          targetTableId = selection?.tableId || null;
+          console.log('[FeishuService] 从 selection 获取 tableId:', targetTableId);
+        } catch (e) {
+          console.error('[FeishuService] 获取 tableId 失败:', e);
         }
       }
       
-      // 默认获取所有记录
-      const { fetchRecords: sdkFetchRecords } = await import('./feishu-env');
-      const rawRecords = await sdkFetchRecords();
+      let rawRecords: Array<{ id: string; fields: Record<string, unknown> }> = [];
+      
+      // 🔥 如果指定了 recordIds，需要使用批量获取
+      if (options?.recordIds && options.recordIds.length > 0) {
+        const { getRecordsByCheckboxIds } = await import('./feishu-env');
+        
+        if (targetTableId) {
+          console.log('[FeishuService] 批量获取记录, tableId:', targetTableId, 'recordIds:', options.recordIds);
+          rawRecords = await getRecordsByCheckboxIds(targetTableId, options.recordIds);
+          console.log('[FeishuService] 批量获取到记录数:', rawRecords.length);
+        } else {
+          console.warn('[FeishuService] 无法获取 tableId，跳过批量获取');
+        }
+      } else {
+        // 默认获取所有记录
+        const { fetchRecords: sdkFetchRecords } = await import('./feishu-env');
+        rawRecords = await sdkFetchRecords();
+      }
+      
+      // 🔥【关键修复】处理附件字段
+      if (rawRecords.length > 0 && targetTableId) {
+        try {
+          console.log('[FeishuService] ========== 开始处理附件字段 ==========');
+          
+          const table = await base.getTable(targetTableId);
+          const fieldMetaList = await table.getFieldMetaList();
+          
+          // 查找附件字段
+          const attachmentFields = fieldMetaList?.filter((f: any) => f.type === 17 || String(f.type) === 'Attachment') || [];
+          console.log('[FeishuService] 发现附件字段数:', attachmentFields.length);
+          
+          if (attachmentFields.length > 0) {
+            // 导入附件处理函数
+            const { processRecordAttachments } = await import('./attachment-processor');
+            
+            // 处理每条记录的附件
+            const processedRecords = await Promise.all(
+              rawRecords.map(async (record) => {
+                try {
+                  const result = await processRecordAttachments(
+                    { id: record.id, ...record.fields } as Record<string, any>,
+                    fieldMetaList,
+                    undefined, // fieldTypeMap
+                    table
+                  );
+                  return result as typeof record;
+                } catch (error) {
+                  console.error('[FeishuService] 处理记录附件失败:', record.id, error);
+                  return record;
+                }
+              })
+            );
+            
+            console.log('[FeishuService] ========== 附件字段处理完成 ==========');
+            
+            // 验证处理结果
+            const htmlFields = processedRecords[0] ? Object.keys(processedRecords[0]).filter(k => k.endsWith('_html')) : [];
+            console.log('[FeishuService] 处理后记录的 _html 字段:', htmlFields);
+            
+            return processedRecords.map(r => ({ id: r.id, ...r.fields }));
+          }
+        } catch (attachmentError) {
+          console.error('[FeishuService] 附件处理失败:', attachmentError);
+          // 继续返回原始记录
+        }
+      }
+      
       return rawRecords.map(r => ({ id: r.id, ...r.fields }));
     } catch (error) {
       console.error('[FeishuService] SDK 获取记录失败:', error);
