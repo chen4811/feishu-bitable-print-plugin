@@ -917,39 +917,28 @@ const replaceVariables = (text: string, data: Record<string, any>): string => {
   });
 };
 
-// 替换文本中的变量为带样式的HTML - 用于打印预览（HTML版本）
+/**
+ * 替换文本中的变量为带样式的HTML - 用于打印预览（HTML版本）
+ * 🔒 [已验证] 核心功能：支持附件字段的 HTML 渲染
+ */
 const replaceVariablesToHTML = (text: string, data: Record<string, any>, textStyle?: any): string => {
   if (!text || typeof text !== 'string') return text;
-  
-  // 【调试】检测文本是否包含变量
-  const hasVariables = /\[([^\]]+)(?::([^\]]+))?\]|\{\{([^}]+)(?::([^}]+))?\}\}/.test(text);
-  if (hasVariables) {
-    console.log('[replaceVariablesToHTML] 处理文本:', text.substring(0, 50) + '...');
-  }
 
   // 支持 [字段名]、[字段名:格式]、{{字段名}}、{{字段名:格式}}
   return text.replace(/\[([^\]]+)(?::([^\]]+))?\]|\{\{([^}]+)(?::([^}]+))?\}\}/g, (match, bracketName, bracketFormat, braceName, braceFormat) => {
     const varName = (bracketName || braceName)?.trim();
     if (!varName) return match;
     
-    // 【关键修复】优先使用处理后的HTML内容（_字段名_html），如果不存在则使用原始值
+    // lock
+    // [核心逻辑] 优先使用预处理的HTML内容（_字段名_html），用于附件等复杂字段
     const htmlValue = data[`_${varName}_html`];
     const originalValue = data[varName];
     
-    // 【调试】输出变量处理信息
-    console.log(`[replaceVariablesToHTML] 变量 "${varName}":`, {
-      hasHtmlValue: htmlValue !== undefined && htmlValue !== null,
-      htmlValueType: typeof htmlValue,
-      htmlValueLength: typeof htmlValue === 'string' ? htmlValue.length : 0,
-      hasImgTag: typeof htmlValue === 'string' ? htmlValue.includes('<img') : false,
-      hasOriginalValue: originalValue !== undefined && originalValue !== null
-    });
-    
-    // 如果有预处理的HTML内容，直接使用它（用于附件等复杂字段）
+    // 如果有预处理的HTML内容，直接使用它
     if (htmlValue !== undefined && htmlValue !== null) {
-      console.log(`[replaceVariablesToHTML] ✅ 使用预处理的 HTML 内容: ${varName}`);
       return htmlValue;
     }
+    // lock
     
     if (originalValue === undefined || originalValue === null) {
       return match; // 保留原变量格式
@@ -1025,9 +1014,11 @@ const renderTableComponent = (component: any, data: Record<string, any>): React.
                   const rowSpan = cell.rowSpan ?? 1;
                   const colSpan = cell.colSpan ?? 1;
                   const content = cell.content || '';
-                  // 🔥 【关键修复】使用 replaceVariablesToHTML 支持附件字段的 HTML 渲染
-                  // 优先使用预处理的 _字段名_html 字段，而不是简单的变量替换
+                  // lock
+                  // [已验证] 使用 replaceVariablesToHTML 支持附件字段的 HTML 渲染
+                  // 优先使用预处理的 _字段名_html 字段，确保附件图片正确显示
                   const processedContent = replaceVariablesToHTML(content, data, cell.style);
+                  // lock
                   
                   // 获取列宽配置
                   const colWidth = colWidths[colIndex];
@@ -1049,12 +1040,14 @@ const renderTableComponent = (component: any, data: Record<string, any>): React.
                         maxWidth: colWidth ? `${colWidth}px` : `${100 / maxCols}%`,
                       }, cell.style)}
                     >
-                      {/* 🔥 【关键修复】检测内容是否包含 HTML 标签，使用 dangerouslySetInnerHTML 渲染 */}
+                      {/* lock */}
+                      {/* [已验证] 检测内容是否包含 HTML 标签，使用 dangerouslySetInnerHTML 渲染 */}
                       {processedContent && processedContent.includes('<') ? (
                         <span dangerouslySetInnerHTML={{ __html: processedContent }} />
                       ) : (
                         processedContent
                       )}
+                      {/* lock */}
                     </td>
                   );
                 })}
