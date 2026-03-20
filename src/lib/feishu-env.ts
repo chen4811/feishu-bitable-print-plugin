@@ -836,6 +836,57 @@ export async function getSelectedRecords(): Promise<BitableRecord[]> {
     };
     
     const result = processRecordData(recordDataWithId, fieldMetaList);
+    debugLog('✅ processRecordData 完成');
+    
+    // 🔥【关键修复】第六步：处理附件字段 - 获取临时 URL 并生成 HTML
+    debugLog('第六步：处理附件字段...');
+    const attachmentFields = fieldMetaList?.filter((f: any) => f.type === 17) || [];
+    debugLog('发现附件字段数:', attachmentFields.length);
+    
+    if (attachmentFields.length > 0) {
+      for (const attachField of attachmentFields) {
+        const fieldId = attachField.id;
+        const fieldName = attachField.name;
+        debugLog(`处理附件字段: ${fieldName} (${fieldId})`);
+        
+        const attachValue = result.fields[fieldName];
+        if (Array.isArray(attachValue) && attachValue.length > 0) {
+          debugLog(`记录的附件字段 ${fieldName} 有 ${attachValue.length} 个文件`);
+          
+          // 提取 token 列表
+          const tokens = attachValue
+            .map((a: any) => a.token || a.file_token)
+            .filter(Boolean);
+          
+          if (tokens.length > 0) {
+            debugLog(`获取 ${tokens.length} 个附件的临时 URL...`);
+            
+            try {
+              // 获取附件字段实例并获取临时 URL
+              const attachmentField = await table.getField(fieldId);
+              const urls = await attachmentField.getAttachmentUrls(tokens);
+              
+              debugLog(`获取到 ${urls?.length || 0} 个临时 URL`);
+              
+              if (urls && urls.length > 0) {
+                // 生成 HTML 内容
+                const images = urls.map((url: string, idx: number) => {
+                  const fileName = attachValue[idx]?.name || '';
+                  return `<img src="${url}" alt="${fileName}" style="max-width: 100px; margin: 4px; display: inline-block;"/>`;
+                }).join('');
+                
+                // 存储 _html 字段
+                result.fields[`_${fieldName}_html`] = `<div class="attachment-images">${images}</div>`;
+                debugLog(`生成 _${fieldName}_html 字段`);
+              }
+            } catch (urlError) {
+              debugLog(`获取附件 URL 失败:`, urlError);
+            }
+          }
+        }
+      }
+    }
+    
     debugLog('✅ 数据处理完成');
     debugLog('======== getSelectedRecords() 结束 ========');
     

@@ -190,6 +190,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
         // 🔥 检查是否已清理
         if (isCleaned) {
           console.log('[EditorPage] 组件已清理，取消初始化（获取tableName后）');
+          setFeishuLoading(false);
           return;
         }
         
@@ -208,6 +209,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
         // 🔥 检查是否已清理
         if (isCleaned) {
           console.log('[EditorPage] 组件已清理，取消初始化（获取fields后）');
+          setFeishuLoading(false);
           return;
         }
         
@@ -260,6 +262,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
         // 🔥 检查是否已清理
         if (isCleaned) {
           console.log('[EditorPage] 组件已清理，取消初始化（设置字段后）');
+          setFeishuLoading(false);
           return;
         }
 
@@ -270,6 +273,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
         // 🔥 检查是否已清理
         if (isCleaned) {
           console.log('[EditorPage] 组件已清理，取消初始化（获取records后）');
+          setFeishuLoading(false);
           return;
         }
         
