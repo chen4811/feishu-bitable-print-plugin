@@ -1586,25 +1586,32 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         attachmentFieldNames.forEach(fieldName => {
           const value = record[fieldName];
           const valueType = Array.isArray(value) ? 'array' : typeof value;
-          const isHTML = typeof value === 'string' && value.includes('<img');
-          const isDiv = typeof value === 'string' && value.includes('<div');
+          // 【修复】检查 _xxx_html 字段是否存在
+          const htmlFieldName = `_${fieldName}_html`;
+          const htmlContent = record[htmlFieldName];
+          const hasHTML = htmlContent && typeof htmlContent === 'string' && htmlContent.includes('<img');
           
           console.log(`  📎 ${fieldName}:`);
           console.log(`     类型: ${valueType}`);
-          console.log(`     是图片HTML: ${isHTML}`);
-          console.log(`     是DIV HTML: ${isDiv}`);
+          console.log(`     HTML字段(${htmlFieldName}): ${hasHTML ? '已生成' : '未生成'}`);
           
-          if (isHTML) {
-            const imgCount = (value.match(/<img/g) || []).length;
+          if (hasHTML) {
+            const imgCount = (htmlContent.match(/<img/g) || []).length;
             console.log(`     图片数量: ${imgCount}`);
-            console.log(`     HTML长度: ${value.length}`);
-            console.log(`     ✅ 正确转换为HTML`);
+            console.log(`     HTML长度: ${htmlContent.length}`);
+            console.log(`     ✅ 数据结构正确：原始字段为数组，HTML已生成`);
           } else if (Array.isArray(value)) {
-            console.log(`     ❌ 仍是数组格式，数据传递失败！`);
+            // 【修复】原始字段是数组是正常的，只需检查是否生成了HTML
+            console.log(`     ⚠️ 原始字段是数组（正常），但HTML未生成`);
             console.log(`     数组长度: ${value.length}`);
             if (value.length > 0) {
               console.log(`     第一项:`, value[0]);
             }
+          } else if (typeof value === 'string' && value.includes('<img')) {
+            // 兼容旧数据：直接存储为HTML字符串
+            const imgCount = (value.match(/<img/g) || []).length;
+            console.log(`     图片数量: ${imgCount}`);
+            console.log(`     ✅ 直接存储为HTML字符串（兼容模式）`);
           } else if (typeof value === 'string') {
             console.log(`     内容预览: ${value.substring(0, 100)}...`);
           }
@@ -1654,8 +1661,9 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         const htmlContent = record[htmlFieldName];
         
         if (fieldValue === undefined || fieldValue === null) {
-          issues.push(`❌ "${fieldName}" 字段为空`);
-          console.log(`  ❌ 字段为空`);
+          // 【修复】字段为空是正常情况（该记录可能没有附件），标记为警告而非错误
+          issues.push(`⚠️ "${fieldName}" 字段为空`);
+          console.log(`  ⚠️ 字段为空（该记录可能没有此附件）`);
         } else if (Array.isArray(fieldValue)) {
           // 【关键修复】原始字段是数组是正常的，应该检查 _html 字段是否存在
           console.log(`  📋 原始字段是数组（正常），长度: ${fieldValue.length}`);
@@ -1700,8 +1708,9 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
             console.log(`  内容: ${fieldValue.substring(0, 200)}`);
           }
         } else {
-          issues.push(`❌ "${fieldName}" 类型异常: ${typeof fieldValue}`);
-          console.log(`  ❌ 类型异常: ${typeof fieldValue}`);
+          // 【修复】类型异常标记为警告，不阻断流程
+          issues.push(`⚠️ "${fieldName}" 类型异常: ${typeof fieldValue}`);
+          console.log(`  ⚠️ 类型异常: ${typeof fieldValue}`);
         }
       }
     });
@@ -1713,11 +1722,15 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
     
     console.log('\n📊 验证统计:');
     console.log(`  ✅ 成功: ${successCount}`);
-    console.log(`  ❌ 错误: ${errorCount}`);
     console.log(`  ⚠️ 警告: ${warningCount}`);
+    console.log(`  ❌ 错误: ${errorCount}`);
     
+    // 【修复】只有真正的错误才输出严重问题警告
+    // 空字段和类型异常现在都是警告，不再视为错误
     if (errorCount > 0) {
       console.error('🔴 发现严重问题，需要修复数据传递！');
+    } else if (warningCount > 0) {
+      console.log('🟡 数据传递完成，但有部分警告（可能是正常的空字段）');
     } else if (successCount > 0) {
       console.log('🟢 数据传递正常，HTML已正确生成');
     }
