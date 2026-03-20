@@ -1351,6 +1351,78 @@ const renderComponent = (component: any, data: Record<string, any>, fieldTypeMap
           {children.map((child: any) => renderComponent(child, data, fieldTypeMap, fieldIdMap))}
         </div>
       );
+    case 'fieldContainer': {
+      // 字段容器组件：根据字段是否有值决定是否显示
+      const fieldNames = component.fieldNames || [];
+      const showCondition = component.showCondition || 'any'; // 默认：任意字段有值即显示
+      const containerChildren = component.children || [];
+      
+      // 检查字段是否有值的辅助函数
+      const checkFieldHasValue = (fieldName: string): boolean => {
+        // 尝试直接用字段名查找
+        let value = data[fieldName];
+        
+        // 如果没找到，尝试用字段ID查找
+        if (value === undefined && fieldIdMap) {
+          const fieldId = Object.entries(fieldIdMap).find(([_, name]) => name === fieldName)?.[0];
+          if (fieldId) {
+            value = data[fieldId];
+          }
+        }
+        
+        // 检查附件字段的预处理数据
+        const htmlContent = data[`_${fieldName}_html`];
+        const fileNames = data[`_${fieldName}_names`];
+        
+        // 如果有预处理的 HTML 内容，也算有值
+        if (htmlContent && typeof htmlContent === 'string' && htmlContent.length > 0) {
+          return true;
+        }
+        if (Array.isArray(fileNames) && fileNames.length > 0) {
+          return true;
+        }
+        
+        // 检查值是否有效
+        if (value === null || value === undefined) return false;
+        if (value === '') return false;
+        if (Array.isArray(value) && value.length === 0) return false;
+        
+        return true;
+      };
+      
+      // 没有数据时（模板预览模式）：显示容器内容（让用户看到模板结构）
+      const isEmptyPreview = !data || Object.keys(data).length === 0;
+      if (isEmptyPreview) {
+        return (
+          <div key={id} style={{ width: '100%' }}>
+            {containerChildren.map((child: any) => renderComponent(child, data, fieldTypeMap, fieldIdMap))}
+          </div>
+        );
+      }
+      
+      // 有数据时：检查字段是否有值
+      const fieldValues = fieldNames.map((fieldName: string) => ({
+        name: fieldName,
+        hasValue: checkFieldHasValue(fieldName),
+      }));
+      
+      // 根据显示条件判断
+      const shouldShow = showCondition === 'all'
+        ? fieldValues.every((f: { name: string; hasValue: boolean }) => f.hasValue)
+        : fieldValues.some((f: { name: string; hasValue: boolean }) => f.hasValue);
+      
+      // 如果不应该显示，返回 null（不渲染任何内容）
+      if (!shouldShow) {
+        return null;
+      }
+      
+      // 显示容器内容
+      return (
+        <div key={id} style={{ width: '100%' }}>
+          {containerChildren.map((child: any) => renderComponent(child, data, fieldTypeMap, fieldIdMap))}
+        </div>
+      );
+    }
     case 'line':
       return (
         <div 
