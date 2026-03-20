@@ -634,10 +634,10 @@ export async function getRecordsByCheckboxIds(tableId: string, recordIds: string
             if (Array.isArray(attachValue) && attachValue.length > 0) {
               debugLog(`记录 ${record.id} 的附件字段 ${fieldName} 有 ${attachValue.length} 个文件`);
               
-              // 提取 token 列表
+              // 提取 token 列表，并过滤掉 null/undefined/空字符串
               const tokens = attachValue
-                .map((a: any) => a.token || a.file_token)
-                .filter(Boolean);
+                .map((a: any) => a?.token || a?.file_token || null)
+                .filter((t): t is string => typeof t === 'string' && t.length > 0);
               
               if (tokens.length > 0) {
                 debugLog(`获取 ${tokens.length} 个附件的临时 URL...`);
@@ -645,11 +645,20 @@ export async function getRecordsByCheckboxIds(tableId: string, recordIds: string
                 try {
                   // 获取附件字段实例并获取临时 URL
                   const attachmentField = await table.getField(fieldId);
-                  const urls = await attachmentField.getAttachmentUrls(tokens);
+                  
+                  // 🔥【关键修复】使用 recordId 而不是 tokens 数组调用 getAttachmentUrls
+                  // 因为飞书 SDK 的 getAttachmentUrls 可能对 tokens 数组处理有问题
+                  const recordId = record.id;
+                  if (!recordId) {
+                    debugLog(`记录没有 ID，跳过附件处理`);
+                    continue;
+                  }
+                  
+                  const urls = await attachmentField.getAttachmentUrls(recordId);
                   
                   debugLog(`获取到 ${urls?.length || 0} 个临时 URL`);
                   
-                  if (urls && urls.length > 0) {
+                  if (urls && Array.isArray(urls) && urls.length > 0) {
                     // 生成 HTML 内容
                     const images = urls.map((url: string, idx: number) => {
                       const fileName = attachValue[idx]?.name || '';
@@ -853,10 +862,10 @@ export async function getSelectedRecords(): Promise<BitableRecord[]> {
         if (Array.isArray(attachValue) && attachValue.length > 0) {
           debugLog(`记录的附件字段 ${fieldName} 有 ${attachValue.length} 个文件`);
           
-          // 提取 token 列表
+          // 提取 token 列表，并过滤掉 null/undefined/空字符串
           const tokens = attachValue
-            .map((a: any) => a.token || a.file_token)
-            .filter(Boolean);
+            .map((a: any) => a?.token || a?.file_token || null)
+            .filter((t): t is string => typeof t === 'string' && t.length > 0);
           
           if (tokens.length > 0) {
             debugLog(`获取 ${tokens.length} 个附件的临时 URL...`);
@@ -864,11 +873,20 @@ export async function getSelectedRecords(): Promise<BitableRecord[]> {
             try {
               // 获取附件字段实例并获取临时 URL
               const attachmentField = await table.getField(fieldId);
-              const urls = await attachmentField.getAttachmentUrls(tokens);
+              
+              // 🔥【关键修复】使用 recordId 而不是 tokens 数组调用 getAttachmentUrls
+              // 因为飞书 SDK 的 getAttachmentUrls 可能对 tokens 数组处理有问题
+              const recordId = result.id;
+              if (!recordId) {
+                debugLog(`记录没有 ID，跳过附件处理`);
+                continue;
+              }
+              
+              const urls = await attachmentField.getAttachmentUrls(recordId);
               
               debugLog(`获取到 ${urls?.length || 0} 个临时 URL`);
               
-              if (urls && urls.length > 0) {
+              if (urls && Array.isArray(urls) && urls.length > 0) {
                 // 生成 HTML 内容
                 const images = urls.map((url: string, idx: number) => {
                   const fileName = attachValue[idx]?.name || '';
