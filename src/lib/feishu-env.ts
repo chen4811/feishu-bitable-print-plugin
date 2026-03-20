@@ -580,8 +580,16 @@ export async function getRecordsByCheckboxIds(tableId: string, recordIds: string
     if (typeof table.getRecordsByIds === 'function') {
       debugLog('使用 table.getRecordsByIds() 批量获取');
       try {
-        recordsData = await table.getRecordsByIds(recordIds);
-        debugLog(`✅ 批量获取到 ${recordsData.length} 条记录`);
+        const rawRecordsData = await table.getRecordsByIds(recordIds);
+        debugLog(`✅ 批量获取到 ${rawRecordsData.length} 条记录`);
+        
+        // 🔥【关键修复】飞书 SDK getRecordsByIds 返回的记录没有 id 字段
+        // 需要手动将 recordId 添加到每条记录中
+        recordsData = rawRecordsData.map((rec: any, idx: number) => ({
+          ...rec,
+          id: rec.id || rec.recordId || recordIds[idx] || '', // 使用原始 recordId
+        }));
+        debugLog('已为每条记录添加 id 字段');
       } catch (e) {
         debugLog('⚠️  getRecordsByIds 失败，回退到逐个获取:', e);
       }
@@ -600,7 +608,11 @@ export async function getRecordsByCheckboxIds(tableId: string, recordIds: string
           }
           
           if (recData) {
-            recordsData.push(recData);
+            // 🔥【关键修复】确保记录有 id 字段
+            recordsData.push({
+              ...recData,
+              id: recData.id || recData.recordId || recId,
+            });
           }
         } catch (e) {
           debugLog(`获取记录 ${recId} 失败:`, e);
