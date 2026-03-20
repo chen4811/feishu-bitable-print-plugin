@@ -266,25 +266,11 @@ export function EditorPage({ onExit }: EditorPageProps) {
           return;
         }
 
-        // 2. 获取记录（使用统一服务层）
-        console.log('[EditorPage] 获取记录...');
-        const records = await fetchRecords();
-        
-        // 🔥 检查是否已清理
-        if (isCleaned) {
-          console.log('[EditorPage] 组件已清理，取消初始化（获取records后）');
-          setFeishuLoading(false);
-          return;
-        }
-        
-        console.log('[EditorPage] 获取到记录:', records);
-        
-        if (records.length > 0) {
-          // 🔥 在 API 模式下，记录已经处理好（附件已处理）
-          // 🔥 在 SDK 模式下，可能需要处理附件（但 fetchRecords 内部已经处理）
-          setFeishuRecords(records);
-          setRecords(records as unknown as Record<string, unknown>[]);
-        }
+        // 🔥【关键修改】模板编辑状态下不预加载所有记录
+        // 只获取字段信息用于变量列表，等待用户点选多维表格行时再加载选中记录
+        console.log('[EditorPage] 模板编辑模式：跳过预加载所有记录，等待用户点选...');
+        setFeishuRecords([]);
+        setRecords([]);
         
         setFeishuLoading(false);
         
@@ -361,14 +347,10 @@ export function EditorPage({ onExit }: EditorPageProps) {
               setFeishuFields(fields);
               setFields(appFields);
               
-              // 重新获取记录
-              const records = await fetchRecords();
-              if (isCleaned) return;
-              
-              if (records.length > 0) {
-                setFeishuRecords(records);
-                setRecords(records as unknown as Record<string, unknown>[]);
-              }
+              // 🔥【关键修改】表格切换时也不预加载所有记录
+              console.log('[EditorPage] 表格切换：跳过预加载所有记录，等待用户点选...');
+              setFeishuRecords([]);
+              setRecords([]);
               
               setFeishuLoading(false);
             } catch (error) {
@@ -1306,7 +1288,7 @@ export function EditorPage({ onExit }: EditorPageProps) {
               ) : isFeishuEnvironment ? (
                 <Badge variant="default" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
                   <CheckCircle2 className="w-3 h-3 mr-1" />
-                  飞书数据 · {feishuRecords.length} 条
+                  {feishuRecords.length > 0 ? `已加载 ${feishuRecords.length} 条` : '点选加载数据'}
                 </Badge>
               ) : null}
             </div>
