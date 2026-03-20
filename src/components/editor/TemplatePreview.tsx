@@ -2242,23 +2242,18 @@ export function TemplatePreview({ baseId, tableId, onEditTemplate }: TemplatePre
         // 使用 setTimeout 确保在 setAvailableRecords 完成后再同步
         setTimeout(() => {
           const latestRecords = useEditorStore.getState().records;
-          const latestAvailableRecords = useSelectedDataStore.getState().records;
           console.log('[TP] 【延迟同步】editorStore 记录数:', latestRecords.length);
-          console.log('[TP] 【延迟同步】availableRecords 记录数:', latestAvailableRecords.length);
+          console.log('[TP] 【延迟同步】availableRecords (React state) 记录数:', availableRecords.length);
           
           // 【调试】检查 processedRecords 的 _html 字段（闭包变量）
           const processedHtmlFields = processedRecords[0] ? Object.keys(processedRecords[0]).filter(k => k.endsWith('_html')) : [];
           console.log('[TP] 【延迟同步】processedRecords[0] 的 _html 字段:', processedHtmlFields);
           
-          // 【调试】检查 latestAvailableRecords 的 _html 字段
-          const availableHtmlFields = latestAvailableRecords[0] ? Object.keys(latestAvailableRecords[0]).filter(k => k.endsWith('_html')) : [];
-          console.log('[TP] 【延迟同步】latestAvailableRecords[0] 的 _html 字段:', availableHtmlFields);
-          
           // 只添加新记录到 editorStore
           const existingEditorIds = new Set(latestRecords.map(r => r.id as string));
-          // 【关键修复】优先使用 latestAvailableRecords（已同步到 store 的数据）
-          // 因为 processedRecords 是闭包变量，可能与实际数据不一致
-          const recordsToAdd = (latestAvailableRecords.length > 0 ? latestAvailableRecords : processedRecords)
+          // 【关键修复】直接使用 processedRecords，因为它是包含 _html 字段的完整数据
+          // 不再从 useSelectedDataStore 获取，因为那个 store 没有被正确同步
+          const recordsToAdd = processedRecords
             .filter(r => !existingEditorIds.has(r.id as string));
           
           // 【调试】检查 recordsToAdd 的 _html 字段
