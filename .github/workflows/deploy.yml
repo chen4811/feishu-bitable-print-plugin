@@ -3,16 +3,14 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - main          # 如果你使用 master 分支，请改为 master
-  workflow_dispatch:  # 允许手动触发
+      - main
+  workflow_dispatch:
 
-# 设置必要的权限
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# 保证只有一个部署任务运行
 concurrency:
   group: "pages"
   cancel-in-progress: false
@@ -30,9 +28,9 @@ jobs:
           node-version: '20'
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 8
+        uses: pnpm/action-setup@v4
+        # 不指定 version，自动读取 package.json 中的 packageManager 字段
+        # 如果需要手动指定，写 version: '9.0.0' 与 package.json 一致
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -43,7 +41,7 @@ jobs:
       - name: Upload artifact for Pages
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./out   # Next.js 静态导出默认输出目录
+          path: ./out
 
   deploy:
     environment:
