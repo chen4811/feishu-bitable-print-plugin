@@ -61,7 +61,7 @@
     "@tiptap/extension-text-style": "^3.20.0",
     "@tiptap/extension-underline": "^3.20.0",
     "@tiptap/react": "^3.20.0",
-    "@tiptap/starter-kit": "^3.20.0",
+    "@tiptap/starter-kit": "^3.20.0"，
     "@types/jspdf": "^2.0.0",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
@@ -116,7 +116,7 @@
     "tailwindcss": "^4",
     "typescript": "^5"
   },
-  "packageManager": "pnpm@9.0.0",
+  "packageManager": "pnpm@8.15.9",
   "engines": {
     "pnpm": ">=9.0.0"
   }
