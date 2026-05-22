@@ -10,22 +10,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 不指定版本，自动读取 package.json 里的 pnpm@9.0.0
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
+      # 用系统corepack启用pnpm，自动匹配package.json版本，无冲突
+      - name: Enable pnpm
+        run: corepack enable && corepack prepare pnpm@9.0.0 --activate
 
-      # 关闭缓存，不再校验锁文件
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: ''
+          cache: '' # 关闭缓存，不再校验锁文件
 
       - name: Install dependencies
         run: pnpm install
 
       - name: Build static site
         run: pnpm build
+        env:
+          NODE_OPTIONS: "--no-deprecation" # 屏蔽punycode警告
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
