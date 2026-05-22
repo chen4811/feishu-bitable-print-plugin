@@ -10,13 +10,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 官方 pnpm 安装，不依赖 setup-node 缓存
+      # 不指定版本，自动读取 package.json 里的 pnpm@9.0.0
       - name: Install pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: latest
 
-      # 只装 Node，完全关闭缓存，不再检查锁文件
+      # 关闭缓存，不再校验锁文件
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
