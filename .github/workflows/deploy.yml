@@ -1,5 +1,4 @@
 name: Build & Deploy Feishu Bitable Print Plugin
-
 on:
   push:
     branches: [main]
@@ -7,20 +6,21 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 官方安装 pnpm，稳定
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      # Node 22，关闭 cache（就不会报锁文件错误）
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
-
-      - name: Install pnpm
-        run: corepack enable pnpm
 
       - name: Install dependencies
         run: pnpm install
