@@ -1,0 +1,42 @@
+# 工作流名称
+name: 部署前端到GitHub Pages
+
+# 触发条件：推送到main/master分支时执行
+on:
+  push:
+    branches: [ main, master ]
+
+# 工作流任务
+jobs:
+  deploy:
+    # 运行环境
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 拉取代码到运行环境
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # 2. 安装Node.js（匹配项目Node版本）
+      - name: 安装Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm' # 缓存npm依赖，加速构建
+
+      # 3. 安装依赖
+      - name: 安装依赖
+        run: npm install
+
+      # 4. 构建项目（根据框架调整命令，如yarn build/pnpm build）
+      - name: 构建项目
+        run: npm run build
+
+      # 5. 部署到GitHub Pages
+      - name: 部署到GH Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          # GitHub自动生成的密钥，用于推送部署结果
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # 构建产物目录（Vue默认dist，React默认build）
+          publish_dir: ./dist
