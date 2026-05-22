@@ -10,17 +10,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 官方安装 pnpm，稳定
+      # 官方 pnpm 安装，不依赖 setup-node 缓存
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: latest
 
-      # Node 22，关闭 cache（就不会报锁文件错误）
+      # 只装 Node，完全关闭缓存，不再检查锁文件
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: ''
 
       - name: Install dependencies
         run: pnpm install
