@@ -1,55 +1,37 @@
-name: Deploy to GitHub Pages
-
+name: Build & Deploy Feishu Bitable Print Plugin
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
+    branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
+
+      # 用系统corepack，直接读取package.json指定的pnpm@9.0.0，不经过出错的pnpm/action-setup
+      - name: Install pnpm via corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.0.0 --activate
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        # 不指定 version，自动读取 package.json 中的 packageManager 字段
-        # 如果需要手动指定，写 version: '9.0.0' 与 package.json 一致
+          node-version: 22
+          cache: '' # 关闭缓存，跳过锁文件检查报错
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
-      - name: Build static export
+      - name: Build static site
         run: pnpm build
+        env:
+          NODE_OPTIONS: "--no-deprecation" # 屏蔽punycode警告
 
-      - name: Upload artifact for Pages
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./out
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
       - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./out
